@@ -1,0 +1,9 @@
+# Kreiscraft configuration.
+# See docs/configuration.md for a full reference of every module and key.
+core:
+  language: de
+  timezone: Europe/Berlin
+  auto-save-interval: 5m
+  debug: false
+
+modules: {}
