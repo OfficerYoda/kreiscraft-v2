@@ -66,3 +66,9 @@ spotless {
         eclipse().configFile("eclipse-formatter.xml")
     }
 }
+
+tasks.register<Copy>("installGitHooks") {
+    from(file("scripts/pre-commit"))
+    into(file(".git/hooks"))
+    filePermissions { unix("0755") }
+}

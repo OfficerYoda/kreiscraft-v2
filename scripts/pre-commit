@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Only check staged .java files. If none, skip.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.java$' || true)
+if [[ -z "$STAGED" ]]; then
+  exit 0
+fi
+
+echo "[pre-commit] Running spotlessCheck on staged Java files..."
+./gradlew --console=plain spotlessCheck
