@@ -16,6 +16,17 @@ import de.kreiscraft.core.scheduler.BukkitScheduler;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.core.util.Durations;
+import de.kreiscraft.platform.NmsWhitelist;
+import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.platform.PlayerBrandProvider;
+import de.kreiscraft.shared.chat.ChatBridge;
+import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.shared.gui.GuiRegistry;
+import de.kreiscraft.shared.user.UserListener;
+import de.kreiscraft.shared.user.UserService;
+import de.kreiscraft.shared.whitelist.PaperWhitelistService;
+import de.kreiscraft.shared.whitelist.WhitelistService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -33,6 +44,8 @@ public final class KreiscraftBootstrap {
     private CommandRegistrar commands;
     private ModuleRegistry modules;
     private AutoSaveTask autoSave;
+    private GuiRegistry guiRegistry;
+    private UserService userService;
 
     public KreiscraftBootstrap(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -57,6 +70,33 @@ public final class KreiscraftBootstrap {
         PlaceholderResolver placeholders = new PlaceholderResolver(plugin.getServer(), zone, Clock.systemDefaultZone());
         services.publish(PlaceholderResolver.class, placeholders);
 
+        // --- Plan 2: platform layer ---
+        PaperPlatform platform = new PaperPlatform(plugin, plugin.getServer());
+        PlayerBrandProvider brands = new PlayerBrandProvider(platform);
+        NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
+        OfflineInventoryReader offlineInv = new OfflineInventoryReader(platform);
+
+        services.publish(PaperPlatform.class, platform);
+        services.publish(PlayerBrandProvider.class, brands);
+        services.publish(NmsWhitelist.class, nmsWhitelist);
+        services.publish(OfflineInventoryReader.class, offlineInv);
+
+        // --- Plan 2: shared services ---
+        this.userService = new UserService(platform, Clock.systemDefaultZone());
+        events.register(new UserListener(userService));
+        userService.rehydrateOnlinePlayers();
+
+        ChatBridge chatBridge = new ChatBridge();
+        WhitelistService whitelist = new PaperWhitelistService(platform, nmsWhitelist);
+        this.guiRegistry = new GuiRegistry();
+        Gui gui = new Gui(guiRegistry);
+
+        services.publish(UserService.class, userService);
+        services.publish(ChatBridge.class, chatBridge);
+        services.publish(WhitelistService.class, whitelist);
+        services.publish(GuiRegistry.class, guiRegistry);
+        services.publish(Gui.class, gui);
+
         this.modules = new ModuleRegistry(
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),
                 config.root(),
@@ -79,6 +119,8 @@ public final class KreiscraftBootstrap {
     }
 
     public void stop() {
+        if (guiRegistry != null)
+            guiRegistry.closeAll();
         if (autoSave != null)
             autoSave.stop();
         if (modules != null)
