@@ -29,7 +29,7 @@ Each module receives a `ModuleContext` on `enable()`:
    ```
 
 5. Register the module in `KreiscraftBootstrap.start()`.
-6. Write tests. Services get pure JUnit + Mockito. Commands/listeners get MockBukkit.
+6. Write tests. Services get pure JUnit 6 + Mockito. Commands/listeners get MockBukkit.
 
 ## Testing conventions
 

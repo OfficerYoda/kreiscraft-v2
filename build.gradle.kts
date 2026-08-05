@@ -56,6 +56,12 @@ tasks.shadowJar {
     relocate("org.slf4j", "$relocateBase.slf4j")
 }
 
+tasks.processResources {
+    filesMatching("plugin.yml") {
+        expand("project" to mapOf("version" to project.version.toString()))
+    }
+}
+
 tasks.build {
     dependsOn(tasks.shadowJar)
 }

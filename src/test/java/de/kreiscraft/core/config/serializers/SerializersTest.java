@@ -2,7 +2,6 @@ package de.kreiscraft.core.config.serializers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.leangen.geantyref.TypeToken;
 import java.time.Duration;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
