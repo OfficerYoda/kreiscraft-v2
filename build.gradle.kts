@@ -1,0 +1,71 @@
+plugins {
+    java
+    alias(libs.plugins.paperweight.userdev)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.run.paper)
+}
+
+group = "de.kreiscraft"
+version = "0.1.0-SNAPSHOT"
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+}
+
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.xenondevs.xyz/releases/")
+}
+
+dependencies {
+    paperweight.paperDevBundle(libs.versions.paper.get())
+
+    implementation(libs.configurate.yaml)
+    implementation(libs.jackson.databind)
+    implementation(libs.slf4j.simple)
+    implementation(libs.invui)
+    implementation(libs.javalin)
+
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(libs.mockbukkit)
+    testImplementation(libs.assertj.core)
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+tasks.compileJava {
+    options.encoding = "UTF-8"
+    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("")
+    val relocateBase = "de.kreiscraft.libs"
+    relocate("io.javalin", "$relocateBase.javalin")
+    relocate("org.eclipse.jetty", "$relocateBase.jetty")
+    relocate("com.fasterxml.jackson", "$relocateBase.jackson")
+    relocate("org.spongepowered.configurate", "$relocateBase.configurate")
+    relocate("xyz.xenondevs.invui", "$relocateBase.invui")
+    relocate("org.slf4j", "$relocateBase.slf4j")
+}
+
+tasks.build {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.runServer {
+    minecraftVersion(libs.versions.paper.get().substringBefore("-"))
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        eclipse().configFile("eclipse-formatter.xml")
+    }
+}
