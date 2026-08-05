@@ -1,5 +1,6 @@
 [versions]
 paper = "26.1.2.build.72-stable"
+paperweight = "2.0.0-beta.21"
 shadow = "9.6.1"
 spotless = "8.9.0"
 runPaper = "3.0.2"
@@ -31,3 +32,4 @@ assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "runPaper" }
+paperweight-userdev = { id = "io.papermc.paperweight.userdev", version.ref = "paperweight" }

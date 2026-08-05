@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.shadow)
     alias(libs.plugins.spotless)
     alias(libs.plugins.run.paper)
+    alias(libs.plugins.paperweight.userdev)
 }
 
 group = "de.kreiscraft"
@@ -19,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly(libs.paper.api)
+    paperweight.paperDevBundle(libs.versions.paper.get())
 
     implementation(libs.configurate.yaml)
     implementation(libs.jackson.databind)
@@ -38,6 +39,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // Exclude paperweight's mapped server jar from the test classpath so that
+    // MockBukkit can provide its own mock server implementation without conflicts.
+    classpath = classpath.filter { !it.path.contains("paperweight") }
 }
 
 tasks.compileJava {
