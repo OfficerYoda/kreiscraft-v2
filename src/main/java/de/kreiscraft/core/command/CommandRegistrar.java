@@ -1,5 +1,11 @@
 package de.kreiscraft.core.command;
 
-/** Placeholder — real implementation lands in Task 16. */
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+
 public interface CommandRegistrar {
+
+    void register(LiteralCommandNode<CommandSourceStack> node, String description);
+
+    void register(LiteralCommandNode<CommandSourceStack> node, String description, String... aliases);
 }
