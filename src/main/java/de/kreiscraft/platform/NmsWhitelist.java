@@ -15,7 +15,7 @@ import org.bukkit.craftbukkit.CraftServer;
  *
  * <p>Not unit-tested (NMS surface).
  */
-public final class NmsWhitelist {
+public final class NmsWhitelist implements BedrockWhitelist {
 
     private final PaperPlatform platform;
 
@@ -27,10 +27,12 @@ public final class NmsWhitelist {
         return new GameProfile(uuid, name);
     }
 
+    @Override
     public boolean isWhitelisted(GameProfile profile) {
         return whitelist().isWhiteListed(new NameAndId(profile));
     }
 
+    @Override
     public void add(GameProfile profile) {
         UserWhiteList list = whitelist();
         NameAndId key = new NameAndId(profile);
@@ -40,6 +42,7 @@ public final class NmsWhitelist {
         list.add(new UserWhiteListEntry(key));
     }
 
+    @Override
     public void remove(GameProfile profile) {
         UserWhiteList list = whitelist();
         NameAndId key = new NameAndId(profile);
