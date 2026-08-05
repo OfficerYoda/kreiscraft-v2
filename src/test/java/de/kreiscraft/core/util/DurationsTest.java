@@ -42,11 +42,11 @@ class DurationsTest {
     @Test
     void parse_rejectsBadInput() {
         assertThatThrownBy(() -> Durations.parse("banana"))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Durations.parse("5x"))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Durations.parse(""))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

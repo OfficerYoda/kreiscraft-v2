@@ -33,11 +33,11 @@ class LocationsTest {
         Map<String, Object> map = Locations.toMap(original);
 
         assertThat(map).containsEntry("world", "world")
-                       .containsEntry("x", 1.5)
-                       .containsEntry("y", 64.0)
-                       .containsEntry("z", -3.5)
-                       .containsEntry("yaw", 90.0)
-                       .containsEntry("pitch", 45.0);
+                .containsEntry("x", 1.5)
+                .containsEntry("y", 64.0)
+                .containsEntry("z", -3.5)
+                .containsEntry("yaw", 90.0)
+                .containsEntry("pitch", 45.0);
 
         Location restored = Locations.fromMap(map, server::getWorld);
         assertThat(restored).isEqualTo(original);

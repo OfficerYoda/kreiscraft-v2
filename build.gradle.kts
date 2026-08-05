@@ -1,6 +1,5 @@
 plugins {
     java
-    alias(libs.plugins.paperweight.userdev)
     alias(libs.plugins.shadow)
     alias(libs.plugins.spotless)
     alias(libs.plugins.run.paper)
@@ -10,7 +9,7 @@ group = "de.kreiscraft"
 version = "0.1.0-SNAPSHOT"
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 repositories {
@@ -20,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle(libs.versions.paper.get())
+    compileOnly(libs.paper.api)
 
     implementation(libs.configurate.yaml)
     implementation(libs.jackson.databind)
@@ -28,11 +27,13 @@ dependencies {
     implementation(libs.invui)
     implementation(libs.javalin)
 
+    testImplementation(libs.paper.api)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.mockbukkit)
     testImplementation(libs.assertj.core)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {
@@ -57,10 +58,6 @@ tasks.shadowJar {
 
 tasks.build {
     dependsOn(tasks.shadowJar)
-}
-
-tasks.runServer {
-    minecraftVersion(libs.versions.paper.get().substringBefore("-"))
 }
 
 spotless {
