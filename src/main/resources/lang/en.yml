@@ -1,0 +1,7 @@
+prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
+core:
+  reload:
+    success: "<prefix> <green>Configuration reloaded."
+    failure: "<prefix> <red>Reload failed: <error>"
+  startup:
+    summary: "<prefix> <green><enabled> modules enabled</green>, <yellow><disabled> disabled</yellow>, <red><failed> failed</red>."
