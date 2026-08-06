@@ -30,7 +30,7 @@ class SwapHandBoostListenerTest {
                 new SpawnConfig.GlideConfig(true, 3, 30, new LocationSpec("", 0, 0, 0, 0, 0)),
                 new SpawnConfig.SwapHandBoostConfig(true, multiplier),
                 new SpawnConfig.SpawnLaunchConfig(false, new LocationSpec("", 0, 0, 0, 0, 0),
-                        new VelocityRecord(0, 5, 0)));
+                        new Vector(0, 5, 0)));
     }
 
     @BeforeEach

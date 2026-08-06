@@ -1,12 +1,13 @@
 package de.kreiscraft.modules.spawn;
 
+import org.bukkit.util.Vector;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 /** Spawn-module configuration. */
 @ConfigSerializable public record SpawnConfig(int teleportRange,GlideConfig glide,SwapHandBoostConfig swapHandBoost,SpawnLaunchConfig spawnLaunch){
 
 /** Apply safe defaults for every nested config that was absent from YAML. */
-public SpawnConfig{if(teleportRange==0)teleportRange=100;if(glide==null)glide=new GlideConfig(true,3,30,new LocationSpec("",0,0,0,0,0));if(swapHandBoost==null)swapHandBoost=new SwapHandBoostConfig(false,3.0);if(spawnLaunch==null)spawnLaunch=new SpawnLaunchConfig(false,new LocationSpec("",0,0,0,0,0),new VelocityRecord(0,5,0));}
+public SpawnConfig{if(teleportRange==0)teleportRange=100;if(glide==null)glide=new GlideConfig(true,3,30,new LocationSpec("",0,0,0,0,0));if(swapHandBoost==null)swapHandBoost=new SwapHandBoostConfig(false,3.0);if(spawnLaunch==null)spawnLaunch=new SpawnLaunchConfig(false,new LocationSpec("",0,0,0,0,0),new Vector(0,5,0));}
 
 // ── nested records ──────────────────────────────────────────────────────
 
@@ -44,8 +45,8 @@ if(vectorMultiplier==0.0)vectorMultiplier=3.0;}}
  * absent (detected as an all-zero vector, since {@code (0, 0, 0)} is not a useful launch
  * velocity).
  */
-@ConfigSerializable public record SpawnLaunchConfig(boolean enabled,LocationSpec trigger,VelocityRecord velocity){
+@ConfigSerializable public record SpawnLaunchConfig(boolean enabled,LocationSpec trigger,Vector velocity){
 
 public SpawnLaunchConfig{if(trigger==null)trigger=new LocationSpec("",0,0,0,0,0);
 // (0, 0, 0) treated as "not configured" — no meaningful launch uses zero velocity.
-if(velocity==null||(velocity.x()==0.0&&velocity.y()==0.0&&velocity.z()==0.0)){velocity=new VelocityRecord(0,5,0);}}}}
+if(velocity==null||(velocity.getX()==0.0&&velocity.getY()==0.0&&velocity.getZ()==0.0)){velocity=new Vector(0,5,0);}}}}

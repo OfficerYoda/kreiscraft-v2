@@ -57,7 +57,7 @@ public final class SpawnLaunchListener implements PriorityListener {
         boolean toOnTrigger = blockMatches(to, tx, ty, tz);
 
         if (!fromOnTrigger && toOnTrigger) {
-            player.setVelocity(cfg.velocity().toVector());
+            player.setVelocity(cfg.velocity());
         }
     }
 

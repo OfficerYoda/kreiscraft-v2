@@ -9,6 +9,7 @@ import java.time.Duration;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.util.Vector;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.junit.jupiter.api.AfterEach;
@@ -39,7 +40,7 @@ class GlideListenerTest {
                         new LocationSpec("", 0, 0, 0, 0, 0)),
                 new SpawnConfig.SwapHandBoostConfig(false, 3.0),
                 new SpawnConfig.SpawnLaunchConfig(false, new LocationSpec("", 0, 0, 0, 0, 0),
-                        new VelocityRecord(0, 5, 0)));
+                        new Vector(0, 5, 0)));
     }
 
     @BeforeEach

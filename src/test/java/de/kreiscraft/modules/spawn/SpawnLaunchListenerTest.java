@@ -36,7 +36,7 @@ class SpawnLaunchListenerTest {
                 new SpawnConfig.SpawnLaunchConfig(
                         true,
                         new LocationSpec("world", TX, TY, TZ, 0, 0),
-                        new VelocityRecord(0, vy, 0)));
+                        new Vector(0, vy, 0)));
     }
 
     @BeforeEach

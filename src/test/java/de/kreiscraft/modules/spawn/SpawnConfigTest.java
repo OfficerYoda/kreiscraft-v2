@@ -70,7 +70,7 @@ class SpawnConfigTest {
         assertThat(cfg.swapHandBoost().enabled()).isTrue();
         assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(2.5);
         assertThat(cfg.spawnLaunch().enabled()).isFalse();
-        assertThat(cfg.spawnLaunch().velocity().y()).isEqualTo(10.0);
+        assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(10.0);
     }
 
     @Test
@@ -92,7 +92,7 @@ class SpawnConfigTest {
         assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(3.0); // default: 0 → 3.0
         assertThat(cfg.spawnLaunch().enabled()).isFalse(); // boolean zero = false
         // velocity all-zero → compact constructor applies (0, 5, 0)
-        assertThat(cfg.spawnLaunch().velocity().toVector().getY()).isEqualTo(5.0);
+        assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(5.0);
     }
 
     @Test

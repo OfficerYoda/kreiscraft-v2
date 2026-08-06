@@ -4,6 +4,7 @@ import java.time.Duration;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.util.Vector;
 import org.spongepowered.configurate.serialize.TypeSerializerCollection;
 
 public final class KreiscraftSerializers {
@@ -15,6 +16,7 @@ public final class KreiscraftSerializers {
                 .register(Duration.class, DurationSerializer.INSTANCE)
                 .register(Location.class, LocationSerializer.INSTANCE)
                 .register(Component.class, ComponentSerializer.INSTANCE)
-                .register(Material.class, MaterialSerializer.INSTANCE);
+                .register(Material.class, MaterialSerializer.INSTANCE)
+                .register(Vector.class, VectorSerializer.INSTANCE);
     }
 }
