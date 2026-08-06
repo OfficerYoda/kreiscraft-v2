@@ -50,17 +50,17 @@ public final class SpawnModule implements Module {
         this.service = new DefaultSpawnService(data, config);
         ctx.services().publish(SpawnService.class, service);
 
-        // ── listeners ───────────────────────────────────────────────────────
+        // ── listeners (config supplied via lambda so reloads propagate) ─────
         if (config.glide().enabled()) {
             this.glideListener = new GlideListener(
-                    service, config.glide(), ctx.scheduler(), ctx.plugin().getServer());
+                    service, () -> this.config, ctx.scheduler(), ctx.plugin().getServer());
             ctx.events().register(glideListener);
         }
         if (config.swapHandBoost().enabled()) {
-            ctx.events().register(new SwapHandBoostListener(config.swapHandBoost()));
+            ctx.events().register(new SwapHandBoostListener(() -> this.config));
         }
         if (config.spawnLaunch().enabled()) {
-            ctx.events().register(new SpawnLaunchListener(config.spawnLaunch()));
+            ctx.events().register(new SpawnLaunchListener(() -> this.config));
         }
 
         // ── commands ────────────────────────────────────────────────────────
@@ -88,5 +88,6 @@ public final class SpawnModule implements Module {
             config = new SpawnConfig(100, null, null, null);
         if (service != null)
             service.updateConfig(config);
+        // Listener instances read config.get() on every event — no further update needed.
     }
 }

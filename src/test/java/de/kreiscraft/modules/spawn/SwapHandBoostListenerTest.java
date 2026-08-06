@@ -21,15 +21,26 @@ class SwapHandBoostListenerTest {
     private World world;
     private SwapHandBoostListener listener;
 
+    /** Mutable reference updated to simulate config reload. */
+    private SpawnConfig config;
+
+    private SpawnConfig makeConfig(double multiplier) {
+        return new SpawnConfig(
+                100,
+                new SpawnConfig.GlideConfig(true, 3, 30, new LocationSpec("", 0, 0, 0, 0, 0)),
+                new SpawnConfig.SwapHandBoostConfig(true, multiplier),
+                new SpawnConfig.SpawnLaunchConfig(false, new LocationSpec("", 0, 0, 0, 0, 0),
+                        new VelocityRecord(0, 5, 0)));
+    }
+
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         world = server.addSimpleWorld("world");
 
-        SpawnConfig.SwapHandBoostConfig boostConfig =
-                new SpawnConfig.SwapHandBoostConfig(true, 3.0);
-        listener = new SwapHandBoostListener(boostConfig);
+        config = makeConfig(3.0);
+        listener = new SwapHandBoostListener(() -> config);
         server.getPluginManager().registerEvents(listener, plugin);
     }
 
@@ -41,7 +52,7 @@ class SwapHandBoostListenerTest {
     @Test
     void swapHand_whileGliding_cancelsEventAndAppliesVelocity() {
         PlayerMock player = server.addPlayer("alice");
-        player.setLocation(new Location(world, 0, 64, 0, 0f, 0f)); // facing +z direction
+        player.setLocation(new Location(world, 0, 64, 0, 0f, 0f));
         player.setGliding(true);
 
         PlayerSwapHandItemsEvent event = new PlayerSwapHandItemsEvent(
@@ -50,8 +61,7 @@ class SwapHandBoostListenerTest {
         server.getPluginManager().callEvent(event);
 
         assertThat(event.isCancelled()).isTrue();
-        // Velocity should be set (direction × 3.0 multiplier)
-        assertThat(player.getVelocity()).isNotNull();
+        assertThat(player.getVelocity().length()).isGreaterThan(0.0);
     }
 
     @Test
@@ -68,14 +78,12 @@ class SwapHandBoostListenerTest {
         server.getPluginManager().callEvent(event);
 
         assertThat(event.isCancelled()).isFalse();
-        // velocity should not have been changed by this listener
         assertThat(player.getVelocity()).isEqualTo(beforeVelocity);
     }
 
     @Test
     void swapHand_velocityMagnitude_matchesMultiplier() {
         PlayerMock player = server.addPlayer("carol");
-        // Place player looking forward (yaw=0, pitch=0 → direction is (0, 0, 1) roughly)
         player.setLocation(new Location(world, 0, 64, 0, 0f, 0f));
         player.setGliding(true);
 
@@ -84,8 +92,35 @@ class SwapHandBoostListenerTest {
                 player.getInventory().getItemInOffHand());
         server.getPluginManager().callEvent(event);
 
-        // The velocity magnitude should roughly equal 3.0 (the vectorMultiplier)
         Vector vel = player.getVelocity();
         assertThat(vel.length()).isCloseTo(3.0, org.assertj.core.data.Offset.offset(0.01));
+    }
+
+    @Test
+    void configReload_newMultiplier_isHonored() {
+        // First swap with multiplier 3.0
+        PlayerMock player = server.addPlayer("diana");
+        player.setLocation(new Location(world, 0, 64, 0, 0f, 0f));
+        player.setGliding(true);
+
+        PlayerSwapHandItemsEvent first = new PlayerSwapHandItemsEvent(
+                player, player.getInventory().getItemInMainHand(),
+                player.getInventory().getItemInOffHand());
+        server.getPluginManager().callEvent(first);
+        double firstMag = player.getVelocity().length();
+        assertThat(firstMag).isCloseTo(3.0, org.assertj.core.data.Offset.offset(0.01));
+
+        // Simulate config reload: change multiplier to 6.0
+        config = makeConfig(6.0);
+
+        // Un-glide and re-glide to fire a fresh event
+        player.setGliding(false);
+        player.setGliding(true);
+        PlayerSwapHandItemsEvent second = new PlayerSwapHandItemsEvent(
+                player, player.getInventory().getItemInMainHand(),
+                player.getInventory().getItemInOffHand());
+        server.getPluginManager().callEvent(second);
+        double secondMag = player.getVelocity().length();
+        assertThat(secondMag).isCloseTo(6.0, org.assertj.core.data.Offset.offset(0.01));
     }
 }

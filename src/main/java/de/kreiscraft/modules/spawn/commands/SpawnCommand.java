@@ -22,7 +22,8 @@ public final class SpawnCommand {
                         // Command may only be used by players.
                         return Command.SINGLE_SUCCESS;
                     }
-                    if (service.spawnLocation().isEmpty()) {
+                    var spawn = service.spawnLocation();
+                    if (spawn.isEmpty()) {
                         messages.send(player, "spawn.no-spawn-set");
                         return Command.SINGLE_SUCCESS;
                     }
@@ -30,7 +31,7 @@ public final class SpawnCommand {
                         messages.send(player, "spawn.out-of-range");
                         return Command.SINGLE_SUCCESS;
                     }
-                    player.teleport(service.spawnLocation().get());
+                    player.teleport(spawn.get());
                     messages.send(player, "spawn.teleported");
                     return Command.SINGLE_SUCCESS;
                 })
