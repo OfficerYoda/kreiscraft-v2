@@ -22,3 +22,6 @@ permissions:
   kreiscraft.anticheat.view:
     description: View hack logs
     default: op
+  kreiscraft.bedrock.admin:
+    description: Manage the bedrock whitelist
+    default: op

@@ -30,3 +30,7 @@ anti-cheat:
   log-header: "<prefix> <gray>Entries for <player> (<kind>):"
   log-entry: "<gray>- <when>: <detail>"
   invalid-kind: "<red>Unknown kind '<kind>'. Use 'cheats' or 'xray'."
+bedrock:
+  added: "<prefix> <green><player></green> added to whitelist (Bedrock)."
+  unknown: "<prefix> <red>No bedrock player named <player></red> seen."
+  list-header: "<prefix> <gray>Known bedrock players (<count>):"

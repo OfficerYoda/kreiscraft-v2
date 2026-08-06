@@ -104,6 +104,7 @@ public final class KreiscraftBootstrap {
         // Plan 1: no modules registered yet.
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
+        modules.register(new de.kreiscraft.modules.bedrock.BedrockModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",

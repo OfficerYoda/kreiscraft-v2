@@ -19,3 +19,6 @@ modules:
     channel: "kreiscraft:mod_checker"
     kick-on-fabric-forge: true
     handshake-grace-duration: 5s
+  bedrock:
+    enabled: false
+    prefix: "."
