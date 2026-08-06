@@ -67,3 +67,9 @@ permissions:
   kreiscraft.signcolor.anvil:
     description: Use MiniMessage in anvil rename
     default: true
+  kreiscraft.spawn.use:
+    description: Teleport to spawn
+    default: true
+  kreiscraft.spawn.set:
+    description: Set the server spawn point
+    default: op

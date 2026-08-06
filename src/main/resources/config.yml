@@ -83,3 +83,18 @@ modules:
     enabled: false
   sign-color:
     enabled: false
+  spawn:
+    enabled: false
+    teleport-range: 100
+    glide:
+      enabled: true
+      multiply-value: 3
+      spawn-radius: 30
+      launch-location: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
+    swap-hand-boost:
+      enabled: false
+      vector-multiplier: 3.0
+    spawn-launch:
+      enabled: false
+      trigger: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
+      velocity: { x: 0.0, y: 5.0, z: 0.0 }

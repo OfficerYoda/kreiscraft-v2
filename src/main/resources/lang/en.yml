@@ -94,3 +94,8 @@ settings-gui:
   combat-display-actionbar: "<gray>Combat Display: Action Bar"
   combat-display-title: "<gray>Combat Display: Title"
   wip: "<yellow>Work in Progress"
+spawn:
+  teleported: "<prefix> <green>Teleported to spawn."
+  out-of-range: "<prefix> <red>You are too far from spawn."
+  no-spawn-set: "<prefix> <red>No spawn has been set."
+  spawn-set: "<prefix> <green>Spawn set."
