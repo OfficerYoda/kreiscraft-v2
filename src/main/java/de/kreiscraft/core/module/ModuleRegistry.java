@@ -1,6 +1,7 @@
 package de.kreiscraft.core.module;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +31,11 @@ public final class ModuleRegistry {
         if (allModules.putIfAbsent(module.id(), module) != null) {
             throw new ModuleException("duplicate module id: " + module.id());
         }
+    }
+
+    /** Returns an unmodifiable view of all registered module ids (enabled and disabled). */
+    public Set<String> registeredIds() {
+        return Collections.unmodifiableSet(allModules.keySet());
     }
 
     public StartupSummary enableAll() {
