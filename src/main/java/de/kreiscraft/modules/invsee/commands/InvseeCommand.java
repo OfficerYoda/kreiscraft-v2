@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
  * {@code /invsee <player>} — shows the target's inventory.
  *
  * <ul>
- *   <li>Viewer with {@code kreiscraft.invsee.edit}: editable 4-row (storage) view for online
+ *   <li>Viewer with {@code kreiscraft.invsee.edit}: editable 5-row view (all 41 slots) for online
  *       targets.
  *   <li>Viewer without edit perm: read-only 5-row view for online, 4-row for offline.
  * </ul>
@@ -48,22 +48,21 @@ public final class InvseeCommand {
                                                     StringArgumentType.getString(ctx, "target");
                                             Player target = Bukkit.getPlayer(name);
                                             if (target != null) {
-                                                openOnlineInventory(
-                                                        viewer, target, gui, messages);
+                                                openOnlineInventory(viewer, target, gui, messages);
                                             } else {
-                                                openOfflineInventory(
-                                                        viewer,
-                                                        name,
-                                                        gui,
-                                                        messages,
-                                                        offlineReader);
+                                                lookupAndOpenOffline(
+                                                        viewer, name, gui, messages, offlineReader);
                                             }
                                             return Command.SINGLE_SUCCESS;
                                         }))
                 .build();
     }
 
-    private static void openOnlineInventory(
+    // -----------------------------------------------------------------------
+    // Package-private execution helpers (exposed for unit tests)
+    // -----------------------------------------------------------------------
+
+    static void openOnlineInventory(
             Player viewer, Player target, Gui gui, MessageService messages) {
         xyz.xenondevs.invui.gui.Gui invuiGui;
         if (viewer.hasPermission("kreiscraft.invsee.edit")) {
@@ -75,16 +74,33 @@ public final class InvseeCommand {
         gui.open(viewer, invuiGui, title);
     }
 
+    /** Resolves the offline player and delegates to {@link #openOfflineInventory}. */
     @SuppressWarnings("deprecation")
-    private static void openOfflineInventory(
+    private static void lookupAndOpenOffline(
             Player viewer,
             String name,
             Gui gui,
             MessageService messages,
             OfflineInventoryReader offlineReader) {
         OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
-        if (offline.getUniqueId() == null || !offline.hasPlayedBefore()) {
-            messages.send(viewer, "invsee.target-not-found", "player", name);
+        openOfflineInventory(viewer, offline, name, gui, messages, offlineReader);
+    }
+
+    /**
+     * Opens the offline inventory view.
+     *
+     * <p>Package-private so tests can inject a pre-built {@link OfflinePlayer} mock directly
+     * without triggering {@code Bukkit.getOfflinePlayer} (which hits NMS state in tests).
+     */
+    static void openOfflineInventory(
+            Player viewer,
+            OfflinePlayer offline,
+            String displayName,
+            Gui gui,
+            MessageService messages,
+            OfflineInventoryReader offlineReader) {
+        if (!offline.hasPlayedBefore()) {
+            messages.send(viewer, "invsee.target-not-found", "player", displayName);
             return;
         }
         List<de.kreiscraft.platform.SlottedItem> items;
@@ -95,11 +111,11 @@ public final class InvseeCommand {
             return;
         }
         if (items.isEmpty()) {
-            messages.send(viewer, "invsee.offline-empty", "player", name);
+            messages.send(viewer, "invsee.offline-empty", "player", displayName);
             return;
         }
         xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOffline(items);
-        Component title = messages.render("invsee.gui-title-inv", "player", name);
+        Component title = messages.render("invsee.gui-title-inv", "player", displayName);
         gui.open(viewer, invuiGui, title);
     }
 }

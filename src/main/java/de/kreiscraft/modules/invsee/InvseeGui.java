@@ -6,6 +6,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.gui.SlotElement;
 import xyz.xenondevs.invui.inventory.ReferencingInventory;
 import xyz.xenondevs.invui.item.impl.SimpleItem;
 
@@ -35,7 +36,7 @@ public final class InvseeGui {
     /** GUI size for the full 5-row player-inventory view. */
     static final int PLAYER_GUI_SIZE = 45;
 
-    /** GUI size for the 4-row offline / editable-storage view. */
+    /** GUI size for the 4-row offline view. */
     static final int STORAGE_GUI_SIZE = 36;
 
     /** GUI size for the 3-row ender-chest view. */
@@ -56,19 +57,37 @@ public final class InvseeGui {
     }
 
     // -----------------------------------------------------------------------
-    // Editable: online player — 4-row view (storage only, no armor)
+    // Editable: online player — 5-row view (all 41 slots)
     // -----------------------------------------------------------------------
 
     /**
-     * Builds an editable 4-row GUI backed by the player's live inventory (storage slots only —
-     * hotbar + main, no armor/offhand). Changes made in the GUI write back to the live inventory.
+     * Builds an editable 5-row GUI backed by the player's live inventory (all 41 slots: hotbar,
+     * main, armor, offhand). Changes made in the GUI write back to the live inventory immediately.
+     *
+     * <p>Layout mirrors {@link #mapPlayerInvToGuiSlots(ItemStack[])} exactly — each GUI slot is
+     * bound to the corresponding Bukkit player-inventory slot via {@link
+     * SlotElement.InventorySlotElement}.
      */
     public static Gui buildEditable(PlayerInventory inv) {
-        // fromReversedPlayerStorageContents gives 36 slots in natural chest order
-        // (main rows 1-3 first, then hotbar row 4)
-        ReferencingInventory ref = ReferencingInventory.fromReversedPlayerStorageContents(inv);
-        Gui gui = Gui.empty(9, 4);
-        gui.fillRectangle(0, 0, 9, ref, false);
+        // fromContents wraps PlayerInventory.getContents() (≥41 slots in Paper).
+        // We bind exactly the 41 known player-inventory slots 0–40.
+        ReferencingInventory ref = ReferencingInventory.fromContents(inv);
+        Gui gui = Gui.empty(9, 5);
+        // Main inventory (Bukkit 9-35 → GUI 0-26)
+        for (int i = 0; i < 27; i++) {
+            gui.setSlotElement(i, new SlotElement.InventorySlotElement(ref, i + 9));
+        }
+        // Armor (Bukkit 36-39 → GUI 27-30)
+        for (int i = 0; i < 4; i++) {
+            gui.setSlotElement(27 + i, new SlotElement.InventorySlotElement(ref, 36 + i));
+        }
+        // Offhand (Bukkit 40 → GUI 31)
+        gui.setSlotElement(31, new SlotElement.InventorySlotElement(ref, 40));
+        // GUI 32-35: filler (intentionally left empty)
+        // Hotbar (Bukkit 0-8 → GUI 36-44)
+        for (int i = 0; i < 9; i++) {
+            gui.setSlotElement(36 + i, new SlotElement.InventorySlotElement(ref, i));
+        }
         return gui;
     }
 

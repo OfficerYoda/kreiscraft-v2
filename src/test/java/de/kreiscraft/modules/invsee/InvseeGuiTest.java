@@ -10,6 +10,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import xyz.xenondevs.invui.gui.SlotElement;
 
 class InvseeGuiTest {
 
@@ -22,10 +24,6 @@ class InvseeGuiTest {
     void tearDown() {
         MockBukkit.unmock();
     }
-
-    // -----------------------------------------------------------------------
-    // mapPlayerInvToGuiSlots — slot mapping correctness
-    // -----------------------------------------------------------------------
 
     @Test
     void mapPlayerInvToGuiSlots_hotbarAppearsInLastRow() {
@@ -141,6 +139,67 @@ class InvseeGuiTest {
         assertThat(gui.getSize()).isEqualTo(InvseeGui.STORAGE_GUI_SIZE);
         for (int i = 0; i < InvseeGui.STORAGE_GUI_SIZE; i++) {
             assertThat(gui.getItem(i)).as("slot %d", i).isNull();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // buildEditable — 41-slot editable view
+    // -----------------------------------------------------------------------
+
+    @Test
+    void buildEditable_guiIs5Rows() {
+        PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
+        assertThat(gui.getSize()).isEqualTo(InvseeGui.PLAYER_GUI_SIZE); // 45
+    }
+
+    @Test
+    void buildEditable_exposesExactly41InventorySlotElements() {
+        // The editable GUI must bind all 41 player-inventory slots (not just 36 storage).
+        PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
+        int invSlotCount = 0;
+        for (int i = 0; i < InvseeGui.PLAYER_GUI_SIZE; i++) {
+            if (gui.getSlotElement(i) instanceof SlotElement.InventorySlotElement) {
+                invSlotCount++;
+            }
+        }
+        assertThat(invSlotCount).isEqualTo(InvseeGui.PLAYER_SLOTS); // 41
+    }
+
+    @Test
+    void buildEditable_helmetBoundAtGuiIndex30() {
+        // Helmet is Bukkit slot 39, which should map to GUI slot 30 (same as read-only).
+        PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
+        target.getInventory().setHelmet(new ItemStack(Material.DIAMOND_HELMET));
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
+        xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(30);
+        assertThat(elem).isInstanceOf(SlotElement.InventorySlotElement.class);
+        SlotElement.InventorySlotElement invElem = (SlotElement.InventorySlotElement) elem;
+        // Slot 30 in the GUI is bound to Bukkit slot 39 (helmet)
+        assertThat(invElem.getSlot()).isEqualTo(39);
+    }
+
+    @Test
+    void buildEditable_offhandBoundAtGuiIndex31() {
+        PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
+        xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(31);
+        assertThat(elem).isInstanceOf(SlotElement.InventorySlotElement.class);
+        SlotElement.InventorySlotElement invElem = (SlotElement.InventorySlotElement) elem;
+        // Offhand is Bukkit slot 40
+        assertThat(invElem.getSlot()).isEqualTo(40);
+    }
+
+    @Test
+    void buildEditable_fillerSlotsHaveNoInventoryBinding() {
+        PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
+        // GUI slots 32-35 are filler — no InventorySlotElement
+        for (int i = 32; i <= 35; i++) {
+            assertThat(gui.getSlotElement(i))
+                    .as("GUI slot %d should be empty filler", i)
+                    .isNull();
         }
     }
 }
