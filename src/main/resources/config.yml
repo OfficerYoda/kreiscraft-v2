@@ -46,3 +46,7 @@ modules:
     offset-y: 0.9
     offset-z: 0.9
     force: true
+  firework:
+    enabled: false
+    custom-model-data: 696969
+    namespace-key: "kreiscraft:firework_rocket"
