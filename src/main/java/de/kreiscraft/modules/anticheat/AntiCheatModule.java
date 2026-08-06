@@ -42,7 +42,7 @@ public final class AntiCheatModule implements Module {
         try {
             data.load();
         } catch (IOException e) {
-            throw new ModuleException("failed to load hackerlog.yml for module " + id(), e);
+            throw new ModuleException("failed to load data/hackerlog.yml for module " + id(), e);
         }
         ctx.services().get(ConfigService.class).register(data);
 

@@ -14,7 +14,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class HackLogData extends DataFile<Map<UUID, List<HackEntry>>> {
 
     public HackLogData(Path dataFolder) {
-        super(dataFolder, "hackerlog.yml");
+        super(dataFolder, "data/hackerlog.yml");
     }
 
     @Override
