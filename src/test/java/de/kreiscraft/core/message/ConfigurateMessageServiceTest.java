@@ -3,8 +3,12 @@ package de.kreiscraft.core.message;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 class ConfigurateMessageServiceTest {
 
@@ -70,5 +76,38 @@ class ConfigurateMessageServiceTest {
                 PlainTextComponentSerializer.plainText()
                         .serialize(svc.render("does.not.exist"));
         assertThat(plain).contains("[?does.not.exist]");
+    }
+
+    @Test
+    void en_and_de_have_identical_key_sets() throws IOException {
+        URL deUrl = getClass().getClassLoader().getResource("lang/de.yml");
+        URL enUrl = getClass().getClassLoader().getResource("lang/en.yml");
+        assertThat(deUrl).as("lang/de.yml must be on classpath").isNotNull();
+        assertThat(enUrl).as("lang/en.yml must be on classpath").isNotNull();
+        ConfigurationNode deRoot =
+                YamlConfigurationLoader.builder().url(deUrl).build().load();
+        ConfigurationNode enRoot =
+                YamlConfigurationLoader.builder().url(enUrl).build().load();
+        Set<String> deKeys = flattenKeys(deRoot, "");
+        Set<String> enKeys = flattenKeys(enRoot, "");
+        assertThat(deKeys)
+                .as("de.yml and en.yml must have identical leaf-key sets")
+                .containsExactlyInAnyOrderElementsOf(enKeys);
+    }
+
+    private static Set<String> flattenKeys(ConfigurationNode node, String prefix) {
+        Set<String> result = new LinkedHashSet<>();
+        if (node.isMap()) {
+            for (Map.Entry<Object, ? extends ConfigurationNode> entry : node.childrenMap().entrySet()) {
+                String childPath =
+                        prefix.isEmpty()
+                                ? entry.getKey().toString()
+                                : prefix + "." + entry.getKey();
+                result.addAll(flattenKeys(entry.getValue(), childPath));
+            }
+        } else {
+            result.add(prefix);
+        }
+        return result;
     }
 }
