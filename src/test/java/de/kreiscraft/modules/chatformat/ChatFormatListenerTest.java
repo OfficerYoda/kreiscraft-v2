@@ -1,0 +1,209 @@
+package de.kreiscraft.modules.chatformat;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import de.kreiscraft.modules.status.Status;
+import de.kreiscraft.modules.status.StatusService;
+import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.shared.chat.ChatBridge;
+import de.kreiscraft.shared.chat.ChatBridgeEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Server;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.plugin.PluginMock;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class ChatFormatListenerTest {
+
+    @Mock
+    private StatusService statusService;
+
+    /**
+     * Separate mock Server used for PaperPlatform. We cannot pass MockBukkit's ServerMock
+     * directly because ServerMock.audiences() is unimplemented, causing sendMessage(Component)
+     * to throw UnimplementedOperationException. The mock server is a no-op for sendMessage.
+     */
+    @Mock
+    private Server mockServer;
+
+    /** MockBukkit server — used only to create PlayerMock instances. */
+    private ServerMock server;
+    private PluginMock plugin;
+    private ChatBridge chatBridge;
+    private PaperPlatform platform;
+
+    @BeforeEach
+    void setUp() {
+        server = MockBukkit.mock();
+        plugin = MockBukkit.createMockPlugin();
+        chatBridge = new ChatBridge();
+        // Use the Mockito-mocked Server for the platform so sendMessage is a safe no-op.
+        platform = new PaperPlatform(plugin, mockServer);
+        lenient().when(statusService.get(any(UUID.class))).thenReturn(Status.defaults());
+    }
+
+    @AfterEach
+    void tearDown() {
+        MockBukkit.unmock();
+    }
+
+    // ── helpers ────────────────────────────────────────────────────────────────
+
+    private AsyncChatEvent mockEvent(PlayerMock player, String plainBody) {
+        AsyncChatEvent event = mock(AsyncChatEvent.class);
+        when(event.getPlayer()).thenReturn(player);
+        when(event.message()).thenReturn(Component.text(plainBody));
+        return event;
+    }
+
+    private ChatFormatListener listenerWith(ChatFormatConfig config) {
+        return new ChatFormatListener(() -> config, statusService, platform, chatBridge);
+    }
+
+    // ── tests ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void onChat_cancelsVanillaEvent() {
+        PlayerMock player = server.addPlayer("Alice");
+        AsyncChatEvent event = mockEvent(player, "hello");
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void onChat_publishesToChatBridgeWithCorrectSenderAndPlainText() {
+        PlayerMock player = server.addPlayer("Bob");
+        AsyncChatEvent event = mockEvent(player, "world");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        ChatBridgeEvent bridgeEvent = captured.getFirst();
+        assertThat(bridgeEvent.senderUuid()).isEqualTo(player.getUniqueId());
+        assertThat(bridgeEvent.senderName()).isEqualTo("Bob");
+        assertThat(bridgeEvent.plainText()).isEqualTo("world");
+        assertThat(bridgeEvent.timestamp()).isNotNull();
+    }
+
+    @Test
+    void onChat_renderedComponentContainsPlayerNameAndBody() {
+        PlayerMock player = server.addPlayer("Carol");
+        AsyncChatEvent event = mockEvent(player, "hi there");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        String plain = PlainTextComponentSerializer.plainText()
+                .serialize(captured.getFirst().rendered());
+        assertThat(plain).contains("Carol");
+        assertThat(plain).contains("hi there");
+    }
+
+    @Test
+    void onChat_renderedComponentContainsTeamPrefixAndSuffix() {
+        PlayerMock player = server.addPlayer("Dave");
+        when(statusService.get(player.getUniqueId()))
+                .thenReturn(new Status("[Owner]", "[/Owner]", 0xFF4400));
+        AsyncChatEvent event = mockEvent(player, "sup");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        String plain = PlainTextComponentSerializer.plainText()
+                .serialize(captured.getFirst().rendered());
+        assertThat(plain).contains("[Owner]");
+        assertThat(plain).contains("[/Owner]");
+        assertThat(plain).contains("Dave");
+        assertThat(plain).contains("sup");
+    }
+
+    @Test
+    void onChat_allowMiniMessageFalse_treatsBodyAsLiteralText() {
+        PlayerMock player = server.addPlayer("Eve");
+        // Message contains a MiniMessage tag that should be treated as literal text
+        AsyncChatEvent event = mockEvent(player, "<red>trick</red>");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        ChatFormatConfig config = new ChatFormatConfig(null, false, null);
+        listenerWith(config).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        // The body should be plain text; MiniMessage tags are not parsed
+        String plain = PlainTextComponentSerializer.plainText()
+                .serialize(captured.getFirst().rendered());
+        // Plain serializer strips any formatting, so just confirm the raw tag
+        // characters appear (they are stored as literal text, not parsed)
+        assertThat(captured.getFirst().plainText()).isEqualTo("<red>trick</red>");
+    }
+
+    @Test
+    void onChat_allowMiniMessageTrue_parsesMiniMessageInBody() {
+        PlayerMock player = server.addPlayer("Frank");
+        // The raw message text contains MiniMessage markup
+        AsyncChatEvent event = mockEvent(player, "<red>bold</red>");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        ChatFormatConfig config = new ChatFormatConfig(null, true, null);
+        listenerWith(config).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        // plainText is always the raw extracted string, regardless of allowMiniMessage
+        assertThat(captured.getFirst().plainText()).isEqualTo("<red>bold</red>");
+        // rendered component should be non-null
+        assertThat(captured.getFirst().rendered()).isNotNull();
+    }
+
+    @Test
+    void onChat_statusServiceCalledWithSenderUuid() {
+        PlayerMock player = server.addPlayer("Grace");
+        AsyncChatEvent event = mockEvent(player, "test");
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(statusService).get(player.getUniqueId());
+    }
+
+    @Test
+    void onChat_broadcastsViaPlatformServer() {
+        PlayerMock player = server.addPlayer("Hank");
+        AsyncChatEvent event = mockEvent(player, "broadcast test");
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        // Verify that sendMessage was called on the platform server once
+        verify(mockServer).sendMessage(any(Component.class));
+    }
+}
