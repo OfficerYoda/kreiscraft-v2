@@ -26,6 +26,8 @@ plugin-hider:
   already-present: "<prefix> <yellow><command></yellow> ist bereits erlaubt."
   not-present: "<prefix> <yellow><command></yellow> war nicht auf der Allowlist."
   list-header: "<prefix> <gray>Erlaubte Befehle:"
+  list-entry: "<gray>- <command></gray>"
+  list-empty: "<prefix> <yellow>(keine)"
 ```
 
 ## lang/en.yml addition
@@ -37,6 +39,8 @@ plugin-hider:
   already-present: "<prefix> <yellow><command></yellow> is already allowed."
   not-present: "<prefix> <yellow><command></yellow> was not on the allowlist."
   list-header: "<prefix> <gray>Allowed commands:"
+  list-entry: "<gray>- <command></gray>"
+  list-empty: "<prefix> <yellow>(none)"
 ```
 
 ## plugin.yml permissions

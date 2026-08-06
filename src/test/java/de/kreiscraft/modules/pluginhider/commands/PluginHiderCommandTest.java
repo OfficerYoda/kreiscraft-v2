@@ -93,12 +93,24 @@ class PluginHiderCommandTest {
     // ── list ──────────────────────────────────────────────────────────────
 
     @Test
-    void list_sendsListHeader() throws CommandSyntaxException {
+    void list_populated_sendsHeaderThenOneEntryPerCommand() throws CommandSyntaxException {
         when(service.allowedCommands()).thenReturn(List.of("help", "spawn"));
 
         dispatcher.execute("pluginhider list", source);
 
         verify(messages).send(sender, "plugin-hider.list-header");
+        verify(messages).send(sender, "plugin-hider.list-entry", "command", "help");
+        verify(messages).send(sender, "plugin-hider.list-entry", "command", "spawn");
+    }
+
+    @Test
+    void list_empty_sendsHeaderThenListEmpty() throws CommandSyntaxException {
+        when(service.allowedCommands()).thenReturn(List.of());
+
+        dispatcher.execute("pluginhider list", source);
+
+        verify(messages).send(sender, "plugin-hider.list-header");
+        verify(messages).send(sender, "plugin-hider.list-empty");
     }
 
     // ── permission gate ───────────────────────────────────────────────────

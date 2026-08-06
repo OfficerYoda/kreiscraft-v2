@@ -10,7 +10,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class PluginHiderData extends DataFile<List<String>> {
 
     public PluginHiderData(Path dataFolder) {
-        super(dataFolder, "plugin-hider.yml");
+        super(dataFolder, "data/plugin-hider.yml");
     }
 
     @Override

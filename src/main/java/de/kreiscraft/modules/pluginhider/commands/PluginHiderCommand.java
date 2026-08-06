@@ -8,8 +8,6 @@ import de.kreiscraft.modules.pluginhider.PluginHiderService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.Collection;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 
 public final class PluginHiderCommand {
@@ -57,9 +55,13 @@ public final class PluginHiderCommand {
                             CommandSender sender = ctx.getSource().getSender();
                             messages.send(sender, "plugin-hider.list-header");
                             Collection<String> allowed = service.allowedCommands();
-                            String joined = allowed.isEmpty() ? "(none)" : String.join(", ", allowed);
-                            sender.sendMessage(
-                                    Component.text(joined, NamedTextColor.GRAY));
+                            if (allowed.isEmpty()) {
+                                messages.send(sender, "plugin-hider.list-empty");
+                            } else {
+                                for (String cmd : allowed) {
+                                    messages.send(sender, "plugin-hider.list-entry", "command", cmd);
+                                }
+                            }
                             return Command.SINGLE_SUCCESS;
                         }))
                 .build();
