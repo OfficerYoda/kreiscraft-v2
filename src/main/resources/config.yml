@@ -14,3 +14,8 @@ modules:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"
       youtube: "https://youtube.com/@example"
+  anti-cheat:
+    enabled: false
+    channel: "kreiscraft:mod_checker"
+    kick-on-fabric-forge: true
+    handshake-grace-duration: 5s

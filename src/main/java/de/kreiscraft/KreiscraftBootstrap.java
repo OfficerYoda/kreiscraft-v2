@@ -103,6 +103,7 @@ public final class KreiscraftBootstrap {
                 plugin.getLogger());
         // Plan 1: no modules registered yet.
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
+        modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",

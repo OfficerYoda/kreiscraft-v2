@@ -21,3 +21,12 @@ admin:
     text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
   target-not-found: "<prefix> <red>Spieler <player></red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
+anti-cheat:
+  cheat-kick: "<red>Bitte entferne deinen Cheat-Client (<detail>)."
+  xray-kick: "<red>X-Ray erkannt. Bitte entfernen."
+  freecam-kick: "<red>Bitte deaktiviere IgnoreAll-Collision."
+  fabric-forge-kick: "<red>Fabric/Forge nicht erlaubt."
+  no-logs: "<prefix> <yellow>Keine Einträge für <player></yellow>."
+  log-header: "<prefix> <gray>Einträge für <player> (<kind>):"
+  log-entry: "<gray>- <when>: <detail>"
+  invalid-kind: "<red>Unbekannte Art '<kind>'. Bitte 'cheats' oder 'xray' verwenden."
