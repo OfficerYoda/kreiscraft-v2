@@ -42,7 +42,8 @@ public final class ClickthroughListener implements PriorityListener {
         Block clickedBlock = event.getClickedBlock();
         if (clickedBlock == null)
             return;
-        if (!clickedBlock.getType().name().endsWith("_WALL_SIGN"))
+        String typeName = clickedBlock.getType().name();
+        if (!typeName.endsWith("_WALL_SIGN") && !typeName.endsWith("_WALL_HANGING_SIGN"))
             return;
 
         Player player = event.getPlayer();
@@ -52,7 +53,7 @@ public final class ClickthroughListener implements PriorityListener {
             return;
 
         BlockFace face = event.getBlockFace();
-        Block target = clickedBlock.getRelative(face);
+        Block target = clickedBlock.getRelative(face.getOppositeFace());
 
         if (target.getType() == Material.ENDER_CHEST) {
             player.openInventory(player.getEnderChest());
@@ -67,7 +68,7 @@ public final class ClickthroughListener implements PriorityListener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteractAtEntity(PlayerInteractAtEntityEvent event) {
         Entity entity = event.getRightClicked();
         if (!(entity instanceof ItemFrame frame))

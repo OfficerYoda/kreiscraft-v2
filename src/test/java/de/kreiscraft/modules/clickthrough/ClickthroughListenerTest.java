@@ -66,7 +66,7 @@ class ClickthroughListenerTest {
         when(targetBlock.getType()).thenReturn(Material.CHEST);
         when(targetBlock.getState()).thenReturn((BlockState) container);
         when(container.getInventory()).thenReturn(inventory);
-        when(signBlock.getRelative(BlockFace.EAST)).thenReturn(targetBlock);
+        when(signBlock.getRelative(BlockFace.WEST)).thenReturn(targetBlock);
 
         PlayerInteractEvent event = new PlayerInteractEvent(
                 player, Action.RIGHT_CLICK_BLOCK, null, signBlock, BlockFace.EAST);
@@ -119,7 +119,7 @@ class ClickthroughListenerTest {
 
         Block targetBlock = mock(Block.class);
         when(targetBlock.getType()).thenReturn(Material.ENDER_CHEST);
-        when(signBlock.getRelative(BlockFace.NORTH)).thenReturn(targetBlock);
+        when(signBlock.getRelative(BlockFace.SOUTH)).thenReturn(targetBlock);
 
         Inventory enderChest = mock(Inventory.class);
         when(player.getEnderChest()).thenReturn(enderChest);
@@ -147,6 +147,30 @@ class ClickthroughListenerTest {
 
         verify(player, never()).openInventory(any(Inventory.class));
         assertThat(event.isCancelled()).isFalse();
+    }
+
+    @Test
+    void onInteract_hangingWallSign_whenEnabled_opensContainerAndCancels() {
+        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+
+        Block signBlock = mock(Block.class);
+        when(signBlock.getType()).thenReturn(Material.OAK_WALL_HANGING_SIGN);
+
+        Container container = mock(Container.class);
+        Inventory inventory = mock(Inventory.class);
+        Block targetBlock = mock(Block.class);
+        when(targetBlock.getType()).thenReturn(Material.CHEST);
+        when(targetBlock.getState()).thenReturn((BlockState) container);
+        when(container.getInventory()).thenReturn(inventory);
+        when(signBlock.getRelative(BlockFace.WEST)).thenReturn(targetBlock);
+
+        PlayerInteractEvent event = new PlayerInteractEvent(
+                player, Action.RIGHT_CLICK_BLOCK, null, signBlock, BlockFace.EAST);
+
+        listener.onInteract(event);
+
+        verify(player).openInventory(inventory);
+        assertThat(event.isCancelled()).isTrue();
     }
 
     @Test
