@@ -23,14 +23,14 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
  * shared resource files. If a future PR silently removes a config key, lang entry, permission node,
  * or bootstrap registration, this test catches it.
  *
- * <p>Task A2 will relocate the wiring files; to make that change trivial, all paths are defined as
- * constants here.
+ * <p>All paths are defined as constants here; update {@link #WIRING_DIR} if the archive is ever
+ * relocated again.
  */
 class WiringAuditTest {
 
-    // ---- Paths (update these when Task A2 moves the wiring directory) -----------
+    // ---- Paths (update WIRING_DIR if the archive directory moves) ---------------
 
-    private static final Path WIRING_DIR = Path.of("wiring");
+    private static final Path WIRING_DIR = Path.of("docs/wiring-history");
     private static final Path CONFIG_YML = Path.of("src/main/resources/config.yml");
     private static final Path LANG_DE = Path.of("src/main/resources/lang/de.yml");
     private static final Path LANG_EN = Path.of("src/main/resources/lang/en.yml");
@@ -41,7 +41,10 @@ class WiringAuditTest {
     // ---- Parameterized source ---------------------------------------------------
 
     static Stream<Path> wiringFiles() throws IOException {
-        return Files.list(WIRING_DIR).filter(p -> p.toString().endsWith(".md")).sorted();
+        return Files.list(WIRING_DIR)
+                .filter(p -> p.toString().endsWith(".md"))
+                .filter(p -> !p.getFileName().toString().equalsIgnoreCase("readme.md"))
+                .sorted();
     }
 
     // ---- Main audit test --------------------------------------------------------
