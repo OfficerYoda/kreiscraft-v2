@@ -29,3 +29,6 @@ modules:
     event-priority: LOWEST
     allow-mini-message-in-body: false
     format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"
+  clickthrough:
+    enabled: false
+    target-block-max-distance: 6
