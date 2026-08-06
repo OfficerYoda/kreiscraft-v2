@@ -8,6 +8,7 @@ import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -92,6 +93,11 @@ public final class DefaultCombatService implements CombatService {
             displayTask.cancel();
             displayTask = null;
         }
+        // Cancel every pending per-player expiry task before clearing state
+        for (PerPlayerCombat entry : state.values()) {
+            entry.expiryTask().cancel();
+        }
+        state.clear();
     }
 
     private void fireEvent(CombatTaggedEvent event) {
@@ -99,7 +105,7 @@ public final class DefaultCombatService implements CombatService {
     }
 
     private void tickDisplay() {
-        for (UUID uuid : state.keySet()) {
+        for (UUID uuid : List.copyOf(state.keySet())) {
             Player player = platform.server().getPlayer(uuid);
             if (player == null || !player.isOnline())
                 continue;

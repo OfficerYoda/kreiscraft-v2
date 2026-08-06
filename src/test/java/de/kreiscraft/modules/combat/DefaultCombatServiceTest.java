@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,7 @@ import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -90,8 +92,15 @@ class DefaultCombatServiceTest {
     @Test
     void tag_firesTaggedEvent_withZeroBefore_whenNotPreviouslyTagged() {
         UUID alice = UUID.randomUUID();
+        ArgumentCaptor<CombatTaggedEvent> captor = ArgumentCaptor.forClass(CombatTaggedEvent.class);
+
         service.tag(alice, Duration.ofSeconds(10));
-        verify(pluginManager).callEvent(any(CombatTaggedEvent.class));
+
+        verify(pluginManager, times(1)).callEvent(captor.capture());
+        CombatTaggedEvent event = captor.getValue();
+        assertThat(event.getUuid()).isEqualTo(alice);
+        assertThat(event.getBefore()).isEqualTo(Duration.ZERO);
+        assertThat(event.getAfter()).isEqualTo(Duration.ofSeconds(10));
     }
 
     @Test
@@ -129,11 +138,17 @@ class DefaultCombatServiceTest {
     @Test
     void clear_firesTaggedEventWithZeroAfter() {
         UUID alice = UUID.randomUUID();
+        ArgumentCaptor<CombatTaggedEvent> captor = ArgumentCaptor.forClass(CombatTaggedEvent.class);
+
         service.tag(alice, Duration.ofSeconds(10));
-        // Reset interaction count after tag
         service.clear(alice);
-        // At least two callEvent calls: one from tag, one from clear
-        verify(pluginManager, atLeastOnce()).callEvent(any(CombatTaggedEvent.class));
+
+        // Two callEvent invocations: tag (after=10s) + clear (after=ZERO)
+        verify(pluginManager, times(2)).callEvent(captor.capture());
+        List<CombatTaggedEvent> events = captor.getAllValues();
+        assertThat(events.get(0).getAfter()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(events.get(1).getUuid()).isEqualTo(alice);
+        assertThat(events.get(1).getAfter()).isEqualTo(Duration.ZERO);
     }
 
     @Test
@@ -157,10 +172,16 @@ class DefaultCombatServiceTest {
     @Test
     void advance_pastExpiry_firesTaggedEvent_withZeroAfter() {
         UUID alice = UUID.randomUUID();
+        ArgumentCaptor<CombatTaggedEvent> captor = ArgumentCaptor.forClass(CombatTaggedEvent.class);
+
         service.tag(alice, Duration.ofSeconds(10));
         scheduler.advance(Duration.ofSeconds(10));
-        // Should have fired: once for tag (after=10s) and once for expiry clear (after=0)
-        verify(pluginManager, atLeastOnce()).callEvent(any(CombatTaggedEvent.class));
+
+        // tag fires (after=10s), expiry-clear fires (after=ZERO)
+        verify(pluginManager, times(2)).callEvent(captor.capture());
+        List<CombatTaggedEvent> events = captor.getAllValues();
+        assertThat(events.get(1).getUuid()).isEqualTo(alice);
+        assertThat(events.get(1).getAfter()).isEqualTo(Duration.ZERO);
     }
 
     @Test
@@ -188,11 +209,15 @@ class DefaultCombatServiceTest {
     // --- shutdown ---
 
     @Test
-    void shutdown_stopsDisplayTask() {
+    void shutdown_stopsDisplayTask_andClearsState() {
+        UUID alice = UUID.randomUUID();
+        service.tag(alice, Duration.ofSeconds(10));
         service.shutdown();
-        // After shutdown, advancing should not trigger display interactions
-        // (platform.server().getOnlinePlayers() not called beyond what's already happened)
-        assertThat(service.isInCombat(UUID.randomUUID())).isFalse(); // service still usable
+
+        // State is cleared
+        assertThat(service.isInCombat(alice)).isFalse();
+        // Advancing should not trigger expiry callEvent (expiry task cancelled by shutdown)
+        verify(pluginManager, atLeastOnce()).callEvent(any(CombatTaggedEvent.class)); // from tag()
     }
 
     // --- updateConfig ---
@@ -202,7 +227,6 @@ class DefaultCombatServiceTest {
         CombatConfig newConfig = new CombatConfig(
                 Duration.ofSeconds(20), Boolean.FALSE, List.of(), CombatDisplay.CHAT);
         service.updateConfig(newConfig);
-        // The service itself stores state by duration passed to tag(), so just verify no error
         UUID alice = UUID.randomUUID();
         service.tag(alice, Duration.ofSeconds(20));
         assertThat(service.isInCombat(alice)).isTrue();
