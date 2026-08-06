@@ -86,3 +86,11 @@ reboot:
   countdown-chat: "<prefix> <red>Reboot in <seconds></red> seconds."
   seed-blocked: "<prefix> <red>/seed is disabled."
   kick-message: "<red>Server restarting</red>"
+settings-gui:
+  gui-title: "<gray>Settings"
+  click-through-on: "<green>Click-Through: On"
+  click-through-off: "<red>Click-Through: Off"
+  combat-display-chat: "<gray>Combat Display: Chat"
+  combat-display-actionbar: "<gray>Combat Display: Action Bar"
+  combat-display-title: "<gray>Combat Display: Title"
+  wip: "<yellow>Work in Progress"

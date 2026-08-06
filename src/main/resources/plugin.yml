@@ -58,3 +58,6 @@ permissions:
   kreiscraft.reboot.admin:
     description: Trigger or cancel a server restart
     default: op
+  kreiscraft.settingsgui.use:
+    description: Open the per-player settings GUI
+    default: true
