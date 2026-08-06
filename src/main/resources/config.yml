@@ -70,3 +70,7 @@ modules:
       - tps
       - ping
       - status
+  positions:
+    enabled: false
+    gui-rows: 6
+    teleport-on-click: true

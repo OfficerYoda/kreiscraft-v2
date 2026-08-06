@@ -52,3 +52,6 @@ permissions:
   kreiscraft.pluginhider.bypass:
     description: See all commands regardless of the allowlist
     default: op
+  kreiscraft.positions.use:
+    description: Save/teleport to personal positions
+    default: true

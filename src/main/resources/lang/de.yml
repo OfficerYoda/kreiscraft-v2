@@ -70,3 +70,11 @@ plugin-hider:
   list-header: "<prefix> <gray>Erlaubte Befehle:"
   list-entry: "<gray>- <command></gray>"
   list-empty: "<prefix> <yellow>(keine)"
+positions:
+  set: "<prefix> <green>Position <name></green> gespeichert."
+  removed: "<prefix> <green>Position <name></green> gelöscht."
+  not-found: "<prefix> <red>Position <name></red> unbekannt."
+  gui-title: "<gray>Deine Positionen"
+  list-header: "<prefix> <gray>Deine Positionen (<count>):"
+  list-entry: "<gray>- <name> (<world> <x> <y> <z>)"
+  teleported: "<prefix> <green>Zu <name></green> teleportiert."
