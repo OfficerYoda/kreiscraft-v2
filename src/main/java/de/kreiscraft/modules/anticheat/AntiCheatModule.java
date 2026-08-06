@@ -1,0 +1,96 @@
+package de.kreiscraft.modules.anticheat;
+
+import de.kreiscraft.core.config.ConfigService;
+import de.kreiscraft.core.module.Module;
+import de.kreiscraft.core.module.ModuleContext;
+import de.kreiscraft.core.module.ModuleException;
+import de.kreiscraft.modules.anticheat.commands.HackerLogsCommand;
+import de.kreiscraft.platform.PlayerBrandProvider;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.spongepowered.configurate.ConfigurationNode;
+
+public final class AntiCheatModule implements Module {
+
+    private final AtomicReference<AntiCheatConfig> configRef = new AtomicReference<>();
+    private DefaultHackLogService service;
+    private JavaPlugin plugin;
+    private String registeredChannel;
+
+    @Override
+    public String id() {
+        return "anti-cheat";
+    }
+
+    @Override
+    public List<String> dependsOn() {
+        return List.of();
+    }
+
+    @Override
+    public void enable(ModuleContext ctx) {
+        try {
+            configRef.set(ctx.moduleConfig().get(AntiCheatConfig.class));
+        } catch (org.spongepowered.configurate.serialize.SerializationException e) {
+            throw new ModuleException("failed to load config for module " + id(), e);
+        }
+
+        // Set up data file
+        HackLogData data = new HackLogData(ctx.plugin().getDataFolder().toPath());
+        try {
+            data.load();
+        } catch (IOException e) {
+            throw new ModuleException("failed to load data/hackerlog.yml for module " + id(), e);
+        }
+        ctx.services().get(ConfigService.class).register(data);
+
+        // Build service
+        this.service = new DefaultHackLogService(data);
+        ctx.services().publish(HackLogService.class, service);
+
+        // Get PlayerBrandProvider from service registry
+        PlayerBrandProvider brandProvider = ctx.services().get(PlayerBrandProvider.class);
+
+        // Store plugin reference for cleanup in disable()
+        this.plugin = ctx.plugin();
+
+        // Build and register plugin message channel
+        ModCheckerChannel modCheckerChannel = new ModCheckerChannel(service, ctx.messages());
+        this.registeredChannel = configRef.get().channel();
+        this.plugin
+                .getServer()
+                .getMessenger()
+                .registerIncomingPluginChannel(this.plugin, registeredChannel, modCheckerChannel);
+
+        // Register listener (receives live configRef so reloads propagate)
+        ctx.events()
+                .register(new AntiCheatListener(
+                        configRef, service, ctx.scheduler(), ctx.messages(), brandProvider));
+
+        // Register command
+        ctx.commands()
+                .register(
+                        HackerLogsCommand.build(service, ctx.messages()),
+                        "View hack logs for a player");
+    }
+
+    @Override
+    public void disable() {
+        if (plugin != null && registeredChannel != null) {
+            plugin.getServer()
+                    .getMessenger()
+                    .unregisterIncomingPluginChannel(plugin, registeredChannel);
+        }
+    }
+
+    @Override
+    public void onConfigReload(ConfigurationNode moduleConfig) {
+        try {
+            configRef.set(moduleConfig.get(AntiCheatConfig.class));
+        } catch (org.spongepowered.configurate.serialize.SerializationException e) {
+            throw new ModuleException("failed to reload config for module " + id(), e);
+        }
+    }
+}
