@@ -54,3 +54,11 @@ invsee:
   offline-empty: "<prefix> <yellow>No inventory data found for <player>.</yellow>"
   target-not-found: "<prefix> <red>Player <player></red> not found."
   read-error: "<prefix> <red>Error reading offline data."
+jail:
+  jailed: "<prefix> <yellow><player></yellow> has been jailed: <reason>"
+  released: "<prefix> <green><player></green> has been released."
+  already-jailed: "<prefix> <red><player></red> is already jailed."
+  not-jailed: "<prefix> <red><player></red> is not jailed."
+  target-has-bypass: "<prefix> <red><player></red> has the bypass permission."
+  command-blocked: "<prefix> <red>This command is not allowed in jail."
+  target-not-found: "<prefix> <red>Player <player> is not online."

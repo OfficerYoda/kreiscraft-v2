@@ -40,3 +40,9 @@ permissions:
   kreiscraft.invsee.edit:
     description: Edit another player's inventory
     default: op
+  kreiscraft.jail.use:
+    description: Jail and unjail players
+    default: op
+  kreiscraft.jail.bypass:
+    description: Cannot be jailed
+    default: op
