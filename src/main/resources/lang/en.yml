@@ -116,3 +116,5 @@ update-mode:
   status-on: "<prefix> <yellow>Maintenance mode is ON."
   status-off: "<prefix> <green>Maintenance mode is OFF."
   kick-message: "<red>Server in maintenance mode</red>"
+wither:
+  explosion-title: "<red>Explosion</red>"

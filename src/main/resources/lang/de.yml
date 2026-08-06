@@ -116,3 +116,5 @@ update-mode:
   status-on: "<prefix> <yellow>Wartungsmodus ist AN."
   status-off: "<prefix> <green>Wartungsmodus ist AUS."
   kick-message: "<red>Server im Wartungsmodus</red>"
+wither:
+  explosion-title: "<red>Explosion</red>"
