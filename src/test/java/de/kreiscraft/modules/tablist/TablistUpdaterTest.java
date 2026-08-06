@@ -2,7 +2,6 @@ package de.kreiscraft.modules.tablist;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,7 +11,6 @@ import java.util.Collection;
 import java.util.List;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -36,11 +34,9 @@ class TablistUpdaterTest {
     private static final String HEADER_TPL = "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>";
     private static final String FOOTER_TPL = "TPS: %tps% | Players: %server_players%";
 
-    @BeforeEach
     @SuppressWarnings("unchecked")
-    void setUp() {
-        Collection<? extends Player> players = List.of(alice, bob);
-        when(server.getOnlinePlayers()).thenReturn((Collection) players);
+    private void stubTwoPlayers() {
+        when(server.getOnlinePlayers()).thenReturn((Collection) List.of(alice, bob));
     }
 
     private void stubDefaultTemplates() {
@@ -52,6 +48,7 @@ class TablistUpdaterTest {
 
     @Test
     void tick_callsSendPlayerListHeaderAndFooter_onEachOnlinePlayerExactlyOnce() {
+        stubTwoPlayers();
         stubDefaultTemplates();
         TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
 
@@ -63,6 +60,7 @@ class TablistUpdaterTest {
 
     @Test
     void tick_callsResolveString_onEachPlayerForBothTemplates() {
+        stubTwoPlayers();
         stubDefaultTemplates();
         TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
 
@@ -88,6 +86,7 @@ class TablistUpdaterTest {
 
     @Test
     void templates_updatesAreReflectedOnNextTick() {
+        stubTwoPlayers();
         String newHeader = "<bold>New Header</bold>";
         String newFooter = "new footer";
         when(resolver.resolveString(eq(newHeader), eq(alice))).thenReturn("New Header");

@@ -38,7 +38,9 @@ public final class TablistModule implements Module {
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
         this.currentUpdateInterval = config.updateInterval();
-        this.updater = new TablistUpdater(platform.server(), resolver, config.header(), config.footer());
+        this.updater =
+                new TablistUpdater(
+                        platform.server(), resolver, config.headerTemplate(), config.footerTemplate());
         this.task = ctx.scheduler().runRepeating(Duration.ZERO, config.updateInterval(), updater::tick);
     }
 
@@ -60,11 +62,13 @@ public final class TablistModule implements Module {
         }
 
         if (!config.updateInterval().equals(currentUpdateInterval)) {
-            logger.warning("[tablist] update-interval changed; restart required for new interval to take effect.");
+            logger.warning(
+                    "[tablist] update-interval changed; restart required for new interval to take effect.");
+            currentUpdateInterval = config.updateInterval();
         }
 
         if (updater != null) {
-            updater.templates(config.header(), config.footer());
+            updater.templates(config.headerTemplate(), config.footerTemplate());
         }
     }
 }

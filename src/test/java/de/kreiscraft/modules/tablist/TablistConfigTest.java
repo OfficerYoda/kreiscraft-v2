@@ -19,12 +19,13 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(20 * 50L));
-        assertThat(cfg.header()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
-        assertThat(cfg.footer()).isEqualTo("TPS: %tps% | Players: %server_players%");
+        assertThat(cfg.headerTemplate()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
+        assertThat(cfg.footerTemplate()).isEqualTo("TPS: %tps% | Players: %server_players%");
     }
 
     @Test
-    void roundTrip_fromYaml() throws Exception {
+    void roundTrip_fromYaml_usesShortYamlKeys() throws Exception {
+        // YAML keys must stay "header" / "footer" per wiring block (@Setting maps them)
         BasicConfigurationNode node = BasicConfigurationNode.root(OPTS);
         node.node("update-interval").set("40t");
         node.node("header").set("<bold>My Server</bold>");
@@ -32,8 +33,8 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(40 * 50L));
-        assertThat(cfg.header()).isEqualTo("<bold>My Server</bold>");
-        assertThat(cfg.footer()).isEqualTo("ping: %ping%");
+        assertThat(cfg.headerTemplate()).isEqualTo("<bold>My Server</bold>");
+        assertThat(cfg.footerTemplate()).isEqualTo("ping: %ping%");
     }
 
     @Test
@@ -45,8 +46,8 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(1000L));
-        assertThat(cfg.header()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
-        assertThat(cfg.footer()).isEqualTo("TPS: %tps% | Players: %server_players%");
+        assertThat(cfg.headerTemplate()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
+        assertThat(cfg.footerTemplate()).isEqualTo("TPS: %tps% | Players: %server_players%");
     }
 
     @Test
@@ -54,7 +55,7 @@ class TablistConfigTest {
         TablistConfig cfg =
                 new TablistConfig(Duration.ofSeconds(2), "<red>header</red>", "<green>footer</green>");
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofSeconds(2));
-        assertThat(cfg.header()).isEqualTo("<red>header</red>");
-        assertThat(cfg.footer()).isEqualTo("<green>footer</green>");
+        assertThat(cfg.headerTemplate()).isEqualTo("<red>header</red>");
+        assertThat(cfg.footerTemplate()).isEqualTo("<green>footer</green>");
     }
 }
