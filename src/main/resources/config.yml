@@ -128,3 +128,5 @@ modules:
     half-health-explosion-power: 4.0
     death-boss-bar-radius: 50
     death-explosion-power: 20.0
+  world-mgmt:
+    enabled: false

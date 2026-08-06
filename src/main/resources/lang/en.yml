@@ -118,3 +118,9 @@ update-mode:
   kick-message: "<red>Server in maintenance mode</red>"
 wither:
   explosion-title: "<red>Explosion</red>"
+world-mgmt:
+  teleported: "<prefix> <green>Teleported to <world></green>."
+  unknown-world: "<prefix> <red>World <world></red> does not exist."
+  spawn-set: "<prefix> <green>World spawn set."
+  portal-converted: "<prefix> <gray>Portal coordinates: <x> <y> <z></gray>"
+  portal-no-target: "<prefix> <red>No target world found."

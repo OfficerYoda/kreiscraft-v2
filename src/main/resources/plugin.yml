@@ -88,3 +88,12 @@ permissions:
   kreiscraft.updatemode.bypass:
     description: Log in during maintenance mode
     default: op
+  kreiscraft.worldmgmt.world:
+    description: Teleport between worlds
+    default: op
+  kreiscraft.worldmgmt.setworldspawn:
+    description: Set the spawn point of the current world
+    default: op
+  kreiscraft.worldmgmt.portal:
+    description: Compute portal coordinate translations
+    default: true
