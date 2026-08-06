@@ -24,3 +24,8 @@ modules:
     prefix: "."
   bot:
     enabled: false
+  chat-format:
+    enabled: false
+    event-priority: LOWEST
+    allow-mini-message-in-body: false
+    format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"
