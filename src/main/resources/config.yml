@@ -32,3 +32,9 @@ modules:
   clickthrough:
     enabled: false
     target-block-max-distance: 6
+  combat:
+    enabled: false
+    tag-duration: 10s
+    disable-elytra: true
+    excluded-worlds: ["Lobby"]
+    default-display: ACTIONBAR

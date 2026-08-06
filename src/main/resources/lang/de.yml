@@ -34,3 +34,9 @@ bedrock:
   added: "<prefix> <green><player></green> zur Whitelist hinzugefügt (Bedrock)."
   unknown: "<prefix> <red>Kein Bedrock-Spieler namens <player></red> gesehen."
   list-header: "<prefix> <gray>Bekannte Bedrock-Spieler (<count>):"
+combat:
+  tagged: "<prefix> <red>Im Kampf!"
+  remaining: "<red>Im Kampf: <seconds>s</red>"
+  cleared: "<prefix> <green>Kein Kampf mehr."
+  elytra-denied: "<prefix> <red>Elytra im Kampf deaktiviert."
+  manual-tag: "<prefix> <yellow><player></yellow> für <seconds>s getaggt."

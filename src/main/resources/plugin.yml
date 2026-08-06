@@ -25,3 +25,6 @@ permissions:
   kreiscraft.bedrock.admin:
     description: Manage the bedrock whitelist
     default: op
+  kreiscraft.combat.admin:
+    description: Manually tag a player as in combat
+    default: op
