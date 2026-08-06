@@ -1,32 +1,27 @@
 package de.kreiscraft.modules.anticheat.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.anticheat.DefaultHackLogService;
 import de.kreiscraft.modules.anticheat.HackEntry;
 import de.kreiscraft.modules.anticheat.HackLogData;
-import de.kreiscraft.modules.anticheat.HackLogService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
-import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -131,5 +126,37 @@ class HackerLogsCommandTest {
 
         assertThat(service.forPlayer(targetId, HackEntry.Kind.CHEAT)).hasSize(1);
         assertThat(service.forPlayer(targetId, HackEntry.Kind.XRAY)).hasSize(1);
+    }
+
+    // --- parseKind validation ---
+
+    @Test
+    void parseKind_cheats_returnsCHEAT() {
+        assertThat(HackerLogsCommand.parseKind("cheats")).contains(HackEntry.Kind.CHEAT);
+    }
+
+    @Test
+    void parseKind_cheats_caseInsensitive() {
+        assertThat(HackerLogsCommand.parseKind("CHEATS")).contains(HackEntry.Kind.CHEAT);
+    }
+
+    @Test
+    void parseKind_xray_returnsXRAY() {
+        assertThat(HackerLogsCommand.parseKind("xray")).contains(HackEntry.Kind.XRAY);
+    }
+
+    @Test
+    void parseKind_xray_caseInsensitive() {
+        assertThat(HackerLogsCommand.parseKind("XRAY")).contains(HackEntry.Kind.XRAY);
+    }
+
+    @Test
+    void parseKind_unknownInput_returnsEmpty() {
+        assertThat(HackerLogsCommand.parseKind("misspelled")).isEmpty();
+    }
+
+    @Test
+    void parseKind_emptyString_returnsEmpty() {
+        assertThat(HackerLogsCommand.parseKind("")).isEmpty();
     }
 }

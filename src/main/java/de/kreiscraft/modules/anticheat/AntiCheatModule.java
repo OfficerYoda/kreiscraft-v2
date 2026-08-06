@@ -8,12 +8,13 @@ import de.kreiscraft.modules.anticheat.commands.HackerLogsCommand;
 import de.kreiscraft.platform.PlayerBrandProvider;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.spongepowered.configurate.ConfigurationNode;
 
 public final class AntiCheatModule implements Module {
 
-    private AntiCheatConfig config;
+    private final AtomicReference<AntiCheatConfig> configRef = new AtomicReference<>();
     private DefaultHackLogService service;
     private JavaPlugin plugin;
     private String registeredChannel;
@@ -31,7 +32,7 @@ public final class AntiCheatModule implements Module {
     @Override
     public void enable(ModuleContext ctx) {
         try {
-            this.config = ctx.moduleConfig().get(AntiCheatConfig.class);
+            configRef.set(ctx.moduleConfig().get(AntiCheatConfig.class));
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
@@ -57,16 +58,16 @@ public final class AntiCheatModule implements Module {
 
         // Build and register plugin message channel
         ModCheckerChannel modCheckerChannel = new ModCheckerChannel(service, ctx.messages());
-        this.registeredChannel = config.channel();
+        this.registeredChannel = configRef.get().channel();
         this.plugin
                 .getServer()
                 .getMessenger()
                 .registerIncomingPluginChannel(this.plugin, registeredChannel, modCheckerChannel);
 
-        // Register listener
+        // Register listener (receives live configRef so reloads propagate)
         ctx.events()
                 .register(new AntiCheatListener(
-                        config, service, ctx.scheduler(), ctx.messages(), brandProvider));
+                        configRef, service, ctx.scheduler(), ctx.messages(), brandProvider));
 
         // Register command
         ctx.commands()
@@ -87,7 +88,7 @@ public final class AntiCheatModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            this.config = moduleConfig.get(AntiCheatConfig.class);
+            configRef.set(moduleConfig.get(AntiCheatConfig.class));
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

@@ -5,6 +5,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.platform.PlayerBrandProvider;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -12,27 +13,28 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public final class AntiCheatListener implements PriorityListener {
 
-    private final AntiCheatConfig config;
+    private final AtomicReference<AntiCheatConfig> configRef;
     private final DefaultHackLogService service;
     private final Scheduler scheduler;
     private final MessageService messages;
     private final PlayerBrandProvider brandProvider;
 
     public AntiCheatListener(
-            AntiCheatConfig config,
+            AtomicReference<AntiCheatConfig> configRef,
             DefaultHackLogService service,
             Scheduler scheduler,
             MessageService messages,
             PlayerBrandProvider brandProvider) {
-        this.config = config;
+        this.configRef = configRef;
         this.service = service;
         this.scheduler = scheduler;
         this.messages = messages;
         this.brandProvider = brandProvider;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.NORMAL)
     public void onJoin(PlayerJoinEvent event) {
+        AntiCheatConfig config = configRef.get();
         if (!config.kickOnFabricForge())
             return;
 
@@ -55,7 +57,7 @@ public final class AntiCheatListener implements PriorityListener {
         });
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.NORMAL)
     public void onQuit(PlayerQuitEvent event) {
         service.clearHandshake(event.getPlayer().getUniqueId());
     }

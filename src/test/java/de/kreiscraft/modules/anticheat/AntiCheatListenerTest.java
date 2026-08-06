@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +34,7 @@ class AntiCheatListenerTest {
     private DefaultHackLogService service;
     private MessageService messages;
     private PlayerBrandProvider brandProvider;
-    private AntiCheatConfig config;
+    private AtomicReference<AntiCheatConfig> configRef;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -49,7 +50,8 @@ class AntiCheatListenerTest {
         when(messages.render(any())).thenReturn(Component.empty());
         when(messages.render(any(), any())).thenReturn(Component.empty());
 
-        config = new AntiCheatConfig("kreiscraft:mod_checker", true, Duration.ofSeconds(5));
+        configRef = new AtomicReference<>(
+                new AntiCheatConfig("kreiscraft:mod_checker", true, Duration.ofSeconds(5)));
     }
 
     @AfterEach
@@ -59,7 +61,7 @@ class AntiCheatListenerTest {
 
     private void registerListener() {
         AntiCheatListener listener =
-                new AntiCheatListener(config, service, scheduler, messages, brandProvider);
+                new AntiCheatListener(configRef, service, scheduler, messages, brandProvider);
         server.getPluginManager().registerEvents(listener, plugin);
     }
 
@@ -116,7 +118,7 @@ class AntiCheatListenerTest {
 
     @Test
     void kickDisabled_fabricPlayer_notKicked() {
-        config = new AntiCheatConfig("kreiscraft:mod_checker", false, Duration.ofSeconds(5));
+        configRef.set(new AntiCheatConfig("kreiscraft:mod_checker", false, Duration.ofSeconds(5)));
         when(brandProvider.brandOf(any())).thenReturn(Optional.of("fabric"));
         registerListener();
 
@@ -149,5 +151,27 @@ class AntiCheatListenerTest {
         scheduler.advance(Duration.ofSeconds(10));
 
         assertThat(player.isOnline()).isTrue();
+    }
+
+    @Test
+    void configReload_kickOnFabricForge_honoredPerJoin() {
+        when(brandProvider.brandOf(any())).thenReturn(Optional.of("fabric"));
+        when(messages.render("anti-cheat.fabric-forge-kick")).thenReturn(Component.text("kicked"));
+        // start with kick enabled
+        configRef.set(new AntiCheatConfig("kreiscraft:mod_checker", true, Duration.ofSeconds(5)));
+        registerListener();
+
+        // first join: kick enabled → player is kicked
+        PlayerMock alice = server.addPlayer("Alice");
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(alice.isOnline()).isFalse();
+
+        // simulate config reload: disable kick
+        configRef.set(new AntiCheatConfig("kreiscraft:mod_checker", false, Duration.ofSeconds(5)));
+
+        // second join: kick disabled → player stays online
+        PlayerMock bob = server.addPlayer("Bob");
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(bob.isOnline()).isTrue();
     }
 }

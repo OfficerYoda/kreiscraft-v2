@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -50,18 +51,26 @@ public final class HackerLogsCommand {
                                                     .resolve(ctx.getSource())
                                                     .getFirst();
                                     String kindArg = StringArgumentType.getString(ctx, "kind");
-                                    HackEntry.Kind kind = parseKind(kindArg);
+                                    Optional<HackEntry.Kind> kind = parseKind(kindArg);
+                                    if (kind.isEmpty()) {
+                                        messages.send(ctx.getSource().getSender(),
+                                                "anti-cheat.invalid-kind", "kind", kindArg);
+                                        return Command.SINGLE_SUCCESS;
+                                    }
                                     showLogs(ctx.getSource(), target.getUniqueId(), target.getName(),
-                                            kind, service, messages);
+                                            kind.get(), service, messages);
                                     return Command.SINGLE_SUCCESS;
                                 })))
                 .build();
     }
 
-    private static HackEntry.Kind parseKind(String arg) {
+    /** Package-private for tests. Returns empty if the argument is not a recognised kind. */
+    static Optional<HackEntry.Kind> parseKind(String arg) {
+        if ("cheats".equalsIgnoreCase(arg))
+            return Optional.of(HackEntry.Kind.CHEAT);
         if ("xray".equalsIgnoreCase(arg))
-            return HackEntry.Kind.XRAY;
-        return HackEntry.Kind.CHEAT;
+            return Optional.of(HackEntry.Kind.XRAY);
+        return Optional.empty();
     }
 
     private static void showLogs(
