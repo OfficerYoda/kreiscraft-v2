@@ -105,3 +105,8 @@ start-sequence:
   started: "<gradient:#5555ff:#55ffff>Kreiscraft starts now</gradient>"
   reset: "<prefix> <yellow>Season reset."
   not-started: "<prefix> <red>Season is not running."
+status:
+  prefix-set: "<prefix> <green>Prefix updated."
+  suffix-set: "<prefix> <green>Suffix updated."
+  too-long: "<prefix> <red>Too long (max. 32 visible characters)."
+  no-permission-other: "<prefix> <red>No permission to change others."

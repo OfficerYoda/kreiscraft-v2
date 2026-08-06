@@ -107,3 +107,5 @@ modules:
     phase-2-duration: 300000s
     phase-1-to-2-delay: 7500ms
     phase-2-to-instant-delay: 15000ms
+  status:
+    enabled: false
