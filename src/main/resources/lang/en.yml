@@ -99,3 +99,9 @@ spawn:
   out-of-range: "<prefix> <red>You are too far from spawn."
   no-spawn-set: "<prefix> <red>No spawn has been set."
   spawn-set: "<prefix> <green>Spawn set."
+start-sequence:
+  already-started: "<prefix> <red>Season is already running."
+  countdown-title: "<gradient:#5555ff:#55ffff>Kreiscraft starts in <seconds></gradient>"
+  started: "<gradient:#5555ff:#55ffff>Kreiscraft starts now</gradient>"
+  reset: "<prefix> <yellow>Season reset."
+  not-started: "<prefix> <red>Season is not running."

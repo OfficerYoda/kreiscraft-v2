@@ -73,3 +73,6 @@ permissions:
   kreiscraft.spawn.set:
     description: Set the server spawn point
     default: op
+  kreiscraft.startsequence.admin:
+    description: Trigger the season start sequence
+    default: op
