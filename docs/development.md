@@ -24,7 +24,7 @@ Each module receives a `ModuleContext` on `enable()`:
    ```yaml
    modules:
      yourname:
-       enabled: false
+       enabled: true
        # …your config keys
    ```
 

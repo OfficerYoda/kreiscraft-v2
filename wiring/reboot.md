@@ -4,7 +4,7 @@
 
 ```yaml
   reboot:
-    enabled: false
+    enabled: true
     default-countdown: 60s
     title-seconds: [500, 60, 30, 10]
     chat-seconds: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]

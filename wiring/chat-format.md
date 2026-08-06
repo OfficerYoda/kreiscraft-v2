@@ -4,7 +4,7 @@
 
 ```yaml
   chat-format:
-    enabled: false
+    enabled: true
     event-priority: LOWEST
     allow-mini-message-in-body: false
     format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"

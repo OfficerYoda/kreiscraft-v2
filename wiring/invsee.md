@@ -4,7 +4,7 @@
 
 ```yaml
   invsee:
-    enabled: false
+    enabled: true
 ```
 
 ## lang/de.yml addition

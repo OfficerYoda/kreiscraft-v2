@@ -4,7 +4,7 @@
 
 ```yaml
   admin:
-    enabled: false
+    enabled: true
     timezone: "UTC"
     links:
       website: "https://kreiscraft.de"

@@ -4,7 +4,7 @@
 
 ```yaml
   anti-cheat:
-    enabled: false
+    enabled: true
     channel: "kreiscraft:mod_checker"
     kick-on-fabric-forge: true
     handshake-grace-duration: 5s

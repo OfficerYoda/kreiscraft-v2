@@ -4,7 +4,7 @@
 
 ```yaml
   clickthrough:
-    enabled: false
+    enabled: true
     target-block-max-distance: 6
 ```
 

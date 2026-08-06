@@ -133,14 +133,14 @@ Every module owns one section. Add it via Batch C wiring, not from within your m
 ```yaml
 modules:
   <kebab-case-id>:
-    enabled: false            # default off; operator opts in
+    enabled: true             # enabled by default; operators opt out with `false`
     tag-duration: 10s
     disable-elytra: true
     # …
 ```
 
 Rules:
-- `enabled: false` is the default for every new module. Operators opt in explicitly.
+- `enabled: true` is the default for every new module. Operators opt out explicitly by setting it to `false`.
 - Every duration is a string (`10s`, `5m`, `20t`) — the `Duration` type serializer handles it.
 - Every location is a map (`{ world, x, y, z, yaw, pitch }`) — the `Location` type serializer handles it.
 - MiniMessage strings for message content go in `lang/*.yml`, not `config.yml`. `config.yml` holds tunables, not text.

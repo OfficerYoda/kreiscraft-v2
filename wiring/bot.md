@@ -3,7 +3,7 @@
 ## config.yml addition
 ```yaml
   bot:
-    enabled: false
+    enabled: true
 ```
 
 ## lang/de.yml addition

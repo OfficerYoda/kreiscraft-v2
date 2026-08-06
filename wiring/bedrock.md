@@ -4,7 +4,7 @@
 
 ```yaml
   bedrock:
-    enabled: false
+    enabled: true
     prefix: "."
 ```
 

@@ -4,7 +4,7 @@
 
 ```yaml
   positions:
-    enabled: false
+    enabled: true
     gui-rows: 6
     teleport-on-click: true
 ```

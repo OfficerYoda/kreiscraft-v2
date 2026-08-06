@@ -4,7 +4,7 @@
 
 ```yaml
   jail:
-    enabled: false
+    enabled: true
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, pay, r]
 ```

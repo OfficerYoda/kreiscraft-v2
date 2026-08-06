@@ -4,7 +4,7 @@
 
 ```yaml
   start-sequence:
-    enabled: false
+    enabled: true
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0

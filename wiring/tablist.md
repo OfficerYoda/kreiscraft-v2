@@ -4,7 +4,7 @@
 
 ```yaml
   tablist:
-    enabled: false
+    enabled: true
     update-interval: 20t
     header: "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>"
     footer: "TPS: %tps% | Players: %server_players%"

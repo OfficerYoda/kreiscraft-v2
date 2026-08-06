@@ -3,7 +3,7 @@
 ## config.yml addition
 
   sign-color:
-    enabled: false
+    enabled: true
 
 ## lang/de.yml addition
 

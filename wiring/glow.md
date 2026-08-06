@@ -3,7 +3,7 @@
 ## config.yml addition
 
   glow:
-    enabled: false
+    enabled: true
 
 ## lang/de.yml addition
 

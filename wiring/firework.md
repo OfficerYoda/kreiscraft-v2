@@ -3,7 +3,7 @@
 ## config.yml addition
 
   firework:
-    enabled: false
+    enabled: true
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
 

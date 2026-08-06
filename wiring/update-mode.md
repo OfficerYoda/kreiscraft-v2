@@ -4,7 +4,7 @@
 
 ```yaml
   update-mode:
-    enabled: false
+    enabled: true
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []
 ```

@@ -4,7 +4,7 @@
 
 ```yaml
   spawn:
-    enabled: false
+    enabled: true
     teleport-range: 100
     glide:
       enabled: true

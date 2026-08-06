@@ -4,7 +4,7 @@
 
 ```yaml
   status:
-    enabled: false
+    enabled: true
 ```
 
 ## lang/de.yml addition

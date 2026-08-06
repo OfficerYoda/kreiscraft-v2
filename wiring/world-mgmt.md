@@ -4,7 +4,7 @@
 
 ```yaml
   world-mgmt:
-    enabled: false
+    enabled: true
 ```
 
 ## lang/de.yml addition

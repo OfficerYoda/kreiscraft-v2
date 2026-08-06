@@ -4,7 +4,7 @@
 
 ```yaml
   plugin-hider:
-    enabled: false
+    enabled: true
     default-allowed-commands:
       - help
       - spawn

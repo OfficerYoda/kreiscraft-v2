@@ -4,7 +4,7 @@
 
 ```yaml
   wither:
-    enabled: false
+    enabled: true
     max-health: 600.0
     attack-damage: 40.0
     armor: 8.0

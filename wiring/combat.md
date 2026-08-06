@@ -4,7 +4,7 @@
 
 ```yaml
   combat:
-    enabled: false
+    enabled: true
     tag-duration: 10s
     disable-elytra: true
     excluded-worlds: ["Lobby"]

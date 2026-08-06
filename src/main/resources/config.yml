@@ -8,38 +8,38 @@ core:
 
 modules:
   admin:
-    enabled: false
+    enabled: true
     timezone: "UTC"
     links:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"
       youtube: "https://youtube.com/@example"
   anti-cheat:
-    enabled: false
+    enabled: true
     channel: "kreiscraft:mod_checker"
     kick-on-fabric-forge: true
     handshake-grace-duration: 5s
   bedrock:
-    enabled: false
+    enabled: true
     prefix: "."
   bot:
-    enabled: false
+    enabled: true
   chat-format:
-    enabled: false
+    enabled: true
     event-priority: LOWEST
     allow-mini-message-in-body: false
     format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"
   clickthrough:
-    enabled: false
+    enabled: true
     target-block-max-distance: 6
   combat:
-    enabled: false
+    enabled: true
     tag-duration: 10s
     disable-elytra: true
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: false
+    enabled: true
     default-particle: HAPPY_VILLAGER
     count: 25
     offset-x: 0.9
@@ -47,19 +47,19 @@ modules:
     offset-z: 0.9
     force: true
   firework:
-    enabled: false
+    enabled: true
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
   glow:
-    enabled: false
+    enabled: true
   invsee:
-    enabled: false
+    enabled: true
   jail:
-    enabled: false
+    enabled: true
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, pay, r]
   plugin-hider:
-    enabled: false
+    enabled: true
     default-allowed-commands:
       - help
       - spawn
@@ -71,20 +71,20 @@ modules:
       - ping
       - status
   positions:
-    enabled: false
+    enabled: true
     gui-rows: 6
     teleport-on-click: true
   reboot:
-    enabled: false
+    enabled: true
     default-countdown: 60s
     title-seconds: [500, 60, 30, 10]
     chat-seconds: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
   settings-gui:
-    enabled: false
+    enabled: true
   sign-color:
-    enabled: false
+    enabled: true
   spawn:
-    enabled: false
+    enabled: true
     teleport-range: 100
     glide:
       enabled: true
@@ -99,7 +99,7 @@ modules:
       trigger: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
       velocity: { x: 0.0, y: 5.0, z: 0.0 }
   start-sequence:
-    enabled: false
+    enabled: true
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
@@ -108,18 +108,18 @@ modules:
     phase-1-to-2-delay: 7500ms
     phase-2-to-instant-delay: 15000ms
   status:
-    enabled: false
+    enabled: true
   tablist:
-    enabled: false
+    enabled: true
     update-interval: 20t
     header: "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>"
     footer: "TPS: %tps% | Players: %server_players%"
   update-mode:
-    enabled: false
+    enabled: true
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []
   wither:
-    enabled: false
+    enabled: true
     max-health: 600.0
     attack-damage: 40.0
     armor: 8.0
@@ -129,4 +129,4 @@ modules:
     death-boss-bar-radius: 50
     death-explosion-power: 20.0
   world-mgmt:
-    enabled: false
+    enabled: true

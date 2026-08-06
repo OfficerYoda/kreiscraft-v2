@@ -52,8 +52,8 @@ class YamlConfigServiceTest {
                     .as("modules.%s should be present in config.yml", id)
                     .isFalse();
             assertThat(modules.node(id, "enabled").getBoolean())
-                    .as("modules.%s.enabled should default to false", id)
-                    .isFalse();
+                    .as("modules.%s.enabled should default to true", id)
+                    .isTrue();
         }
     }
 }

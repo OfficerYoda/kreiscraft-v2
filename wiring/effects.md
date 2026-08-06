@@ -4,7 +4,7 @@
 
 ```yaml
   effects:
-    enabled: false
+    enabled: true
     default-particle: HAPPY_VILLAGER
     count: 25
     offset-x: 0.9
