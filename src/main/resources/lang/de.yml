@@ -45,3 +45,6 @@ effects:
   disabled: "<prefix> <yellow>Effekte deaktiviert."
   particle-set: "<prefix> <green>Partikel: <particle></green>."
   unknown-particle: "<prefix> <red>Unbekanntes Partikel: <particle></red>."
+glow:
+  enabled: "<prefix> <green>Glow aktiviert."
+  disabled: "<prefix> <yellow>Glow deaktiviert."

@@ -31,3 +31,6 @@ permissions:
   kreiscraft.effects.use:
     description: Toggle particle trail
     default: true
+  kreiscraft.glow.use:
+    description: Toggle glow effect
+    default: true

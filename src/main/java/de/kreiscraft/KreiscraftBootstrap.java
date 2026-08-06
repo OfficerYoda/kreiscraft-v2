@@ -111,6 +111,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.combat.CombatModule());
         modules.register(new de.kreiscraft.modules.effects.EffectsModule());
         modules.register(new de.kreiscraft.modules.firework.FireworkModule());
+        modules.register(new de.kreiscraft.modules.glow.GlowModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",
