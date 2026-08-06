@@ -22,7 +22,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class PositionsData extends DataFile<Map<UUID, Map<String, PositionEntry>>> {
 
     public PositionsData(Path dataFolder) {
-        super(dataFolder, "positions.yml");
+        super(dataFolder, "data/positions.yml");
     }
 
     @Override

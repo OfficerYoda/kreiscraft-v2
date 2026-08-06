@@ -50,7 +50,7 @@ class PositionsDataTest {
                 .put("home", new PositionEntry(loc)));
         data.flushIfDirty();
 
-        String content = Files.readString(tmp.resolve("positions.yml"));
+        String content = Files.readString(tmp.resolve("data/positions.yml"));
         assertThat(content).contains(uuid.toString());
         assertThat(content).contains("home");
         assertThat(content).contains("location");
@@ -110,6 +110,6 @@ class PositionsDataTest {
         PositionsData data = new PositionsData(tmp);
         data.load();
         data.flushIfDirty();
-        assertThat(Files.exists(tmp.resolve("positions.yml"))).isFalse();
+        assertThat(Files.exists(tmp.resolve("data/positions.yml"))).isFalse();
     }
 }

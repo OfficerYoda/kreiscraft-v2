@@ -23,8 +23,8 @@ class PositionsConfigTest {
         assertThat(cfg).isNotNull();
         // guiRows defaults to 6 (handled in compact constructor when 0 from missing YAML)
         assertThat(cfg.guiRows()).isEqualTo(6);
-        // teleportOnClick defaults to false when key is absent (Java boolean default)
-        assertThat(cfg.teleportOnClick()).isFalse();
+        // teleportOnClick defaults to true when key is absent (null → Boolean.TRUE in compact ctor)
+        assertThat(cfg.teleportOnClick()).isTrue();
     }
 
     @Test
