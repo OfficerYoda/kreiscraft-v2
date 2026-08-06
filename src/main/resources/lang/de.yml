@@ -5,3 +5,19 @@ core:
     failure: "<prefix> <red>Reload fehlgeschlagen: <error>"
   startup:
     summary: "<prefix> <green><enabled> Module aktiv</green>, <yellow><disabled> deaktiviert</yellow>, <red><failed> fehlgeschlagen</red>."
+admin:
+  gamemode-set: "<prefix> <green>Spielmodus für <player></green> auf <mode></green>."
+  item-given: "<prefix> <green><count>x <item></green>."
+  weather-set: "<prefix> <green>Wetter: <weather></green>."
+  spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
+  ip: "<prefix> <gray><player></gray> IP: <ip>"
+  uuid: "<prefix> <gray><player></gray> UUID: <uuid>"
+  lastonline: "<prefix> <gray><player></gray> zuletzt gesehen: <when>"
+  ping: "<prefix> <gray><player></gray> Ping: <ping> ms"
+  tps: "<prefix> <gray>TPS:</gray> <tps>"
+  statistic: "<prefix> <gray><player></gray> <stat>: <value>"
+  sudo-executed: "<prefix> <gray>sudo <player>: <text>"
+  help:
+    text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+  target-not-found: "<prefix> <red>Spieler <player></red> nicht gefunden."
+  usage: "<prefix> <red>Verwendung: <usage>"

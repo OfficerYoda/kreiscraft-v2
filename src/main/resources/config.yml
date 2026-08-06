@@ -6,4 +6,11 @@ core:
   auto-save-interval: 5m
   debug: false
 
-modules: {}
+modules:
+  admin:
+    enabled: false
+    timezone: "UTC"
+    links:
+      website: "https://kreiscraft.de"
+      discord: "https://discord.gg/example"
+      youtube: "https://youtube.com/@example"

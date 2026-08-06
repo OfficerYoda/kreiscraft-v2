@@ -102,6 +102,7 @@ public final class KreiscraftBootstrap {
                 config.root(),
                 plugin.getLogger());
         // Plan 1: no modules registered yet.
+        modules.register(new de.kreiscraft.modules.admin.AdminModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",
