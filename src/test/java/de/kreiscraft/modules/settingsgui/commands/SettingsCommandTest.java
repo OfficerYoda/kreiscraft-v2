@@ -61,7 +61,7 @@ class SettingsCommandTest {
         LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(service, messages, gui);
 
         PlayerMock player = server.addPlayer("Alice");
-        player.addAttachment(plugin, "kreiscraft.settings.use", false);
+        player.addAttachment(plugin, "kreiscraft.settingsgui.use", false);
 
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -74,7 +74,7 @@ class SettingsCommandTest {
         LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(service, messages, gui);
 
         PlayerMock player = server.addPlayer("Bob");
-        player.addAttachment(plugin, "kreiscraft.settings.use", true);
+        player.addAttachment(plugin, "kreiscraft.settingsgui.use", true);
 
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);

@@ -18,7 +18,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class SettingsData extends DataFile<Map<UUID, Settings>> {
 
     public SettingsData(Path dataFolder) {
-        super(dataFolder, "settings.yml");
+        super(dataFolder, "data/settings.yml");
     }
 
     @Override

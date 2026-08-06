@@ -32,7 +32,7 @@ public final class SettingsCommand {
     public static LiteralCommandNode<CommandSourceStack> build(
             DefaultSettingsService service, MessageService messages, Gui gui) {
         return Commands.literal("settings")
-                .requires(src -> src.getSender().hasPermission("kreiscraft.settings.use"))
+                .requires(src -> src.getSender().hasPermission("kreiscraft.settingsgui.use"))
                 .executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player player)) {
                         return Command.SINGLE_SUCCESS;

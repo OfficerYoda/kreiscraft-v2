@@ -36,7 +36,7 @@ settings-gui:
 ## plugin.yml permissions
 
 ```yaml
-  kreiscraft.settings.use:
+  kreiscraft.settingsgui.use:
     description: Open the per-player settings GUI
     default: true
 ```
