@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.settingsgui.SettingsService;
+import de.kreiscraft.modules.settingsgui.DefaultSettingsService;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.junit.jupiter.api.AfterEach;
@@ -24,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SettingsCommandTest {
 
     @Mock
-    private SettingsService service;
+    private DefaultSettingsService service;
     @Mock
     private MessageService messages;
     @Mock

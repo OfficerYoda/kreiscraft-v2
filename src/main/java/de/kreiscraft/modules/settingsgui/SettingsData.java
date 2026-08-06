@@ -8,6 +8,13 @@ import java.util.UUID;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 
+/**
+ * Persists per-player settings to {@code data/settings.yml}.
+ *
+ * <p>Only {@code click-through} and {@code combat-display} are written. The {@code lastClickAt}
+ * field of {@link Settings} is intentionally excluded — it is transient debounce state that resets
+ * on restart.
+ */
 public final class SettingsData extends DataFile<Map<UUID, Settings>> {
 
     public SettingsData(Path dataFolder) {
@@ -19,19 +26,24 @@ public final class SettingsData extends DataFile<Map<UUID, Settings>> {
         Map<UUID, Settings> map = new HashMap<>();
         for (var entry : node.childrenMap().entrySet()) {
             UUID id = UUID.fromString(String.valueOf(entry.getKey()));
-            Settings s = entry.getValue().get(Settings.class);
-            if (s != null) {
-                map.put(id, s);
-            }
+            ConfigurationNode n = entry.getValue();
+            boolean clickThrough = n.node("click-through").getBoolean(true);
+            CombatDisplay combatDisplay =
+                    n.node("combat-display").get(CombatDisplay.class, CombatDisplay.ACTIONBAR);
+            map.put(id, new Settings(clickThrough, combatDisplay));
         }
         return map;
     }
 
     @Override
-    protected void save(Map<UUID, Settings> state, ConfigurationNode node) throws SerializationException {
+    protected void save(Map<UUID, Settings> state, ConfigurationNode node)
+            throws SerializationException {
         node.set(null);
         for (var entry : state.entrySet()) {
-            node.node(entry.getKey().toString()).set(Settings.class, entry.getValue());
+            ConfigurationNode n = node.node(entry.getKey().toString());
+            Settings s = entry.getValue();
+            n.node("click-through").set(s.clickThrough());
+            n.node("combat-display").set(CombatDisplay.class, s.combatDisplay());
         }
     }
 

@@ -14,7 +14,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class SettingsGuiModule implements Module {
 
     private SettingsGuiConfig config;
-    private DefaultSettingsService service;
+    private SettingsService service; // published interface type
 
     @Override
     public String id() {
@@ -44,11 +44,13 @@ public final class SettingsGuiModule implements Module {
         configService.register(data);
 
         Gui gui = ctx.services().get(Gui.class);
-        this.service = new DefaultSettingsService(data);
-        ctx.services().publish(SettingsService.class, service);
+        // Use concrete type locally so SettingsCommand can call toggleClickThrough
+        DefaultSettingsService impl = new DefaultSettingsService(data);
+        this.service = impl;
+        ctx.services().publish(SettingsService.class, impl);
 
         ctx.commands().register(
-                SettingsCommand.build(service, ctx.messages(), gui),
+                SettingsCommand.build(impl, ctx.messages(), gui),
                 "Open the per-player settings GUI");
     }
 

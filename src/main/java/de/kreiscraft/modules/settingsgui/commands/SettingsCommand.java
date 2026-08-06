@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.settingsgui.CombatDisplay;
+import de.kreiscraft.modules.settingsgui.DefaultSettingsService;
 import de.kreiscraft.modules.settingsgui.SettingsService;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -22,8 +23,14 @@ public final class SettingsCommand {
 
     private SettingsCommand() {}
 
+    /**
+     * Builds the {@code /settings} command node. {@code service} is the concrete implementation
+     * so that {@link ClickThroughItem} can call the debounce-aware {@link
+     * DefaultSettingsService#toggleClickThrough(UUID)} without exposing it on the public
+     * {@link SettingsService} interface.
+     */
     public static LiteralCommandNode<CommandSourceStack> build(
-            SettingsService service, MessageService messages, Gui gui) {
+            DefaultSettingsService service, MessageService messages, Gui gui) {
         return Commands.literal("settings")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.settings.use"))
                 .executes(ctx -> {
@@ -37,7 +44,7 @@ public final class SettingsCommand {
     }
 
     private static void openGui(
-            Player player, SettingsService service, MessageService messages, Gui gui) {
+            Player player, DefaultSettingsService service, MessageService messages, Gui gui) {
         UUID playerId = player.getUniqueId();
 
         xyz.xenondevs.invui.gui.Gui invui =
@@ -60,10 +67,10 @@ public final class SettingsCommand {
     private static final class ClickThroughItem extends AbstractItem {
 
         private final UUID playerId;
-        private final SettingsService service;
+        private final DefaultSettingsService service;
         private final MessageService messages;
 
-        ClickThroughItem(UUID playerId, SettingsService service, MessageService messages) {
+        ClickThroughItem(UUID playerId, DefaultSettingsService service, MessageService messages) {
             this.playerId = playerId;
             this.service = service;
             this.messages = messages;
@@ -81,8 +88,7 @@ public final class SettingsCommand {
         }
 
         @Override
-        public void handleClick(
-                ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
             if (service.toggleClickThrough(player.getUniqueId())) {
                 notifyWindows();
             }
@@ -113,8 +119,7 @@ public final class SettingsCommand {
         }
 
         @Override
-        public void handleClick(
-                ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
             CombatDisplay current = service.getCombatDisplay(player.getUniqueId());
             CombatDisplay next = nextDisplay(current);
             service.setCombatDisplay(player.getUniqueId(), next);
@@ -160,8 +165,7 @@ public final class SettingsCommand {
         }
 
         @Override
-        public void handleClick(
-                ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
             // WIP: no action
         }
     }

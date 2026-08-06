@@ -1,8 +1,18 @@
 package de.kreiscraft.modules.settingsgui;
 
-import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import org.spongepowered.configurate.objectmapping.meta.Setting;
+import java.time.Instant;
 
-@ConfigSerializable public record Settings(@Setting("click-through")boolean clickThrough,@Setting("combat-display")CombatDisplay combatDisplay){
+/**
+ * Per-player settings snapshot held in the in-memory state map.
+ *
+ * <p>Only {@code clickThrough} and {@code combatDisplay} are persisted to {@code
+ * data/settings.yml}. {@code lastClickAt} is a transient in-memory field used for click-through
+ * debounce; it is deliberately excluded from serialization in {@link SettingsData} and resets to
+ * {@code null} on server restart.
+ */
+public record Settings(boolean clickThrough,CombatDisplay combatDisplay,Instant lastClickAt){
 
-public static Settings defaults(){return new Settings(true,CombatDisplay.ACTIONBAR);}}
+/** Convenience constructor that leaves {@code lastClickAt} null. */
+public Settings(boolean clickThrough,CombatDisplay combatDisplay){this(clickThrough,combatDisplay,null);}
+
+public static Settings defaults(){return new Settings(true,CombatDisplay.ACTIONBAR,null);}}

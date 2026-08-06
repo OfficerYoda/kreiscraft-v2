@@ -4,14 +4,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class DefaultSettingsService implements SettingsService {
 
     private static final Duration CLICK_DEBOUNCE = Duration.ofSeconds(1);
 
     private final SettingsData data;
-    private final Map<UUID, Instant> lastClickTimes = new ConcurrentHashMap<>();
 
     public DefaultSettingsService(SettingsData data) {
         this.data = data;
@@ -32,7 +30,7 @@ public final class DefaultSettingsService implements SettingsService {
     @Override
     public void setClickThroughEnabled(UUID playerId, boolean enabled) {
         Settings current = settingsFor(playerId);
-        Settings updated = new Settings(enabled, current.combatDisplay());
+        Settings updated = new Settings(enabled, current.combatDisplay(), current.lastClickAt());
         data.update(m -> m.put(playerId, updated));
     }
 
@@ -44,19 +42,25 @@ public final class DefaultSettingsService implements SettingsService {
     @Override
     public void setCombatDisplay(UUID playerId, CombatDisplay display) {
         Settings current = settingsFor(playerId);
-        Settings updated = new Settings(current.clickThrough(), display);
+        Settings updated = new Settings(current.clickThrough(), display, current.lastClickAt());
         data.update(m -> m.put(playerId, updated));
     }
 
-    @Override
+    /**
+     * Toggles click-through for the given player, subject to a 1-second per-player debounce.
+     * Debounce timestamp is stored in the {@link Settings#lastClickAt()} field (in-memory only).
+     *
+     * @return {@code true} if the toggle was applied; {@code false} if rejected by debounce
+     */
     public boolean toggleClickThrough(UUID playerId) {
+        Settings current = settingsFor(playerId);
         Instant now = Instant.now();
-        Instant last = lastClickTimes.get(playerId);
-        if (last != null && Duration.between(last, now).compareTo(CLICK_DEBOUNCE) < 0) {
+        if (current.lastClickAt() != null
+                && Duration.between(current.lastClickAt(), now).compareTo(CLICK_DEBOUNCE) < 0) {
             return false;
         }
-        lastClickTimes.put(playerId, now);
-        setClickThroughEnabled(playerId, !isClickThroughEnabled(playerId));
+        Settings updated = new Settings(!current.clickThrough(), current.combatDisplay(), now);
+        data.update(m -> m.put(playerId, updated));
         return true;
     }
 }
