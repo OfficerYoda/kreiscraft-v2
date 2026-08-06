@@ -8,7 +8,7 @@ import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 /**
- * Persists the server spawn {@link Location} to {@code spawn.yml}.
+ * Persists the server spawn {@link Location} to {@code data/spawn.yml}.
  * The state type is {@link AtomicReference}{@code <Location>} so that
  * {@link #update(java.util.function.Consumer)} can mutate it in place.
  * The reference holds {@code null} when no spawn has been set.
@@ -16,7 +16,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class SpawnData extends DataFile<AtomicReference<Location>> {
 
     public SpawnData(Path dataFolder) {
-        super(dataFolder, "spawn.yml");
+        super(dataFolder, "data/spawn.yml");
     }
 
     @Override
