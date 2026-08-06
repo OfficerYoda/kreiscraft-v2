@@ -11,7 +11,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class StatusData extends DataFile<Map<UUID, Status>> {
 
     public StatusData(Path dataFolder) {
-        super(dataFolder, "statuses.yml");
+        super(dataFolder, "data/statuses.yml");
     }
 
     @Override

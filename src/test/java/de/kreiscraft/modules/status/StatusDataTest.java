@@ -28,7 +28,7 @@ class StatusDataTest {
         data.update(m -> m.put(id, status));
         data.flushIfDirty();
 
-        String content = Files.readString(tmp.resolve("statuses.yml"));
+        String content = Files.readString(tmp.resolve("data/statuses.yml"));
         assertThat(content).contains(id.toString());
         assertThat(content).contains("prefix:");
     }
@@ -58,6 +58,6 @@ class StatusDataTest {
         StatusData data = new StatusData(tmp);
         data.load();
         data.flushIfDirty();
-        assertThat(Files.exists(tmp.resolve("statuses.yml"))).isFalse();
+        assertThat(Files.exists(tmp.resolve("data/statuses.yml"))).isFalse();
     }
 }
