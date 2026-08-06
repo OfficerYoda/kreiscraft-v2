@@ -35,6 +35,12 @@ class DurationsTest {
     }
 
     @Test
+    void parse_days() {
+        assertThat(Durations.parse("7d")).isEqualTo(Duration.ofDays(7));
+        assertThat(Durations.parse("30d")).isEqualTo(Duration.ofDays(30));
+    }
+
+    @Test
     void parse_isCaseInsensitiveAndTrimsWhitespace() {
         assertThat(Durations.parse("  5M ")).isEqualTo(Duration.ofMinutes(5));
     }
@@ -54,5 +60,6 @@ class DurationsTest {
         assertThat(Durations.format(Duration.ofSeconds(30))).isEqualTo("30s");
         assertThat(Durations.format(Duration.ofMinutes(5))).isEqualTo("5m");
         assertThat(Durations.format(Duration.ofMillis(500))).isEqualTo("500ms");
+        assertThat(Durations.format(Duration.ofDays(7))).isEqualTo("7d");
     }
 }

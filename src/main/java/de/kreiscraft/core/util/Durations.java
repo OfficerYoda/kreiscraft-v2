@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 public final class Durations {
 
     private static final Pattern PATTERN = Pattern.compile(
-            "^\\s*(\\d+)\\s*(ms|t|s|m|h)\\s*$",
+            "^\\s*(\\d+)\\s*(ms|t|s|m|h|d)\\s*$",
             Pattern.CASE_INSENSITIVE);
 
     private Durations() {}
@@ -27,12 +27,15 @@ public final class Durations {
             case "s" -> Duration.ofSeconds(value);
             case "m" -> Duration.ofMinutes(value);
             case "h" -> Duration.ofHours(value);
+            case "d" -> Duration.ofDays(value);
             default -> throw new IllegalStateException();
         };
     }
 
     public static String format(Duration duration) {
         long millis = duration.toMillis();
+        if (millis % 86_400_000 == 0)
+            return (millis / 86_400_000) + "d";
         if (millis % 3_600_000 == 0)
             return (millis / 3_600_000) + "h";
         if (millis % 60_000 == 0)
