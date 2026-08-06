@@ -109,3 +109,8 @@ modules:
     phase-2-to-instant-delay: 15000ms
   status:
     enabled: false
+  tablist:
+    enabled: false
+    update-interval: 20t
+    header: "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>"
+    footer: "TPS: %tps% | Players: %server_players%"
