@@ -101,7 +101,6 @@ public final class KreiscraftBootstrap {
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),
                 config.root(),
                 plugin.getLogger());
-        // Plan 1: no modules registered yet.
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
         modules.register(new de.kreiscraft.modules.bedrock.BedrockModule());
