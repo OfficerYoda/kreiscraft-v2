@@ -16,8 +16,10 @@ final class LocationSerializer implements TypeSerializer<Location> {
 
     @Override
     public Location deserialize(Type type, ConfigurationNode node) throws SerializationException {
-        if (node.isNull())
-            throw new SerializationException("expected location map");
+        if (node.virtual() || node.isNull())
+            return null;
+        if (!node.isMap())
+            throw new SerializationException(node, type, "expected location map");
         Map<String, Object> map = new LinkedHashMap<>();
         node.childrenMap().forEach((k, v) -> map.put(String.valueOf(k), v.raw()));
         try {

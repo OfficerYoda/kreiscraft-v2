@@ -17,7 +17,7 @@ class SpawnConfigTest {
 
     @BeforeEach
     void setUp() {
-        // MockBukkit is needed so Bukkit.getWorld() works inside LocationSpec.toBukkit()
+        // MockBukkit is needed so Bukkit.getWorld() works inside LocationSerializer
         server = MockBukkit.mock();
         server.addSimpleWorld("world");
     }
@@ -65,8 +65,8 @@ class SpawnConfigTest {
         assertThat(cfg.glide().enabled()).isTrue();
         assertThat(cfg.glide().multiplyValue()).isEqualTo(5);
         assertThat(cfg.glide().spawnRadius()).isEqualTo(20);
-        assertThat(cfg.glide().launchLocation().isSet()).isTrue();
-        assertThat(cfg.glide().launchLocation().world()).isEqualTo("world");
+        assertThat(cfg.glide().launchLocation()).isNotNull();
+        assertThat(cfg.glide().launchLocation().getWorld().getName()).isEqualTo("world");
         assertThat(cfg.swapHandBoost().enabled()).isTrue();
         assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(2.5);
         assertThat(cfg.spawnLaunch().enabled()).isFalse();
@@ -103,6 +103,6 @@ class SpawnConfigTest {
 
         SpawnConfig cfg = node.get(SpawnConfig.class);
 
-        assertThat(cfg.glide().launchLocation().isSet()).isFalse();
+        assertThat(cfg.glide().launchLocation()).isNull();
     }
 }

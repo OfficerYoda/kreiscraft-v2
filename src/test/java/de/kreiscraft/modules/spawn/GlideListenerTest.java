@@ -36,10 +36,9 @@ class GlideListenerTest {
     private SpawnConfig makeConfig(int spawnRadius, int multiplyValue) {
         return new SpawnConfig(
                 100,
-                new SpawnConfig.GlideConfig(true, multiplyValue, spawnRadius,
-                        new LocationSpec("", 0, 0, 0, 0, 0)),
+                new SpawnConfig.GlideConfig(true, multiplyValue, spawnRadius, null),
                 new SpawnConfig.SwapHandBoostConfig(false, 3.0),
-                new SpawnConfig.SpawnLaunchConfig(false, new LocationSpec("", 0, 0, 0, 0, 0),
+                new SpawnConfig.SpawnLaunchConfig(false, null,
                         new Vector(0, 5, 0)));
     }
 

@@ -31,11 +31,11 @@ class SpawnLaunchListenerTest {
     private SpawnConfig makeConfig(double vy) {
         return new SpawnConfig(
                 100,
-                new SpawnConfig.GlideConfig(true, 3, 30, new LocationSpec("", 0, 0, 0, 0, 0)),
+                new SpawnConfig.GlideConfig(true, 3, 30, null),
                 new SpawnConfig.SwapHandBoostConfig(false, 3.0),
                 new SpawnConfig.SpawnLaunchConfig(
                         true,
-                        new LocationSpec("world", TX, TY, TZ, 0, 0),
+                        new Location(world, TX, TY, TZ, 0f, 0f),
                         new Vector(0, vy, 0)));
     }
 

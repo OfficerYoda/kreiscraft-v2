@@ -35,12 +35,12 @@ public final class SpawnLaunchListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerMove(PlayerMoveEvent event) {
         SpawnConfig.SpawnLaunchConfig cfg = configSupply.get().spawnLaunch();
-        if (!cfg.trigger().isSet())
+        if (cfg.trigger() == null)
             return;
 
         // ── world guard ───────────────────────────────────────────────────
         Player player = event.getPlayer();
-        if (!cfg.trigger().world().equals(player.getWorld().getName()))
+        if (cfg.trigger().getWorld() == null || !cfg.trigger().getWorld().equals(player.getWorld()))
             return;
 
         Location from = event.getFrom();
@@ -48,9 +48,9 @@ public final class SpawnLaunchListener implements PriorityListener {
         if (to == null)
             return;
 
-        int tx = (int) Math.floor(cfg.trigger().x());
-        int ty = (int) Math.floor(cfg.trigger().y());
-        int tz = (int) Math.floor(cfg.trigger().z());
+        int tx = (int) Math.floor(cfg.trigger().getX());
+        int ty = (int) Math.floor(cfg.trigger().getY());
+        int tz = (int) Math.floor(cfg.trigger().getZ());
 
         // Trigger fires only when the player ENTERS the block (not while standing on it).
         boolean fromOnTrigger = blockMatches(from, tx, ty, tz);

@@ -27,9 +27,9 @@ class SwapHandBoostListenerTest {
     private SpawnConfig makeConfig(double multiplier) {
         return new SpawnConfig(
                 100,
-                new SpawnConfig.GlideConfig(true, 3, 30, new LocationSpec("", 0, 0, 0, 0, 0)),
+                new SpawnConfig.GlideConfig(true, 3, 30, null),
                 new SpawnConfig.SwapHandBoostConfig(true, multiplier),
-                new SpawnConfig.SpawnLaunchConfig(false, new LocationSpec("", 0, 0, 0, 0, 0),
+                new SpawnConfig.SpawnLaunchConfig(false, null,
                         new Vector(0, 5, 0)));
     }
 
