@@ -40,3 +40,8 @@ combat:
   cleared: "<prefix> <green>Kein Kampf mehr."
   elytra-denied: "<prefix> <red>Elytra im Kampf deaktiviert."
   manual-tag: "<prefix> <yellow><player></yellow> für <seconds>s getaggt."
+effects:
+  enabled: "<prefix> <green>Effekte aktiviert."
+  disabled: "<prefix> <yellow>Effekte deaktiviert."
+  particle-set: "<prefix> <green>Partikel: <particle></green>."
+  unknown-particle: "<prefix> <red>Unbekanntes Partikel: <particle></red>."

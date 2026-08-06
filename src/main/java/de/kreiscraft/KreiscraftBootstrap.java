@@ -109,6 +109,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.chatformat.ChatFormatModule());
         modules.register(new de.kreiscraft.modules.clickthrough.ClickthroughModule());
         modules.register(new de.kreiscraft.modules.combat.CombatModule());
+        modules.register(new de.kreiscraft.modules.effects.EffectsModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",

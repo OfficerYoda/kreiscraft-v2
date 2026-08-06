@@ -28,3 +28,6 @@ permissions:
   kreiscraft.combat.admin:
     description: Manually tag a player as in combat
     default: op
+  kreiscraft.effects.use:
+    description: Toggle particle trail
+    default: true

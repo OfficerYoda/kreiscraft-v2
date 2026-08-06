@@ -38,3 +38,11 @@ modules:
     disable-elytra: true
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
+  effects:
+    enabled: false
+    default-particle: HAPPY_VILLAGER
+    count: 25
+    offset-x: 0.9
+    offset-y: 0.9
+    offset-z: 0.9
+    force: true
