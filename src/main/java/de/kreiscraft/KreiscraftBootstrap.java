@@ -105,6 +105,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
         modules.register(new de.kreiscraft.modules.bedrock.BedrockModule());
+        modules.register(new de.kreiscraft.modules.bot.BotModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",

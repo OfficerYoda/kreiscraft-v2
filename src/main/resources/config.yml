@@ -22,3 +22,5 @@ modules:
   bedrock:
     enabled: false
     prefix: "."
+  bot:
+    enabled: false
