@@ -21,6 +21,7 @@ anti-cheat:
   no-logs: "<prefix> <yellow>Keine Einträge für <player></yellow>."
   log-header: "<prefix> <gray>Einträge für <player> (<kind>):"
   log-entry: "<gray>- <when>: <detail>"
+  invalid-kind: "<red>Unbekannte Art '<kind>'. Bitte 'cheats' oder 'xray' verwenden."
 ```
 
 ## lang/en.yml addition
@@ -34,6 +35,7 @@ anti-cheat:
   no-logs: "<prefix> <yellow>No entries found for <player></yellow>."
   log-header: "<prefix> <gray>Entries for <player> (<kind>):"
   log-entry: "<gray>- <when>: <detail>"
+  invalid-kind: "<red>Unknown kind '<kind>'. Use 'cheats' or 'xray'."
 ```
 
 ## plugin.yml permissions
