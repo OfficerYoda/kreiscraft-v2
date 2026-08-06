@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 public final class StatusCommand {
 
     private static final int MAX_VISIBLE_LENGTH = 32;
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     private StatusCommand() {}
 
@@ -22,21 +23,7 @@ public final class StatusCommand {
             StatusService service, MessageService messages) {
         return Commands.literal("status")
                 .then(Commands.literal("prefix")
-                        .requires(src -> src.getSender().hasPermission("kreiscraft.status.set.self"))
-                        .then(Commands.argument("text", StringArgumentType.greedyString())
-                                .executes(ctx -> {
-                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
-                                        return Command.SINGLE_SUCCESS;
-                                    }
-                                    String text = StringArgumentType.getString(ctx, "text");
-                                    if (!validateLength(text)) {
-                                        messages.send(player, "status.too-long");
-                                        return Command.SINGLE_SUCCESS;
-                                    }
-                                    service.setPrefix(player.getUniqueId(), text);
-                                    messages.send(player, "status.prefix-set");
-                                    return Command.SINGLE_SUCCESS;
-                                }))
+                        // player-selector branch FIRST so greedyString doesn't shadow it
                         .then(Commands.argument("target", ArgumentTypes.player())
                                 .requires(src -> src.getSender()
                                         .hasPermission("kreiscraft.status.set.other"))
@@ -56,10 +43,11 @@ public final class StatusCommand {
                                             messages.send(ctx.getSource().getSender(),
                                                     "status.prefix-set");
                                             return Command.SINGLE_SUCCESS;
-                                        }))))
-                .then(Commands.literal("suffix")
-                        .requires(src -> src.getSender().hasPermission("kreiscraft.status.set.self"))
+                                        })))
+                        // self branch — requires set.self on the argument node
                         .then(Commands.argument("text", StringArgumentType.greedyString())
+                                .requires(src -> src.getSender()
+                                        .hasPermission("kreiscraft.status.set.self"))
                                 .executes(ctx -> {
                                     if (!(ctx.getSource().getSender() instanceof Player player)) {
                                         return Command.SINGLE_SUCCESS;
@@ -69,10 +57,12 @@ public final class StatusCommand {
                                         messages.send(player, "status.too-long");
                                         return Command.SINGLE_SUCCESS;
                                     }
-                                    service.setSuffix(player.getUniqueId(), text);
-                                    messages.send(player, "status.suffix-set");
+                                    service.setPrefix(player.getUniqueId(), text);
+                                    messages.send(player, "status.prefix-set");
                                     return Command.SINGLE_SUCCESS;
-                                }))
+                                })))
+                .then(Commands.literal("suffix")
+                        // player-selector branch FIRST
                         .then(Commands.argument("target", ArgumentTypes.player())
                                 .requires(src -> src.getSender()
                                         .hasPermission("kreiscraft.status.set.other"))
@@ -92,12 +82,28 @@ public final class StatusCommand {
                                             messages.send(ctx.getSource().getSender(),
                                                     "status.suffix-set");
                                             return Command.SINGLE_SUCCESS;
-                                        }))))
+                                        })))
+                        // self branch
+                        .then(Commands.argument("text", StringArgumentType.greedyString())
+                                .requires(src -> src.getSender()
+                                        .hasPermission("kreiscraft.status.set.self"))
+                                .executes(ctx -> {
+                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                        return Command.SINGLE_SUCCESS;
+                                    }
+                                    String text = StringArgumentType.getString(ctx, "text");
+                                    if (!validateLength(text)) {
+                                        messages.send(player, "status.too-long");
+                                        return Command.SINGLE_SUCCESS;
+                                    }
+                                    service.setSuffix(player.getUniqueId(), text);
+                                    messages.send(player, "status.suffix-set");
+                                    return Command.SINGLE_SUCCESS;
+                                })))
                 .build();
     }
 
     private static boolean validateLength(String miniMessageText) {
-        String stripped = MiniMessage.miniMessage().stripTags(miniMessageText);
-        return stripped.length() <= MAX_VISIBLE_LENGTH;
+        return MINI_MESSAGE.stripTags(miniMessageText).length() <= MAX_VISIBLE_LENGTH;
     }
 }

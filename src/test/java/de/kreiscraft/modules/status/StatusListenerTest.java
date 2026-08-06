@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class StatusListenerTest {
+
+    private static final MiniMessage MM = MiniMessage.miniMessage();
 
     @Mock
     private StatusService service;
@@ -60,7 +64,7 @@ class StatusListenerTest {
     }
 
     @Test
-    void onStatusChanged_reappliesTeamForOnlinePlayer() {
+    void onStatusChanged_reappliesTeamWithUpdatedPrefix() {
         PlayerMock player = server.addPlayer("OnlinePlayer");
         String teamName = "kc_" + player.getUniqueId().toString().substring(0, 8);
 
@@ -74,8 +78,9 @@ class StatusListenerTest {
         Scoreboard sb = player.getScoreboard();
         Team team = sb.getTeam(teamName);
         assertThat(team).isNotNull();
-        // Team was updated at least twice: once on join, once on status change
-        verify(service, atLeastOnce()).get(player.getUniqueId());
+
+        Component expectedPrefix = MM.deserialize(updated.prefix());
+        assertThat(team.prefix()).isEqualTo(expectedPrefix);
     }
 
     @Test

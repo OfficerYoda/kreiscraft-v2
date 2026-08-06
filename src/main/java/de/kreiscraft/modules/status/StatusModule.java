@@ -12,7 +12,7 @@ import org.spongepowered.configurate.ConfigurationNode;
 public final class StatusModule implements Module {
 
     private StatusConfig config;
-    private DefaultStatusService service;
+    private StatusService service;
 
     @Override
     public String id() {

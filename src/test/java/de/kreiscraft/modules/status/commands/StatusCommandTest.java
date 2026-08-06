@@ -8,12 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import java.util.UUID;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterEach;
@@ -73,6 +76,21 @@ class StatusCommandTest {
         LiteralCommandNode<CommandSourceStack> node = StatusCommand.build(service, messages);
         assertThat(node.getChild("prefix")).isNotNull();
         assertThat(node.getChild("suffix")).isNotNull();
+    }
+
+    @Test
+    void tabComplete_afterStatus_suggestsPrefixAndSuffix() {
+        // Brigadier lists literal-child suggestions without evaluating requires() predicates,
+        // so no getSender() stub needed here.
+        CommandSourceStack source = mock(CommandSourceStack.class);
+
+        CommandDispatcher<CommandSourceStack> dispatcher = buildDispatcher();
+        ParseResults<CommandSourceStack> parsed = dispatcher.parse("status ", source);
+        Suggestions suggestions = dispatcher.getCompletionSuggestions(parsed).join();
+
+        List<String> completions =
+                suggestions.getList().stream().map(s -> s.getText()).toList();
+        assertThat(completions).containsExactlyInAnyOrder("prefix", "suffix");
     }
 
     @Test

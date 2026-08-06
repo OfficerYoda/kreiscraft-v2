@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.status;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -8,13 +9,13 @@ import static org.mockito.Mockito.verify;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
+import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.bukkit.plugin.PluginManager;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultStatusServiceTest {
@@ -56,6 +57,23 @@ class DefaultStatusServiceTest {
         String defaultPrefix = Status.defaults().prefix();
         service.setPrefix(id, defaultPrefix);
         verify(pluginManager, never()).callEvent(any(StatusChangedEvent.class));
+    }
+
+    @Test
+    void setPrefix_tooLong_throwsIllegalArgumentException() {
+        UUID id = UUID.randomUUID();
+        String longText = "A".repeat(33); // 33 visible chars > 32 max
+        assertThatThrownBy(() -> service.setPrefix(id, longText))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("32");
+    }
+
+    @Test
+    void setSuffix_tooLong_throwsIllegalArgumentException() {
+        UUID id = UUID.randomUUID();
+        String longText = "B".repeat(33);
+        assertThatThrownBy(() -> service.setSuffix(id, longText))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
