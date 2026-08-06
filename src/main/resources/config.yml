@@ -58,3 +58,15 @@ modules:
     enabled: false
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, pay, r]
+  plugin-hider:
+    enabled: false
+    default-allowed-commands:
+      - help
+      - spawn
+      - msg
+      - tell
+      - w
+      - r
+      - tps
+      - ping
+      - status

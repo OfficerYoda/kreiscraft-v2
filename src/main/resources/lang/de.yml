@@ -62,3 +62,11 @@ jail:
   target-has-bypass: "<prefix> <red><player></red> hat Bypass-Berechtigung."
   command-blocked: "<prefix> <red>Dieser Befehl ist im Gefängnis nicht erlaubt."
   target-not-found: "<prefix> <red>Spieler <player> ist nicht online."
+plugin-hider:
+  added: "<prefix> <green><command></green> zur Allowlist hinzugefügt."
+  removed: "<prefix> <green><command></green> von der Allowlist entfernt."
+  already-present: "<prefix> <yellow><command></yellow> ist bereits erlaubt."
+  not-present: "<prefix> <yellow><command></yellow> war nicht auf der Allowlist."
+  list-header: "<prefix> <gray>Erlaubte Befehle:"
+  list-entry: "<gray>- <command></gray>"
+  list-empty: "<prefix> <yellow>(keine)"
