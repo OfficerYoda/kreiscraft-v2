@@ -110,3 +110,9 @@ status:
   suffix-set: "<prefix> <green>Suffix aktualisiert."
   too-long: "<prefix> <red>Zu lang (max. 32 sichtbare Zeichen)."
   no-permission-other: "<prefix> <red>Keine Berechtigung, andere zu ändern."
+update-mode:
+  activated: "<prefix> <yellow>Wartungsmodus aktiviert."
+  deactivated: "<prefix> <green>Wartungsmodus deaktiviert."
+  status-on: "<prefix> <yellow>Wartungsmodus ist AN."
+  status-off: "<prefix> <green>Wartungsmodus ist AUS."
+  kick-message: "<red>Server im Wartungsmodus</red>"

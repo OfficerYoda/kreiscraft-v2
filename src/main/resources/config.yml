@@ -114,3 +114,7 @@ modules:
     update-interval: 20t
     header: "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>"
     footer: "TPS: %tps% | Players: %server_players%"
+  update-mode:
+    enabled: false
+    bypass-permission: kreiscraft.updatemode.bypass
+    bypass-names: []

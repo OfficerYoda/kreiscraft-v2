@@ -82,3 +82,9 @@ permissions:
   kreiscraft.status.set.other:
     description: Set another player's status
     default: op
+  kreiscraft.updatemode.admin:
+    description: Toggle maintenance mode
+    default: op
+  kreiscraft.updatemode.bypass:
+    description: Log in during maintenance mode
+    default: op
