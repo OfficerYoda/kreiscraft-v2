@@ -81,3 +81,5 @@ modules:
     chat-seconds: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
   settings-gui:
     enabled: false
+  sign-color:
+    enabled: false

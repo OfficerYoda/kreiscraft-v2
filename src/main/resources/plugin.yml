@@ -61,3 +61,9 @@ permissions:
   kreiscraft.settingsgui.use:
     description: Open the per-player settings GUI
     default: true
+  kreiscraft.signcolor.use:
+    description: Use MiniMessage on signs
+    default: true
+  kreiscraft.signcolor.anvil:
+    description: Use MiniMessage in anvil rename
+    default: true

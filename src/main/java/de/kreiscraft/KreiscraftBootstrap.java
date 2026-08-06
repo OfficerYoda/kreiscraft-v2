@@ -118,6 +118,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.positions.PositionsModule());
         modules.register(new de.kreiscraft.modules.reboot.RebootModule());
         modules.register(new de.kreiscraft.modules.settingsgui.SettingsGuiModule());
+        modules.register(new de.kreiscraft.modules.signcolor.SignColorModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",
