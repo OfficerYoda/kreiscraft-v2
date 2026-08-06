@@ -7,7 +7,6 @@
     enabled: false
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []
-    kick-message: "<red>Server im Wartungsmodus</red>"
 ```
 
 ## lang/de.yml addition
@@ -18,6 +17,7 @@ update-mode:
   deactivated: "<prefix> <green>Wartungsmodus deaktiviert."
   status-on: "<prefix> <yellow>Wartungsmodus ist AN."
   status-off: "<prefix> <green>Wartungsmodus ist AUS."
+  kick-message: "<red>Server im Wartungsmodus</red>"
 ```
 
 ## lang/en.yml addition
@@ -28,6 +28,7 @@ update-mode:
   deactivated: "<prefix> <green>Maintenance mode deactivated."
   status-on: "<prefix> <yellow>Maintenance mode is ON."
   status-off: "<prefix> <green>Maintenance mode is OFF."
+  kick-message: "<red>Server in maintenance mode</red>"
 ```
 
 ## plugin.yml permissions

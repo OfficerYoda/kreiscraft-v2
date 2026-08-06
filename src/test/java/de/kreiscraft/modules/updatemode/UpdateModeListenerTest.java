@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -12,6 +13,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
@@ -24,13 +27,15 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 class UpdateModeListenerTest {
 
     private static final Logger LOG = Logger.getLogger("test");
+    private static final Component KICK_COMPONENT =
+            MiniMessage.miniMessage().deserialize("<red>Server im Wartungsmodus</red>");
 
     @TempDir
     Path tmp;
 
     private DefaultUpdateModeService service;
     private Server mockServer;
-    private PaperPlatform platform;
+    private MessageService mockMessages;
     private UpdateModeListener listener;
 
     @BeforeEach
@@ -42,13 +47,17 @@ class UpdateModeListenerTest {
         UpdateModeData data = new UpdateModeData(tmp);
         data.load();
         service = new DefaultUpdateModeService(
-                data, new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of(), null), LOG);
+                data, new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of()), LOG);
 
         // Use a separate Mockito mock for the platform server so we can control
         // getOfflinePlayer() / isOp() independently of the MockBukkit ServerMock.
         mockServer = mock(Server.class);
-        platform = new PaperPlatform(null, mockServer);
-        listener = new UpdateModeListener(service, platform);
+        PaperPlatform platform = new PaperPlatform(null, mockServer);
+
+        mockMessages = mock(MessageService.class);
+        when(mockMessages.render("update-mode.kick-message")).thenReturn(KICK_COMPONENT);
+
+        listener = new UpdateModeListener(service, platform, mockMessages);
     }
 
     @AfterEach
@@ -94,8 +103,7 @@ class UpdateModeListenerTest {
 
     @Test
     void onPreLogin_whenActiveAndPlayerInBypassNames_allowsLogin() throws UnknownHostException {
-        service.updateConfig(
-                new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of("Alice"), null));
+        service.updateConfig(new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of("Alice")));
         service.setActive(true);
         UUID uuid = UUID.randomUUID();
         mockIsOp(uuid, false);
@@ -119,7 +127,7 @@ class UpdateModeListenerTest {
     }
 
     @Test
-    void onPreLogin_kickMessage_matchesConfig() throws UnknownHostException {
+    void onPreLogin_kickMessage_comesFromMessageService() throws UnknownHostException {
         service.setActive(true);
         UUID uuid = UUID.randomUUID();
         mockIsOp(uuid, false);
@@ -127,6 +135,6 @@ class UpdateModeListenerTest {
         AsyncPlayerPreLoginEvent event = preLoginEvent("Player", uuid);
         listener.onPreLogin(event);
 
-        assertThat(event.kickMessage()).isEqualTo(service.config().kickMessage());
+        assertThat(event.kickMessage()).isEqualTo(KICK_COMPONENT);
     }
 }

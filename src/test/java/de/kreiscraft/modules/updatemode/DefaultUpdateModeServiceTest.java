@@ -15,7 +15,7 @@ class DefaultUpdateModeServiceTest {
     private static final Logger LOG = Logger.getLogger("test");
 
     private static UpdateModeConfig defaultConfig() {
-        return new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of(), null);
+        return new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of());
     }
 
     @Test
@@ -78,7 +78,7 @@ class DefaultUpdateModeServiceTest {
         data.load();
         DefaultUpdateModeService svc = new DefaultUpdateModeService(data, defaultConfig(), LOG);
 
-        UpdateModeConfig newCfg = new UpdateModeConfig("kreiscraft.other.bypass", List.of("alice"), null);
+        UpdateModeConfig newCfg = new UpdateModeConfig("kreiscraft.other.bypass", List.of("alice"));
         svc.updateConfig(newCfg);
 
         assertThat(svc.config().bypassPermission()).isEqualTo("kreiscraft.other.bypass");

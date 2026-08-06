@@ -45,7 +45,7 @@ public final class UpdateModeModule implements Module {
         ctx.services().publish(UpdateModeService.class, service);
 
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
-        ctx.events().register(new UpdateModeListener(service, platform));
+        ctx.events().register(new UpdateModeListener(service, platform, ctx.messages()));
 
         ctx.commands().register(
                 UpdateModeCommand.build(service, ctx.messages()),
