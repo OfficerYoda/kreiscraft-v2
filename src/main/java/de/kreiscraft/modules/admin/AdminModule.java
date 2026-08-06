@@ -45,7 +45,7 @@ public final class AdminModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         if (config == null)
-            config = new AdminConfig(null);
+            config = new AdminConfig(null, null);
 
         MessageService messages = ctx.messages();
         Server server = ctx.plugin().getServer();
@@ -71,7 +71,7 @@ public final class AdminModule implements Module {
         ctx.commands().register(UuidCommand.build(messages, server), "Show a player's UUID");
         ctx.commands()
                 .register(
-                        LastOnlineCommand.build(messages, server),
+                        LastOnlineCommand.build(messages, server, () -> this.config),
                         "Show when a player was last online");
         ctx.commands()
                 .register(PingCommand.build(messages, server), "Show a player's ping");
@@ -83,7 +83,7 @@ public final class AdminModule implements Module {
         ctx.commands().register(SudoCommand.build(messages, server), "Force a player to chat");
         ctx.commands()
                 .register(
-                        KHelpCommand.build(messages, config),
+                        KHelpCommand.build(messages, () -> this.config),
                         "Show Kreiscraft help links",
                         "?");
     }
@@ -92,7 +92,7 @@ public final class AdminModule implements Module {
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
             AdminConfig reloaded = moduleConfig.get(AdminConfig.class);
-            this.config = reloaded != null ? reloaded : new AdminConfig(null);
+            this.config = reloaded != null ? reloaded : new AdminConfig(null, null);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

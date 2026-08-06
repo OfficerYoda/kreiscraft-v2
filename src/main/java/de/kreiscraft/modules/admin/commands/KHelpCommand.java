@@ -6,6 +6,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.admin.AdminConfig;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import java.util.function.Supplier;
 import org.bukkit.command.CommandSender;
 
 public final class KHelpCommand {
@@ -13,20 +14,21 @@ public final class KHelpCommand {
     private KHelpCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
-            MessageService messages, AdminConfig config) {
+            MessageService messages, Supplier<AdminConfig> configSupplier) {
         return Commands.literal("khelp")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.admin.help"))
                 .executes(ctx -> {
                     CommandSender sender = ctx.getSource().getSender();
+                    AdminConfig cfg = configSupplier.get();
                     messages.send(
                             sender,
                             "admin.help.text",
                             "website",
-                            config.links().website().toString(),
+                            cfg.links().website().toString(),
                             "discord",
-                            config.links().discord().toString(),
+                            cfg.links().discord().toString(),
                             "youtube",
-                            config.links().youtube().toString());
+                            cfg.links().youtube().toString());
                     return Command.SINGLE_SUCCESS;
                 })
                 .build();

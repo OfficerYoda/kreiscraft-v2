@@ -5,6 +5,7 @@
 ```yaml
   admin:
     enabled: false
+    timezone: "UTC"
     links:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"

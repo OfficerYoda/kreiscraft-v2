@@ -10,10 +10,12 @@ import org.bukkit.command.CommandSender;
 public final class CapturingMessageService implements MessageService {
 
     public final List<String> sentKeys = new ArrayList<>();
+    public final List<Object[]> sentPlaceholders = new ArrayList<>();
 
     @Override
     public void send(CommandSender sender, String key, Object... placeholders) {
         sentKeys.add(key);
+        sentPlaceholders.add(placeholders);
     }
 
     @Override

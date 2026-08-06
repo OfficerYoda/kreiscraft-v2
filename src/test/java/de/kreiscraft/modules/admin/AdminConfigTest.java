@@ -14,11 +14,20 @@ class AdminConfigTest {
         ConfigurationNode node = CommentedConfigurationNode.root();
         AdminConfig cfg = node.get(AdminConfig.class);
         if (cfg == null)
-            cfg = new AdminConfig(null);
+            cfg = new AdminConfig(null, null);
         assertThat(cfg.links()).isNotNull();
         assertThat(cfg.links().website()).isEqualTo(URI.create("https://kreiscraft.de"));
         assertThat(cfg.links().discord().toString()).contains("discord");
         assertThat(cfg.links().youtube().toString()).contains("youtube");
+    }
+
+    @Test
+    void defaults_timezoneIsUtc() throws Exception {
+        ConfigurationNode node = CommentedConfigurationNode.root();
+        AdminConfig cfg = node.get(AdminConfig.class);
+        if (cfg == null)
+            cfg = new AdminConfig(null, null);
+        assertThat(cfg.timezone()).isEqualTo("UTC");
     }
 
     @Test
@@ -32,5 +41,14 @@ class AdminConfigTest {
         assertThat(cfg.links().website()).isEqualTo(URI.create("https://example.com"));
         assertThat(cfg.links().discord()).isEqualTo(URI.create("https://discord.gg/test"));
         assertThat(cfg.links().youtube()).isEqualTo(URI.create("https://youtube.com/@test"));
+    }
+
+    @Test
+    void parsesTimezone_whenPresent() throws Exception {
+        ConfigurationNode node = CommentedConfigurationNode.root();
+        node.node("timezone").set("Europe/Berlin");
+        AdminConfig cfg = node.get(AdminConfig.class);
+        assertThat(cfg).isNotNull();
+        assertThat(cfg.timezone()).isEqualTo("Europe/Berlin");
     }
 }
