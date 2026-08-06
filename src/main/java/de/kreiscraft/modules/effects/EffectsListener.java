@@ -35,13 +35,19 @@ public final class EffectsListener implements PriorityListener {
         }
 
         EffectsConfig cfg = service.getConfig();
+        // Use the 9-arg Paper overload so the operator-configured `force` flag
+        // (send particle to players regardless of their particle settings) is honoured.
+        // `extra` (speed) is 0.0 and data is null — correct for data-less particles.
         player.getWorld()
-                .spawnParticle(
+                .<Void>spawnParticle(
                         service.getParticle(player.getUniqueId()),
                         player.getLocation(),
                         cfg.count(),
                         cfg.offsetX(),
                         cfg.offsetY(),
-                        cfg.offsetZ());
+                        cfg.offsetZ(),
+                        0.0,
+                        null,
+                        cfg.force());
     }
 }

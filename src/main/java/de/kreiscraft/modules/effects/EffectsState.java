@@ -5,7 +5,7 @@ import org.bukkit.Particle;
 /** Per-player runtime state for the effects module. Package-private — not part of the public API. */
 final class EffectsState {
 
-    boolean enabled;
+    volatile boolean enabled;
     Particle particle;
 
     EffectsState(Particle defaultParticle) {
