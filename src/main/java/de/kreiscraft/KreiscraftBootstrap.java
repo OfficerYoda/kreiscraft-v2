@@ -116,6 +116,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.jail.JailModule());
         modules.register(new de.kreiscraft.modules.pluginhider.PluginHiderModule());
         modules.register(new de.kreiscraft.modules.positions.PositionsModule());
+        modules.register(new de.kreiscraft.modules.reboot.RebootModule());
 
         StartupSummary summary = modules.enableAll();
         messages.broadcast("core.startup.summary",

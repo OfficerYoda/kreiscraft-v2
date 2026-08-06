@@ -55,3 +55,6 @@ permissions:
   kreiscraft.positions.use:
     description: Save/teleport to personal positions
     default: true
+  kreiscraft.reboot.admin:
+    description: Trigger or cancel a server restart
+    default: op

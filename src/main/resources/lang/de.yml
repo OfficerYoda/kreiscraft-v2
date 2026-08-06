@@ -78,3 +78,11 @@ positions:
   list-header: "<prefix> <gray>Deine Positionen (<count>):"
   list-entry: "<gray>- <name> (<world> <x> <y> <z>)"
   teleported: "<prefix> <green>Zu <name></green> teleportiert."
+reboot:
+  started: "<prefix> <yellow>Neustart in <seconds></yellow>s — <reason>"
+  cancelled: "<prefix> <green>Neustart abgebrochen."
+  not-running: "<prefix> <red>Kein Neustart läuft."
+  countdown-title: "<red>Neustart in <seconds></red>"
+  countdown-chat: "<prefix> <red>Neustart in <seconds></red> Sekunden."
+  seed-blocked: "<prefix> <red>/seed ist deaktiviert."
+  kick-message: "<red>Server startet neu</red>"
