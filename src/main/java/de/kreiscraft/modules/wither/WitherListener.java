@@ -4,6 +4,9 @@ import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.Supplier;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Location;
 import org.bukkit.Server;
@@ -27,14 +30,24 @@ public final class WitherListener implements PriorityListener {
     private static final String HALF_TAG = "Half";
     private static final int DEATH_COUNTDOWN_TICKS = 10;
 
-    private final WitherConfig config;
+    private final Supplier<WitherConfig> config;
     private final MessageService messages;
     private final Scheduler scheduler;
 
-    public WitherListener(WitherConfig config, MessageService messages, Scheduler scheduler) {
+    /** Tracks in-flight death-countdown tasks so shutdown() can cancel them. */
+    private final Set<Scheduler.Task> activeTasks = new LinkedHashSet<>();
+
+    public WitherListener(
+            Supplier<WitherConfig> config, MessageService messages, Scheduler scheduler) {
         this.config = config;
         this.messages = messages;
         this.scheduler = scheduler;
+    }
+
+    /** Cancels all in-flight death-countdown tasks. Call from {@code WitherModule.disable()}. */
+    public void shutdown() {
+        activeTasks.forEach(Scheduler.Task::cancel);
+        activeTasks.clear();
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -42,18 +55,19 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
+        WitherConfig cfg = config.get();
         AttributeInstance maxHealthAttr = wither.getAttribute(Attribute.MAX_HEALTH);
         if (maxHealthAttr != null) {
-            maxHealthAttr.setBaseValue(config.maxHealth());
-            wither.setHealth(config.maxHealth());
+            maxHealthAttr.setBaseValue(cfg.maxHealth());
+            wither.setHealth(cfg.maxHealth());
         }
         AttributeInstance attackAttr = wither.getAttribute(Attribute.ATTACK_DAMAGE);
         if (attackAttr != null) {
-            attackAttr.setBaseValue(config.attackDamage());
+            attackAttr.setBaseValue(cfg.attackDamage());
         }
         AttributeInstance armorAttr = wither.getAttribute(Attribute.ARMOR);
         if (armorAttr != null) {
-            armorAttr.setBaseValue(config.armor());
+            armorAttr.setBaseValue(cfg.armor());
         }
         addToWitherTeam(wither.getServer(), wither);
     }
@@ -63,7 +77,8 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
-        if (wither.getHealth() <= config.halfHealthThreshold()
+        WitherConfig cfg = config.get();
+        if (wither.getHealth() <= cfg.halfHealthThreshold()
                 && !wither.getScoreboardTags().contains(HALF_TAG)) {
             wither.addScoreboardTag(HALF_TAG);
             Location halfLoc = wither.getLocation();
@@ -72,13 +87,13 @@ public final class WitherListener implements PriorityListener {
                             halfLoc.getX(),
                             halfLoc.getY(),
                             halfLoc.getZ(),
-                            (float) config.halfHealthExplosionPower(),
-                            true,
-                            true);
+                            (float) cfg.halfHealthExplosionPower(),
+                            false,
+                            false);
             Team team = getOrCreateWitherTeam(wither.getServer());
-            for (int i = 0; i < config.minionCount(); i++) {
-                Entity skeleton = wither.getWorld()
-                        .spawnEntity(wither.getLocation(), EntityType.WITHER_SKELETON);
+            for (int i = 0; i < cfg.minionCount(); i++) {
+                Entity skeleton =
+                        wither.getWorld().spawnEntity(wither.getLocation(), EntityType.WITHER_SKELETON);
                 team.addEntity(skeleton);
             }
         }
@@ -89,6 +104,7 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
+        WitherConfig cfg = config.get();
         Location loc = wither.getLocation();
         event.getDrops().forEach(itemStack -> {
             Entity item = loc.getWorld().dropItem(loc, itemStack);
@@ -102,7 +118,7 @@ public final class WitherListener implements PriorityListener {
                 0f,
                 BossBar.Color.PURPLE,
                 BossBar.Overlay.PROGRESS);
-        int radius = config.deathBossBarRadius();
+        int radius = cfg.deathBossBarRadius();
         for (Player player : loc.getWorld().getPlayers()) {
             if (player.getLocation().distance(loc) <= radius) {
                 player.showBossBar(bar);
@@ -120,15 +136,17 @@ public final class WitherListener implements PriorityListener {
                                 loc.getX(),
                                 loc.getY(),
                                 loc.getZ(),
-                                (float) config.deathExplosionPower());
+                                (float) config.get().deathExplosionPower());
                 for (Player player : loc.getWorld().getPlayers()) {
                     player.hideBossBar(bar);
                 }
                 if (taskRef[0] != null) {
                     taskRef[0].cancel();
+                    activeTasks.remove(taskRef[0]);
                 }
             }
         });
+        activeTasks.add(taskRef[0]);
     }
 
     private Team getOrCreateWitherTeam(Server server) {

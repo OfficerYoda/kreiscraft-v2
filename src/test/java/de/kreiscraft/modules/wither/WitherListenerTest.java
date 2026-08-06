@@ -18,6 +18,7 @@ import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.text.Component;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.damage.DamageSource;
@@ -51,7 +52,7 @@ class WitherListenerTest {
         when(messages.render(anyString())).thenReturn(Component.empty());
         scheduler = new MockScheduler();
         config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0);
-        listener = new WitherListener(config, messages, scheduler);
+        listener = new WitherListener(() -> config, messages, scheduler);
     }
 
     @AfterEach
@@ -96,6 +97,33 @@ class WitherListenerTest {
         Scoreboard sb = server.getScoreboardManager().getMainScoreboard();
         assertThat(sb.getTeam("bedrock_wither")).isNotNull();
         assertThat(sb.getTeam("bedrock_wither").allowFriendlyFire()).isFalse();
+    }
+
+    // --- Config hot-reload test (fix 2) ---
+
+    @Test
+    void onCreatureSpawn_afterConfigReload_usesUpdatedMaxHealth() {
+        AtomicReference<WitherConfig> configRef =
+                new AtomicReference<>(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0));
+        WitherListener reloadListener =
+                new WitherListener(configRef::get, messages, scheduler);
+
+        // First spawn — original max health
+        WitherMock wither1 = new WitherMock(server, UUID.randomUUID(), world);
+        wither1.registerAttribute(Attribute.MAX_HEALTH);
+        reloadListener.onCreatureSpawn(
+                new CreatureSpawnEvent(wither1, CreatureSpawnEvent.SpawnReason.DEFAULT));
+        assertThat(wither1.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(600.0);
+
+        // Simulate config reload with new max health
+        configRef.set(new WitherConfig(800.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0));
+
+        // Second spawn — updated max health should be applied
+        WitherMock wither2 = new WitherMock(server, UUID.randomUUID(), world);
+        wither2.registerAttribute(Attribute.MAX_HEALTH);
+        reloadListener.onCreatureSpawn(
+                new CreatureSpawnEvent(wither2, CreatureSpawnEvent.SpawnReason.DEFAULT));
+        assertThat(wither2.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(800.0);
     }
 
     // --- Damage event tests ---
@@ -148,7 +176,7 @@ class WitherListenerTest {
         assertThat(world.getEntitiesByClass(WitherSkeleton.class)).isEmpty();
     }
 
-    // --- Death event tests (step 4: MockScheduler countdown) ---
+    // --- Death event tests (countdown + shutdown) ---
 
     @Test
     void onEntityDeath_afterTenSeconds_createsExplosion() {
@@ -184,6 +212,26 @@ class WitherListenerTest {
         // Explosion fires exactly once, not repeated
         verify(arena, times(1))
                 .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
+    }
+
+    @Test
+    void onEntityDeath_shutdownBeforeCompletion_noExplosionFired() {
+        WorldMock arena = spiedWorldWithExplosionSupport("arena3");
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), arena);
+        EntityDeathEvent event = new EntityDeathEvent(
+                wither, mock(DamageSource.class), new ArrayList<>());
+
+        listener.onEntityDeath(event);
+        // Advance part-way through countdown (6 ticks fired, count=6, no explosion)
+        scheduler.advance(Duration.ofSeconds(5));
+
+        // Module/server disabled — cancel all in-flight tasks
+        listener.shutdown();
+
+        // Remaining time passes but task is cancelled
+        scheduler.advance(Duration.ofSeconds(5));
+
+        verify(arena, never()).createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
     }
 
     // --- Helper ---
