@@ -10,7 +10,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 public final class BotData extends DataFile<Map<String, BotRecord>> {
 
     public BotData(Path dataFolder) {
-        super(dataFolder, "bot.yml");
+        super(dataFolder, "data/bot.yml");
     }
 
     @Override

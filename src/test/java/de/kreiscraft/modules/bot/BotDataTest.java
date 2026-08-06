@@ -34,7 +34,8 @@ class BotDataTest {
     @Test
     void load_parsesBotsSection(@TempDir Path tmp) throws IOException {
         // Write a YAML file with a bot entry
-        Path botYml = tmp.resolve("bot.yml");
+        Files.createDirectories(tmp.resolve("data"));
+        Path botYml = tmp.resolve("data/bot.yml");
         Files.writeString(botYml,
                 "bots:\n" +
                         "  testbot:\n" +
