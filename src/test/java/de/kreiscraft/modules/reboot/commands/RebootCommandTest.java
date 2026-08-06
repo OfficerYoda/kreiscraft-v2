@@ -46,7 +46,6 @@ class RebootCommandTest {
     void setUp() {
         config = new RebootConfig(
                 Duration.ofSeconds(60),
-                "Server restarting",
                 List.of(500, 60, 30, 10),
                 List.of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
         when(source.getSender()).thenReturn(sender);

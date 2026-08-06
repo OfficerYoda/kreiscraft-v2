@@ -109,9 +109,9 @@ public final class DefaultRebootService implements RebootService {
                 task.cancel();
                 task = null;
             }
-            String kick = config.kickMessage();
+            Component kickMessage = messages.render("reboot.kick-message");
             for (Player player : platform.server().getOnlinePlayers()) {
-                player.kick(Component.text(kick));
+                player.kick(kickMessage);
             }
             platform.server().shutdown();
         }

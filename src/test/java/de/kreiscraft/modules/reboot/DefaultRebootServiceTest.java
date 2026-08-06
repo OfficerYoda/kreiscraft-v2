@@ -3,6 +3,7 @@ package de.kreiscraft.modules.reboot;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,10 +47,7 @@ class DefaultRebootServiceTest {
     void setUp() {
         scheduler = new MockScheduler();
         config = new RebootConfig(
-                Duration.ofSeconds(60),
-                "Server restarting",
-                List.of(500, 60, 30, 10),
-                List.of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
+                Duration.ofSeconds(60), List.of(500, 60, 30, 10), List.of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
         when(platform.server()).thenReturn(server);
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
         service = new DefaultRebootService(scheduler, messages, platform, config);
@@ -115,18 +114,32 @@ class DefaultRebootServiceTest {
     }
 
     @Test
-    void tick_atZero_kicksAllAndShutsdown() {
+    void tick_atZero_kicksAllWithLangKeyAndShutsDown() {
         Player player = mock(Player.class);
-        @SuppressWarnings("unchecked")
-        Collection<Player> players = List.of(player);
-        when(server.getOnlinePlayers()).thenReturn((Collection) players);
+        Component kickComponent = Component.text("Server restarting");
+        // Stub render to return a distinct component so we can assert it was used for kick
+        when(messages.render("reboot.kick-message")).thenReturn(kickComponent);
+        doReturn(List.of(player)).when(server).getOnlinePlayers();
 
         service.start(Duration.ofSeconds(1), "test");
         scheduler.advance(Duration.ofSeconds(1));
 
         assertThat(service.isRunning()).isFalse();
-        verify(player).kick(any());
+        // Verify kick used the component rendered from the lang key, not a hard-coded string
+        verify(player).kick(kickComponent);
         verify(server).shutdown();
+    }
+
+    @Test
+    void tick_atZero_rendersKickMessageFromLangKey() {
+        when(messages.render("reboot.kick-message")).thenReturn(Component.empty());
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
+
+        service.start(Duration.ofSeconds(1), "test");
+        scheduler.advance(Duration.ofSeconds(1));
+
+        // Verify the lang key is used, not a hard-coded string
+        verify(messages).render("reboot.kick-message");
     }
 
     @Test
