@@ -34,3 +34,9 @@ permissions:
   kreiscraft.glow.use:
     description: Toggle glow effect
     default: true
+  kreiscraft.invsee.view:
+    description: View another player's inventory
+    default: op
+  kreiscraft.invsee.edit:
+    description: Edit another player's inventory
+    default: op

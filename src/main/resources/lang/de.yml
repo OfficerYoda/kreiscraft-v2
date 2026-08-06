@@ -48,3 +48,9 @@ effects:
 glow:
   enabled: "<prefix> <green>Glow aktiviert."
   disabled: "<prefix> <yellow>Glow deaktiviert."
+invsee:
+  gui-title-inv: "<gray>Inventar von <player>"
+  gui-title-ec: "<gray>Enderchest von <player>"
+  offline-empty: "<prefix> <yellow>Kein Inventardaten für <player></yellow> gefunden."
+  target-not-found: "<prefix> <red>Spieler <player></red> nicht gefunden."
+  read-error: "<prefix> <red>Fehler beim Lesen der Offline-Daten."

@@ -52,3 +52,5 @@ modules:
     namespace-key: "kreiscraft:firework_rocket"
   glow:
     enabled: false
+  invsee:
+    enabled: false
