@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.javalin)
 
     testImplementation(libs.paper.api)
+    testImplementation(libs.javalin.testtools)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
