@@ -34,6 +34,7 @@ dependencies {
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.mockbukkit)
     testImplementation(libs.assertj.core)
+    testImplementation(libs.javalin.testtools)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

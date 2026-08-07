@@ -18,6 +18,7 @@ assertj = "3.25.3"
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
 configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
 javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
+javalin-testtools = { module = "io.javalin:javalin-testtools", version.ref = "javalin" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 invui = { module = "xyz.xenondevs.invui:invui", version.ref = "invui" }
