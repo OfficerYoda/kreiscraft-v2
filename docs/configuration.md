@@ -264,7 +264,7 @@ current release.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enables or disables the world-border start-sequence module. |
-| `countdown` | `Duration` | `10s` | Delay between the `/startsequence` command and the border expansion beginning. |
+| `countdown` | `Duration` | `10s` | Delay between the `/start` command and the border expansion beginning. |
 | `initial-border-size` | `double` | `50.0` | World-border diameter (in blocks) at the start of the sequence. |
 | `target-border-size` | `double` | `30000000.0` | Final world-border diameter (in blocks) once the full expansion completes. |
 | `phase-1-duration` | `Duration` | `550000s` | Duration of the first expansion phase (border moves from initial to half-target). |

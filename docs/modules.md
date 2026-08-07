@@ -9,7 +9,7 @@ Every module can be enabled or disabled independently with `modules.<id>.enabled
 
 ## admin
 
-The `admin` module bundles 14 small operator commands — `/kreiscraftgm`, `/i`, `/kopf`, `/head`, `/weather`, `/sm`, `/ip`, `/uuid`, `/lastonline`, `/ping`, `/tps`, `/statistic`, `/sudo`, and `/khelp` — that have no config or listeners of their own and are too small to warrant individual modules. Toggle with `modules.admin.enabled` in `config.yml`; restart required. **Publishes:** None. **Consumes:** `PlaceholderResolver` (used by `/tps` to inject spark data). The `/tps` command delegates to spark when spark is present on the server, falling back to a built-in TPS estimate otherwise.
+The `admin` module bundles 14 small operator commands — `/kreiscraftgamemode`, `/item`, `/skull`, `/head`, `/kreiscraftweather`, `/spawnmob`, `/ip`, `/uuid`, `/lastonline`, `/ping`, `/tps`, `/statistic`, `/sudo`, and `/khelp` — that have no config or listeners of their own and are too small to warrant individual modules. Toggle with `modules.admin.enabled` in `config.yml`; restart required. **Publishes:** None. **Consumes:** `PlaceholderResolver` (used by `/tps` to inject spark data). The `/tps` command delegates to spark when spark is present on the server, falling back to a built-in TPS estimate otherwise.
 
 ## anti-cheat
 

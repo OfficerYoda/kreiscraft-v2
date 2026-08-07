@@ -38,7 +38,7 @@ Full descriptions, config keys, and permission nodes: [`docs/modules.md`](docs/m
 
 | Module ID | Summary |
 |---|---|
-| `admin` | Admin utility commands: `/gm`, `/ping`, `/tps`, `/sudo`, `/ip`, `/uuid`, `/head`, `/skull`, `/spawnmob`, `/statistic`, `/weather`, `/lastonline` |
+| `admin` | 14 small operator commands (item, teleport, weather, spawnmob, gamemode, ip lookup, statistic query, sudo, and more); see [`docs/modules.md`](docs/modules.md) for the full list |
 | `anti-cheat` | Client-brand-based cheat detection with hacker log storage and `/hackerlogs` command |
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
 | `bedrock` | Bedrock player tracking, `/bedrockList` command, and Java-only whitelist enforcement |
@@ -53,7 +53,7 @@ Full descriptions, config keys, and permission nodes: [`docs/modules.md`](docs/m
 | `jail` | `/jail` and `/unjail` commands with configurable jail location and timed sentences |
 | `plugin-hider` | Intercepts `/plugins` and `/version` to hide the installed plugin list |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` command and persistent per-player storage |
-| `reboot` | Countdown + broadcast reboot with `/reboot` command and configurable auto-schedule |
+| `reboot` | Countdown + broadcast reboot with `/reboot` command and configurable countdown broadcast (default-countdown, title-seconds, chat-seconds) |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
 | `sign-color` | MiniMessage colour codes in sign text and anvil rename fields |
 | `spawn` | Server spawn management: `/setspawn`, `/spawn`, glide zone, swap-hand boost, and launch pad |
@@ -66,7 +66,7 @@ Full descriptions, config keys, and permission nodes: [`docs/modules.md`](docs/m
 
 ## API endpoints
 
-The `api` module starts a Javalin server on the configured host/port (default `0.0.0.0:7070`).
+The `api` module starts a Javalin server on the configured host/port (default `0.0.0.0:8080`).
 
 | Method | Path | Purpose | Auth |
 |---|---|---|---|
@@ -78,7 +78,11 @@ The `api` module starts a Javalin server on the configured host/port (default `0
 | POST | `/unlink-player` | Remove link | Session cookie |
 | GET | `/whitelist` | Read server whitelist | `X-Kreiscraft-Api-Key` |
 | POST | `/whitelist` | Add player to whitelist | `X-Kreiscraft-Api-Key` |
-| WS | `/chat` | Bidirectional chat + verification events | Session cookie |
+| WS | `/chat` | Bidirectional chat + verification events | None |
+
+> **Note:** The `/chat` WebSocket accepts unauthenticated connections in Plan 4; per-message
+> actions that write to the game (`CHAT` type) are routed through in-game chat which is subject
+> to normal server permissions. Enforcing session cookies on WS connect is Plan 5+ territory.
 
 ## Configuration
 
