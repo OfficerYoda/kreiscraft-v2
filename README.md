@@ -8,17 +8,16 @@ Combined Paper 26.x plugin: gameplay + admin utilities + web API bridge.
 - Paper Brigadier commands + Adventure MiniMessage everywhere.
 - YAML configuration (Configurate) + separate `data/` files for runtime state.
 - Test coverage on all business logic via JUnit 6, MockBukkit, and Mockito.
+- Javalin HTTP + WebSocket API for web frontends (see [API endpoints](#api-endpoints) below).
 
 ## Build
 
 ```bash
-./gradlew build              # compile + Spotless check + tests
+./gradlew build test         # compile + Spotless check + tests
 ./gradlew test               # tests only
 ./gradlew spotlessApply      # auto-format all Java sources
+./gradlew runServer          # spin up a local Paper server with the plugin loaded
 ```
-
-> **Note:** The `runServer` task (run-paper plugin) is present but requires a Paper version
-> to be configured in `build.gradle.kts` before it will work. This is planned for Plan 2.
 
 ## Repository layout
 
@@ -30,7 +29,69 @@ src/main/java/de/kreiscraft/
 └── core/                        the platform (module system, config, messages, scheduler, events)
 ```
 
-Feature modules live under `modules/` (added in Plan 3+).
+Feature modules live under `modules/`.
+
+## Modules
+
+25 opt-in modules (all enabled by default; disable any in `config.yml`).
+Full descriptions, config keys, and permission nodes: [`docs/modules.md`](docs/modules.md).
+
+| Module ID | Summary |
+|---|---|
+| `admin` | Admin utility commands: `/gm`, `/ping`, `/tps`, `/sudo`, `/ip`, `/uuid`, `/head`, `/skull`, `/spawnmob`, `/statistic`, `/weather`, `/lastonline` |
+| `anti-cheat` | Client-brand-based cheat detection with hacker log storage and `/hackerlogs` command |
+| `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
+| `bedrock` | Bedrock player tracking, `/bedrockList` command, and Java-only whitelist enforcement |
+| `bot` | Bot-account detection and data persistence |
+| `chat-format` | Custom in-game chat formatting via MiniMessage; bridges formatted messages to the shared `ChatBridge` |
+| `clickthrough` | Per-player toggle to click through grass and similar blocks; integrates with `settings-gui` |
+| `combat` | Combat tag and PvP protection rules with per-player toggle via `settings-gui` |
+| `effects` | `/effects` command for players to apply and remove their own potion effects |
+| `firework` | Automatic firework launches on configurable server events |
+| `glow` | `/glow` command to toggle a player's glowing outline |
+| `invsee` | `/invsee` and `/enderchest` (`/ec`) commands to inspect other players' inventories |
+| `jail` | `/jail` and `/unjail` commands with configurable jail location and timed sentences |
+| `plugin-hider` | Intercepts `/plugins` and `/version` to hide the installed plugin list |
+| `positions` | Named waypoint system with InvUI GUI; `/pos` command and persistent per-player storage |
+| `reboot` | Countdown + broadcast reboot with `/reboot` command and configurable auto-schedule |
+| `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
+| `sign-color` | MiniMessage colour codes in sign text and anvil rename fields |
+| `spawn` | Server spawn management: `/setspawn`, `/spawn`, glide zone, swap-hand boost, and launch pad |
+| `start-sequence` | Startup animation sequence displayed to players joining a freshly-started server |
+| `status` | Server status service (online players, TPS) with `/status` command; consumed by `chat-format` and `api` |
+| `tablist` | Custom tab-list header/footer with configurable MiniMessage templates and placeholder support |
+| `update-mode` | Maintenance mode: locks the server to whitelisted operators via `/updatemode` |
+| `wither` | Configurable Wither spawn behaviour and per-world restrictions |
+| `world-mgmt` | `/world`, `/portal`, and `/setworldspawn` commands for multi-world navigation |
+
+## API endpoints
+
+The `api` module starts a Javalin server on the configured host/port (default `0.0.0.0:7070`).
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| GET | `/status` | Server metrics | None |
+| GET | `/players` | Online player snapshots | None |
+| GET | `/initialize` | Get/create browser session UUID cookie | None |
+| POST | `/link-player` | Request Bukkit account link | Session cookie |
+| GET | `/linked-player` | Query link state | Session cookie |
+| POST | `/unlink-player` | Remove link | Session cookie |
+| GET | `/whitelist` | Read server whitelist | `X-Kreiscraft-Api-Key` |
+| POST | `/whitelist` | Add player to whitelist | `X-Kreiscraft-Api-Key` |
+| WS | `/chat` | Bidirectional chat + verification events | Session cookie |
+
+## Configuration
+
+All config keys, defaults, and hot-reload behaviour: [`docs/configuration.md`](docs/configuration.md).
+
+## Permissions
+
+Full permission tree with defaults and inheritance: [`docs/permissions.md`](docs/permissions.md).
+
+## Migrating from legacy plugins
+
+Replacing the old `kreiscraft-api` or other standalone plugins with this monolith:
+[`docs/migration-from-legacy.md`](docs/migration-from-legacy.md).
 
 ## Contributing
 
