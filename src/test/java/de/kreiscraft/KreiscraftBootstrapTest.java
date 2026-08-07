@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleRegistry;
 import de.kreiscraft.modules.admin.AdminModule;
+import de.kreiscraft.modules.api.ApiModule;
 import de.kreiscraft.modules.anticheat.AntiCheatModule;
 import de.kreiscraft.modules.bedrock.BedrockModule;
 import de.kreiscraft.modules.bot.BotModule;
@@ -37,11 +38,12 @@ class KreiscraftBootstrapTest {
 
     /** Mirror of KreiscraftBootstrap.start() — sole source of truth for the registered set. */
     // MODULE_COUNT is updated by Task B.9 when the api module is added (24 → 25).
-    private static final int MODULE_COUNT = 24;
+    private static final int MODULE_COUNT = 25;
 
     private static List<Module> allModules() {
         return List.of(
                 new AdminModule(),
+                new ApiModule(),
                 new AntiCheatModule(),
                 new BedrockModule(),
                 new BotModule(),

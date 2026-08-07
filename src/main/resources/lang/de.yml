@@ -21,6 +21,13 @@ admin:
     text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
   target-not-found: "<prefix> <red>Spieler <player></red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
+api:
+  link-prompt-title: "<gray>Verknüpfen mit <browser>"
+  link-prompt-info: "<yellow>Website möchte sich mit deinem Account verknüpfen"
+  link-prompt-accept: "<green>Akzeptieren"
+  link-prompt-decline: "<red>Ablehnen"
+  chat-format-from-web: "<gray>[WEB]</gray> <content>"
+  unlinked: "<prefix> <yellow>Deine Website-Verknüpfung wurde aufgehoben."
 anti-cheat:
   cheat-kick: "<red>Bitte entferne deinen Cheat-Client (<detail>)."
   xray-kick: "<red>X-Ray erkannt. Bitte entfernen."

@@ -22,6 +22,9 @@ permissions:
   kreiscraft.anticheat.view:
     description: View hack logs
     default: op
+  kreiscraft.api.link:
+    description: Link a browser session to a Bukkit account via /link-player
+    default: true
   kreiscraft.bedrock.admin:
     description: Manage the bedrock whitelist
     default: op
