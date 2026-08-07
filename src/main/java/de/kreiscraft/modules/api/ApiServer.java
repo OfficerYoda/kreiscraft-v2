@@ -85,14 +85,12 @@ public final class ApiServer {
                 Javalin.create(
                         cfg -> {
                             cfg.bundledPlugins.enableCors(
-                                    cors -> config.corsOrigins()
-                                            .forEach(
-                                                    o -> cors.addRule(
-                                                            r -> {
-                                                                r.allowHost(o);
-                                                                r.allowCredentials =
-                                                                        true;
-                                                            })));
+                                    cors -> cors.addRule(
+                                            r -> {
+                                                r.allowCredentials = true;
+                                                config.corsOrigins()
+                                                        .forEach(r::allowHost);
+                                            }));
                             cfg.jsonMapper(new JavalinJackson(mapper, true));
                             cfg.http.asyncTimeout = config.asyncTimeout().toMillis();
                         });

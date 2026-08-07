@@ -178,7 +178,7 @@ public final class ChatWebSocketRoutes {
                 // Bukkit API must run on the main thread — schedule via Scheduler
                 scheduler.runOnMain(
                         () -> messages.broadcast(
-                                "api.chat-format.from-web", "content", msg.content()));
+                                "api.chat-format-from-web", "content", msg.content()));
                 // Echo to OTHER connected clients (sender's UI already showed it optimistically)
                 broadcastToWsClientsExcept(
                         ctx, new WebSocketMessage(WebSocketMessageType.CHAT, msg.content()));

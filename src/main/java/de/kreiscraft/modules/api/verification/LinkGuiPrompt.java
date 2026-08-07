@@ -60,7 +60,7 @@ public final class LinkGuiPrompt {
 
         // Title from MessageService
         Component title =
-                messages.render("api.link-prompt.title", "browser", browserDescription);
+                messages.render("api.link-prompt-title", "browser", browserDescription);
 
         gui.open(target, invui, title);
     }
@@ -92,18 +92,18 @@ public final class LinkGuiPrompt {
 
         // Info item — paper with browser description
         Component infoName =
-                messages.render("api.link-prompt.info", "browser", browserDescription);
+                messages.render("api.link-prompt-info", "browser", browserDescription);
         SimpleItem infoItem =
                 new SimpleItem(
                         new ItemBuilder(Material.PAPER)
                                 .setDisplayName(new AdventureComponentWrapper(infoName)));
 
         // Accept item — green wool
-        Component acceptName = messages.render("api.link-prompt.accept");
+        Component acceptName = messages.render("api.link-prompt-accept");
         AbstractItem acceptItem = createClickItem(Material.GREEN_WOOL, acceptName, onAccept);
 
         // Decline item — red wool
-        Component declineName = messages.render("api.link-prompt.decline");
+        Component declineName = messages.render("api.link-prompt-decline");
         AbstractItem declineItem = createClickItem(Material.RED_WOOL, declineName, onDecline);
 
         xyz.xenondevs.invui.gui.Gui invui =

@@ -191,7 +191,7 @@ class ChatWebSocketRoutesTest {
         routes.handleMessage(senderCtx, "{\"type\":\"CHAT\",\"content\":\"hello world\"}");
 
         // MockScheduler.runOnMain() executes the task immediately
-        verify(mockMessages).broadcast("api.chat-format.from-web", "content", "hello world");
+        verify(mockMessages).broadcast("api.chat-format-from-web", "content", "hello world");
 
         // Receiver: VERIFICATION (from handleConnect) + CHAT echo = 2 sends
         ArgumentCaptor<String> receiverCaptor = ArgumentCaptor.forClass(String.class);

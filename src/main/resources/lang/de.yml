@@ -5,6 +5,7 @@ core:
     failure: "<prefix> <red>Reload fehlgeschlagen: <error>"
   startup:
     summary: "<prefix> <green><enabled> Module aktiv</green>, <yellow><disabled> deaktiviert</yellow>, <red><failed> fehlgeschlagen</red>."
+  player-only: "<prefix> <red>Dieser Befehl kann nur von Spielern verwendet werden."
 admin:
   gamemode-set: "<prefix> <green>Spielmodus für <player></green> auf <mode></green>."
   item-given: "<prefix> <green><count>x <item></green>."
