@@ -15,6 +15,8 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -192,13 +194,30 @@ class WhitelistRoutesTest {
         WhitelistRoutes.register(app, configWithKey("secret"), whitelist, SYNC_SCHEDULER);
 
         JavalinTest.test(app, (server, client) -> {
-            // Empty JSON object → playerName deserializes as null → 400
+            // Empty JSON object → playerName deserializes as null → 400 with invalid_name body
             var response = client.post(
                     "/whitelist",
                     Map.of(),
                     req -> req.header("X-Kreiscraft-Api-Key", "secret"));
             assertThat(response.code()).isEqualTo(400);
+            assertThat(response.body().string()).contains("invalid_name");
             verify(whitelist, never()).addJavaPlayer(org.mockito.ArgumentMatchers.any());
+        });
+    }
+
+    @Test
+    void post_whitelist_malformedJson_returns400WithInvalidBodyError() {
+        var whitelist = mock(WhitelistService.class);
+        var app = Javalin.create();
+        WhitelistRoutes.register(app, configWithKey("secret"), whitelist, SYNC_SCHEDULER);
+
+        JavalinTest.test(app, (server, client) -> {
+            var response = client.request(
+                    "/whitelist",
+                    req -> req.post(RequestBody.create("not-json", MediaType.get("application/json")))
+                            .header("X-Kreiscraft-Api-Key", "secret"));
+            assertThat(response.code()).isEqualTo(400);
+            assertThat(response.body().string()).contains("invalid_body");
         });
     }
 }

@@ -40,10 +40,16 @@ public final class WhitelistRoutes {
                 ctx.status(401);
                 return;
             }
-            WhitelistRequest req = ctx.bodyAsClass(WhitelistRequest.class);
+            WhitelistRequest req;
+            try {
+                req = ctx.bodyAsClass(WhitelistRequest.class);
+            } catch (Exception e) {
+                ctx.status(400).json(Map.of("error", "invalid_body"));
+                return;
+            }
             String playerName = req == null ? null : req.playerName();
             if (playerName == null || playerName.isBlank()) {
-                ctx.status(400);
+                ctx.status(400).json(Map.of("error", "invalid_name"));
                 return;
             }
             if (!MC_NAME.matcher(playerName).matches()) {
