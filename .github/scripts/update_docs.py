@@ -44,20 +44,56 @@ SYSTEM_PROMPT_PATH = SCRIPT_DIR / "system_prompt.md"
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Files considered "source of truth" for rebuild mode. Order matters for context
-# priority: earlier entries are more important if the bundle needs trimming.
+# Files considered "source of truth" for rebuild mode.
+#
+# Only the documented public surface is included — listener and command
+# implementation files are excluded because their internal logic does not
+# appear in documentation. Keeping them would waste ~50k tokens of context.
+#
+# Breakdown of what is included and why:
+#   Resources         plugin.yml, config.yml, lang files  → commands, permissions, config keys, i18n
+#   Entry points      Kreiscraft.java, KreiscraftBootstrap.java, ReloadCommand.java
+#   Core SDK          Interfaces and base classes only (not BukkitScheduler, PaperCommandRegistrar, etc.)
+#   Shared layer      All 9 files (ChatBridge, Gui, GuiRegistry, UserService, WhitelistService)
+#   Module surface    *Module.java, *Config.java, *Data.java, *Event.java per module
+#   API module        Everything under modules/api/ (routes, DTOs, verification, ApiServer)
+#
+# ~117 files / ~220k chars / ~47k tokens  (vs 230 files / 490k chars / ~104k tokens before)
 REBUILD_SOURCE_MANIFEST: tuple[str, ...] = (
+    # ── resources ────────────────────────────────────────────────────────────
     "src/main/resources/plugin.yml",
     "src/main/resources/config.yml",
     "src/main/resources/lang/de.yml",
     "src/main/resources/lang/en.yml",
+    # ── plugin entry points ───────────────────────────────────────────────────
     "src/main/java/de/kreiscraft/Kreiscraft.java",
     "src/main/java/de/kreiscraft/KreiscraftBootstrap.java",
     "src/main/java/de/kreiscraft/ReloadCommand.java",
-    "src/main/java/de/kreiscraft/core/**/*.java",
-    "src/main/java/de/kreiscraft/platform/**/*.java",
+    # ── core SDK: interfaces and base classes only ────────────────────────────
+    "src/main/java/de/kreiscraft/core/command/CommandRegistrar.java",
+    "src/main/java/de/kreiscraft/core/config/ConfigService.java",
+    "src/main/java/de/kreiscraft/core/config/DataFile.java",
+    "src/main/java/de/kreiscraft/core/config/YamlConfigService.java",
+    "src/main/java/de/kreiscraft/core/event/EventBus.java",
+    "src/main/java/de/kreiscraft/core/message/MessageService.java",
+    "src/main/java/de/kreiscraft/core/message/PlaceholderResolver.java",
+    "src/main/java/de/kreiscraft/core/module/Module.java",
+    "src/main/java/de/kreiscraft/core/module/ModuleContext.java",
+    "src/main/java/de/kreiscraft/core/module/ModuleException.java",
+    "src/main/java/de/kreiscraft/core/module/ModuleRegistry.java",
+    "src/main/java/de/kreiscraft/core/module/StartupSummary.java",
+    "src/main/java/de/kreiscraft/core/scheduler/Scheduler.java",
+    "src/main/java/de/kreiscraft/core/service/ServiceNotFoundException.java",
+    "src/main/java/de/kreiscraft/core/service/ServiceRegistry.java",
+    # ── shared layer (all — small and all documented surface) ─────────────────
     "src/main/java/de/kreiscraft/shared/**/*.java",
-    "src/main/java/de/kreiscraft/modules/**/*.java",
+    # ── module surface: entry points, config, state, custom events ────────────
+    "src/main/java/de/kreiscraft/modules/**/*Module.java",
+    "src/main/java/de/kreiscraft/modules/**/*Config.java",
+    "src/main/java/de/kreiscraft/modules/**/*Data.java",
+    "src/main/java/de/kreiscraft/modules/**/*Event.java",
+    # ── api module: full detail needed for http-api.md ────────────────────────
+    "src/main/java/de/kreiscraft/modules/api/**/*.java",
 )
 
 # Regex for parsing model output. Non-greedy body match, dot-matches-newline.
@@ -66,12 +102,13 @@ FILE_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 
-MAX_INPUT_CHARS_WARN = 800_000  # ~200k tokens, DeepSeek's ballpark ceiling
+MAX_INPUT_CHARS_WARN = 480_000  # ~100k tokens — near DeepSeek V4 Flash's 128k context ceiling
 
 
 # ---------------------------------------------------------------------------
 # Small helpers
 # ---------------------------------------------------------------------------
+
 
 def log(msg: str) -> None:
     print(f"[update_docs] {msg}", flush=True)
@@ -102,6 +139,7 @@ def write_file(path: Path, content: str) -> None:
 # ---------------------------------------------------------------------------
 # Gather inputs
 # ---------------------------------------------------------------------------
+
 
 def gather_docs() -> dict[str, str]:
     """Return {repo-relative posix path: content} for all docs plus root README."""
@@ -166,6 +204,7 @@ def gather_source_bundle() -> str:
 # Build prompts
 # ---------------------------------------------------------------------------
 
+
 def load_system_prompt() -> str:
     if not SYSTEM_PROMPT_PATH.is_file():
         raise SystemExit(f"missing system prompt at {SYSTEM_PROMPT_PATH}")
@@ -202,29 +241,34 @@ def build_incremental_user_prompt(diff: str, docs: dict[str, str]) -> str:
     )
 
 
-def build_rebuild_user_prompt(
-    doc_path: str, doc_content: str, source_bundle: str
-) -> str:
+def build_rebuild_user_prompt(docs: dict[str, str], source_bundle: str) -> str:
+    doc_list = "\n".join(f"- {p}" for p in docs.keys())
     return (
-        "MODE: rebuild (per-doc)\n\n"
-        f"Regenerate the single documentation file `{doc_path}` from scratch "
-        "based on the current source of truth. All source files that define "
-        "the plugin's public surface are provided below.\n\n"
+        "MODE: rebuild (bulk)\n\n"
+        "Review every documentation file listed below against the current "
+        "source of truth and emit updated content only for files that are "
+        "inaccurate, incomplete, or out of date. Use the "
+        "<<<FILE:...>>><<<END>>> format from the system prompt.\n\n"
+        "If a file is already accurate and needs no changes, do not emit it. "
+        "Only emit files you are actually changing.\n\n"
         "Constraints:\n"
-        "- Preserve the file's Diátaxis quadrant (tutorial / how-to / "
+        "- Preserve each file's Diátaxis quadrant (tutorial / how-to / "
         "reference / explanation). Do not change its purpose.\n"
-        "- Preserve the existing top-level structure and headings unless the "
-        "source of truth genuinely requires new sections.\n"
+        "- Preserve each file's overall structure and top-level headings "
+        "unless the source of truth genuinely requires new sections.\n"
         "- Match the voice, terminology, and formatting of the current "
-        "document.\n"
-        "- Never invent facts. If information is missing from the source, "
-        "omit rather than fabricate.\n\n"
-        "Emit exactly one file block using the "
-        "<<<FILE:...>>><<<END>>> format. If no changes are warranted, emit "
-        "`NO_CHANGES`.\n\n"
-        f"===== CURRENT CONTENT OF {doc_path} =====\n"
-        f"{doc_content}\n"
-        f"===== END CURRENT CONTENT =====\n\n"
+        "documents. The docs were written in a single consistent style — "
+        "keep it.\n"
+        "- Never invent facts. Omit rather than fabricate.\n"
+        "- Do not reword, reformat, or polish sections that are already "
+        "correct. Minimise diffs.\n"
+        "- The current doc content is provided below so you can assess "
+        "what needs changing. Use the source of truth for facts.\n\n"
+        f"Files to regenerate ({len(docs)}):\n"
+        f"{doc_list}\n\n"
+        "===== CURRENT DOCUMENTATION =====\n"
+        f"{format_docs_block(docs)}\n"
+        "===== END CURRENT DOCUMENTATION =====\n\n"
         "===== SOURCE OF TRUTH =====\n"
         f"{source_bundle}\n"
         "===== END SOURCE OF TRUTH ====="
@@ -234,6 +278,7 @@ def build_rebuild_user_prompt(
 # ---------------------------------------------------------------------------
 # OpenRouter call
 # ---------------------------------------------------------------------------
+
 
 def call_openrouter(
     model: str,
@@ -285,13 +330,11 @@ def call_openrouter(
                 timeout=180,
             )
             if resp.status_code == 429 or resp.status_code >= 500:
-                raise RuntimeError(
-                    f"openrouter {resp.status_code}: {resp.text[:400]}"
-                )
+                raise RuntimeError(f"openrouter {resp.status_code}: {resp.text[:400]}")
             resp.raise_for_status()
             data = resp.json()
             choice = data["choices"][0]
-            content = choice["message"]["content"]
+            content = choice["message"].get("content")
             finish_reason = choice.get("finish_reason", "?")
             usage = data.get("usage", {})
             log(
@@ -301,10 +344,17 @@ def call_openrouter(
             )
             if finish_reason == "length":
                 log("WARNING: response hit max_tokens — output may be truncated")
+            if content is None:
+                # Some providers return null content when a reasoning model
+                # was cut off mid-reasoning, or when the assistant produced no
+                # visible tokens. Treat as an empty string so the caller can
+                # log and decide.
+                log("WARNING: response content was null")
+                content = ""
             return content
         except (requests.RequestException, RuntimeError, KeyError) as exc:
             last_error = exc
-            wait = 2 ** attempt
+            wait = 2**attempt
             log(f"attempt {attempt}/{retries} failed: {exc} — retrying in {wait}s")
             time.sleep(wait)
 
@@ -318,11 +368,15 @@ def call_openrouter(
 ALLOWED_PATH_RE = re.compile(r"^(README\.md|docs/[A-Za-z0-9_./-]+\.md)$")
 
 
-def parse_response(text: str) -> dict[str, str]:
+def parse_response(text: str | None) -> dict[str, str]:
     """Return {path: content} from the model output.
 
-    Returns an empty dict if the model signalled NO_CHANGES.
+    Returns an empty dict if the model signalled NO_CHANGES, returned an
+    empty/null response, or emitted no valid file blocks.
     """
+    if not text:
+        log("empty response — no changes")
+        return {}
     stripped = text.strip()
     if stripped == "NO_CHANGES" or stripped.startswith("NO_CHANGES\n"):
         return {}
@@ -372,6 +426,7 @@ def apply_updates(updates: dict[str, str], *, dry_run: bool) -> list[str]:
 # Modes
 # ---------------------------------------------------------------------------
 
+
 def run_incremental(args: argparse.Namespace) -> list[str]:
     diff = get_diff(args.base_ref, args.head_ref)
     if not diff.strip():
@@ -400,39 +455,43 @@ def run_incremental(args: argparse.Namespace) -> list[str]:
 
 def run_rebuild(args: argparse.Namespace) -> list[str]:
     docs = gather_docs()
-    log(f"rebuilding {len(docs)} doc files")
+    log(f"rebuilding {len(docs)} doc files in a single API call")
 
     source_bundle = gather_source_bundle()
     system_prompt = load_system_prompt()
+    user_prompt = build_rebuild_user_prompt(docs, source_bundle)
 
-    all_changed: list[str] = []
-    for i, (doc_path, doc_content) in enumerate(docs.items(), 1):
-        log(f"--- [{i}/{len(docs)}] {doc_path} ---")
-        user_prompt = build_rebuild_user_prompt(doc_path, doc_content, source_bundle)
-        response = call_openrouter(
-            args.model,
-            system_prompt,
-            user_prompt,
-            max_tokens=args.max_tokens,
-            temperature=args.temperature,
-        )
-        updates = parse_response(response)
-        # In rebuild mode the model is instructed to emit exactly one file;
-        # accept only the doc it was asked about, log others as anomalies.
-        for path in list(updates):
-            if path != doc_path:
-                log(f"unexpected path in rebuild response: {path} (dropped)")
-                del updates[path]
-        changed = apply_updates(updates, dry_run=args.dry_run)
-        all_changed.extend(changed)
-        # Gentle rate-limit courtesy
-        time.sleep(1)
-    return all_changed
+    response = call_openrouter(
+        args.model,
+        system_prompt,
+        user_prompt,
+        max_tokens=args.max_tokens,
+        temperature=args.temperature,
+    )
+    updates = parse_response(response)
+    if not updates:
+        return []
+    # Log a summary of what the model decided to skip.
+    skipped = [p for p in docs if p not in updates]
+    if skipped:
+        log(f"model skipped {len(skipped)} unchanged doc(s):")
+        for path in skipped:
+            log(f"  - {path}")
+    # And warn about any unknown paths (already filtered by parse_response, but
+    # this catches the case where the model emitted a valid path we didn't ask
+    # for).
+    unexpected = [p for p in updates if p not in docs]
+    if unexpected:
+        log(f"WARNING: model emitted {len(unexpected)} unexpected doc path(s):")
+        for path in unexpected:
+            log(f"  - {path}")
+    return apply_updates(updates, dry_run=args.dry_run)
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -456,14 +515,17 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("OPENROUTER_MODEL"),
         help="OpenRouter model slug. Required via this flag or the OPENROUTER_MODEL env var.",
     )
-    parser.add_argument("--max-tokens", type=int, default=8192)
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=131072,
+        help="Max output tokens (default: 32768). Raise for very large rebuilds.",
+    )
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if not args.model:
-        parser.error(
-            "no model specified: set OPENROUTER_MODEL or pass --model <slug>"
-        )
+        parser.error("no model specified: set OPENROUTER_MODEL or pass --model <slug>")
     return args
 
 
