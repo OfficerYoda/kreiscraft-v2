@@ -17,7 +17,7 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 
 ## Repository conventions
 
-- Java 25, Paper API 1.21, Gradle Kotlin DSL, single Gradle project.
+- Java 25, Paper API 26.x, Gradle Kotlin DSL, single Gradle project.
 - 25 opt-in runtime feature modules under `src/main/java/de/kreiscraft/modules/<id>/`, each implementing the `Module` interface (`core/module/Module.java`).
 - Each module: `XxxModule.java` (entry point), `XxxConfig.java` (`@ConfigSerializable` record), optional `XxxData.java` (extends `DataFile<T>`), listeners, commands.
 - Commands use Paper Brigadier via `CommandRegistrar` — static `build()` factories returning `LiteralCommandNode<CommandSourceStack>`.

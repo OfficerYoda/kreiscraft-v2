@@ -1,7 +1,7 @@
 name: Kreiscraft
 version: '${project.version}'
 main: de.kreiscraft.Kreiscraft
-api-version: '1.21'
+api-version: '26.1'
 author: OfficerYoda
 description: Combined Kreiscraft plugin (gameplay + web API)
 permissions:

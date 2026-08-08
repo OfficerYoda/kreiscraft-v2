@@ -1,6 +1,6 @@
 # Kreiscraft
 
-A combined Paper 1.21 plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 25 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
+A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 25 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
 
 ## Highlights
 
@@ -87,7 +87,7 @@ src/main/java/de/kreiscraft/
 ## Tech stack
 
 - **Java** 25
-- **Paper** 1.21 (Bukkit API 1.21)
+- **Paper** 26.x
 - **Gradle** Kotlin DSL, with `paperweight-userdev`, `shadow`, `spotless`, `run-paper`
 - **Configurate** 4 YAML — config parsing with custom serializers (`Duration`, `Location`, `Component`, `Material`, `Vector`)
 - **Adventure + MiniMessage** — all in-game text
