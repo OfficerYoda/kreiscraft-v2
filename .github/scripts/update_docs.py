@@ -54,12 +54,10 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 #   Resources         plugin.yml, config.yml, lang files  → commands, permissions, config keys, i18n
 #   Entry points      Kreiscraft.java, KreiscraftBootstrap.java, ReloadCommand.java
 #   Core SDK          Interfaces and base classes only (not BukkitScheduler, PaperCommandRegistrar, etc.)
-#   Shared layer      All 9 files (ChatBridge, Gui, GuiRegistry, UserService, WhitelistService)
+#   Shared layer      All files (ChatBridge, Gui, GuiRegistry, UserService, WhitelistService)
 #   Module surface    *Module.java, *Config.java, *Data.java, *Event.java per module
 #   API module        Everything under modules/api/ (routes, DTOs, verification, ApiServer)
-#
-# ~117 files / ~220k chars / ~47k tokens  (vs 230 files / 490k chars / ~104k tokens before)
-REBUILD_SOURCE_MANIFEST: tuple[str, ...] = (
+REBUILD_EXPLICIT_FILES: tuple[str, ...] = (
     # ── resources ────────────────────────────────────────────────────────────
     "src/main/resources/plugin.yml",
     "src/main/resources/config.yml",
@@ -85,15 +83,6 @@ REBUILD_SOURCE_MANIFEST: tuple[str, ...] = (
     "src/main/java/de/kreiscraft/core/scheduler/Scheduler.java",
     "src/main/java/de/kreiscraft/core/service/ServiceNotFoundException.java",
     "src/main/java/de/kreiscraft/core/service/ServiceRegistry.java",
-    # ── shared layer (all — small and all documented surface) ─────────────────
-    "src/main/java/de/kreiscraft/shared/**/*.java",
-    # ── module surface: entry points, config, state, custom events ────────────
-    "src/main/java/de/kreiscraft/modules/**/*Module.java",
-    "src/main/java/de/kreiscraft/modules/**/*Config.java",
-    "src/main/java/de/kreiscraft/modules/**/*Data.java",
-    "src/main/java/de/kreiscraft/modules/**/*Event.java",
-    # ── api module: full detail needed for http-api.md ────────────────────────
-    "src/main/java/de/kreiscraft/modules/api/**/*.java",
 )
 
 # Regex for parsing model output. Non-greedy body match, dot-matches-newline.
@@ -173,28 +162,49 @@ def gather_source_bundle() -> str:
     """Concatenate every source-of-truth file into a single string.
 
     Used for rebuild mode. Emits a header line before each file so the model
-    can see the path.
+    can see the path. Uses rglob() for recursive patterns to ensure consistent
+    behaviour across Python versions.
     """
     seen: set[Path] = set()
     parts: list[str] = []
-    for pattern in REBUILD_SOURCE_MANIFEST:
-        matches = sorted(REPO_ROOT.glob(pattern))
-        # Fallback for non-glob patterns (plain file paths).
-        if not matches and "*" not in pattern:
-            candidate = REPO_ROOT / pattern
-            if candidate.is_file():
-                matches = [candidate]
-        for match in matches:
-            if not match.is_file() or match in seen:
-                continue
-            seen.add(match)
-            rel = match.relative_to(REPO_ROOT).as_posix()
-            try:
-                content = read_file(match)
-            except (UnicodeDecodeError, OSError) as exc:
-                log(f"skip {rel}: {exc}")
-                continue
-            parts.append(f"----- {rel} -----\n{content}")
+
+    def add_file(path: Path) -> None:
+        if not path.is_file() or path in seen:
+            return
+        seen.add(path)
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        try:
+            content = read_file(path)
+        except (UnicodeDecodeError, OSError) as exc:
+            log(f"skip {rel}: {exc}")
+            return
+        parts.append(f"----- {rel} -----\n{content}")
+
+    # 1. Explicit single files (resources + entry points + core SDK).
+    for rel in REBUILD_EXPLICIT_FILES:
+        add_file(REPO_ROOT / rel)
+
+    base = REPO_ROOT / "src/main/java/de/kreiscraft"
+
+    # 2. Shared layer — all files (small, fully documented surface).
+    shared_dir = base / "shared"
+    if shared_dir.is_dir():
+        for path in sorted(shared_dir.rglob("*.java")):
+            add_file(path)
+
+    # 3. Module surface — entry points, config, state, custom events only.
+    #    Listeners and command builders are excluded (internal, not documented).
+    modules_dir = base / "modules"
+    if modules_dir.is_dir():
+        for suffix in ("*Module.java", "*Config.java", "*Data.java", "*Event.java"):
+            for path in sorted(modules_dir.rglob(suffix)):
+                add_file(path)
+        # API module needs full detail for http-api.md.
+        api_dir = modules_dir / "api"
+        if api_dir.is_dir():
+            for path in sorted(api_dir.rglob("*.java")):
+                add_file(path)
+
     bundle = "\n\n".join(parts)
     log(f"source bundle: {len(seen)} files, {len(bundle):,} chars")
     return bundle
