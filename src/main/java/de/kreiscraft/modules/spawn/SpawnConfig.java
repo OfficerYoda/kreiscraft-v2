@@ -28,7 +28,7 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
      *
      * <p>Note: {@code enabled} is a primitive {@code boolean}; when the {@code glide:} key is
      * absent from the config file, Configurate initialises it to {@code false} (the Java default
-     * for {@code boolean}). In production the Batch C {@code config.yml} always contains an
+     * for {@code boolean}). In production the bundled {@code config.yml} always contains an
      * explicit {@code enabled: true} entry, so this is only relevant for edge-case testing.
      *
      * <ul>

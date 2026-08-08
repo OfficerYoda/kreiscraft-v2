@@ -25,7 +25,7 @@ The `bedrock` module detects Bedrock Edition players by their Geyser `.`-prefixe
 
 ## bot
 
-The `bot` module is a data-only placeholder: it loads and persists `data/bot.yml` (matching the shape of the legacy bot config) but registers no commands or listeners. Toggle with `modules.bot.enabled` in `config.yml`; restart required. **Publishes:** None. **Consumes:** `ConfigService` (registers the data file for auto-save on `/kreload`). No bot logic is implemented; this module exists to ensure the data file survives reloads while full bot functionality is planned for a future plan.
+The `bot` module is a data-only placeholder: it loads and persists `data/bot.yml` (matching the shape of the legacy bot config) but registers no commands or listeners. Toggle with `modules.bot.enabled` in `config.yml`; restart required. **Publishes:** None. **Consumes:** `ConfigService` (registers the data file for auto-save on `/kreload`). No bot logic is implemented; this module exists to ensure the data file survives reloads while full bot functionality is planned for the future.
 
 ## chat-format
 
@@ -111,6 +111,6 @@ The `world-mgmt` module provides three operator commands: `/world <name>` to tel
 
 ## Deferred features
 
-**Offline ender chest** — `/enderchest <offlinePlayer>` currently returns "not supported" because reading an offline player's ender chest requires `OfflineInventoryReader.readEnderChest(UUID)` in `platform/`, which is not yet implemented. This is not scheduled for Plan 4; add to Plan 5+ if user demand appears.
+**Offline ender chest** — `/enderchest <offlinePlayer>` currently returns "not supported" because reading an offline player's ender chest requires `OfflineInventoryReader.readEnderChest(UUID)` in `platform/`, which is not yet implemented. This is not scheduled; add it if user demand appears.
 
-**Chat-format runtime event priority** — The config key `modules.chat-format.event-priority` is read during module enable but is not applied to the event listener registration because `EventBus.register(Listener, EventPriority)` overload does not exist. Fixing this requires adding that overload to the `EventBus` abstraction. Deferred to Plan 5+.
+**Chat-format runtime event priority** — The config key `modules.chat-format.event-priority` is read during module enable but is not applied to the event listener registration because `EventBus.register(Listener, EventPriority)` overload does not exist. Fixing this requires adding that overload to the `EventBus` abstraction. Deferred to a future release.

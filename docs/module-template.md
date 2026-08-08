@@ -1,8 +1,8 @@
 # Module Template
 
-This document is **normative** for every feature module built in Plan 3 and beyond. Parallel subagents authoring modules must produce code that matches this template exactly. The cross-cutting reviewer (`cross-cutting-reviewer` agent) uses this document as the reference when checking for consistency across modules.
+This document is **normative** for every feature module. New or refactored modules must produce code that matches this template exactly so that patterns stay consistent across the plugin.
 
-If you find yourself wanting to deviate from this template, that is a signal to stop and raise the question with the main reviewer — do not fork the pattern silently.
+If you find yourself wanting to deviate from this template, that is a signal to stop and raise the question in review — do not fork the pattern silently.
 
 ## Naming
 
@@ -128,7 +128,7 @@ Rules:
 
 ## Config section in `config.yml`
 
-Every module owns one section. Add it via Batch C wiring, not from within your module's code:
+Every module owns one section, declared in the shared `config.yml`, not from within the module's code:
 
 ```yaml
 modules:
@@ -162,7 +162,7 @@ jail:
 Rules:
 - Namespace root matches module id.
 - Sub-keys are kebab-case, describing the message purpose (not the trigger).
-- Every key exists in both `de.yml` and `en.yml`. Adding a key to one without the other is a bug the reviewer will flag.
+- Every key exists in both `de.yml` and `en.yml`. Adding a key to one without the other is a bug (`LangParityTest` catches this on every build).
 - Use `<prefix>` at the start of every operator-facing message. Global placeholder handled by `MessageService`.
 - Message-specific placeholders: `<player>`, `<amount>`, `<duration>`, etc. — resolved by the caller via `messages.send(sender, "jail.jailed", "player", target.getName())`.
 
@@ -352,7 +352,7 @@ Every command and every gated operation gets a permission node:
 - `kreiscraft.<module-id>.<action>` — the operator-facing action.
 - `kreiscraft.<module-id>.bypass` — if the module has a bypass (jail, update-mode).
 
-Declare every permission in the module's Batch C `plugin.yml` addition with a `description` and a sensible `default` (`op` for admin actions, `true` for read-only queries).
+Declare every permission in `plugin.yml` with a `description` and a sensible `default` (`op` for admin actions, `true` for read-only queries).
 
 ## What NOT to do
 
@@ -368,4 +368,4 @@ Declare every permission in the module's Batch C `plugin.yml` addition with a `d
 
 ## When in doubt
 
-If you're a subagent building a module and you hit a situation this template doesn't cover, **stop and flag it in your task result**. Do not make up a pattern — the cross-cutting reviewer will catch and reject inventive interpretations. Consistency across 24 modules is the entire point.
+If you hit a situation this template doesn't cover, **stop and flag it in review**. Do not make up a pattern — consistency across 24 modules is the entire point.

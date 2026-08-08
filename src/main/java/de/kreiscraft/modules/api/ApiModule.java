@@ -113,7 +113,7 @@ public final class ApiModule implements Module {
             server.stop();
             // Reconstruct the server with the updated config.
             // VerificationService and ServerMetricsCollector are NOT rebuilt here because
-            // neither exposes updateConfig() (per Batch B.2 Layer 2 finding #4).
+            // neither exposes updateConfig().
             // The VerificationService reference published during enable() remains valid.
             this.server = buildServer(newConfig);
             this.server.start();

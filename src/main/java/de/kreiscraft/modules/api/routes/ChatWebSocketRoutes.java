@@ -201,7 +201,7 @@ public final class ChatWebSocketRoutes {
     /**
      * Renders a {@link ChatBridgeEvent} for the web frontend using the legacy {@code §}-prefixed
      * colour scheme. Non-{@link TextComponent} roots fall back to {@link ChatBridgeEvent#plainText}
-     * to prevent {@link ClassCastException} on {@code TranslatableComponent} (legacy bug B-03).
+     * to prevent {@link ClassCastException} on {@code TranslatableComponent} children.
      */
     String renderChatEventForWeb(ChatBridgeEvent event) {
         Component component = event.rendered();
@@ -258,18 +258,18 @@ public final class ChatWebSocketRoutes {
      * Ported verbatim from legacy {@code ChatWebsocketHandler.java}:
      * {@code de.officeryoda.kreiscraftApi.ChatWebsocketHandler#textComponentToColoredString}.
      *
-     * <p>Keeps the {@code §}-prefixed colour scheme for zero-downtime frontend compatibility (Plan
-     * 4). Migration to MiniMessage is deferred to Plan 5+.
+     * <p>Keeps the {@code §}-prefixed colour scheme for zero-downtime frontend compatibility.
+     * Migration to MiniMessage may happen in the future.
      *
      * <p>The original code cast every child to {@link TextComponent} unconditionally, which threw
-     * {@link ClassCastException} on {@code TranslatableComponent} children (legacy bug B-03). This
+     * {@link ClassCastException} on {@code TranslatableComponent} children. This
      * port adds an {@code instanceof} guard to skip non-{@link TextComponent} children safely.
      */
     private String textComponentToColoredString(TextComponent textComponent) {
         ArrayList<TextComponent> components = new ArrayList<>();
         components.add(textComponent);
         for (Component child : textComponent.children()) {
-            // instanceof guard fixes legacy bug B-03: ClassCastException on TranslatableComponent
+            // instanceof guard: skip non-TextComponent children (e.g. TranslatableComponent) to avoid ClassCastException
             if (child instanceof TextComponent tc) {
                 components.add(tc);
             }

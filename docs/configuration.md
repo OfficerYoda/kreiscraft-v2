@@ -80,9 +80,9 @@ Global keys live under the top-level `core:` node, not under `modules`.
 The following key is documented for operator awareness but has **no runtime effect** in the
 current release.
 
-| Key | Type | Planned Default | Description |
+| Key | Type | Default | Description |
 |-----|------|-----------------|-------------|
-| `chat-format.event-priority` | `EventPriority` | `LOWEST` | Desired `EventPriority` for the `AsyncChatEvent` listener. Currently hardcoded to `LOWEST` in the listener; runtime priority adjustment requires an `EventBus.register(Listener, EventPriority)` overload deferred to Plan 5+. See also `## chat-format` for the key that operators can set today (it is read but not yet applied at listener-registration time). |
+| `chat-format.event-priority` | `EventPriority` | `LOWEST` | Desired `EventPriority` for the `AsyncChatEvent` listener. Currently hardcoded to `LOWEST` in the listener; runtime priority adjustment requires an `EventBus.register(Listener, EventPriority)` overload deferred to a future release. See also `## chat-format` for the key that operators can set today (it is read but not yet applied at listener-registration time). |
 
 ---
 

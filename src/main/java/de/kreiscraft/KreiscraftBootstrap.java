@@ -70,7 +70,7 @@ public final class KreiscraftBootstrap {
         PlaceholderResolver placeholders = new PlaceholderResolver(plugin.getServer(), zone, Clock.systemDefaultZone());
         services.publish(PlaceholderResolver.class, placeholders);
 
-        // --- Plan 2: platform layer ---
+        // --- platform layer ---
         PaperPlatform platform = new PaperPlatform(plugin, plugin.getServer());
         PlayerBrandProvider brands = new PlayerBrandProvider(platform);
         NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
@@ -81,7 +81,7 @@ public final class KreiscraftBootstrap {
         services.publish(NmsWhitelist.class, nmsWhitelist);
         services.publish(OfflineInventoryReader.class, offlineInv);
 
-        // --- Plan 2: shared services ---
+        // --- shared services ---
         this.userService = new UserService(platform, Clock.systemDefaultZone());
         events.register(new UserListener(userService));
         userService.rehydrateOnlinePlayers();

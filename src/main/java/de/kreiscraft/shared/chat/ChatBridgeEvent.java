@@ -5,9 +5,9 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 
 /**
- * Immutable envelope for a chat line published on {@link ChatBridge}. The chat-format module (Plan
- * 3) publishes one of these for every rendered chat line; the API module (Plan 6) subscribes to
- * forward them to connected WebSocket clients.
+ * Immutable envelope for a chat line published on {@link ChatBridge}. The chat-format module
+ * publishes one of these for every rendered chat line; the API module subscribes to forward them
+ * to connected WebSocket clients.
  *
  * @param senderUuid UUID of the sending player, or {@code null} for console/system messages
  * @param senderName display name at time of send (raw, no formatting)

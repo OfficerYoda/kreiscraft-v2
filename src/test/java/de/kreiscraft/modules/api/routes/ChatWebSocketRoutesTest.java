@@ -268,7 +268,8 @@ class ChatWebSocketRoutesTest {
     }
 
     // -------------------------------------------------------------------------
-    // Test 8 — TranslatableComponent does not throw (regression for legacy B-03)
+    // Test 8 — TranslatableComponent does not throw (regression for the unconditional
+    //          TextComponent cast in the legacy chat websocket handler)
     // -------------------------------------------------------------------------
 
     @Test

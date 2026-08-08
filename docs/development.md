@@ -33,7 +33,7 @@ Each module receives a `ModuleContext` on `enable()`:
 
 ## Services published on the `ServiceRegistry`
 
-After Plan 2, these services are available to every module via `ctx.services().get(...)`:
+The following services are available to every module via `ctx.services().get(...)`:
 
 | Type                                | Provided by                                | Purpose                                                                 |
 |-------------------------------------|--------------------------------------------|-------------------------------------------------------------------------|

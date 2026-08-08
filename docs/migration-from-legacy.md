@@ -355,7 +355,7 @@ present in `kreiscraft-java`:
 | `Bukkit.getMaxPlayers()` set to current year | Dropped as unclear-intent easter egg |
 | Gson dependency | Jackson only |
 | PlaceholderAPI softdepend | Removed |
-| Offline ender chest (`OfflineInventoryReader.readEnderChest`) | Deferred to Plan 5+ |
+| Offline ender chest (`OfflineInventoryReader.readEnderChest`) | Deferred to a future release |
 | `AsyncChatEvent` scraping in `ChatWebsocketHandler` | Replaced with `ChatBridge` subscription |
 | `Bukkit.dispatchCommand("whitelist add …")` | Replaced with `WhitelistService.addJavaPlayer(name)` |
 | `ScheduledExecutorService` as static field | Now a non-static field of `ApiServer`, shut down in `ApiModule.disable()` |
@@ -364,7 +364,7 @@ present in `kreiscraft-java`:
 
 ## 10. Behavioral fixes summary
 
-All fixes below were introduced during the Plan 4 `api` module port.
+All fixes below were introduced during the `api` module port.
 
 | Fix | Description | Status |
 |---|---|---|
@@ -384,8 +384,8 @@ All fixes below were introduced during the Plan 4 `api` module port.
 | `Bukkit.getScheduler()` called directly for whitelist | Legacy used `Bukkit.getScheduler().runTask(...)` to dispatch the whitelist command to the main thread. Now uses `Scheduler.runOnMain(...)` per the threading rule. | Fixed in api module port |
 | `Bukkit.dispatchCommand("whitelist add …")` | Console-command dispatch for whitelist management. Replaced with direct `WhitelistService.addJavaPlayer(name)` call. | Fixed in api module port |
 | `TranslatableComponent` `ClassCastException` in chat | Legacy code cast `player.name()` to `TextComponent` unconditionally. Player display names that use `TranslatableComponent` throw `ClassCastException` at runtime. New code uses `PlainTextComponentSerializer`. | Fixed in api module port |
-| Hardcoded admin names (`RusticPrism`, `OfficerYoda`) in jail bypass | Jail command hardcoded a list of admin player names for bypass instead of a permission node. | Fixed in jail module (Plan 3) |
-| Jail location hardcoded | Kerker/jail spawn coordinates were hardcoded in `KerkerListener`. Now configurable as `modules.jail.location` in `config.yml`. | Fixed in jail module (Plan 3) |
-| Timezone hardcoded to JVM default | No timezone config existed; the JVM's default timezone was used for log timestamps. Now configurable as `core.timezone`. | Fixed in core config (Plan 3) |
-| Offline ender chest (`OfflineInventoryReader.readEnderChest`) | `EnderChestCommand` attempted to read ender chests of offline players via NMS reflection. Deferred: the NMS approach was too fragile for Paper 1.21.11. | Deferred (Plan 5+) |
-| `chat-format` runtime event priority | The `AsyncChatEvent` listener priority was hardcoded to `LOWEST`. Now configurable as `modules.chat-format.event-priority`, but dynamic re-registration without a restart is not yet supported. | Deferred (Plan 5+) |
+| Hardcoded admin names (`RusticPrism`, `OfficerYoda`) in jail bypass | Jail command hardcoded a list of admin player names for bypass instead of a permission node. | Fixed in jail module |
+| Jail location hardcoded | Kerker/jail spawn coordinates were hardcoded in `KerkerListener`. Now configurable as `modules.jail.location` in `config.yml`. | Fixed in jail module |
+| Timezone hardcoded to JVM default | No timezone config existed; the JVM's default timezone was used for log timestamps. Now configurable as `core.timezone`. | Fixed in core config |
+| Offline ender chest (`OfflineInventoryReader.readEnderChest`) | `EnderChestCommand` attempted to read ender chests of offline players via NMS reflection. Deferred: the NMS approach was too fragile for Paper 1.21.11. | Deferred |
+| `chat-format` runtime event priority | The `AsyncChatEvent` listener priority was hardcoded to `LOWEST`. Now configurable as `modules.chat-format.event-priority`, but dynamic re-registration without a restart is not yet supported. | Deferred |

@@ -7,7 +7,7 @@ import java.util.UUID;
  * de.kreiscraft.core.service.ServiceRegistry} so that other modules (e.g. combat, clickthrough)
  * can query player preferences.
  *
- * <p>This interface is a hard contract: Batch B modules depend on exactly these four methods. Do
+     * <p>This interface is a hard contract: dependent modules (combat, clickthrough) depend on exactly these four methods. Do
  * not remove or rename them.
  */
 public interface SettingsService {

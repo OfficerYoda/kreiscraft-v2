@@ -80,9 +80,9 @@ The `api` module starts a Javalin server on the configured host/port (default `0
 | POST | `/whitelist` | Add player to whitelist | `X-Kreiscraft-Api-Key` |
 | WS | `/chat` | Bidirectional chat + verification events | None |
 
-> **Note:** The `/chat` WebSocket accepts unauthenticated connections in Plan 4; per-message
+> **Note:** The `/chat` WebSocket accepts unauthenticated connections; per-message
 > actions that write to the game (`CHAT` type) are routed through in-game chat which is subject
-> to normal server permissions. Enforcing session cookies on WS connect is Plan 5+ territory.
+> to normal server permissions. Enforcing session cookies on WS connect is a future extension.
 
 ## Configuration
 

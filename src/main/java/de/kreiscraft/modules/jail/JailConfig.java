@@ -8,7 +8,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * Configuration for the jail module.
  *
  * <p>{@code location} is required — missing it from config will cause a deserialization error at
- * enable time. Batch C wiring always provides it. {@code blockedCommands} defaults to the legacy
+     * enable time. The bundled config.yml always provides it. {@code blockedCommands} defaults to the legacy
  * hard-coded list when absent.
  */
 @ConfigSerializable
