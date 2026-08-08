@@ -9,4 +9,6 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * Configurate's ObjectMapper handles the round-trip via
  * {@link de.kreiscraft.core.config.serializers.LocationSerializer}.
  */
-@ConfigSerializable public record PositionEntry(Location location){}
+@ConfigSerializable
+public record PositionEntry(Location location) {
+}

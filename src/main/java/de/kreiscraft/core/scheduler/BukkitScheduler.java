@@ -46,26 +46,27 @@ public final class BukkitScheduler implements Scheduler {
 
     private record BukkitTaskAdapter(BukkitTask task) implements Task {
 
-    @Override
-    public void cancel() {
-        task.cancel();
+        @Override
+        public void cancel() {
+            task.cancel();
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return task.isCancelled();
+        }
     }
 
-    @Override
-    public boolean isCancelled() {
-        return task.isCancelled();
+
+    private enum AlreadyDone implements Task {
+        INSTANCE;
+
+        @Override
+        public void cancel() {}
+
+        @Override
+        public boolean isCancelled() {
+            return true;
+        }
     }
 }
-
-
-private enum AlreadyDone implements Task {
-    INSTANCE;
-
-    @Override
-    public void cancel() {}
-
-    @Override
-    public boolean isCancelled() {
-        return true;
-    }
-}}

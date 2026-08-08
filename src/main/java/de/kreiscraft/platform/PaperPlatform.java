@@ -9,4 +9,5 @@ import org.bukkit.plugin.java.JavaPlugin;
  * calling {@code Bukkit.getServer()} directly, so tests can substitute a
  * mock and production code never touches static Bukkit state.
  */
-public record PaperPlatform(JavaPlugin plugin,Server server){}
+public record PaperPlatform(JavaPlugin plugin, Server server) {
+}

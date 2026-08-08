@@ -11,6 +11,12 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * enable time. Batch C wiring always provides it. {@code blockedCommands} defaults to the legacy
  * hard-coded list when absent.
  */
-@ConfigSerializable public record JailConfig(Location location,List<String>blockedCommands){
+@ConfigSerializable
+public record JailConfig(Location location, List<String> blockedCommands) {
 
-public JailConfig{if(blockedCommands==null||blockedCommands.isEmpty()){blockedCommands=List.of("msg","tell","w","pay","r");}}}
+    public JailConfig {
+        if (blockedCommands == null || blockedCommands.isEmpty()) {
+            blockedCommands = List.of("msg", "tell", "w", "pay", "r");
+        }
+    }
+}

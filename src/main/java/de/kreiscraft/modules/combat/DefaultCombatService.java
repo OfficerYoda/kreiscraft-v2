@@ -17,7 +17,8 @@ import org.bukkit.entity.Player;
 
 public final class DefaultCombatService implements CombatService {
 
-    private record PerPlayerCombat(Instant taggedAt, Duration duration, Scheduler.Task expiryTask) {}
+    private record PerPlayerCombat(Instant taggedAt, Duration duration, Scheduler.Task expiryTask) {
+    }
 
     private final Scheduler scheduler;
     private final MessageService messages;

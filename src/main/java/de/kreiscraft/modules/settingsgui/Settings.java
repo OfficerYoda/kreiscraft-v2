@@ -10,9 +10,14 @@ import java.time.Instant;
  * debounce; it is deliberately excluded from serialization in {@link SettingsData} and resets to
  * {@code null} on server restart.
  */
-public record Settings(boolean clickThrough,CombatDisplay combatDisplay,Instant lastClickAt){
+public record Settings(boolean clickThrough, CombatDisplay combatDisplay, Instant lastClickAt) {
 
-/** Convenience constructor that leaves {@code lastClickAt} null. */
-public Settings(boolean clickThrough,CombatDisplay combatDisplay){this(clickThrough,combatDisplay,null);}
+    /** Convenience constructor that leaves {@code lastClickAt} null. */
+    public Settings(boolean clickThrough, CombatDisplay combatDisplay) {
+        this(clickThrough, combatDisplay, null);
+    }
 
-public static Settings defaults(){return new Settings(true,CombatDisplay.ACTIONBAR,null);}}
+    public static Settings defaults() {
+        return new Settings(true, CombatDisplay.ACTIONBAR, null);
+    }
+}

@@ -7,4 +7,5 @@ import java.util.UUID;
  * Immutable snapshot of a known Bedrock player.
  * Stored in {@code data/bedrock-players.yml}.
  */
-public record BedrockRecord(String name,UUID uuid,Instant firstSeen){}
+public record BedrockRecord(String name, UUID uuid, Instant firstSeen) {
+}

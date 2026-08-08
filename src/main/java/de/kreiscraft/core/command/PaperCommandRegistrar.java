@@ -34,5 +34,6 @@ public final class PaperCommandRegistrar implements CommandRegistrar {
         pending.add(new Pending(node, description, aliases));
     }
 
-    private record Pending(LiteralCommandNode<CommandSourceStack> node, String description, String[] aliases) {}
+    private record Pending(LiteralCommandNode<CommandSourceStack> node, String description, String[] aliases) {
+    }
 }

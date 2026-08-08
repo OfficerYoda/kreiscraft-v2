@@ -107,37 +107,34 @@ public final class LinkRoutes {
                                                                 browserUuid,
                                                                 target.getName(),
                                                                 target.getUniqueId(),
-                                                                () ->
-                                                                        linkPrompt.open(
-                                                                                target,
-                                                                                browserDesc,
-                                                                                () ->
-                                                                                        verification
-                                                                                                .confirmVerification(
-                                                                                                        browserUuid),
-                                                                                () ->
-                                                                                        verification
-                                                                                                .cancelVerification(
-                                                                                                        browserUuid)));
+                                                                () -> linkPrompt.open(
+                                                                        target,
+                                                                        browserDesc,
+                                                                        () -> verification
+                                                                                .confirmVerification(
+                                                                                        browserUuid),
+                                                                        () -> verification
+                                                                                .cancelVerification(
+                                                                                        browserUuid)));
                                                 switch (result) {
                                                     case SENT ->
-                                                            ctx.status(202)
-                                                                    .json(
-                                                                            Map.of(
-                                                                                    "status",
-                                                                                    "verification_sent"));
+                                                        ctx.status(202)
+                                                                .json(
+                                                                        Map.of(
+                                                                                "status",
+                                                                                "verification_sent"));
                                                     case ALREADY_PENDING ->
-                                                            ctx.status(409)
-                                                                    .json(
-                                                                            Map.of(
-                                                                                    "status",
-                                                                                    "already_pending"));
+                                                        ctx.status(409)
+                                                                .json(
+                                                                        Map.of(
+                                                                                "status",
+                                                                                "already_pending"));
                                                     default ->
-                                                            ctx.status(500)
-                                                                    .json(
-                                                                            Map.of(
-                                                                                    "error",
-                                                                                    "unexpected_result"));
+                                                        ctx.status(500)
+                                                                .json(
+                                                                        Map.of(
+                                                                                "error",
+                                                                                "unexpected_result"));
                                                 }
                                                 cf.complete(null);
                                             } catch (Exception e) {

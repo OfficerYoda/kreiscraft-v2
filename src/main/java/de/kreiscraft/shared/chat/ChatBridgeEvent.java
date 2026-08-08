@@ -15,4 +15,6 @@ import net.kyori.adventure.text.Component;
  * @param plainText pre-computed plain-text serialization for external consumers
  * @param timestamp when this line was produced
  */
-public record ChatBridgeEvent(UUID senderUuid,String senderName,Component rendered,String plainText,Instant timestamp){}
+public record ChatBridgeEvent(UUID senderUuid, String senderName, Component rendered, String plainText,
+        Instant timestamp) {
+}

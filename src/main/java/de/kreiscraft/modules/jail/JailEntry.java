@@ -10,6 +10,13 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * <p>Note: {@link Instant} has no registered Configurate serializer; {@link JailData} performs
  * manual serialization of this field using epoch-millis.
  */
-@ConfigSerializable public record JailEntry(Location restoreLocation,String reason,Instant jailedAt){
+@ConfigSerializable
+public record JailEntry(Location restoreLocation, String reason, Instant jailedAt) {
 
-public JailEntry{if(reason==null)reason="";if(jailedAt==null)jailedAt=Instant.now();}}
+    public JailEntry {
+        if (reason == null)
+            reason = "";
+        if (jailedAt == null)
+            jailedAt = Instant.now();
+    }
+}

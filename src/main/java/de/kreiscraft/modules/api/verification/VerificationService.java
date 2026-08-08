@@ -30,7 +30,8 @@ public final class VerificationService {
     // Internal record
     // -----------------------------------------------------------------------
 
-    record PendingRequest(UUID playerUuid, String playerName, Instant expiresAt) {}
+    record PendingRequest(UUID playerUuid, String playerName, Instant expiresAt) {
+    }
 
     // -----------------------------------------------------------------------
     // State

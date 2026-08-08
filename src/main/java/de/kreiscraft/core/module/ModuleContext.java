@@ -8,4 +8,6 @@ import de.kreiscraft.core.service.ServiceRegistry;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.spongepowered.configurate.ConfigurationNode;
 
-public record ModuleContext(JavaPlugin plugin,ConfigurationNode moduleConfig,MessageService messages,ServiceRegistry services,Scheduler scheduler,CommandRegistrar commands,EventBus events){}
+public record ModuleContext(JavaPlugin plugin, ConfigurationNode moduleConfig, MessageService messages,
+        ServiceRegistry services, Scheduler scheduler, CommandRegistrar commands, EventBus events) {
+}

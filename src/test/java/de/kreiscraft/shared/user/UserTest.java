@@ -36,9 +36,11 @@ class UserTest {
         assertThat(user.player()).isSameAs(alice);
     }
 
-    record Combat(int ticksLeft) {}
+    record Combat(int ticksLeft) {
+    }
 
-    record Jail(String reason) {}
+    record Jail(String reason) {
+    }
 
     @Test
     void attribute_setThenGet_returnsValue() {
