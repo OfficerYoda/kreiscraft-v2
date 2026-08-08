@@ -2,9 +2,15 @@
 build/
 run/
 out/
+bin/
 .idea/
 *.iml
 *.ipr
 *.iws
 .vscode/
 .DS_Store
+
+# Eclipse / Buildship / JDTLS generated project metadata
+.classpath
+.project
+.settings/
