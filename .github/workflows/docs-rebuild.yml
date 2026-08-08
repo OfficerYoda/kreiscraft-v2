@@ -4,7 +4,8 @@ name: Rebuild docs (manual)
 # once per doc against the current source of truth. Use this after major
 # refactors or when the incremental pipeline has fallen behind.
 #
-# Cost: ~19 API calls per run. Expect significant diffs across most docs.
+# Cost: 1 API call per run (single bulk request). Expect significant diffs
+# across most docs.
 
 on:
   workflow_dispatch:

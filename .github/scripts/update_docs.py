@@ -7,7 +7,7 @@ Two modes:
                        update only the docs affected by the change. One API
                        call per run.
   --mode=rebuild       Rebuild every doc from scratch against the current
-                       source of truth. One API call per doc.
+                       source of truth. One API call for all docs combined.
 
 Environment variables:
   OPENROUTER_API_KEY   Required.
@@ -104,12 +104,18 @@ def log(msg: str) -> None:
 
 
 def run_git(*args: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip() or "(no stderr)"
+        raise SystemExit(
+            f"git {args[0]} failed (exit {exc.returncode}):\n{stderr}"
+        ) from exc
     return result.stdout
 
 

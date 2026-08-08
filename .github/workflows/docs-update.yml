@@ -32,8 +32,10 @@ jobs:
       - name: Checkout with history
         uses: actions/checkout@v4
         with:
-          # Need at least two commits so HEAD~1 resolves.
-          fetch-depth: 2
+          # Full history: github.event.before can point arbitrarily far back
+          # when a push includes multiple commits, so a shallow clone is not
+          # safe for computing the incremental diff.
+          fetch-depth: 0
           persist-credentials: true
 
       - name: Set up Python
@@ -55,9 +57,17 @@ jobs:
             echo "::error::repository variable OPENROUTER_MODEL is not set"
             exit 1
           fi
+          base_ref="${{ github.event.before }}"
+          # On the first push that creates a branch on the remote, both GitHub
+          # and Forgejo report `before` as 40 zeros. There is no previous
+          # commit to diff against, so exit cleanly instead of crashing.
+          if [ "$base_ref" = "0000000000000000000000000000000000000000" ]; then
+            echo "First push to branch — no previous commit to diff against, skipping."
+            exit 0
+          fi
           python .github/scripts/update_docs.py \
             --mode=incremental \
-            --base-ref="${{ github.event.before }}" \
+            --base-ref="$base_ref" \
             --head-ref="${{ github.sha }}"
 
       - name: Commit changes
