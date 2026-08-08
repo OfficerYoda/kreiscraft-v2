@@ -1,0 +1,73 @@
+name: Sync docs (incremental)
+
+# Runs on every push to the default branch. Reads the diff, asks the LLM to
+# update any affected docs, and commits the result back with [skip ci] to
+# avoid an infinite feedback loop.
+#
+# Path filter: skips runs when only docs, workflow files, or the root README
+# changed. That covers both the auto-doc commit itself and pure-doc PRs.
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "docs/**"
+      - ".github/**"
+      - "README.md"
+
+# Belt-and-braces safety: skip if the last commit already carries [skip ci]
+# (Forgejo interprets it natively; GitHub Actions does too).
+concurrency:
+  group: docs-update-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with history
+        uses: actions/checkout@v4
+        with:
+          # Need at least two commits so HEAD~1 resolves.
+          fetch-depth: 2
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Update docs
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
+          OPENROUTER_APP: kreiscraft-docs-ci
+          OPENROUTER_REFERER: https://github.com/${{ github.repository }}
+        run: |
+          if [ -z "$OPENROUTER_MODEL" ]; then
+            echo "::error::repository variable OPENROUTER_MODEL is not set"
+            exit 1
+          fi
+          python .github/scripts/update_docs.py \
+            --mode=incremental \
+            --base-ref="${{ github.event.before }}" \
+            --head-ref="${{ github.sha }}"
+
+      - name: Commit changes
+        run: |
+          git config user.name  "kreiscraft-docs-bot"
+          git config user.email "docs-bot@users.noreply.github.com"
+          if git diff --quiet -- README.md docs/; then
+            echo "no doc changes"
+            exit 0
+          fi
+          git add README.md docs/
+          git commit -m "docs: sync with $(git rev-parse --short "${{ github.sha }}") [skip ci]"
+          git push

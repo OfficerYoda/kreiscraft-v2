@@ -1,0 +1,74 @@
+name: Rebuild docs (manual)
+
+# Manually triggered full rebuild. Iterates every doc file, calling the model
+# once per doc against the current source of truth. Use this after major
+# refactors or when the incremental pipeline has fallen behind.
+#
+# Cost: ~19 API calls per run. Expect significant diffs across most docs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without writing files or committing"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      model:
+        description: "OpenRouter model slug (overrides repo variable)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Rebuild docs
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ inputs.model != '' && inputs.model || vars.OPENROUTER_MODEL }}
+          OPENROUTER_APP: kreiscraft-docs-ci
+          OPENROUTER_REFERER: https://github.com/${{ github.repository }}
+        run: |
+          if [ -z "$OPENROUTER_MODEL" ]; then
+            echo "::error::no model specified: set repository variable OPENROUTER_MODEL or provide the 'model' workflow input"
+            exit 1
+          fi
+          extra=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            extra="--dry-run"
+          fi
+          python .github/scripts/update_docs.py --mode=rebuild $extra
+
+      - name: Commit changes
+        if: inputs.dry_run != 'true'
+        run: |
+          git config user.name  "kreiscraft-docs-bot"
+          git config user.email "docs-bot@users.noreply.github.com"
+          if git diff --quiet -- README.md docs/; then
+            echo "no doc changes"
+            exit 0
+          fi
+          git add README.md docs/
+          git commit -m "docs: full rebuild via workflow_dispatch [skip ci]"
+          git push

@@ -14,3 +14,9 @@ bin/
 .classpath
 .project
 .settings/
+
+# Local secrets and dev-only scripts (never commit)
+.env
+.env.*
+!.env.example
+
