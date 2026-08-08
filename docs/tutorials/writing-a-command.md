@@ -110,7 +110,7 @@ public void enable(ModuleContext ctx) {
 
     Server server = ctx.plugin().getServer();
 
-    ctx.events().register(new GreetListener(config, ctx.messages()));
+    ctx.events().register(new GreetListener(() -> this.config, ctx.messages()));
     ctx.commands().register(
             GreetCommand.build(config, ctx.messages(), server),
             "Send the configured greeting to a player");
@@ -148,7 +148,7 @@ Log in with an op account. In the game chat:
 /greet Steve
 ```
 
-Steve (if online) receives the greeting in chat. You see the confirmation. Tab-completion offers online player names after `/greet `.
+Steve (if online) receives the greeting in chat. You see the confirmation.
 
 If Steve is offline:
 

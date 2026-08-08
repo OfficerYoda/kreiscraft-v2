@@ -23,7 +23,7 @@ All keys live under `modules.api` in `config.yml`. Source of truth: `ApiConfig.j
 | `host` | string | `"0.0.0.0"` | Bind address for the Javalin HTTP server. Use `"127.0.0.1"` to restrict to localhost. |
 | `port` | int | `8080` | TCP port. |
 | `cors-origins` | list of strings | `["https://kreiscraft.de"]` | Origins allowed by the CORS policy. Requests from unlisted origins receive a 400 response. |
-| `session-cookie.name` | string | `"website_user_uuid"` | Name of the browser session cookie set after a successful player link. |
+| `session-cookie.name` | string | `"website_user_uuid"` | Name of the browser session cookie set by `GET /initialize`. |
 | `session-cookie.max-age` | duration | `30d` | Max-age of the session cookie. |
 | `heartbeat-interval` | duration | `20s` | WebSocket ping interval sent to `/chat` clients. |
 | `async-timeout` | duration | `10s` | Javalin async request timeout. |
@@ -40,8 +40,8 @@ Duration syntax examples: `20s`, `2m`, `30d`, `500ms`.
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/status` | GET | Server TPS, player count, uptime. |
-| `/player` | GET | Online player list and metadata. |
-| `/session` | GET | Returns the linked player for the current session cookie. |
+| `/players` | GET | Online player list and metadata. |
+| `/initialize` | GET | Initialises or resumes a browser session and sets the session cookie. |
 | `/link-player` | POST | Initiate a browser↔player link for a named online player. |
 | `/linked-player` | GET | Poll link status for the current browser session. |
 | `/unlink-player` | POST | Remove an accepted link. |
@@ -79,7 +79,7 @@ The linking flow ties a browser session to an online Minecraft player so the web
 
 1. The browser sends `POST /link-player` with the player's name.
 2. The server creates a pending verification entry in `VerificationService` and opens a 3×9 chest GUI for the target player in-game (`LinkGuiPrompt`). The GUI shows a green-wool Accept button and a red-wool Decline button.
-3. The player clicks **Accept** — the browser session is linked and a session cookie (`session-cookie.name`) is set; or clicks **Decline** — the request is cancelled.
+3. The player clicks **Accept** — the browser session is linked to the player's account; or clicks **Decline** — the request is cancelled.
 4. The browser polls `GET /linked-player` to discover the result.
 5. Pending requests expire after `verification-timeout` (default 2 minutes).
 

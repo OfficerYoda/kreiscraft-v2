@@ -1,6 +1,6 @@
 # Kreiscraft
 
-A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 25 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
+A combined Paper 1.21 plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 25 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
 
 ## Highlights
 
@@ -58,36 +58,36 @@ src/main/java/de/kreiscraft/
 
 | Module ID | Summary |
 |---|---|
-| `admin` | 14 operator commands (item, gamemode, skull, weather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, help) |
+| `admin` | 14 operator commands (item, gamemode, skull, head, weather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, help) |
 | `anti-cheat` | Client-brand-based cheat detection with hacker log storage and `/hackerlogs` command |
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
-| `bedrock` | Bedrock player tracking, `/bedrockList` command, and Java-only whitelist enforcement |
-| `bot` | Bot-account detection and data persistence |
+| `bedrock` | Bedrock player tracking, `/bedrocklist` command, and Java-only whitelist enforcement |
+| `bot` | Registers the data file used by the Discord bot integration for player–account linking state |
 | `chat-format` | Custom in-game chat formatting via MiniMessage; bridges messages to the shared `ChatBridge` |
 | `clickthrough` | Per-player toggle to click through grass and flowers; integrates with `settings-gui` |
 | `combat` | Combat tag and elytra-block during combat, with per-player toggle via `settings-gui` |
 | `effects` | `/effects` — player-toggled particle trails |
-| `firework` | Custom firework recipes and automatic launches on configurable server events |
+| `firework` | Custom firework rocket crafting recipe with configurable custom model data |
 | `glow` | `/glow` — toggle a player's glowing outline |
 | `invsee` | `/invsee` and `/enderchest` (`/ec`) — inspect online and offline players' inventories |
 | `jail` | `/jail` and `/unjail` — teleport-based jail with configurable location and blocked commands |
-| `plugin-hider` | Intercepts `/plugins` and `/version` and returns an allow-listed view |
+| `plugin-hider` | Hides non-allowlisted commands from tab-completion to obscure the full plugin list |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
 | `reboot` | `/reboot` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
 | `sign-color` | MiniMessage tags in sign text and anvil rename fields |
 | `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |
 | `start-sequence` | Season-start animation: countdown titles + world-border expansion phases; `/start` command |
-| `status` | Per-player prefix/suffix managed with `/status`; fires `StatusChangedEvent` consumed by `chat-format` and `api` |
+| `status` | Per-player prefix/suffix managed with `/status`; fires `StatusChangedEvent` consumed by `chat-format` and `tablist` |
 | `tablist` | Custom tab-list header/footer with MiniMessage templates and `%placeholder%` tokens |
 | `update-mode` | `/updatemode` — maintenance mode that kicks non-bypass players on join |
-| `wither` | Configurable Wither stats (health, damage, minions, explosion) and per-world restrictions |
+| `wither` | Configurable Wither stats (health, damage, minions, explosion) |
 | `world-mgmt` | `/world`, `/portal`, `/setworldspawn` — multi-world navigation |
 
 ## Tech stack
 
 - **Java** 25
-- **Paper** 26.1.2 (Bukkit API 1.21)
+- **Paper** 1.21 (Bukkit API 1.21)
 - **Gradle** Kotlin DSL, with `paperweight-userdev`, `shadow`, `spotless`, `run-paper`
 - **Configurate** 4 YAML — config parsing with custom serializers (`Duration`, `Location`, `Component`, `Material`, `Vector`)
 - **Adventure + MiniMessage** — all in-game text

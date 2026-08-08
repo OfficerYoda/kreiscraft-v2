@@ -112,7 +112,7 @@ In the server console (or from a Minecraft client connected to `localhost:25565`
 
 This command requires the `kreiscraft.admin` permission, which ops hold by default. It triggers:
 
-1. `ConfigService.reload()` — re-reads `config.yml` and all data files from disk.
+1. `ConfigService.reload()` — re-reads `config.yml` from disk.
 2. `MessageService.reload()` — re-reads the active lang file.
 3. `ModuleRegistry.reloadConfigs()` — calls `onConfigReload()` on every enabled module.
 

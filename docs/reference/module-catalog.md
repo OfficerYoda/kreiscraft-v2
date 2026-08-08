@@ -10,7 +10,7 @@ Complete reference for all 25 Kreiscraft modules.
 |-----------|---------|--------|------------|----------|-------------------|
 | `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, khelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
-| `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a Discord bot bridge. |
+| `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `bot` | `de.kreiscraft.modules.bot` | stable | none | — | Registers the data file used by the Discord bot integration for player–account linking state. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
@@ -120,7 +120,7 @@ Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for rep
 
 ### Description
 
-Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data, whitelist management, Discord account linking, and real-time metrics. A WebSocket endpoint relays in-game chat to connected browser clients. Configuration parameters that affect Javalin internals (host, port, CORS origins) restart the server on reload; other parameters (timeouts, intervals) require a full plugin restart.
+Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data, whitelist management, browser↔player account linking, and real-time metrics. A WebSocket endpoint relays in-game chat to connected browser clients. Configuration parameters that affect Javalin internals (host, port, CORS origins) restart the server on reload; other parameters (timeouts, intervals) require a full plugin restart.
 
 ### Configuration
 
@@ -152,7 +152,7 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock.yml`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, and provides a command to add them to the server whitelist via `WhitelistService`.
 
 ### Commands
 
@@ -415,7 +415,7 @@ Teleports a player to the configured jail `location` and records an entry in `da
 
 ### Description
 
-Intercepts `TabCompleteEvent` and filters out command suggestions not in the allowlist, so non-operators cannot discover which plugins are installed. The allowlist is persisted in `data/pluginhider.yml`. Players with `kreiscraft.pluginhider.bypass` see all commands regardless.
+Intercepts `TabCompleteEvent` and filters out command suggestions not in the allowlist, so non-operators cannot discover which plugins are installed. The allowlist is persisted in `data/plugin-hider.yml`. Players with `kreiscraft.pluginhider.bypass` see all commands regardless.
 
 ### Commands
 
@@ -430,7 +430,7 @@ Intercepts `TabCompleteEvent` and filters out command suggestions not in the all
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `modules.plugin-hider.enabled` | boolean | `true` | Enable/disable this module. |
-| `modules.plugin-hider.default-allowed-commands` | List\<String\> | `["help","spawn","msg","tell","w","r","tps","ping","status"]` | Commands pre-populated into `data/pluginhider.yml` on first load. |
+| `modules.plugin-hider.default-allowed-commands` | List\<String\> | `["help","spawn","msg","tell","w","r","tps","ping","status"]` | Commands pre-populated into `data/plugin-hider.yml` on first load. |
 
 ### Services published
 
@@ -575,7 +575,7 @@ Manages the server spawn point (persisted in `data/spawn.yml`). Includes three o
 | `modules.spawn.enabled` | boolean | `true` | Enable/disable this module. |
 | `modules.spawn.teleport-range` | int | `100` | Maximum distance from spawn within which `/spawn` is usable. |
 | `modules.spawn.glide.enabled` | boolean | `true` | Enable the elytra glide zone near spawn. |
-| `modules.spawn.glide.multiply-value` | int | `3` | Velocity multiplier applied at glide activation. |
+| `modules.spawn.glide.multiply-value` | int | `3` | Velocity multiplier at glide start. Currently stored but not applied at runtime. |
 | `modules.spawn.glide.spawn-radius` | int | `30` | Radius (blocks) around the `launch-location` that defines the glide zone. |
 | `modules.spawn.glide.launch-location` | Location | `null` | Centre of the glide zone. |
 | `modules.spawn.swap-hand-boost.enabled` | boolean | `false` | Enable the swap-hand velocity boost while gliding. |
@@ -598,7 +598,7 @@ Manages the server spawn point (persisted in `data/spawn.yml`). Includes three o
 
 ### Description
 
-Triggers the season-start ceremony: a countdown broadcast, followed by three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). State is persisted in `data/startsequence.yml` so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown broadcast, followed by three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). State is persisted in `data/start-sequence.yml` so a restart does not re-trigger the sequence.
 
 ### Commands
 
@@ -634,7 +634,7 @@ Triggers the season-start ceremony: a countdown broadcast, followed by three wor
 
 ### Description
 
-Stores a MiniMessage prefix and suffix for each player, persisted in `data/status.yml`. The prefix/suffix is applied to scoreboards/teams and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
+Stores a MiniMessage prefix and suffix for each player, persisted in `data/statuses.yml`. The prefix/suffix is applied to scoreboards/teams and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
 
 ### Commands
 
@@ -690,7 +690,7 @@ Updates the tab list header and footer for all online players on a repeating sch
 
 ### Description
 
-When active, kicks players who attempt to log in unless they have the bypass permission or their name appears in `bypass-names`. State (active/inactive) is persisted in `data/updatemode.yml`.
+When active, kicks players who attempt to log in unless they have the bypass permission or their name appears in `bypass-names`. State (active/inactive) is persisted in `data/update-mode.yml`.
 
 ### Commands
 

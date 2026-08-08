@@ -54,7 +54,7 @@ public final class GreetModule implements Module {
         }
         if (config == null) config = new GreetConfig(null);
 
-        ctx.events().register(new GreetListener(config, ctx.messages()));
+        ctx.events().register(new GreetListener(() -> this.config, ctx.messages()));
     }
 
     @Override
@@ -127,28 +127,31 @@ Create `src/main/java/de/kreiscraft/modules/greet/GreetListener.java`:
 package de.kreiscraft.modules.greet;
 
 import de.kreiscraft.core.message.MessageService;
+import java.util.function.Supplier;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 public final class GreetListener implements Listener {
 
-    private final GreetConfig config;
+    private final Supplier<GreetConfig> config;
     private final MessageService messages;
 
-    public GreetListener(GreetConfig config, MessageService messages) {
+    public GreetListener(Supplier<GreetConfig> config, MessageService messages) {
         this.config = config;
         this.messages = messages;
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        messages.send(event.getPlayer(), "greet.join", "message", config.message());
+        messages.send(event.getPlayer(), "greet.join", "message", config.get().message());
     }
 }
 ```
 
-`messages.send(sender, key, placeholders...)` resolves `key` from the active lang file, substitutes placeholder tokens, and dispatches the MiniMessage-parsed component to the sender. Placeholders are interleaved key–value pairs: `"message", config.message()` replaces `<message>` in the template.
+`messages.send(sender, key, placeholders...)` resolves `key` from the active lang file, substitutes placeholder tokens, and dispatches the MiniMessage-parsed component to the sender. Placeholders are interleaved key–value pairs: `"message", config.get().message()` replaces `<message>` in the template.
+
+The listener receives a `Supplier<GreetConfig>` rather than the config object itself. This way, when `/kreiscraft reload` replaces the module's config, the listener reads the latest value on the next event instead of holding a stale reference.
 
 ---
 

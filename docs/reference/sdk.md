@@ -210,7 +210,7 @@ Manages the main `config.yml` and the registry of `DataFile` instances that the 
 |-----------|-------------|
 | `ConfigurationNode root()` | Returns the live Configurate root node for `config.yml`. Re-assigned on `reload()`. Do not cache this reference across reloads — re-read from `ctx.moduleConfig()` in `onConfigReload()` instead. |
 | `default ConfigurationNode module(String id)` | Convenience: returns `root().node("modules", id)`. Equivalent to what `ModuleContext.moduleConfig()` provides. |
-| `void reload() throws IOException` | Reloads `config.yml` from disk and updates `root()`. Also triggers `ModuleRegistry.reloadConfigs()`. Called by `/kreiscraft reload`. |
+| `void reload() throws IOException` | Reloads `config.yml` from disk and updates `root()`. Called by `/kreiscraft reload`; the reload command separately triggers `ModuleRegistry.reloadConfigs()`. |
 | `void register(DataFile<?> dataFile)` | Registers a `DataFile` with the service so the auto-save task includes it in periodic flushes. Call this inside `Module.enable()` after constructing and loading the `DataFile`. |
 | `List<DataFile<?>> registeredDataFiles()` | Returns an unmodifiable live view of all registered data files. Used internally by `AutoSaveTask`. |
 

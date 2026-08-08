@@ -114,11 +114,13 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 /**
  * Configurate-serializable config record for the xxx module.
  * Fields map to YAML keys under modules.xxx in config.yml.
+ * The `enabled` flag is read by ModuleRegistry directly from the config node —
+ * do not include it in the record.
  * Primitive defaults (0, false, null) mean "absent from YAML" —
  * apply safe defaults in the compact constructor.
  */
 @ConfigSerializable
-public record XxxConfig(boolean enabled, int exampleValue) {
+public record XxxConfig(int exampleValue) {
 
     public XxxConfig {
         // Treat 0 as "not configured"; apply a sensible default.
