@@ -64,8 +64,9 @@ public final class JailModule implements Module {
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
             this.config = moduleConfig.get(JailConfig.class);
-            if (configRef != null)
+            if (configRef != null) {
                 configRef.set(config);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

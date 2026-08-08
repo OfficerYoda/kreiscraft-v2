@@ -45,19 +45,23 @@ public final class ElytraDenyListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onToggleGlide(EntityToggleGlideEvent event) {
-        if (!event.isGliding())
+        if (!event.isGliding()) {
             return; // only intercept start-glide, not stop-glide
 
+        }
         Entity entity = event.getEntity();
-        if (!(entity instanceof Player player))
+        if (!(entity instanceof Player player)) {
             return;
+        }
 
         CombatConfig cfg = config.get();
 
-        if (!service.isInCombat(player.getUniqueId()))
+        if (!service.isInCombat(player.getUniqueId())) {
             return;
-        if (!cfg.disableElytra())
+        }
+        if (!cfg.disableElytra()) {
             return;
+        }
 
         event.setCancelled(true);
         messages.send(player, "combat.elytra-denied");
@@ -82,8 +86,9 @@ public final class ElytraDenyListener implements PriorityListener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onAttemptPickup(PlayerAttemptPickupItemEvent event) {
         PersistentDataContainer pdc = event.getItem().getPersistentDataContainer();
-        if (!pdc.has(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG))
+        if (!pdc.has(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG)) {
             return;
+        }
 
         long expiry = pdc.get(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG);
         if (System.currentTimeMillis() >= expiry) {
@@ -110,12 +115,14 @@ public final class ElytraDenyListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Item item))
+        if (!(event.getEntity() instanceof Item item)) {
             return;
+        }
 
         PersistentDataContainer pdc = item.getPersistentDataContainer();
-        if (!pdc.has(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG))
+        if (!pdc.has(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG)) {
             return;
+        }
 
         long expiry = pdc.get(ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG);
         if (System.currentTimeMillis() < expiry) {

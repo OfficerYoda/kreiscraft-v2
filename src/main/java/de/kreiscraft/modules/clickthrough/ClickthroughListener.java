@@ -37,20 +37,25 @@ public final class ClickthroughListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
+        }
         Block clickedBlock = event.getClickedBlock();
-        if (clickedBlock == null)
+        if (clickedBlock == null) {
             return;
+        }
         String typeName = clickedBlock.getType().name();
-        if (!typeName.endsWith("_WALL_SIGN") && !typeName.endsWith("_WALL_HANGING_SIGN"))
+        if (!typeName.endsWith("_WALL_SIGN") && !typeName.endsWith("_WALL_HANGING_SIGN")) {
             return;
+        }
 
         Player player = event.getPlayer();
-        if (player.isSneaking())
+        if (player.isSneaking()) {
             return;
-        if (!settingsService.isClickThroughEnabled(player.getUniqueId()))
+        }
+        if (!settingsService.isClickThroughEnabled(player.getUniqueId())) {
             return;
+        }
 
         BlockFace face = event.getBlockFace();
         Block target = clickedBlock.getRelative(face.getOppositeFace());
@@ -71,25 +76,31 @@ public final class ClickthroughListener implements PriorityListener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteractAtEntity(PlayerInteractAtEntityEvent event) {
         Entity entity = event.getRightClicked();
-        if (!(entity instanceof ItemFrame frame))
+        if (!(entity instanceof ItemFrame frame)) {
             return;
-        if (frame.getItem().getType().isAir())
+        }
+        if (frame.getItem().getType().isAir()) {
             return;
+        }
 
         Player player = event.getPlayer();
-        if (player.isSneaking())
+        if (player.isSneaking()) {
             return;
-        if (!settingsService.isClickThroughEnabled(player.getUniqueId()))
+        }
+        if (!settingsService.isClickThroughEnabled(player.getUniqueId())) {
             return;
+        }
 
         ClickthroughConfig config = configRef.get();
         Block target = player.getTargetBlockExact(config.targetBlockMaxDistance());
-        if (target == null)
+        if (target == null) {
             return;
+        }
 
         BlockState state = target.getState();
-        if (!(state instanceof Container container))
+        if (!(state instanceof Container container)) {
             return;
+        }
 
         Rotation originalRotation = frame.getRotation();
         player.openInventory(container.getInventory());

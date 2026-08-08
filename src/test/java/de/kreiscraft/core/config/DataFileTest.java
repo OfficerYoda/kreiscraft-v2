@@ -31,8 +31,9 @@ class DataFileTest {
         @Override
         protected void save(Map<String, Integer> state, ConfigurationNode node) throws SerializationException {
             node.set(null);
-            for (var e : state.entrySet())
+            for (var e : state.entrySet()) {
                 node.node(e.getKey()).set(e.getValue());
+            }
         }
 
         @Override

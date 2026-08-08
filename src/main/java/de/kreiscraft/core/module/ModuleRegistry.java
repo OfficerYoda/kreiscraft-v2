@@ -43,10 +43,11 @@ public final class ModuleRegistry {
         int disabledCount = 0;
         for (Module m : allModules.values()) {
             boolean on = configRoot.node("modules", m.id(), "enabled").getBoolean(false);
-            if (on)
+            if (on) {
                 enabledCandidates.add(m);
-            else
+            } else {
                 disabledCount++;
+            }
         }
 
         List<Module> sorted = topologicalSort(enabledCandidates);
@@ -90,8 +91,9 @@ public final class ModuleRegistry {
 
     private List<Module> topologicalSort(List<Module> input) {
         Set<String> enabledIds = new HashSet<>();
-        for (Module m : input)
+        for (Module m : input) {
             enabledIds.add(m.id());
+        }
         for (Module m : input) {
             for (String dep : m.dependsOn()) {
                 if (!enabledIds.contains(dep)) {
@@ -104,17 +106,20 @@ public final class ModuleRegistry {
         Set<String> visited = new HashSet<>();
         Set<String> visiting = new HashSet<>();
         Map<String, Module> byId = new HashMap<>();
-        for (Module m : input)
+        for (Module m : input) {
             byId.put(m.id(), m);
-        for (Module m : input)
+        }
+        for (Module m : input) {
             visit(m, byId, visited, visiting, sorted);
+        }
         return sorted;
     }
 
     private void visit(Module m, Map<String, Module> byId,
             Set<String> visited, Set<String> visiting, List<Module> out) {
-        if (visited.contains(m.id()))
+        if (visited.contains(m.id())) {
             return;
+        }
         if (!visiting.add(m.id())) {
             throw new ModuleException("cycle detected involving module " + m.id());
         }

@@ -14,8 +14,9 @@ final class DurationSerializer implements TypeSerializer<Duration> {
     @Override
     public Duration deserialize(Type type, ConfigurationNode node) throws SerializationException {
         String s = node.getString();
-        if (s == null)
+        if (s == null) {
             throw new SerializationException("expected duration string");
+        }
         try {
             return Durations.parse(s);
         } catch (IllegalArgumentException e) {

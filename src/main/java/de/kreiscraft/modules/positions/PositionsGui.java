@@ -50,10 +50,11 @@ public final class PositionsGui {
             BiConsumer<Player, PositionEntry> onTeleport) {
 
         int rows = config.guiRows();
-        if (rows < 2)
+        if (rows < 2) {
             rows = 2; // need at least top and bottom border rows
 
-        // Build the row structure strings dynamically for the given row count.
+            // Build the row structure strings dynamically for the given row count.
+        }
         String[] structure = buildStructure(rows);
 
         // Border items

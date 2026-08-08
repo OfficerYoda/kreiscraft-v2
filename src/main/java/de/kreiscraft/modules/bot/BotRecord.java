@@ -7,7 +7,8 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 public record BotRecord(String name, Location location, int time) {
 
     public BotRecord {
-        if (name == null)
+        if (name == null) {
             name = "";
+        }
     }
 }

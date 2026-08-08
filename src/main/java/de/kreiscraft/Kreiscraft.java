@@ -20,7 +20,8 @@ public final class Kreiscraft extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (bootstrap != null)
+        if (bootstrap != null) {
             bootstrap.stop();
+        }
     }
 }

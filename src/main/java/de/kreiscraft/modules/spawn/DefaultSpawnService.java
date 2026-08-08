@@ -28,8 +28,9 @@ public final class DefaultSpawnService implements SpawnService {
     @Override
     public boolean isInSpawnRadius(Player player) {
         Optional<Location> spawn = spawnLocation();
-        if (spawn.isEmpty())
+        if (spawn.isEmpty()) {
             return false;
+        }
         Location spawnLoc = spawn.get();
         Location playerLoc = player.getLocation();
         // distance() throws if the two locations are in different worlds.

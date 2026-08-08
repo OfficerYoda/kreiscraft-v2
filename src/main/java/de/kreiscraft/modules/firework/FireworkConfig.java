@@ -6,9 +6,11 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 public record FireworkConfig(int customModelData, String namespaceKey) {
 
     public FireworkConfig {
-        if (namespaceKey == null)
+        if (namespaceKey == null) {
             namespaceKey = "kreiscraft:firework_rocket";
-        if (customModelData == 0)
+        }
+        if (customModelData == 0) {
             customModelData = 696969;
+        }
     }
 }

@@ -35,18 +35,21 @@ public final class SpawnLaunchListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerMove(PlayerMoveEvent event) {
         SpawnConfig.SpawnLaunchConfig cfg = configSupply.get().spawnLaunch();
-        if (cfg.trigger() == null)
+        if (cfg.trigger() == null) {
             return;
+        }
 
         // ── world guard ───────────────────────────────────────────────────
         Player player = event.getPlayer();
-        if (cfg.trigger().getWorld() == null || !cfg.trigger().getWorld().equals(player.getWorld()))
+        if (cfg.trigger().getWorld() == null || !cfg.trigger().getWorld().equals(player.getWorld())) {
             return;
+        }
 
         Location from = event.getFrom();
         Location to = event.getTo();
-        if (to == null)
+        if (to == null) {
             return;
+        }
 
         int tx = (int) Math.floor(cfg.trigger().getX());
         int ty = (int) Math.floor(cfg.trigger().getY());

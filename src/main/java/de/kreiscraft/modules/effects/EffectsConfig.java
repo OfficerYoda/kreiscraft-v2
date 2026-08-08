@@ -9,7 +9,8 @@ public record EffectsConfig(Particle defaultParticle, int count, double offsetX,
 
     /** Fallback defaults applied when keys are absent from the YAML section. */
     public EffectsConfig {
-        if (defaultParticle == null)
+        if (defaultParticle == null) {
             defaultParticle = Particle.HAPPY_VILLAGER;
+        }
     }
 }

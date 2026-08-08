@@ -64,8 +64,9 @@ public final class PaperWhitelistService implements WhitelistService {
     public Collection<String> allNames() {
         List<String> out = new ArrayList<>();
         for (OfflinePlayer p : platform.server().getWhitelistedPlayers()) {
-            if (p.getName() != null)
+            if (p.getName() != null) {
                 out.add(p.getName());
+            }
         }
         for (GameProfile p : bedrockProfiles.values()) {
             out.add(p.name());

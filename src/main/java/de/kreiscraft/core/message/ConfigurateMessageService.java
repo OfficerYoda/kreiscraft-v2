@@ -45,11 +45,13 @@ public final class ConfigurateMessageService implements MessageService {
 
     private void copyIfMissing(String name) throws IOException {
         Path target = langFolder.resolve(name);
-        if (Files.exists(target))
+        if (Files.exists(target)) {
             return;
+        }
         try (InputStream in = jarLoader.getResourceAsStream("lang/" + name)) {
-            if (in == null)
+            if (in == null) {
                 throw new IOException("missing JAR resource lang/" + name);
+            }
             Files.copy(in, target);
         }
     }

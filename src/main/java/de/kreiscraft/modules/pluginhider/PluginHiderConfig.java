@@ -7,7 +7,8 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 public record PluginHiderConfig(List<String> defaultAllowedCommands) {
 
     public PluginHiderConfig {
-        if (defaultAllowedCommands == null)
+        if (defaultAllowedCommands == null) {
             defaultAllowedCommands = List.of("help");
+        }
     }
 }

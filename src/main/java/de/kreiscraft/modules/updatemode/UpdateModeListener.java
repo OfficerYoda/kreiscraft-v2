@@ -23,15 +23,18 @@ public final class UpdateModeListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
-        if (!service.isActive())
+        if (!service.isActive()) {
             return;
+        }
         UpdateModeConfig cfg = service.config();
         String name = event.getName();
         UUID uuid = event.getUniqueId();
-        if (cfg.bypassNames().contains(name))
+        if (cfg.bypassNames().contains(name)) {
             return;
-        if (platform.server().getOfflinePlayer(uuid).isOp())
+        }
+        if (platform.server().getOfflinePlayer(uuid).isOp()) {
             return;
+        }
         event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
                 messages.render("update-mode.kick-message"));

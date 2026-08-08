@@ -55,8 +55,9 @@ public abstract class DataFile<T> {
     }
 
     public final void flushIfDirty() throws IOException {
-        if (!dirty)
+        if (!dirty) {
             return;
+        }
         Files.createDirectories(file.getParent());
         ConfigurationNode node = loader.createNode();
         try {

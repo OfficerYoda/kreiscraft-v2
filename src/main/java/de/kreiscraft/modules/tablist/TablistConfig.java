@@ -9,11 +9,14 @@ public record TablistConfig(Duration updateInterval, @Setting("header") String h
         @Setting("footer") String footerTemplate) {
 
     public TablistConfig {
-        if (updateInterval == null)
+        if (updateInterval == null) {
             updateInterval = Duration.ofMillis(20 * 50L); // 20 ticks = 1 s
-        if (headerTemplate == null)
+        }
+        if (headerTemplate == null) {
             headerTemplate = "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>";
-        if (footerTemplate == null)
+        }
+        if (footerTemplate == null) {
             footerTemplate = "TPS: %tps% | Players: %server_players%";
+        }
     }
 }

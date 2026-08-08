@@ -52,12 +52,14 @@ public final class DefaultCombatService implements CombatService {
     @Override
     public Duration remaining(UUID uuid) {
         PerPlayerCombat entry = state.get(uuid);
-        if (entry == null)
+        if (entry == null) {
             return Duration.ZERO;
+        }
         Instant expiresAt = entry.taggedAt().plus(entry.duration());
         Instant now = Instant.now();
-        if (expiresAt.isBefore(now))
+        if (expiresAt.isBefore(now)) {
             return Duration.ZERO;
+        }
         return Duration.between(now, expiresAt);
     }
 
@@ -77,8 +79,9 @@ public final class DefaultCombatService implements CombatService {
     @Override
     public void clear(UUID uuid) {
         PerPlayerCombat entry = state.get(uuid);
-        if (entry == null)
+        if (entry == null) {
             return;
+        }
         Duration before = remaining(uuid);
         entry.expiryTask().cancel();
         state.remove(uuid);
@@ -108,8 +111,9 @@ public final class DefaultCombatService implements CombatService {
     private void tickDisplay() {
         for (UUID uuid : List.copyOf(state.keySet())) {
             Player player = platform.server().getPlayer(uuid);
-            if (player == null || !player.isOnline())
+            if (player == null || !player.isOnline()) {
                 continue;
+            }
             long secs = remaining(uuid).getSeconds();
             Component msg = messages.render("combat.remaining", "seconds", String.valueOf(secs));
             CombatDisplay display = settingsService.getCombatDisplay(uuid);

@@ -61,7 +61,8 @@ public final class UpdateModeModule implements Module {
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
-        if (service != null)
+        if (service != null) {
             service.updateConfig(config);
+        }
     }
 }

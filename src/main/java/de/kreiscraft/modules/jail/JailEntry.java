@@ -14,9 +14,11 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 public record JailEntry(Location restoreLocation, String reason, Instant jailedAt) {
 
     public JailEntry {
-        if (reason == null)
+        if (reason == null) {
             reason = "";
-        if (jailedAt == null)
+        }
+        if (jailedAt == null) {
             jailedAt = Instant.now();
+        }
     }
 }

@@ -7,9 +7,11 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 public record UpdateModeConfig(String bypassPermission, List<String> bypassNames) {
 
     public UpdateModeConfig {
-        if (bypassPermission == null)
+        if (bypassPermission == null) {
             bypassPermission = "kreiscraft.updatemode.bypass";
-        if (bypassNames == null)
+        }
+        if (bypassNames == null) {
             bypassNames = List.of();
+        }
     }
 }

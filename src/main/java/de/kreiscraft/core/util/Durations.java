@@ -34,14 +34,18 @@ public final class Durations {
 
     public static String format(Duration duration) {
         long millis = duration.toMillis();
-        if (millis % 86_400_000 == 0)
+        if (millis % 86_400_000 == 0) {
             return (millis / 86_400_000) + "d";
-        if (millis % 3_600_000 == 0)
+        }
+        if (millis % 3_600_000 == 0) {
             return (millis / 3_600_000) + "h";
-        if (millis % 60_000 == 0)
+        }
+        if (millis % 60_000 == 0) {
             return (millis / 60_000) + "m";
-        if (millis % 1_000 == 0)
+        }
+        if (millis % 1_000 == 0) {
             return (millis / 1_000) + "s";
+        }
         return millis + "ms";
     }
 }

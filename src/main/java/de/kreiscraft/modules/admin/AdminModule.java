@@ -44,8 +44,9 @@ public final class AdminModule implements Module {
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        if (config == null)
+        if (config == null) {
             config = new AdminConfig(null, null);
+        }
 
         MessageService messages = ctx.messages();
         Server server = ctx.plugin().getServer();

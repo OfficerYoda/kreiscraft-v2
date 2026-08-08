@@ -35,24 +35,29 @@ public final class AntiCheatListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onJoin(PlayerJoinEvent event) {
         AntiCheatConfig config = configRef.get();
-        if (!config.kickOnFabricForge())
+        if (!config.kickOnFabricForge()) {
             return;
+        }
 
         var player = event.getPlayer();
         var brandOpt = brandProvider.brandOf(player);
-        if (brandOpt.isEmpty())
+        if (brandOpt.isEmpty()) {
             return;
+        }
 
         String brand = brandOpt.get().toLowerCase(Locale.ROOT);
-        if (!brand.contains("fabric") && !brand.contains("forge"))
+        if (!brand.contains("fabric") && !brand.contains("forge")) {
             return;
+        }
 
         var playerId = player.getUniqueId();
         scheduler.runLater(config.handshakeGraceDuration(), () -> {
-            if (!player.isOnline())
+            if (!player.isOnline()) {
                 return;
-            if (service.hasHandshakePassed(playerId))
+            }
+            if (service.hasHandshakePassed(playerId)) {
                 return;
+            }
             player.kick(messages.render("anti-cheat.fabric-forge-kick"));
         });
     }

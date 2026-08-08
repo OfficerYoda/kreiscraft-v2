@@ -62,7 +62,8 @@ public final class BedrockModule implements Module {
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        if (service != null)
+        if (service != null) {
             service.updateConfig(config);
+        }
     }
 }

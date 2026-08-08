@@ -11,19 +11,26 @@ public record StartSequenceConfig(Duration countdown, Double initialBorderSize, 
         @Setting("phase-2-to-instant-delay") Duration phase2ToInstantDelay) {
 
     public StartSequenceConfig {
-        if (countdown == null)
+        if (countdown == null) {
             countdown = Duration.ofSeconds(10);
-        if (initialBorderSize == null)
+        }
+        if (initialBorderSize == null) {
             initialBorderSize = 50.0;
-        if (targetBorderSize == null)
+        }
+        if (targetBorderSize == null) {
             targetBorderSize = 30_000_000.0;
-        if (phase1Duration == null)
+        }
+        if (phase1Duration == null) {
             phase1Duration = Duration.ofSeconds(550_000);
-        if (phase2Duration == null)
+        }
+        if (phase2Duration == null) {
             phase2Duration = Duration.ofSeconds(300_000);
-        if (phase1To2Delay == null)
+        }
+        if (phase1To2Delay == null) {
             phase1To2Delay = Duration.ofMillis(7_500);
-        if (phase2ToInstantDelay == null)
+        }
+        if (phase2ToInstantDelay == null) {
             phase2ToInstantDelay = Duration.ofMillis(15_000);
+        }
     }
 }

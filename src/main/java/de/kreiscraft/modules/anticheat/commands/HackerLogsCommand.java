@@ -66,10 +66,12 @@ public final class HackerLogsCommand {
 
     /** Package-private for tests. Returns empty if the argument is not a recognised kind. */
     static Optional<HackEntry.Kind> parseKind(String arg) {
-        if ("cheats".equalsIgnoreCase(arg))
+        if ("cheats".equalsIgnoreCase(arg)) {
             return Optional.of(HackEntry.Kind.CHEAT);
-        if ("xray".equalsIgnoreCase(arg))
+        }
+        if ("xray".equalsIgnoreCase(arg)) {
             return Optional.of(HackEntry.Kind.XRAY);
+        }
         return Optional.empty();
     }
 

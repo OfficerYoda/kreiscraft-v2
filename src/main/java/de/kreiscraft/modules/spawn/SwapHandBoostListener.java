@@ -29,8 +29,9 @@ public final class SwapHandBoostListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
-        if (!player.isGliding())
+        if (!player.isGliding()) {
             return;
+        }
         SpawnConfig.SwapHandBoostConfig cfg = configSupply.get().swapHandBoost();
         event.setCancelled(true);
         Vector direction = player.getLocation().getDirection()

@@ -20,13 +20,15 @@ public final class ModCheckerChannel implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] bytes) {
         String payload = new String(bytes, StandardCharsets.UTF_8);
         int colon = payload.indexOf(':');
-        if (colon < 0)
+        if (colon < 0) {
             return; // malformed: no colon
+        }
         String type = payload.substring(0, colon);
         String value = payload.substring(colon + 1);
-        if (value.isEmpty())
+        if (value.isEmpty()) {
             return; // malformed: empty value
 
+        }
         switch (type) {
             case "cheats" -> {
                 service.record(new HackEntry(

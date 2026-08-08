@@ -24,8 +24,9 @@ public final class YamlConfigService implements ConfigService {
         this.configFile = dataFolder.resolve("config.yml");
         if (!Files.exists(configFile)) {
             try (InputStream in = jarResourceLoader.getResourceAsStream("config.yml")) {
-                if (in == null)
+                if (in == null) {
                     throw new IOException("no config.yml in JAR resources");
+                }
                 Files.copy(in, configFile);
             }
         }

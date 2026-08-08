@@ -11,14 +11,18 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
 
     /** Apply safe defaults for every nested config that was absent from YAML. */
     public SpawnConfig {
-        if (teleportRange == 0)
+        if (teleportRange == 0) {
             teleportRange = 100;
-        if (glide == null)
+        }
+        if (glide == null) {
             glide = new GlideConfig(true, 3, 30, null);
-        if (swapHandBoost == null)
+        }
+        if (swapHandBoost == null) {
             swapHandBoost = new SwapHandBoostConfig(false, 3.0);
-        if (spawnLaunch == null)
+        }
+        if (spawnLaunch == null) {
             spawnLaunch = new SpawnLaunchConfig(false, null, new Vector(0, 5, 0));
+        }
     }
 
     // ── nested records ──────────────────────────────────────────────────────
@@ -42,10 +46,12 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
 
         public GlideConfig {
             // multiplyValue/spawnRadius: 0 means "missing from config" — apply safe defaults.
-            if (multiplyValue == 0)
+            if (multiplyValue == 0) {
                 multiplyValue = 3;
-            if (spawnRadius == 0)
+            }
+            if (spawnRadius == 0) {
                 spawnRadius = 30;
+            }
         }
     }
 
@@ -55,8 +61,9 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
 
         public SwapHandBoostConfig {
             // 0.0 means "missing from config" — apply the safe default multiplier.
-            if (vectorMultiplier == 0.0)
+            if (vectorMultiplier == 0.0) {
                 vectorMultiplier = 3.0;
+            }
         }
     }
 

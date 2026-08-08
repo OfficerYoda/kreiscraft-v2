@@ -14,10 +14,12 @@ public final class VectorSerializer implements TypeSerializer<Vector> {
 
     @Override
     public Vector deserialize(Type type, ConfigurationNode node) throws SerializationException {
-        if (node.virtual() || node.isNull())
+        if (node.virtual() || node.isNull()) {
             return null;
-        if (!node.isMap())
+        }
+        if (!node.isMap()) {
             throw new SerializationException(node, type, "expected vector map { x, y, z }");
+        }
         double x = node.node("x").getDouble(0.0);
         double y = node.node("y").getDouble(0.0);
         double z = node.node("z").getDouble(0.0);

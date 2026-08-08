@@ -36,8 +36,9 @@ class ModuleRegistryTest {
 
         @Override
         public void enable(ModuleContext ctx) {
-            if (throwOnEnable)
+            if (throwOnEnable) {
                 throw new RuntimeException("boom");
+            }
             log.add("enable:" + id);
         }
 

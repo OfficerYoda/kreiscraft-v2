@@ -13,8 +13,9 @@ class AdminConfigTest {
     void defaults_whenLinksAbsent() throws Exception {
         ConfigurationNode node = CommentedConfigurationNode.root();
         AdminConfig cfg = node.get(AdminConfig.class);
-        if (cfg == null)
+        if (cfg == null) {
             cfg = new AdminConfig(null, null);
+        }
         assertThat(cfg.links()).isNotNull();
         assertThat(cfg.links().website()).isEqualTo(URI.create("https://kreiscraft.de"));
         assertThat(cfg.links().discord().toString()).contains("discord");
@@ -25,8 +26,9 @@ class AdminConfigTest {
     void defaults_timezoneIsUtc() throws Exception {
         ConfigurationNode node = CommentedConfigurationNode.root();
         AdminConfig cfg = node.get(AdminConfig.class);
-        if (cfg == null)
+        if (cfg == null) {
             cfg = new AdminConfig(null, null);
+        }
         assertThat(cfg.timezone()).isEqualTo("UTC");
     }
 

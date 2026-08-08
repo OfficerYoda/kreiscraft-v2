@@ -75,8 +75,9 @@ public final class GlideListener implements PriorityListener {
     public void onToggleFlight(PlayerToggleFlightEvent event) {
         Player player = event.getPlayer();
         SpawnConfig.GlideConfig cfg = configSupply.get().glide();
-        if (!isEligibleForGlide(player, cfg))
+        if (!isEligibleForGlide(player, cfg)) {
             return;
+        }
         event.setCancelled(true);
         flying.add(player.getUniqueId());
         player.setGliding(true);
@@ -88,10 +89,12 @@ public final class GlideListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Player player))
+        if (!(event.getEntity() instanceof Player player)) {
             return;
-        if (!flying.contains(player.getUniqueId()))
+        }
+        if (!flying.contains(player.getUniqueId())) {
             return;
+        }
         EntityDamageEvent.DamageCause cause = event.getCause();
         if (cause == EntityDamageEvent.DamageCause.FALL
                 || cause == EntityDamageEvent.DamageCause.FLY_INTO_WALL) {
@@ -102,14 +105,17 @@ public final class GlideListener implements PriorityListener {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private boolean isEligibleForGlide(Player player, SpawnConfig.GlideConfig cfg) {
-        if (player.getGameMode() != GameMode.SURVIVAL)
+        if (player.getGameMode() != GameMode.SURVIVAL) {
             return false;
+        }
         Optional<Location> spawnOpt = service.spawnLocation();
-        if (spawnOpt.isEmpty())
+        if (spawnOpt.isEmpty()) {
             return false;
+        }
         Location spawn = spawnOpt.get();
-        if (spawn.getWorld() == null || !spawn.getWorld().equals(player.getWorld()))
+        if (spawn.getWorld() == null || !spawn.getWorld().equals(player.getWorld())) {
             return false;
+        }
         return player.getLocation().distance(spawn) <= cfg.spawnRadius();
     }
 

@@ -17,8 +17,9 @@ public final class DefaultSettingsService implements SettingsService {
 
     private Settings settingsFor(UUID playerId) {
         Map<UUID, Settings> map = data.get();
-        if (map == null)
+        if (map == null) {
             return Settings.defaults();
+        }
         return map.getOrDefault(playerId, Settings.defaults());
     }
 

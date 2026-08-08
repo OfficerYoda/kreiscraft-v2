@@ -7,7 +7,8 @@ public record BedrockConfig(String prefix) {
 
     /** Compact constructor — supplies defaults when config keys are absent. */
     public BedrockConfig {
-        if (prefix == null)
+        if (prefix == null) {
             prefix = ".";
+        }
     }
 }

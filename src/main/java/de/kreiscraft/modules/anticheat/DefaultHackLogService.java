@@ -24,12 +24,14 @@ public final class DefaultHackLogService implements HackLogService {
     @Override
     public List<HackEntry> forPlayer(UUID uuid, HackEntry.Kind kind) {
         List<HackEntry> all = data.get().get(uuid);
-        if (all == null)
+        if (all == null) {
             return Collections.emptyList();
+        }
         List<HackEntry> result = new ArrayList<>();
         for (HackEntry e : all) {
-            if (e.kind() == kind)
+            if (e.kind() == kind) {
                 result.add(e);
+            }
         }
         return Collections.unmodifiableList(result);
     }

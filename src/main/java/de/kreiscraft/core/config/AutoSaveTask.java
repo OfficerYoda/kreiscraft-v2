@@ -28,8 +28,9 @@ public final class AutoSaveTask {
     }
 
     public void stop() {
-        if (task != null)
+        if (task != null) {
             task.cancel();
+        }
         flushAll();
     }
 

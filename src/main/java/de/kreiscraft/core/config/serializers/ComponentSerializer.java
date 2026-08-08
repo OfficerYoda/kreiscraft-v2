@@ -15,8 +15,9 @@ final class ComponentSerializer implements TypeSerializer<Component> {
     @Override
     public Component deserialize(Type type, ConfigurationNode node) throws SerializationException {
         String s = node.getString();
-        if (s == null)
+        if (s == null) {
             throw new SerializationException("expected MiniMessage string");
+        }
         return MM.deserialize(s);
     }
 

@@ -10,10 +10,12 @@ public record ChatFormatConfig(EventPriority eventPriority, boolean allowMiniMes
 
     /** Compact constructor: apply safe defaults for null fields. */
     public ChatFormatConfig {
-        if (eventPriority == null)
+        if (eventPriority == null) {
             eventPriority = EventPriority.LOWEST;
-        if (format == null)
+        }
+        if (format == null) {
             format = DEFAULT_FORMAT;
+        }
     }
 
     /** No-arg constructor used when the config section is fully absent. */

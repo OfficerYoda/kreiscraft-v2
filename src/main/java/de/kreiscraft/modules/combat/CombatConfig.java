@@ -11,13 +11,17 @@ public record CombatConfig(Duration tagDuration, Boolean disableElytra, List<Str
 
     /** Compact constructor — fills nulls with safe defaults so the module works with an empty config section. */
     public CombatConfig {
-        if (tagDuration == null)
+        if (tagDuration == null) {
             tagDuration = Duration.ofSeconds(10);
-        if (disableElytra == null)
+        }
+        if (disableElytra == null) {
             disableElytra = Boolean.TRUE;
-        if (excludedWorlds == null || excludedWorlds.isEmpty())
+        }
+        if (excludedWorlds == null || excludedWorlds.isEmpty()) {
             excludedWorlds = List.of("Lobby");
-        if (defaultDisplay == null)
+        }
+        if (defaultDisplay == null) {
             defaultDisplay = CombatDisplay.ACTIONBAR;
+        }
     }
 }

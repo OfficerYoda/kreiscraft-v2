@@ -27,8 +27,9 @@ public final class CombatListener implements PriorityListener {
         Entity victim = event.getEntity();
         Entity damager = event.getDamager();
 
-        if (!(victim instanceof Player victimPlayer))
+        if (!(victim instanceof Player victimPlayer)) {
             return;
+        }
 
         Player attackerPlayer = null;
         if (damager instanceof Player player) {
@@ -40,12 +41,14 @@ public final class CombatListener implements PriorityListener {
             }
         }
 
-        if (attackerPlayer == null)
+        if (attackerPlayer == null) {
             return;
+        }
 
         CombatConfig cfg = config.get();
-        if (isExcludedWorld(victimPlayer, cfg))
+        if (isExcludedWorld(victimPlayer, cfg)) {
             return;
+        }
 
         Duration tagDuration = cfg.tagDuration();
         service.tag(victimPlayer.getUniqueId(), tagDuration);
@@ -55,16 +58,19 @@ public final class CombatListener implements PriorityListener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
         Entity hitEntity = event.getHitEntity();
-        if (!(hitEntity instanceof Player victim))
+        if (!(hitEntity instanceof Player victim)) {
             return;
+        }
 
         ProjectileSource shooter = event.getEntity().getShooter();
-        if (!(shooter instanceof Player attacker))
+        if (!(shooter instanceof Player attacker)) {
             return;
+        }
 
         CombatConfig cfg = config.get();
-        if (isExcludedWorld(event.getEntity(), cfg))
+        if (isExcludedWorld(event.getEntity(), cfg)) {
             return;
+        }
 
         Duration tagDuration = cfg.tagDuration();
         service.tag(victim.getUniqueId(), tagDuration);

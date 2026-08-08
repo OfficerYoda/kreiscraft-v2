@@ -14,8 +14,9 @@ public final class ServiceRegistry {
 
     public <T> T get(Class<T> type) {
         Object o = services.get(type);
-        if (o == null)
+        if (o == null) {
             throw new ServiceNotFoundException(type);
+        }
         return type.cast(o);
     }
 

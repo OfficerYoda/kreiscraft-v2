@@ -143,13 +143,17 @@ public final class KreiscraftBootstrap {
     }
 
     public void stop() {
-        if (guiRegistry != null)
+        if (guiRegistry != null) {
             guiRegistry.closeAll();
-        if (autoSave != null)
+        }
+        if (autoSave != null) {
             autoSave.stop();
-        if (modules != null)
+        }
+        if (modules != null) {
             modules.disableAll();
-        if (events != null)
+        }
+        if (events != null) {
             events.unregisterAll();
+        }
     }
 }

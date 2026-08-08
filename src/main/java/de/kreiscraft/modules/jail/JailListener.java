@@ -37,14 +37,16 @@ public final class JailListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCommand(PlayerCommandPreprocessEvent event) {
-        if (!service.isJailed(event.getPlayer().getUniqueId()))
+        if (!service.isJailed(event.getPlayer().getUniqueId())) {
             return;
+        }
 
         String commandRoot = extractRoot(event.getMessage());
 
         // Always allow /unjail and /khelp regardless of blocked-commands list
-        if (commandRoot.equals("unjail") || commandRoot.equals("khelp"))
+        if (commandRoot.equals("unjail") || commandRoot.equals("khelp")) {
             return;
+        }
 
         if (configRef.get().blockedCommands().contains(commandRoot)) {
             event.setCancelled(true);
@@ -61,8 +63,9 @@ public final class JailListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onJoin(PlayerJoinEvent event) {
-        if (!service.isJailed(event.getPlayer().getUniqueId()))
+        if (!service.isJailed(event.getPlayer().getUniqueId())) {
             return;
+        }
         var location = configRef.get().location();
         if (location != null) {
             event.getPlayer().teleport(location);
@@ -81,8 +84,9 @@ public final class JailListener implements PriorityListener {
         int spaceIdx = cmd.indexOf(' ');
         String root = spaceIdx >= 0 ? cmd.substring(0, spaceIdx) : cmd;
         int colonIdx = root.indexOf(':');
-        if (colonIdx >= 0)
+        if (colonIdx >= 0) {
             root = root.substring(colonIdx + 1);
+        }
         return root.toLowerCase(Locale.ROOT);
     }
 }

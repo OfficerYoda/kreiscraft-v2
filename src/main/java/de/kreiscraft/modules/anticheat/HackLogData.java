@@ -40,8 +40,9 @@ public final class HackLogData extends DataFile<Map<UUID, List<HackEntry>>> {
 
     private static void loadKind(
             ConfigurationNode kindNode, UUID uuid, HackEntry.Kind kind, List<HackEntry> out) {
-        if (kindNode.virtual())
+        if (kindNode.virtual()) {
             return;
+        }
         for (var milliEntry : kindNode.childrenMap().entrySet()) {
             long epochMillis;
             try {

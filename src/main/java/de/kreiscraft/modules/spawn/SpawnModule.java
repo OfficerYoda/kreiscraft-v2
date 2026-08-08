@@ -34,8 +34,9 @@ public final class SpawnModule implements Module {
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        if (config == null)
+        if (config == null) {
             config = new SpawnConfig(100, null, null, null);
+        }
 
         // ── data ────────────────────────────────────────────────────────────
         SpawnData data = new SpawnData(ctx.plugin().getDataFolder().toPath());
@@ -84,10 +85,12 @@ public final class SpawnModule implements Module {
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
-        if (config == null)
+        if (config == null) {
             config = new SpawnConfig(100, null, null, null);
-        if (service != null)
+        }
+        if (service != null) {
             service.updateConfig(config);
+        }
         // Listener instances read config.get() on every event — no further update needed.
     }
 }
