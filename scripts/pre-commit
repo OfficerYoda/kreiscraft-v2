@@ -9,3 +9,6 @@ fi
 
 echo "[pre-commit] Running spotlessCheck on staged Java files..."
 ./gradlew --console=plain spotlessCheck
+
+echo "[pre-commit] Running checkstyle on staged Java files..."
+./gradlew --console=plain checkstyleMain checkstyleTest

@@ -1,5 +1,6 @@
 plugins {
     java
+    checkstyle
     alias(libs.plugins.shadow)
     alias(libs.plugins.spotless)
     alias(libs.plugins.run.paper)
@@ -76,6 +77,12 @@ spotless {
         target("src/**/*.java")
         eclipse().configFile("eclipse-formatter.xml")
     }
+}
+
+checkstyle {
+    toolVersion = "13.9.0"
+    configFile = file("config/checkstyle/checkstyle.xml")
+    isIgnoreFailures = false
 }
 
 tasks.register<Copy>("installGitHooks") {
