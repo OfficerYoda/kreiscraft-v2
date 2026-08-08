@@ -113,12 +113,12 @@ class JailListenerTest {
     }
 
     @Test
-    void onCommand_jailedPlayer_khelpCommand_alwaysAllowed() {
+    void onCommand_jailedPlayer_kreiscrafthelpCommand_alwaysAllowed() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
-        configRef.set(new JailConfig(jailLocation, List.of("khelp", "msg")));
+        configRef.set(new JailConfig(jailLocation, List.of("kreiscrafthelp", "msg")));
 
-        PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/khelp");
+        PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/kreiscrafthelp");
         server.getPluginManager().callEvent(event);
 
         assertThat(event.isCancelled()).isFalse();

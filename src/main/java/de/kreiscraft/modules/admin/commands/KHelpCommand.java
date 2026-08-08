@@ -15,7 +15,7 @@ public final class KHelpCommand {
 
     public static LiteralCommandNode<CommandSourceStack> build(
             MessageService messages, Supplier<AdminConfig> configSupplier) {
-        return Commands.literal("khelp")
+        return Commands.literal("kreiscrafthelp")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.admin.help"))
                 .executes(ctx -> {
                     CommandSender sender = ctx.getSource().getSender();

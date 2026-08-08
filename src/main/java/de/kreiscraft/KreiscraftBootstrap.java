@@ -139,7 +139,7 @@ public final class KreiscraftBootstrap {
         autoSave.start();
 
         commands.register(ReloadCommand.build(config, modules, messages),
-                "Kreiscraft admin commands");
+                "Kreiscraft admin commands", "kc");
     }
 
     public void stop() {

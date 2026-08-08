@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
  *
  * <ul>
  *   <li>Blocks commands in {@code config.blockedCommands} for jailed players (always allows
- *       {@code /unjail} and {@code /khelp}).
+ *       {@code /unjail} and {@code /kreiscrafthelp}).
  *   <li>Cancels interactions for jailed players.
  *   <li>Teleports jailed players to the jail location on join.
  * </ul>
@@ -43,8 +43,10 @@ public final class JailListener implements PriorityListener {
 
         String commandRoot = extractRoot(event.getMessage());
 
-        // Always allow /unjail and /khelp regardless of blocked-commands list
-        if (commandRoot.equals("unjail") || commandRoot.equals("khelp")) {
+        // Always allow /unjail and /kreiscrafthelp (plus its aliases) regardless of blocked-commands list
+        if (commandRoot.equals("unjail")
+                || commandRoot.equals("kreiscrafthelp")
+                || commandRoot.equals("kchelp")) {
             return;
         }
 

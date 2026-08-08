@@ -8,7 +8,7 @@ Complete reference for all 25 Kreiscraft modules.
 
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
-| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, khelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
+| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
@@ -54,11 +54,11 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 
 | Command | Permission | Default | Description |
 |---------|-----------|---------|-------------|
-| `kreiscraftgamemode <mode> [player]` | `kreiscraft.admin.gamemode` | op | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). |
+| `kreiscraftgamemode <mode> [player]` | `kreiscraft.admin.gamemode` | op | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). Aliases: `kreiscraftgm`, `kcgamemode`, `kcgm`. |
 | `item <material> [count]` | `kreiscraft.admin.item` | op | Give yourself the specified item. Alias: `i`. |
 | `skull [player]` | `kreiscraft.admin.skull` | op | Give yourself a player-head skull. Alias: `kopf`. |
 | `head` | `kreiscraft.admin.head` | op | Swap the item in your main hand with your helmet slot. |
-| `kreiscraftweather <clear\|rain\|thunder>` | `kreiscraft.admin.weather` | op | Change the weather in your current world. |
+| `kreiscraftweather <clear\|rain\|thunder>` | `kreiscraft.admin.weather` | op | Change the weather in your current world. Alias: `kcweather`. |
 | `spawnmob <entityType> [count]` | `kreiscraft.admin.spawnmob` | op | Spawn mobs at your location. Alias: `sm`. |
 | `ip [player]` | `kreiscraft.admin.ip` | op | Show a player's IP address. |
 | `uuid [player]` | `kreiscraft.admin.uuid` | op | Show a player's UUID. |
@@ -67,7 +67,7 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 | `tps` | `kreiscraft.admin.tps` | true | Show server TPS. |
 | `statistic <player> <stat>` | `kreiscraft.admin.statistic` | op | Show a player's Bukkit `Statistic` value. |
 | `sudo <target\|all> <text>` | `kreiscraft.admin.sudo` | op | Force a player (or all players) to chat `text`. |
-| `khelp` | `kreiscraft.admin.help` | true | Show configured website/Discord/YouTube links. Alias: `?`. |
+| `kreiscrafthelp` | `kreiscraft.admin.help` | true | Show configured website/Discord/YouTube links. Aliases: `?`, `kchelp`. |
 
 ### Configuration
 
@@ -75,9 +75,9 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 |-----|------|---------|-------------|
 | `modules.admin.enabled` | boolean | `true` | Enable/disable this module. |
 | `modules.admin.timezone` | String | `"UTC"` | Timezone used by `/lastonline` to format timestamps (IANA zone ID). |
-| `modules.admin.links.website` | URI | `"https://kreiscraft.de"` | Website URL shown by `/khelp`. |
-| `modules.admin.links.discord` | URI | `"https://discord.gg/example"` | Discord invite URL shown by `/khelp`. |
-| `modules.admin.links.youtube` | URI | `"https://youtube.com/@example"` | YouTube channel URL shown by `/khelp`. |
+| `modules.admin.links.website` | URI | `"https://kreiscraft.de"` | Website URL shown by `/kreiscrafthelp`. |
+| `modules.admin.links.discord` | URI | `"https://discord.gg/example"` | Discord invite URL shown by `/kreiscrafthelp`. |
+| `modules.admin.links.youtube` | URI | `"https://youtube.com/@example"` | YouTube channel URL shown by `/kreiscrafthelp`. |
 
 ---
 

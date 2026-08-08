@@ -56,13 +56,13 @@ public final class AdminModule implements Module {
                 .register(
                         KreiscraftGamemodeCommand.build(messages, server),
                         "Change a player's gamemode",
-                        "kreiscraftgm");
+                        "kreiscraftgm", "kcgamemode", "kcgm");
         ctx.commands().register(ItemCommand.build(messages), "Spawn items", "i");
         ctx.commands()
                 .register(SkullCommand.build(messages, server), "Get a player head", "kopf");
         ctx.commands().register(HeadCommand.build(messages), "Swap held item and helmet");
         ctx.commands()
-                .register(WeatherCommand.build(messages), "Change weather in your world");
+                .register(WeatherCommand.build(messages), "Change weather in your world", "kcweather");
         ctx.commands()
                 .register(
                         SpawnMobCommand.build(messages),
@@ -86,7 +86,7 @@ public final class AdminModule implements Module {
                 .register(
                         KHelpCommand.build(messages, () -> this.config),
                         "Show Kreiscraft help links",
-                        "?");
+                        "?", "kchelp");
     }
 
     @Override

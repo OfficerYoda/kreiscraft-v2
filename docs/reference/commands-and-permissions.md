@@ -8,12 +8,12 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 | Command | Aliases | Module | Description | Permission | Default |
 |---------|---------|--------|-------------|-----------|---------|
-| `/kreiscraft reload` | — | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
-| `/kreiscraftgamemode <mode> [player]` | `kreiscraftgm` | `admin` | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). | `kreiscraft.admin.gamemode` | op |
+| `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
+| `/kreiscraftgamemode <mode> [player]` | `kreiscraftgm`, `kcgamemode`, `kcgm` | `admin` | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). | `kreiscraft.admin.gamemode` | op |
 | `/item <material> [count]` | `i` | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
-| `/kreiscraftweather <clear\|rain\|thunder>` | — | `admin` | Change the weather in your current world. | `kreiscraft.admin.weather` | op |
+| `/kreiscraftweather <clear\|rain\|thunder>` | `kcweather` | `admin` | Change the weather in your current world. | `kreiscraft.admin.weather` | op |
 | `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 50). | `kreiscraft.admin.spawnmob` | op |
 | `/ip [player]` | — | `admin` | Show a player's IP address. | `kreiscraft.admin.ip` | op |
 | `/uuid [player]` | — | `admin` | Show a player's UUID. | `kreiscraft.admin.uuid` | op |
@@ -22,7 +22,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
-| `/khelp` | `?` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
+| `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
 | `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player. | `kreiscraft.anticheat.view` | op |
 | `/bedrocklist add <name>` | — | `bedrock` | Add a known Bedrock player to the whitelist. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | Show the count of known Bedrock players. | `kreiscraft.bedrock.admin` | op |
