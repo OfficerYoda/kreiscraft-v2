@@ -71,5 +71,5 @@ jobs:
             exit 0
           fi
           git add README.md docs/
-          git commit -m "docs: full rebuild via workflow_dispatch [skip ci]"
+          git commit -m "docs: full rebuild via workflow_dispatch"
           git push

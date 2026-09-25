@@ -1,8 +1,8 @@
 name: Sync docs (incremental)
 
 # Runs on every push to the default branch. Reads the diff, asks the LLM to
-# update any affected docs, and commits the result back with [skip ci] to
-# avoid an infinite feedback loop.
+# update any affected docs, and commits the result back. The docs-only commit
+# does not retrigger this workflow because of the path filter below.
 #
 # Path filter: skips runs when only docs, workflow files, or the root README
 # changed. That covers both the auto-doc commit itself and pure-doc PRs.
@@ -15,8 +15,6 @@ on:
       - ".github/**"
       - "README.md"
 
-# Belt-and-braces safety: skip if the last commit already carries [skip ci]
-# (Forgejo interprets it natively; GitHub Actions does too).
 concurrency:
   group: docs-update-${{ github.ref }}
   cancel-in-progress: false
@@ -79,5 +77,5 @@ jobs:
             exit 0
           fi
           git add README.md docs/
-          git commit -m "docs: sync with $(git rev-parse --short "${{ github.sha }}") [skip ci]"
+          git commit -m "docs: sync with $(git rev-parse --short "${{ github.sha }}")"
           git push
