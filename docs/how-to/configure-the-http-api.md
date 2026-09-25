@@ -1,4 +1,6 @@
-# How to configure the HTTP/WebSocket API
+---
+title: How to configure the HTTP/WebSocket API
+---
 
 ## 1. Enable the module
 

@@ -1,4 +1,6 @@
-# How to persist module state with DataFile
+---
+title: How to persist module state with DataFile
+---
 
 `DataFile<T>` wraps a YAML file with dirty-tracking and integrates with the auto-save loop
 (`core.auto-save-interval`, default `5m`).

@@ -11,7 +11,7 @@ The documentation follows the [Diátaxis framework](https://diataxis.fr/). Every
 - **`docs/reference/`** — Information-oriented. Exhaustive and precise, like a dictionary entry. No prose narrative.
 - **`docs/explanation/`** — Understanding-oriented. Discussion of *why* things work the way they do. Prose, ADRs, diagrams.
 
-`docs/README.md` is the index. The root `README.md` is the project landing page.
+`docs/index.md` is the index. The root `README.md` is the project landing page.
 
 Do not blur the quadrants. Never turn a reference doc into a tutorial. Never turn a tutorial into a how-to.
 
@@ -35,6 +35,8 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 - **Match the existing voice.** All docs were written in the same voice. Do not drift.
 - **Tables for reference material.** Prose for explanations. Numbered steps for tutorials and how-tos.
 - **MiniMessage examples must be accurate** — copy from actual lang files, don't invent tags.
+- **Preserve Starlight metadata.** Every file starts with YAML frontmatter containing `title`; do not replace it with a duplicate level-one heading.
+- **Use site routes for doc links.** Internal links use root-relative routes such as `/reference/configuration/`, not source `.md` paths.
 
 ## Accuracy rules (absolute)
 
@@ -42,7 +44,7 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 2. **Do not guess defaults.** If you cannot verify a default value from the source, omit the default column entry rather than fabricate one.
 3. **Preserve unchanged information.** When editing a doc, do not rephrase, reformat, or "polish" sections that are not affected by the code change. Minimise diffs.
 4. **Cross-references matter.** If you add a config key, update every doc that lists that key (typically `docs/reference/configuration.md`, `docs/reference/module-catalog.md`, and possibly the module's how-to).
-5. **The 25 modules are the source of truth.** If a module is added, removed, or renamed, update: `docs/reference/module-catalog.md`, `docs/reference/commands-and-permissions.md`, `docs/reference/configuration.md`, `docs/README.md` index, and root `README.md` module table.
+5. **The 25 modules are the source of truth.** If a module is added, removed, or renamed, update: `docs/reference/module-catalog.md`, `docs/reference/commands-and-permissions.md`, `docs/reference/configuration.md`, `docs/index.md`, and the root `README.md` module table.
 
 ## Output format
 

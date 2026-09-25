@@ -1,4 +1,6 @@
-# Your First Module
+---
+title: Your First Module
+---
 
 This tutorial walks you through building a complete `greet` module from scratch. The module sends a configurable welcome message to every player when they join. By the end you will have a working module with its own config record, event listener, and lang keys, wired into the plugin's startup cycle.
 
@@ -208,4 +210,4 @@ To verify live reload works, change `message` in `config.yml`, then run `/kreisc
 
 When the server starts, `ModuleRegistry.enableAll()` checks `modules.greet.enabled` in the config root. Finding `true`, it calls `GreetModule.enable(ctx)` where `ctx` is a `ModuleContext` pre-scoped to the `modules.greet` node. `EventBus.register()` delegates to Bukkit's `PluginManager.registerEvents()` and stores a reference for clean teardown when the plugin disables.
 
-Continue with [Writing a Command](writing-a-command.md) to extend the `greet` module with a `/greet <player>` command.
+Continue with [Writing a Command](/tutorials/writing-a-command/) to extend the `greet` module with a `/greet <player>` command.

@@ -1,4 +1,6 @@
-# Getting Started
+---
+title: Getting Started
+---
 
 This tutorial takes you from a clean clone to a running local server with all modules active. By the end you will have verified the plugin loads, seen the startup summary, reloaded the config live, and run the test suite.
 
@@ -153,4 +155,4 @@ If tests fail, Gradle writes HTML reports to `build/reports/tests/test/index.htm
 - A pre-commit hook that prevents formatting regressions.
 - A passing test suite as a baseline.
 
-Continue with [Your First Module](your-first-module.md) to learn how to add a new feature.
+Continue with [Your First Module](/tutorials/your-first-module/) to learn how to add a new feature.

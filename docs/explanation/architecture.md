@@ -1,4 +1,6 @@
-# Architecture Overview
+---
+title: Architecture Overview
+---
 
 This document explains how Kreiscraft is structured and why it works the way it does. It is aimed
 at the developer-admins who maintain the plugin and need to understand the underlying design to

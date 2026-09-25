@@ -20,3 +20,7 @@ bin/
 .env.*
 !.env.example
 
+# Documentation site
+docs-site/node_modules/
+docs-site/.astro/
+docs-site/dist/

@@ -1,4 +1,6 @@
-# Design Decisions
+---
+title: Design Decisions
+---
 
 This document records the significant architectural decisions made for Kreiscraft in the format
 of Architecture Decision Records (ADRs). Each ADR captures the context that motivated a choice,

@@ -1,4 +1,6 @@
-# Commands and Permissions
+---
+title: Commands and Permissions
+---
 
 Complete reference for all Kreiscraft commands and permission nodes.
 

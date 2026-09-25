@@ -1,4 +1,6 @@
-# How to reload configuration at runtime
+---
+title: How to reload configuration at runtime
+---
 
 ## 1. Run the command
 

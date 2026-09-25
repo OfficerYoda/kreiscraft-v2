@@ -1,4 +1,6 @@
-# How to add a new module
+---
+title: How to add a new module
+---
 
 ## Prerequisites
 

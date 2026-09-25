@@ -1,4 +1,6 @@
-# HTTP and WebSocket API Reference
+---
+title: HTTP and WebSocket API Reference
+---
 
 Complete reference for the embedded Javalin HTTP/WebSocket server provided by the `api` module.
 
@@ -34,7 +36,7 @@ The server starts inside `ApiModule.enable()` and binds to the address and port 
 | `verification-timeout` | Duration | `2m` | How long a pending link request stays valid. |
 | `admin-api-key` | String | `""` | Secret for admin endpoints; empty string disables them. |
 
-See [`docs/reference/configuration.md`](configuration.md#api) for full detail and reload behaviour.
+See [Configuration Reference](/reference/configuration/#api) for full detail and reload behaviour.
 
 ---
 

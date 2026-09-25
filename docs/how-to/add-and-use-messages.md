@@ -1,4 +1,6 @@
-# How to add and use messages
+---
+title: How to add and use messages
+---
 
 All user-facing strings go through `MessageService` (MiniMessage-based i18n).
 

@@ -25,10 +25,10 @@ Requires **Java 25**. The `runServer` task boots a local Paper instance in `run/
 
 ## Documentation
 
-Full documentation is organised by the [Diátaxis](https://diataxis.fr/) framework in [`docs/`](docs/README.md).
+Full documentation is organised by the [Diátaxis](https://diataxis.fr/) framework in [`docs/`](docs/index.md).
 
 - **Tutorials** — [Getting Started](docs/tutorials/getting-started.md) · [Your First Module](docs/tutorials/your-first-module.md) · [Writing a Command](docs/tutorials/writing-a-command.md)
-- **How-to guides** — [Add a Module](docs/how-to/add-a-new-module.md) · [Persist State](docs/how-to/persist-module-state.md) · [Reload Config](docs/how-to/reload-configuration.md) · [Write Tests](docs/how-to/write-tests.md) · [and more…](docs/README.md#how-to-guides--solving-specific-problems)
+- **How-to guides** — [Add a Module](docs/how-to/add-a-new-module.md) · [Persist State](docs/how-to/persist-module-state.md) · [Reload Config](docs/how-to/reload-configuration.md) · [Write Tests](docs/how-to/write-tests.md) · [and more…](docs/index.md#how-to-guides--solving-specific-problems)
 - **Reference** — [Module Catalog](docs/reference/module-catalog.md) · [Commands & Permissions](docs/reference/commands-and-permissions.md) · [Configuration](docs/reference/configuration.md) · [HTTP API](docs/reference/http-api.md) · [SDK](docs/reference/sdk.md) · [Module Template](docs/reference/module-template.md)
 - **Explanation** — [Architecture](docs/explanation/architecture.md) · [Design Decisions (ADRs)](docs/explanation/design-decisions.md)
 

@@ -1,4 +1,6 @@
-# SDK Reference
+---
+title: SDK Reference
+---
 
 This document is the authoritative reference for every public type that module authors interact with. All types live under `de.kreiscraft.*`. Signatures are taken directly from the source; do not rely on IntelliSense alone — the framework has contract rules that the compiler does not enforce.
 

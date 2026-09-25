@@ -1,4 +1,6 @@
-# Module Catalog
+---
+title: Module Catalog
+---
 
 Complete reference for all 25 Kreiscraft modules.
 

@@ -1,4 +1,6 @@
-# How to write tests
+---
+title: How to write tests
+---
 
 Tests live under `src/test/java/de/kreiscraft/`. Run them all with:
 

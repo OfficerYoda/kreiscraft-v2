@@ -1,4 +1,6 @@
-# Configuration Reference
+---
+title: Configuration Reference
+---
 
 Complete reference for every key in Kreiscraft's configuration files.
 

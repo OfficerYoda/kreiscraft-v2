@@ -1,4 +1,6 @@
-# Writing a Command
+---
+title: Writing a Command
+---
 
 This tutorial adds a `/greet <player>` command to the `greet` module from the previous tutorial. When run, it sends the configured greeting to the named player and confirms to the sender. By the end you will understand how Paper's Brigadier integration works, how `CommandRegistrar` wraps it, and how to add a permission.
 

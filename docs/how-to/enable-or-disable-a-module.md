@@ -1,4 +1,6 @@
-# How to enable or disable a module
+---
+title: How to enable or disable a module
+---
 
 ## A. At startup via `config.yml`
 

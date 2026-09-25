@@ -1,4 +1,6 @@
-# Module Template
+---
+title: Module Template
+---
 
 Copy-paste scaffold for a new Kreiscraft module. Replace every occurrence of `Xxx` / `xxx` with your module name (PascalCase / kebab-case respectively). Remove sections you do not need.
 
