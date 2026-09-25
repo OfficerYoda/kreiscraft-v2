@@ -4,6 +4,12 @@ title: Your First Module
 
 This tutorial walks you through building a complete `greet` module from scratch. The module sends a configurable welcome message to every player when they join. By the end you will have a working module with its own config record, event listener, and lang keys, wired into the plugin's startup cycle.
 
+A module is a cohesive runtime feature inside the Kreiscraft plugin. It owns its configuration,
+listeners, commands, and state, but may interact with other modules through declared dependencies,
+shared services, and events. For example, `chat-format` depends on `status`, while `combat` and
+`clickthrough` use `settings-gui`. See [Core Concepts](/explanation/architecture/#core-concepts)
+for the surrounding terminology.
+
 The patterns here match what you will find in existing modules such as `GlowModule` and `FireworkModule`. Read those alongside this tutorial to see the same ideas applied to different problems.
 
 ---

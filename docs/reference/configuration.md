@@ -15,7 +15,7 @@ Complete reference for every key in Kreiscraft's configuration files.
 | Language files | `plugins/Kreiscraft/lang/de.yml`, `plugins/Kreiscraft/lang/en.yml` |
 | Data files | `plugins/Kreiscraft/data/<name>.yml` |
 
-On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist (`YamlConfigService.java:25-30`). The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
+On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist. The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
 
 Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`.
 
@@ -82,7 +82,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | `verification-timeout` | Duration | `2m` | How long a pending browser→player link request remains valid before being auto-declined. |
 | `admin-api-key` | String | `""` | Secret key for admin endpoints (`X-Kreiscraft-Api-Key` header). **Empty string disables all admin endpoints** (they return `503`). |
 
-> **Reload behaviour:** `host`, `port`, and `cors-origins` trigger a full Javalin server restart on `/kreiscraft reload`. All other `api` fields are baked into sub-services at enable time and require a server restart to take effect. See `ApiModule.java:29-35`.
+> See [Hot Reload](#hot-reload) for which API settings require a server restart.
 
 ---
 
@@ -330,5 +330,5 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 
 **What requires a server restart:**
 
-- `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart. See `ApiModule.java:29-35` and `ApiServer.java:26-33`.
+- `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart.
 - Adding or removing modules — the `enabled` flag is only evaluated at plugin startup.

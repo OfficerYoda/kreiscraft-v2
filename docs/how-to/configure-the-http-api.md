@@ -16,39 +16,27 @@ The server must be (re)started for `enabled` to take effect. The module cannot b
 
 ---
 
-## 2. Config keys
+## 2. Configure the server
 
-All keys live under `modules.api` in `config.yml`. Source of truth: `ApiConfig.java`.
+Set the bind address, port, allowed browser origins, and an admin key if whitelist administration is needed:
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `host` | string | `"0.0.0.0"` | Bind address for the Javalin HTTP server. Use `"127.0.0.1"` to restrict to localhost. |
-| `port` | int | `8080` | TCP port. |
-| `cors-origins` | list of strings | `["https://kreiscraft.de"]` | Origins allowed by the CORS policy. Requests from unlisted origins receive a 400 response. |
-| `session-cookie.name` | string | `"website_user_uuid"` | Name of the browser session cookie set by `GET /initialize`. |
-| `session-cookie.max-age` | duration | `30d` | Max-age of the session cookie. |
-| `heartbeat-interval` | duration | `20s` | WebSocket ping interval sent to `/chat` clients. |
-| `async-timeout` | duration | `10s` | Javalin async request timeout. |
-| `metrics-refresh-interval` | duration | `1s` | How often `ServerMetricsCollector` polls TPS and player count. |
-| `verification-timeout` | duration | `2m` | How long a pending browser link request stays alive before it expires. |
-| `admin-api-key` | string | `""` | API key required in the `X-Kreiscraft-Api-Key` header for admin endpoints (`/whitelist`, etc.). Empty string disables those endpoints (they return 503 `admin_api_disabled`). |
+```yaml
+modules:
+  api:
+    host: "127.0.0.1"
+    port: 8080
+    cors-origins:
+      - "https://kreiscraft.de"
+    admin-api-key: ""
+```
 
-Duration syntax examples: `20s`, `2m`, `30d`, `500ms`.
+See [Configuration](/reference/configuration/#api) for every key, default, and duration syntax.
 
 ---
 
-## 3. Routes exposed
+## 3. Check the routes
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/status` | GET | Server TPS, player count, uptime. |
-| `/players` | GET | Online player list and metadata. |
-| `/initialize` | GET | Initialises or resumes a browser session and sets the session cookie. |
-| `/link-player` | POST | Initiate a browser↔player link for a named online player. |
-| `/linked-player` | GET | Poll link status for the current browser session. |
-| `/unlink-player` | POST | Remove an accepted link. |
-| `/whitelist` | GET/POST | Read or add whitelist entries. Requires `admin-api-key`. |
-| `/chat` | WebSocket | Bidirectional chat bridge between browser and in-game chat. |
+Use [HTTP and WebSocket API Reference](/reference/http-api/) for routes, payloads, status codes, and the WebSocket protocol.
 
 ---
 
@@ -64,7 +52,7 @@ Duration syntax examples: `20s`, `2m`, `30d`, `500ms`.
 
 ## 5. Hot-reload behaviour
 
-`/kreiscraft reload` calls `ApiModule.onConfigReload`. The outcome depends on which fields changed (`ApiModule.java:107-120`):
+`/kreiscraft reload` calls `ApiModule.onConfigReload`. The outcome depends on which fields changed:
 
 | Changed fields | Behaviour |
 |----------------|-----------|
@@ -91,7 +79,4 @@ The player must be online for a link request to be initiated. There is no comman
 
 ## 7. Security notes
 
-- **`admin-api-key` is required** to use the `/whitelist` endpoint. Leave it empty (`""`) if you do not need it — the endpoint will respond with 503.
-- The CORS allowlist (`cors-origins`) is the only origin-based protection for the other endpoints. Do not add wildcard origins.
-- The API server has **no TLS, no authentication beyond the linking flow and the admin key**. Do not expose the port publicly without a reverse proxy that handles TLS and, if needed, additional authentication.
-- The linking flow authenticates the browser as a specific player; it does not authenticate admin operations — those use `admin-api-key`.
+The API has no built-in TLS and only admin endpoints use `admin-api-key`. Do not expose it publicly without a TLS reverse proxy, and review the [API security constraints](/reference/http-api/#security) before deployment.

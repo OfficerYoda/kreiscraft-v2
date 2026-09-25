@@ -20,8 +20,8 @@ No other tools are needed. Gradle and the Paper server are downloaded automatica
 ## 1. Clone and navigate
 
 ```bash
-git clone <repository-url>
-cd kreiscraft-refactor/kreiscraft-java
+git clone https://forgejo.officeryoda.dev/OfficerYoda/kreiscraft-java.git
+cd kreiscraft-java
 ```
 
 All remaining commands in this tutorial are run from that directory.

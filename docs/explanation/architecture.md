@@ -8,7 +8,27 @@ make changes confidently.
 
 ---
 
-## The Three-Layer Model
+## Core Concepts
+
+| Term | Meaning in Kreiscraft |
+|---|---|
+| **Plugin** | The single deployable Kreiscraft JAR loaded by Paper. All modules run inside it. |
+| **Module** | A cohesive runtime feature that owns its implementation, such as commands, listeners, configuration, and state. A module is not a separate plugin or Gradle project. |
+| **Module dependency** | A requirement declared through `dependsOn()`. Dependencies start before the module and remain available until it stops. |
+| **Module lifecycle** | `enable()` starts a module, `onConfigReload()` updates reloadable settings, and `disable()` releases resources. |
+| **`ModuleContext`** | The dependencies and framework capabilities supplied to a module when it starts. |
+| **Service** | Functionality published by the core, shared layer, or a module for other modules to consume through `ServiceRegistry`. |
+| **Event and listener** | An event announces that something happened; listeners react without the sender calling them directly. `EventBus` manages Bukkit listener registration and cleanup. |
+| **Configuration and state** | Configuration is administrator-managed input in `config.yml`; state is runtime data persisted under `data/`. |
+| **Composition root** | `KreiscraftBootstrap`, the one place that constructs objects and connects their dependencies. |
+
+Modules are cohesive but not isolated. They can collaborate through declared dependencies, shared
+services, and events. For example, `chat-format` depends on `status`, while `combat` and
+`clickthrough` depend on `settings-gui`.
+
+---
+
+## Codebase Areas
 
 The source tree is divided into four distinct packages, which form a clear dependency hierarchy:
 
@@ -41,10 +61,11 @@ Houses services that cut across modules but are not part of the core engine: `Ch
 in the composition root and published to `ServiceRegistry` so any module can consume them.
 
 **Feature layer** (`modules/`)  
-Contains 25 feature modules, one package per feature. Each module is entirely self-contained: it
-registers its own Bukkit listeners, Brigadier commands, and data files through the handles
-provided by `ModuleContext`. Modules that need services from other modules declare that dependency
-explicitly via `dependsOn()`, which both enforces initialization order and documents coupling.
+Contains 25 feature modules, one package per feature. Each module keeps its feature-specific code
+together and registers its Bukkit listeners, Brigadier commands, and data files through the
+handles provided by `ModuleContext`. Modules that need services from other modules declare that
+dependency explicitly via `dependsOn()`, which both enforces initialization order and documents
+coupling.
 
 ---
 
@@ -79,8 +100,8 @@ receives, you trace from the call site in `KreiscraftBootstrap.start()` to the m
 
 ## The Runtime Module System
 
-Modules are not Gradle subprojects and cannot be deployed independently. They are runtime feature
-toggles: a module is active if and only if `modules.<id>.enabled: true` appears in `config.yml`.
+`ModuleRegistry` activates a module if and only if `modules.<id>.enabled: true` appears in
+`config.yml`.
 
 ### Registration and enable ordering
 
@@ -283,33 +304,10 @@ modules.reloadConfigs(cfg.root());     // dispatch to each enabled module
 `m.onConfigReload(newRoot.node("modules", m.id()))` for each module. The default implementation
 of `onConfigReload` in the `Module` interface is a no-op; modules opt in by overriding it.
 
-Modules that need live config propagation use an `AtomicReference<XxxConfig>` to hold the
-current config and share it with their listeners. The `AntiCheatModule` is a canonical example:
-
-```java
-// in AntiCheatModule
-private final AtomicReference<AntiCheatConfig> configRef = new AtomicReference<>();
-
-@Override
-public void enable(ModuleContext ctx) {
-    configRef.set(ctx.moduleConfig().get(AntiCheatConfig.class));
-    // listener receives the reference, not the value
-    ctx.events().register(new AntiCheatListener(configRef, ...));
-}
-
-@Override
-public void onConfigReload(ConfigurationNode moduleConfig) {
-    configRef.set(moduleConfig.get(AntiCheatConfig.class));
-}
-```
-
-The listener captures the `AtomicReference` itself, not the config value. At each event
-invocation it calls `configRef.get()` to read the current config, so a reload is automatically
-visible to all in-flight events without re-registering the listener.
-
-An alternative form is the `Supplier<XxxConfig>` lambda: `configRef::get` is passed as a
-`Supplier<ChatFormatConfig>` to `ChatFormatListener`. The effect is identical — the supplier
-always returns the latest value from the reference.
+Modules that need live config propagation hold the current config in an `AtomicReference` and
+give listeners a `Supplier<XxxConfig>`. This makes the new value visible without re-registering
+listeners. See [Reload Configuration](/how-to/reload-configuration/#thread-safe-propagation-with-atomicreference)
+for the implementation pattern.
 
 ---
 
@@ -336,19 +334,19 @@ always returns the latest value from the reference.
 │     (all published to ServiceRegistry)                          │
 │                                                                 │
 │  4. ModuleRegistry.enableAll()                                  │
-│     ┌───────────────────────────────────────────────┐          │
-│     │   read modules.<id>.enabled from config.yml   │          │
-│     │              ↓                                 │          │
-│     │      topologicalSort(candidates)               │          │
-│     │              ↓                                 │          │
-│     │   for each module (dependency-first order):    │          │
-│     │     ModuleContext ctx = contextFactory(m)      │          │
-│     │     m.enable(ctx)                              │          │
-│     │       ├─ ctx.events().register(listener)       │          │
-│     │       ├─ ctx.commands().register(node)         │          │
-│     │       ├─ ctx.services().publish(Svc, impl)     │          │
-│     │       └─ ctx.services().get(OtherSvc)          │          │
-│     └───────────────────────────────────────────────┘          │
+│     ┌───────────────────────────────────────────────┐           │
+│     │   read modules.<id>.enabled from config.yml   │           │
+│     │              ↓                                │           │
+│     │      topologicalSort(candidates)              │           │
+│     │              ↓                                │           │
+│     │   for each module (dependency-first order):   │           │
+│     │     ModuleContext ctx = contextFactory(m)     │           │
+│     │     m.enable(ctx)                             │           │
+│     │       ├─ ctx.events().register(listener)      │           │
+│     │       ├─ ctx.commands().register(node)        │           │
+│     │       ├─ ctx.services().publish(Svc, impl)    │           │
+│     │       └─ ctx.services().get(OtherSvc)         │           │
+│     └───────────────────────────────────────────────┘           │
 │                                                                 │
 │  5. Start AutoSaveTask                                          │
 │  6. Register /kreiscraft reload                                 │
@@ -370,7 +368,7 @@ always returns the latest value from the reference.
 Module dependency graph example (subset):
 
   status ◄── chat-format ──► ChatBridge ◄── api
-                                              │
+                                             │
                                           WebSocket
                                             clients
 

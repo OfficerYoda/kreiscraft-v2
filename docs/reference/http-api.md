@@ -23,20 +23,7 @@ The server starts inside `ApiModule.enable()` and binds to the address and port 
 
 ## Configuration
 
-| Key (`modules.api.*`) | Type | Default | Description |
-|---|---|---|---|
-| `host` | String | `0.0.0.0` | Bind address. |
-| `port` | int | `8080` | TCP port. |
-| `cors-origins` | List\<String\> | `["https://kreiscraft.de"]` | Allowed CORS origins. Credentials are always allowed. |
-| `session-cookie.name` | String | `website_user_uuid` | Cookie name used to track browser sessions. |
-| `session-cookie.max-age` | Duration | `30d` | Cookie lifetime. |
-| `heartbeat-interval` | Duration | `20s` | WebSocket ping cadence. |
-| `async-timeout` | Duration | `10s` | Javalin async request timeout. |
-| `metrics-refresh-interval` | Duration | `1s` | How often server metrics are refreshed. |
-| `verification-timeout` | Duration | `2m` | How long a pending link request stays valid. |
-| `admin-api-key` | String | `""` | Secret for admin endpoints; empty string disables them. |
-
-See [Configuration Reference](/reference/configuration/#api) for full detail and reload behaviour.
+See [Configuration](/reference/configuration/#api) for all `modules.api` keys, defaults, and reload behaviour.
 
 ---
 
@@ -368,6 +355,15 @@ The server sends a `PING` to all connected clients on a fixed schedule (`heartbe
 ### Threading
 
 All Bukkit API calls triggered by incoming WebSocket messages (e.g. `MessageService.broadcast`) are dispatched to the Bukkit main thread via `Scheduler.runOnMain`. WebSocket event handlers run on a Jetty worker thread and must not call Bukkit API directly.
+
+---
+
+## Security
+
+- `admin-api-key` is required for `/whitelist`; an empty value disables those endpoints.
+- `cors-origins` is the only origin-based protection for other endpoints. Do not allow wildcard origins.
+- The server provides no TLS and no authentication beyond player linking and the admin key. Put a TLS reverse proxy in front of any public deployment and add authentication there if required.
+- Player linking authenticates a browser as a player, not as an administrator.
 
 ---
 

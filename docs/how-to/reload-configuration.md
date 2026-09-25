@@ -11,13 +11,13 @@ title: How to reload configuration at runtime
 Required permission: `kreiscraft.admin` (granted to ops by default).
 Can be run in-game or from the server console.
 
-On success you see `core.reload.success`. On failure (any stage throws) you see `core.reload.failure` with the error message; no partial state is left — modules that reloaded before the error keep their new config.
+On success you see `core.reload.success`. Reload is not transactional: modules that reload successfully keep their new config even if another module fails.
 
 ---
 
 ## 2. What the reload does
 
-`ReloadCommand` executes three steps in order (`ReloadCommand.java:21-23`):
+`ReloadCommand` executes three steps in order:
 
 | Step | Method | Effect |
 |------|--------|--------|
@@ -25,7 +25,7 @@ On success you see `core.reload.success`. On failure (any stage throws) you see 
 | 2 | `MessageService.reload()` | Re-reads the active lang file (e.g. `lang/de.yml`). |
 | 3 | `ModuleRegistry.reloadConfigs(newRoot)` | Calls `onConfigReload(moduleNode)` on every **enabled** module, passing only that module's sub-node (`modules.<id>`). Modules are called in the order they were enabled. |
 
-If `onConfigReload` throws for a particular module the exception is caught, logged at `WARNING`, and the remaining modules continue — see `ModuleRegistry.java:82-88`.
+If `onConfigReload` throws for a particular module, `ModuleRegistry.reloadConfigs()` catches it, logs at `WARNING`, and continues with the remaining modules.
 
 ---
 
@@ -33,7 +33,7 @@ If `onConfigReload` throws for a particular module the exception is caught, logg
 
 - **Does not enable or disable modules.** A module that was disabled before the reload stays disabled. New `enabled: true` entries take effect only on the next server start.
 - **Does not restart the server.**
-- **Does not restart the Javalin HTTP server** — *unless* `host`, `port`, or `cors-origins` changed, in which case `ApiModule.onConfigReload` stops and restarts Javalin automatically (`ApiModule.java:107-120`). All other API config fields (`heartbeat-interval`, `async-timeout`, etc.) require a full server restart.
+- **Does not restart the Javalin HTTP server** — *unless* `host`, `port`, or `cors-origins` changed, in which case `ApiModule.onConfigReload()` stops and restarts Javalin automatically. All other API config fields (`heartbeat-interval`, `async-timeout`, etc.) require a full server restart.
 
 ---
 

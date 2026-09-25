@@ -42,7 +42,7 @@ Precise, complete descriptions of the system's components.
 
 | Document | What it covers |
 |----------|---------------|
-| [Module Catalog](/reference/module-catalog/) | All 25 modules: ID, commands, config keys, services published, events fired |
+| [Module Catalog](/reference/module-catalog/) | All 25 modules: purpose, dependencies, services, and events |
 | [Commands and Permissions](/reference/commands-and-permissions/) | Every command, alias, permission node, and default |
 | [Configuration](/reference/configuration/) | Every `config.yml` key — core and per-module — with types and defaults |
 | [HTTP and WebSocket API](/reference/http-api/) | All 8 HTTP endpoints, the `/chat` WebSocket protocol, the account-linking flow |
@@ -57,7 +57,7 @@ Background reading. Useful when something feels surprising or when you need to m
 
 | Document | What it explains |
 |----------|-----------------|
-| [Architecture Overview](/explanation/architecture/) | Layer model, composition root, module lifecycle, topological sort, `ChatBridge`, hot-reload flow |
+| [Architecture Overview](/explanation/architecture/) | Core concepts, codebase areas, module lifecycle, dependencies, services, events, and hot reload |
 | [Design Decisions](/explanation/design-decisions/) | Eight ADRs covering: single Gradle project, no DI framework, Brigadier commands, embedded Javalin, `DataFile` vs config, live config propagation, Java 25 + `-Werror`, `ChatBridge` decoupling |
 
 ---

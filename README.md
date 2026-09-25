@@ -54,7 +54,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-25 opt-in modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Full config keys, permissions, and services per module in the [Module Catalog](docs/reference/module-catalog.md).
+25 opt-in modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
 
 | Module ID | Summary |
 |---|---|
