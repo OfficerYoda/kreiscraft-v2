@@ -255,6 +255,8 @@ These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so 
 | `half-health-threshold` | double | `300.0` | Health value at which the half-health phase triggers. |
 | `minion-count` | int | `4` | Number of minions spawned at the half-health phase. |
 | `half-health-explosion-power` | double | `4.0` | Explosion power at the half-health trigger. |
+| `half-health-explosion-fire` | boolean | `true` | Whether the half-health explosion sets fire to nearby blocks. |
+| `half-health-explosion-block-damage` | boolean | `true` | Whether the half-health explosion breaks blocks. |
 | `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
 | `death-explosion-power` | double | `20.0` | Explosion power at death. |
 

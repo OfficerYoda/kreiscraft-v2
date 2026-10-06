@@ -3,8 +3,17 @@ package de.kreiscraft.modules.wither;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @ConfigSerializable
-public record WitherConfig(double maxHealth, double attackDamage, double armor, double halfHealthThreshold,
-        int minionCount, double halfHealthExplosionPower, int deathBossBarRadius, double deathExplosionPower) {
+public record WitherConfig(
+        double maxHealth,
+        double attackDamage,
+        double armor,
+        double halfHealthThreshold,
+        int minionCount,
+        double halfHealthExplosionPower,
+        Boolean halfHealthExplosionFire,
+        Boolean halfHealthExplosionBlockDamage,
+        int deathBossBarRadius,
+        double deathExplosionPower) {
 
     public WitherConfig {
         if (maxHealth <= 0.0) {
@@ -24,6 +33,12 @@ public record WitherConfig(double maxHealth, double attackDamage, double armor, 
         }
         if (halfHealthExplosionPower <= 0.0) {
             halfHealthExplosionPower = 4.0;
+        }
+        if (halfHealthExplosionFire == null) {
+            halfHealthExplosionFire = Boolean.TRUE;
+        }
+        if (halfHealthExplosionBlockDamage == null) {
+            halfHealthExplosionBlockDamage = Boolean.TRUE;
         }
         if (deathBossBarRadius <= 0) {
             deathBossBarRadius = 50;

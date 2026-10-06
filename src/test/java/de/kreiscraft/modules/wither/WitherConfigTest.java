@@ -26,6 +26,8 @@ class WitherConfigTest {
                         + "half-health-threshold: 300.0\n"
                         + "minion-count: 4\n"
                         + "half-health-explosion-power: 4.0\n"
+                        + "half-health-explosion-fire: true\n"
+                        + "half-health-explosion-block-damage: true\n"
                         + "death-boss-bar-radius: 50\n"
                         + "death-explosion-power: 20.0\n");
         WitherConfig config = node.get(WitherConfig.class);
@@ -37,6 +39,8 @@ class WitherConfigTest {
         assertThat(config.halfHealthThreshold()).isEqualTo(300.0);
         assertThat(config.minionCount()).isEqualTo(4);
         assertThat(config.halfHealthExplosionPower()).isEqualTo(4.0);
+        assertThat(config.halfHealthExplosionFire()).isTrue();
+        assertThat(config.halfHealthExplosionBlockDamage()).isTrue();
         assertThat(config.deathBossBarRadius()).isEqualTo(50);
         assertThat(config.deathExplosionPower()).isEqualTo(20.0);
     }
@@ -53,14 +57,40 @@ class WitherConfigTest {
         assertThat(config.halfHealthThreshold()).isEqualTo(300.0);
         assertThat(config.minionCount()).isEqualTo(4);
         assertThat(config.halfHealthExplosionPower()).isEqualTo(4.0);
+        assertThat(config.halfHealthExplosionFire()).isTrue();
+        assertThat(config.halfHealthExplosionBlockDamage()).isTrue();
         assertThat(config.deathBossBarRadius()).isEqualTo(50);
         assertThat(config.deathExplosionPower()).isEqualTo(20.0);
     }
 
     @Test
+    void config_explosionFireDisabled_independentlyHonored() throws Exception {
+        ConfigurationNode node = parseYaml(
+                "half-health-explosion-power: 6.0\n"
+                        + "half-health-explosion-fire: false\n"
+                        + "half-health-explosion-block-damage: true\n");
+        WitherConfig config = node.get(WitherConfig.class);
+
+        assertThat(config.halfHealthExplosionPower()).isEqualTo(6.0);
+        assertThat(config.halfHealthExplosionFire()).isFalse();
+        assertThat(config.halfHealthExplosionBlockDamage()).isTrue();
+    }
+
+    @Test
+    void config_explosionBlockDamageDisabled_independentlyHonored() throws Exception {
+        ConfigurationNode node = parseYaml(
+                "half-health-explosion-fire: true\n"
+                        + "half-health-explosion-block-damage: false\n");
+        WitherConfig config = node.get(WitherConfig.class);
+
+        assertThat(config.halfHealthExplosionFire()).isTrue();
+        assertThat(config.halfHealthExplosionBlockDamage()).isFalse();
+    }
+
+    @Test
     void config_roundTrip_preservesValues() throws Exception {
         WitherConfig original =
-                new WitherConfig(800.0, 50.0, 10.0, 400.0, 6, 6.0, 75, 25.0);
+                new WitherConfig(800.0, 50.0, 10.0, 400.0, 6, 6.0, false, false, 75, 25.0);
         ConfigurationNode node = parseYaml("{}");
         node.set(WitherConfig.class, original);
         WitherConfig loaded = node.get(WitherConfig.class);
@@ -68,6 +98,8 @@ class WitherConfigTest {
         assertThat(loaded).isNotNull();
         assertThat(loaded.maxHealth()).isEqualTo(800.0);
         assertThat(loaded.minionCount()).isEqualTo(6);
+        assertThat(loaded.halfHealthExplosionFire()).isFalse();
+        assertThat(loaded.halfHealthExplosionBlockDamage()).isFalse();
         assertThat(loaded.deathExplosionPower()).isEqualTo(25.0);
     }
 }

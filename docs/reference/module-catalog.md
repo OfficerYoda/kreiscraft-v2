@@ -399,7 +399,7 @@ When active, kicks players who attempt to log in unless they have the bypass per
 
 ### Description
 
-Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers an explosion. On death it creates a large explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks.
+Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers an explosion whose power, fire, and block-damage behavior are configurable. On death it creates a large explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks.
 
 ---
 

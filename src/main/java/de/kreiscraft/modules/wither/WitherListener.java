@@ -88,8 +88,8 @@ public final class WitherListener implements PriorityListener {
                             halfLoc.getY(),
                             halfLoc.getZ(),
                             (float) cfg.halfHealthExplosionPower(),
-                            false,
-                            false);
+                            cfg.halfHealthExplosionFire(),
+                            cfg.halfHealthExplosionBlockDamage());
             Team team = getOrCreateWitherTeam(wither.getServer());
             for (int i = 0; i < cfg.minionCount(); i++) {
                 Entity skeleton =

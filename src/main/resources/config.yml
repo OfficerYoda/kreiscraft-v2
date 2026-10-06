@@ -140,6 +140,8 @@ modules:
     half-health-threshold: 300.0
     minion-count: 4
     half-health-explosion-power: 4.0
+    half-health-explosion-fire: true
+    half-health-explosion-block-damage: true
     death-boss-bar-radius: 50
     death-explosion-power: 20.0
   world-mgmt:

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -51,7 +52,7 @@ class WitherListenerTest {
         messages = mock(MessageService.class);
         when(messages.render(anyString())).thenReturn(Component.empty());
         scheduler = new MockScheduler();
-        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0);
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0);
         listener = new WitherListener(() -> config, messages, scheduler);
     }
 
@@ -104,7 +105,7 @@ class WitherListenerTest {
     @Test
     void onCreatureSpawn_afterConfigReload_usesUpdatedMaxHealth() {
         AtomicReference<WitherConfig> configRef =
-                new AtomicReference<>(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0));
+                new AtomicReference<>(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
         WitherListener reloadListener =
                 new WitherListener(configRef::get, messages, scheduler);
 
@@ -116,7 +117,7 @@ class WitherListenerTest {
         assertThat(wither1.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(600.0);
 
         // Simulate config reload with new max health
-        configRef.set(new WitherConfig(800.0, 40.0, 8.0, 300.0, 4, 4.0, 50, 20.0));
+        configRef.set(new WitherConfig(800.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
 
         // Second spawn — updated max health should be applied
         WitherMock wither2 = new WitherMock(server, UUID.randomUUID(), world);
@@ -174,6 +175,99 @@ class WitherListenerTest {
                 10.0));
 
         assertThat(world.getEntitiesByClass(WitherSkeleton.class)).isEmpty();
+    }
+
+    // --- Half-health explosion configurability tests ---
+
+    @Test
+    void onEntityDamage_halfHealthExplosion_usesConfiguredPowerFireAndBlockDamage() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-configured");
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 5.0, true, true, 50, 20.0);
+        listener = new WitherListener(() -> config, messages, scheduler);
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
+        wither.setMaxHealth(600.0);
+        wither.setHealth(300.0);
+
+        listener.onEntityDamage(new EntityDamageEvent(
+                wither,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class),
+                10.0));
+
+        verify(testWorld)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(5.0f), eq(true), eq(true));
+    }
+
+    @Test
+    void onEntityDamage_explosionFireDisabled_independentlyHonored() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-no-fire");
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, false, true, 50, 20.0);
+        listener = new WitherListener(() -> config, messages, scheduler);
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
+        wither.setMaxHealth(600.0);
+        wither.setHealth(300.0);
+
+        listener.onEntityDamage(new EntityDamageEvent(
+                wither,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class),
+                10.0));
+
+        verify(testWorld)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(4.0f), eq(false), eq(true));
+    }
+
+    @Test
+    void onEntityDamage_explosionBlockDamageDisabled_independentlyHonored() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-no-block-damage");
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, false, 50, 20.0);
+        listener = new WitherListener(() -> config, messages, scheduler);
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
+        wither.setMaxHealth(600.0);
+        wither.setHealth(300.0);
+
+        listener.onEntityDamage(new EntityDamageEvent(
+                wither,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class),
+                10.0));
+
+        verify(testWorld)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(4.0f), eq(true), eq(false));
+    }
+
+    @Test
+    void onEntityDamage_afterConfigReload_usesUpdatedExplosionSettings() {
+        AtomicReference<WitherConfig> configRef = new AtomicReference<>(
+                new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
+        WitherListener reloadListener = new WitherListener(configRef::get, messages, scheduler);
+
+        WorldMock beforeWorld = spiedWorldWithExplosionSupport("reload-before");
+        WitherMock beforeWither = new WitherMock(server, UUID.randomUUID(), beforeWorld);
+        beforeWither.setMaxHealth(600.0);
+        beforeWither.setHealth(300.0);
+        reloadListener.onEntityDamage(new EntityDamageEvent(
+                beforeWither,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class),
+                10.0));
+        verify(beforeWorld)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(4.0f), eq(true), eq(true));
+
+        // Simulate a hot reload that changes every explosion option.
+        configRef.set(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 9.0, false, false, 50, 20.0));
+
+        WorldMock afterWorld = spiedWorldWithExplosionSupport("reload-after");
+        WitherMock afterWither = new WitherMock(server, UUID.randomUUID(), afterWorld);
+        afterWither.setMaxHealth(600.0);
+        afterWither.setHealth(300.0);
+        reloadListener.onEntityDamage(new EntityDamageEvent(
+                afterWither,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class),
+                10.0));
+        verify(afterWorld)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(9.0f), eq(false), eq(false));
     }
 
     // --- Death event tests (countdown + shutdown) ---
