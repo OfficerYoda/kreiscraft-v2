@@ -9,6 +9,8 @@ import de.kreiscraft.modules.bedrock.BedrockService;
 import de.kreiscraft.shared.whitelist.WhitelistService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,7 +19,8 @@ import java.util.Optional;
  * <ul>
  *   <li>{@code add <name>} — looks up the player in the persisted set and, if found,
  *       whitelists them via {@link WhitelistService#addBedrockPlayer}.</li>
- *   <li>{@code list} — prints the count of known Bedrock players.</li>
+ *   <li>{@code list} — prints every known Bedrock player name in a deterministic,
+ *       case-insensitive order, preceded by a header whose count matches the entries.</li>
  * </ul>
  *
  * Permission: {@code kreiscraft.bedrock.admin} (default: op).
@@ -53,10 +56,25 @@ public final class BedrockListCommand {
                                 })))
                 .then(Commands.literal("list")
                         .executes(ctx -> {
-                            int count = service.knownPlayers().size();
-                            messages.send(ctx.getSource().getSender(),
+                            var sender = ctx.getSource().getSender();
+                            List<BedrockRecord> players = service.knownPlayers().stream()
+                                    .sorted(Comparator.comparing(
+                                            BedrockRecord::name,
+                                            String.CASE_INSENSITIVE_ORDER)
+                                            .thenComparing(BedrockRecord::uuid))
+                                    .toList();
+                            messages.send(sender,
                                     "bedrock.list-header",
-                                    "count", String.valueOf(count));
+                                    "count", String.valueOf(players.size()));
+                            if (players.isEmpty()) {
+                                messages.send(sender, "bedrock.list-empty");
+                            } else {
+                                for (BedrockRecord player : players) {
+                                    messages.send(sender,
+                                            "bedrock.list-entry",
+                                            "player", player.name());
+                                }
+                            }
                             return Command.SINGLE_SUCCESS;
                         }))
                 .build();

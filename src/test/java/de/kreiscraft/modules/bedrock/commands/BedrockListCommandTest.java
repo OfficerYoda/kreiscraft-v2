@@ -1,6 +1,9 @@
 package de.kreiscraft.modules.bedrock.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,6 +22,7 @@ import java.util.UUID;
 import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class BedrockListCommandTest {
 
@@ -69,14 +73,31 @@ class BedrockListCommandTest {
     }
 
     @Test
-    void list_sendsHeaderWithCount() throws CommandSyntaxException {
+    void list_whenPopulated_sendsHeaderAndSortedNames() throws CommandSyntaxException {
         when(service.knownPlayers()).thenReturn(
-                List.of(new BedrockRecord(".alice", UUID.randomUUID(), Instant.now()),
-                        new BedrockRecord(".bob", UUID.randomUUID(), Instant.now())));
+                List.of(new BedrockRecord(".bob", UUID.randomUUID(), Instant.now()),
+                        new BedrockRecord(".Alice", UUID.randomUUID(), Instant.now()),
+                        new BedrockRecord(".carol", UUID.randomUUID(), Instant.now())));
 
         dispatcher.execute("bedrocklist list", source);
 
-        verify(messages).send(sender, "bedrock.list-header", "count", "2");
+        InOrder order = inOrder(messages);
+        order.verify(messages).send(sender, "bedrock.list-header", "count", "3");
+        order.verify(messages).send(sender, "bedrock.list-entry", "player", ".Alice");
+        order.verify(messages).send(sender, "bedrock.list-entry", "player", ".bob");
+        order.verify(messages).send(sender, "bedrock.list-entry", "player", ".carol");
+        order.verify(messages, never()).send(sender, "bedrock.list-empty");
+    }
+
+    @Test
+    void list_whenEmpty_sendsHeaderWithZeroAndEmptyMarker() throws CommandSyntaxException {
+        when(service.knownPlayers()).thenReturn(List.of());
+
+        dispatcher.execute("bedrocklist list", source);
+
+        verify(messages).send(sender, "bedrock.list-header", "count", "0");
+        verify(messages).send(sender, "bedrock.list-empty");
+        verify(messages, never()).send(eq(sender), eq("bedrock.list-entry"), any(), any());
     }
 
     @Test

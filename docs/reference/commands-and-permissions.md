@@ -27,7 +27,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
 | `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player. | `kreiscraft.anticheat.view` | op |
 | `/bedrocklist add <name>` | — | `bedrock` | Add a known Bedrock player to the whitelist. | `kreiscraft.bedrock.admin` | op |
-| `/bedrocklist list` | — | `bedrock` | Show the count of known Bedrock players. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
 | `/combat <target> <seconds>` | — | `combat` | Manually tag a player as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
 | `/effects <particle>` | — | `effects` | Set your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |

@@ -97,7 +97,7 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
 
 ### Services published
 
