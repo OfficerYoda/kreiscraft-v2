@@ -2,8 +2,10 @@ package de.kreiscraft.modules.chatformat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -204,6 +206,137 @@ class ChatFormatListenerTest {
         listenerWith(new ChatFormatConfig()).onChat(event);
 
         // Verify that sendMessage was called on the platform server once
+        verify(mockServer).sendMessage(any(Component.class));
+    }
+
+    // ── Xaero waypoint passthrough ─────────────────────────────────────────────
+
+    /** Representative payload shape emitted by Xaero's waypoint sharing. */
+    private static final String XAERO_WAYPOINT = "xaero-waypoint:Home:H:100:64:200:4:minecraft:overworld:false";
+
+    @Test
+    void onChat_xaeroWaypointExactPrefix_isNotCancelled() {
+        PlayerMock player = server.addPlayer("Ivan");
+        AsyncChatEvent event = mockEvent(player, XAERO_WAYPOINT);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event, never()).setCancelled(anyBoolean());
+    }
+
+    @Test
+    void onChat_xaeroWaypointExactPrefix_isNotPublishedOrBroadcast() {
+        PlayerMock player = server.addPlayer("Judy");
+        AsyncChatEvent event = mockEvent(player, XAERO_WAYPOINT);
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).isEmpty();
+        verify(mockServer, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
+    void onChat_xaeroWaypointNotAtStart_isFormattedAndPublished() {
+        PlayerMock player = server.addPlayer("Kate");
+        AsyncChatEvent event = mockEvent(player, "look at xaero-waypoint:Home");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+        assertThat(captured.getFirst().plainText()).isEqualTo("look at xaero-waypoint:Home");
+    }
+
+    @Test
+    void onChat_xaeroWaypointDifferentCase_isFormattedAndPublished() {
+        PlayerMock player = server.addPlayer("Lena");
+        AsyncChatEvent event = mockEvent(player, "Xaero-waypoint:Home");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+    }
+
+    @Test
+    void onChat_xaeroWaypointWithLeadingWhitespace_isFormattedAndPublished() {
+        PlayerMock player = server.addPlayer("Mona");
+        AsyncChatEvent event = mockEvent(player, " xaero-waypoint:Home");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+    }
+
+    @Test
+    void onChat_xaeroWaypointBareToken_isPassedThrough() {
+        PlayerMock player = server.addPlayer("Olga");
+        AsyncChatEvent event = mockEvent(player, "xaero-waypoint");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event, never()).setCancelled(anyBoolean());
+        assertThat(captured).isEmpty();
+    }
+
+    @Test
+    void onChat_xaeroWaypointPluralNearMatch_isFormattedAndPublished() {
+        PlayerMock player = server.addPlayer("Pete");
+        AsyncChatEvent event = mockEvent(player, "xaero-waypoints are cool");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+        assertThat(captured.getFirst().plainText()).isEqualTo("xaero-waypoints are cool");
+    }
+
+    @Test
+    void onChat_xaeroWaypointExtendedToken_isFormattedAndPublished() {
+        PlayerMock player = server.addPlayer("Quinn");
+        AsyncChatEvent event = mockEvent(player, "xaero-waypointish");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+    }
+
+    @Test
+    void onChat_ordinaryMessage_keepsFormattingAndBridgeBehavior() {
+        PlayerMock player = server.addPlayer("Nate");
+        AsyncChatEvent event = mockEvent(player, "just a normal message");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        verify(event).setCancelled(true);
+        assertThat(captured).hasSize(1);
+        assertThat(captured.getFirst().plainText()).isEqualTo("just a normal message");
         verify(mockServer).sendMessage(any(Component.class));
     }
 }

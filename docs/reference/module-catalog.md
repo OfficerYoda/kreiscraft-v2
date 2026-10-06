@@ -127,6 +127,8 @@ Registers `BotData` (backed by `data/bot.yml`) with the `ConfigService` auto-sav
 
 Intercepts `AsyncChatEvent` (at the configured priority) and reformats each message using a MiniMessage template. The template has access to `<team-prefix>`, `<name-colored>`, `<team-suffix>`, and `<body>` placeholders drawn from `StatusService`. Optionally allows players to use MiniMessage tags inside the chat body.
 
+Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoint`, followed by the protocol's `:` separator) are passed through untouched: the event is left uncancelled so clients and the Xaero mod receive the raw payload, and no formatted message is broadcast or published to `ChatBridge`. Near-matches such as `xaero-waypoints` and ordinary chat are unaffected and formatted normally.
+
 ---
 
 ## `clickthrough`

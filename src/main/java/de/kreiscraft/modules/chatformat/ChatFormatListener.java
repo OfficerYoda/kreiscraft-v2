@@ -24,6 +24,16 @@ public final class ChatFormatListener implements PriorityListener {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
+    /**
+     * Token that introduces an Xaero shared-waypoint chat payload. The payload
+     * continues with a {@code ':'} separator and colon-delimited fields, e.g.
+     * {@code xaero-waypoint:Home:H:100:64:200:4:...}. The Xaero mod itself
+     * intercepts messages beginning with {@code xaero-waypoint:}.
+     */
+    private static final String XAERO_WAYPOINT = "xaero-waypoint";
+
+    private static final String XAERO_WAYPOINT_SEPARATOR = ":";
+
     private final Supplier<ChatFormatConfig> configSupplier;
     private final StatusService statusService;
     private final PaperPlatform platform;
@@ -53,6 +63,12 @@ public final class ChatFormatListener implements PriorityListener {
 
         // Security: always extract raw plain text to prevent player-injected MiniMessage.
         String plainBody = PlainTextComponentSerializer.plainText().serialize(event.message());
+
+        // Xaero waypoint payloads pass through untouched: leave the event uncancelled so the
+        // vanilla message reaches the clients (and the Xaero mod), and publish nothing.
+        if (isXaeroWaypoint(plainBody)) {
+            return;
+        }
 
         // Build the body component — only allow MiniMessage tags if explicitly opted in.
         Component bodyComponent;
@@ -93,5 +109,16 @@ public final class ChatFormatListener implements PriorityListener {
         // Publish to ChatBridge for the API module (also safe on any thread).
         chatBridge.publish(new ChatBridgeEvent(
                 sender.getUniqueId(), sender.getName(), rendered, plainBody, Instant.now()));
+    }
+
+    /**
+     * Returns whether {@code message} begins exactly with the Xaero waypoint token, either as the
+     * bare token or followed by the protocol's {@code ':'} separator. Near-matches such as
+     * {@code xaero-waypoints} or a token that merely appears later in the message are not
+     * waypoints and continue through normal formatting.
+     */
+    private static boolean isXaeroWaypoint(String message) {
+        return message.equals(XAERO_WAYPOINT)
+                || message.startsWith(XAERO_WAYPOINT + XAERO_WAYPOINT_SEPARATOR);
     }
 }
