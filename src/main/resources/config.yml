@@ -48,7 +48,7 @@ modules:
     enabled: true
   combat:
     enabled: true
-    tag-duration: 10s
+    tag-duration: 5s
     disable-elytra: true
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR

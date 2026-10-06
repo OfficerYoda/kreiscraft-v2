@@ -49,6 +49,7 @@ combat:
   remaining: "<red>Im Kampf: <seconds>s</red>"
   cleared: "<prefix> <green>Kein Kampf mehr."
   elytra-denied: "<prefix> <red>Elytra im Kampf deaktiviert."
+  elytra-dropped: "<prefix> <dark_red>Deine Elytra wurde gedroppt. <red>Nur du kannst sie wieder aufnehmen."
   manual-tag: "<prefix> <yellow><player></yellow> für <seconds>s getaggt."
 effects:
   enabled: "<prefix> <green>Effekte aktiviert."

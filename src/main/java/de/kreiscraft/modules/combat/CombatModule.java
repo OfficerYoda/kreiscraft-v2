@@ -13,6 +13,7 @@ public final class CombatModule implements Module {
 
     private CombatConfig config;
     private DefaultCombatService service;
+    private ElytraDenyListener elytraListener;
 
     @Override
     public String id() {
@@ -41,7 +42,9 @@ public final class CombatModule implements Module {
 
         // Supplier for live config reads — captures the module field, not the value
         ctx.events().register(new CombatListener(service, () -> this.config));
-        ctx.events().register(new ElytraDenyListener(service, ctx.messages(), () -> this.config));
+        this.elytraListener = new ElytraDenyListener(
+                service, ctx.messages(), () -> this.config, ctx.scheduler(), platform.server());
+        ctx.events().register(elytraListener);
 
         ctx.commands().register(
                 CombatCommand.build(service, ctx.messages()),
@@ -50,6 +53,9 @@ public final class CombatModule implements Module {
 
     @Override
     public void disable() {
+        if (elytraListener != null) {
+            elytraListener.shutdown();
+        }
         if (service != null) {
             service.shutdown();
         }

@@ -16,7 +16,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
 | `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled per-player via the settings GUI. |
-| `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally blocks elytra use while tagged. |
+| `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally removes elytra while tagged. |
 | `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players toggle and choose a personal particle trail emitted around them each tick. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
@@ -153,7 +153,7 @@ Allows players with the clickthrough setting enabled to open containers and Ende
 
 ### Description
 
-Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration. While tagged, elytra use can be blocked. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference stored in `SettingsService` (action bar, chat, or title).
+Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference stored in `SettingsService` (action bar, chat, or title).
 
 ### Events published
 

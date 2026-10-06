@@ -22,7 +22,7 @@ class CombatConfigTest {
     void compactConstructor_fillsNullsWithDefaults() {
         CombatConfig cfg = new CombatConfig(null, null, null, null);
 
-        assertThat(cfg.tagDuration()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(cfg.tagDuration()).isEqualTo(Duration.ofSeconds(5));
         assertThat(cfg.disableElytra()).isTrue();
         assertThat(cfg.excludedWorlds()).isEqualTo(List.of("Lobby"));
         assertThat(cfg.defaultDisplay()).isEqualTo(CombatDisplay.ACTIONBAR);

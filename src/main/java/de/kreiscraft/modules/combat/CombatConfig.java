@@ -12,7 +12,7 @@ public record CombatConfig(Duration tagDuration, Boolean disableElytra, List<Str
     /** Compact constructor — fills nulls with safe defaults so the module works with an empty config section. */
     public CombatConfig {
         if (tagDuration == null) {
-            tagDuration = Duration.ofSeconds(10);
+            tagDuration = Duration.ofSeconds(5);
         }
         if (disableElytra == null) {
             disableElytra = Boolean.TRUE;

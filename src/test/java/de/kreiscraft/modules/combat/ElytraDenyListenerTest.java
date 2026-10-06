@@ -7,7 +7,10 @@ import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.settingsgui.CombatDisplay;
+import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.Material;
@@ -40,14 +43,16 @@ class ElytraDenyListenerTest {
     private MessageService messages;
 
     private ServerMock server;
+    private MockScheduler scheduler;
     private CombatConfig config;
     private ElytraDenyListener listener;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
-        config = new CombatConfig(Duration.ofSeconds(10), Boolean.TRUE, List.of("Lobby"), CombatDisplay.ACTIONBAR);
-        listener = new ElytraDenyListener(service, messages, () -> config);
+        scheduler = new MockScheduler();
+        config = new CombatConfig(Duration.ofSeconds(5), Boolean.TRUE, List.of("Lobby"), CombatDisplay.ACTIONBAR);
+        listener = new ElytraDenyListener(service, messages, () -> config, scheduler, server);
     }
 
     @AfterEach
@@ -120,8 +125,8 @@ class ElytraDenyListenerTest {
     @Test
     void glideStart_inCombat_disableElytraOff_eventNotCancelled() {
         CombatConfig cfgDisabled = new CombatConfig(
-                Duration.ofSeconds(10), Boolean.FALSE, List.of("Lobby"), CombatDisplay.ACTIONBAR);
-        listener = new ElytraDenyListener(service, messages, () -> cfgDisabled);
+                Duration.ofSeconds(5), Boolean.FALSE, List.of("Lobby"), CombatDisplay.ACTIONBAR);
+        listener = new ElytraDenyListener(service, messages, () -> cfgDisabled, scheduler, server);
 
         PlayerMock player = server.addPlayer("alice");
         when(service.isInCombat(player.getUniqueId())).thenReturn(true);
@@ -130,6 +135,111 @@ class ElytraDenyListenerTest {
         listener.onToggleGlide(event);
 
         assertThat(event.isCancelled()).isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // Elytra removal: return to inventory vs. protected drop
+    // -------------------------------------------------------------------------
+
+    @Test
+    void glideStart_inCombat_withElytra_returnsToInventoryWhenSpaceExists() {
+        PlayerMock player = server.addPlayer("alice");
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        EntityToggleGlideEvent event = new EntityToggleGlideEvent(player, true);
+        listener.onToggleGlide(event);
+
+        assertThat(player.getInventory().getChestplate()).isNull();
+        assertThat(player.getInventory().contains(Material.ELYTRA)).isTrue();
+        assertThat(player.getWorld().getEntitiesByClass(Item.class)).isEmpty();
+    }
+
+    @Test
+    void glideStart_inCombat_withElytra_dropsProtectedElytraWhenInventoryFull() {
+        PlayerMock player = server.addPlayer("alice");
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        ItemStack[] fullStorage = new ItemStack[36];
+        Arrays.fill(fullStorage, new ItemStack(Material.STONE));
+        player.getInventory().setStorageContents(fullStorage);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        EntityToggleGlideEvent event = new EntityToggleGlideEvent(player, true);
+        listener.onToggleGlide(event);
+
+        assertThat(player.getInventory().getChestplate()).isNull();
+        Collection<Item> dropped = player.getWorld().getEntitiesByClass(Item.class);
+        assertThat(dropped).hasSize(1);
+        Item item = dropped.iterator().next();
+        assertThat(item.isGlowing()).isTrue();
+
+        PersistentDataContainer pdc = item.getPersistentDataContainer();
+        assertThat(pdc.get(ElytraDenyListener.ELYTRA_OWNER_KEY, PersistentDataType.STRING))
+                .isEqualTo(player.getUniqueId().toString());
+        assertThat(pdc.get(ElytraDenyListener.ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG))
+                .isGreaterThan(System.currentTimeMillis());
+        verify(messages).send(player, "combat.elytra-dropped");
+    }
+
+    @Test
+    void sweep_inCombatWithElytra_removesElytraWithoutGlideEvent() {
+        PlayerMock player = server.addPlayer("alice");
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        // RusticPrism removed elytra continuously while tagged, not only on a glide attempt.
+        scheduler.advance(Duration.ofSeconds(1));
+
+        assertThat(player.getInventory().getChestplate()).isNull();
+        assertThat(player.getInventory().contains(Material.ELYTRA)).isTrue();
+    }
+
+    @Test
+    void sweep_disableElytraOff_keepsElytra() {
+        MockScheduler disabledScheduler = new MockScheduler();
+        CombatConfig cfgDisabled = new CombatConfig(
+                Duration.ofSeconds(5), Boolean.FALSE, List.of("Lobby"), CombatDisplay.ACTIONBAR);
+        listener = new ElytraDenyListener(service, messages, () -> cfgDisabled, disabledScheduler, server);
+
+        PlayerMock player = server.addPlayer("alice");
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        disabledScheduler.advance(Duration.ofSeconds(1));
+
+        assertThat(player.getInventory().getChestplate()).isNotNull();
+    }
+
+    @Test
+    void sweep_inCombatWithFullInventory_dropsProtectedElytra() {
+        PlayerMock player = server.addPlayer("alice");
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        ItemStack[] fullStorage = new ItemStack[36];
+        Arrays.fill(fullStorage, new ItemStack(Material.STONE));
+        player.getInventory().setStorageContents(fullStorage);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        scheduler.advance(Duration.ofSeconds(1));
+
+        assertThat(player.getInventory().getChestplate()).isNull();
+        Collection<Item> dropped = player.getWorld().getEntitiesByClass(Item.class);
+        assertThat(dropped).hasSize(1);
+        assertThat(dropped.iterator().next().isGlowing()).isTrue();
+    }
+
+    @Test
+    void sweep_taggedInExcludedWorld_keepsElytra() {
+        MockScheduler excludedScheduler = new MockScheduler();
+        PlayerMock player = server.addPlayer("alice");
+        CombatConfig excludedWorld = new CombatConfig(
+                Duration.ofSeconds(5), Boolean.TRUE, List.of(player.getWorld().getName()), CombatDisplay.ACTIONBAR);
+        listener = new ElytraDenyListener(service, messages, () -> excludedWorld, excludedScheduler, server);
+        when(service.isInCombat(player.getUniqueId())).thenReturn(true);
+        player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
+
+        excludedScheduler.advance(Duration.ofSeconds(1));
+
+        assertThat(player.getInventory().getChestplate()).isNotNull();
     }
 
     // -------------------------------------------------------------------------
@@ -223,5 +333,23 @@ class ElytraDenyListenerTest {
         listener.onEntityDamage(event);
 
         assertThat(event.isCancelled()).isFalse();
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void damage_afterExpiry_clearsProtectionTags() {
+        long expiry = System.currentTimeMillis() - 1L; // expired
+        Item item = mock(Item.class);
+        PersistentDataContainer pdc = mock(PersistentDataContainer.class);
+        when(item.getPersistentDataContainer()).thenReturn(pdc);
+        when(pdc.has(ElytraDenyListener.ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG)).thenReturn(true);
+        when(pdc.get(ElytraDenyListener.ELYTRA_DROP_UNTIL_KEY, PersistentDataType.LONG)).thenReturn(expiry);
+
+        EntityDamageEvent event = new EntityDamageEvent(item, EntityDamageEvent.DamageCause.FIRE, 1.0);
+        listener.onEntityDamage(event);
+
+        assertThat(event.isCancelled()).isFalse();
+        verify(pdc).remove(ElytraDenyListener.ELYTRA_DROP_UNTIL_KEY);
+        verify(pdc).remove(ElytraDenyListener.ELYTRA_OWNER_KEY);
     }
 }

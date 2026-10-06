@@ -49,6 +49,7 @@ combat:
   remaining: "<red>In combat: <seconds>s</red>"
   cleared: "<prefix> <green>No longer in combat."
   elytra-denied: "<prefix> <red>Elytra disabled while in combat."
+  elytra-dropped: "<prefix> <dark_red>Your elytra was dropped. <red>Only you can pick it up."
   manual-tag: "<prefix> Tagged <yellow><player></yellow> for <seconds>s."
 effects:
   enabled: "<prefix> <green>Effects enabled."

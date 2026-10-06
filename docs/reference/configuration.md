@@ -130,8 +130,8 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.combat`) | Type | Default | Description |
 |---|---|---|---|
-| `tag-duration` | Duration | `10s` | How long a player remains in combat after the last hit. |
-| `disable-elytra` | boolean | `true` | Whether elytra flight is disabled during combat. |
+| `tag-duration` | Duration | `5s` | How long a player remains in combat after the last hit. |
+| `disable-elytra` | boolean | `true` | Whether elytra use is disabled during combat. While tagged, a worn elytra is removed and returned to the inventory (or dropped, glowing and owner-protected, when there is no space). |
 | `excluded-worlds` | List\<String\> | `["Lobby"]` | World names where combat tagging is disabled. |
 | `default-display` | CombatDisplay | `ACTIONBAR` | Default UI element for showing combat status. Values: `CHAT`, `ACTIONBAR`, `TITLE`. Per-player setting can override this via the settings GUI. |
 
