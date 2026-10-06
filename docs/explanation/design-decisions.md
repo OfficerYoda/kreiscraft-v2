@@ -27,7 +27,7 @@ artifact — the shadow JAR.
 **Consequences:**  
 - The build is simple: one project, one task (`./gradlew shadowJar`), one JAR to copy to the
   server.
-- All 25 modules share the same classpath; cross-module utility code does not require published
+- All 24 modules share the same classpath; cross-module utility code does not require published
   library versions.
 - Modules cannot have separate release cycles or be installed on third-party servers without the
   full plugin.

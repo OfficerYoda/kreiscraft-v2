@@ -18,7 +18,7 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 ## Repository conventions
 
 - Java 25, Paper API 26.x, Gradle Kotlin DSL, single Gradle project.
-- 25 opt-in runtime feature modules under `src/main/java/de/kreiscraft/modules/<id>/`, each implementing the `Module` interface (`core/module/Module.java`).
+- 24 opt-in runtime feature modules under `src/main/java/de/kreiscraft/modules/<id>/`, each implementing the `Module` interface (`core/module/Module.java`).
 - Each module: `XxxModule.java` (entry point), `XxxConfig.java` (`@ConfigSerializable` record), optional `XxxData.java` (extends `DataFile<T>`), listeners, commands.
 - Commands use Paper Brigadier via `CommandRegistrar` — static `build()` factories returning `LiteralCommandNode<CommandSourceStack>`.
 - Text uses Adventure + MiniMessage. `§` legacy codes only appear in the WebSocket `/chat` output.
@@ -44,7 +44,7 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 2. **Do not guess defaults.** If you cannot verify a default value from the source, omit the default column entry rather than fabricate one.
 3. **Preserve unchanged information.** When editing a doc, do not rephrase, reformat, or "polish" sections that are not affected by the code change. Minimise diffs.
 4. **Cross-references matter.** If you add a config key, update every doc that lists that key (typically `docs/reference/configuration.md`, `docs/reference/module-catalog.md`, and possibly the module's how-to).
-5. **The 25 modules are the source of truth.** If a module is added, removed, or renamed, update: `docs/reference/module-catalog.md`, `docs/reference/commands-and-permissions.md`, `docs/reference/configuration.md`, `docs/index.md`, and the root `README.md` module table.
+5. **The 24 modules are the source of truth.** If a module is added, removed, or renamed, update: `docs/reference/module-catalog.md`, `docs/reference/commands-and-permissions.md`, `docs/reference/configuration.md`, `docs/index.md`, and the root `README.md` module table.
 
 ## Output format
 

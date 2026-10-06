@@ -37,7 +37,7 @@ de.kreiscraft/
 ├── platform/          — thin Paper/NMS wrappers (no game logic)
 ├── core/              — module registry, config, events, scheduler, commands, messages
 ├── shared/            — cross-cutting services used by multiple modules (ChatBridge, UserService, …)
-└── modules/           — 25 independently opt-in feature modules
+└── modules/           — 24 independently opt-in feature modules
 ```
 
 **Platform layer** (`platform/`)  
@@ -61,7 +61,7 @@ Houses services that cut across modules but are not part of the core engine: `Ch
 in the composition root and published to `ServiceRegistry` so any module can consume them.
 
 **Feature layer** (`modules/`)  
-Contains 25 feature modules, one package per feature. Each module keeps its feature-specific code
+Contains 24 feature modules, one package per feature. Each module keeps its feature-specific code
 together and registers its Bukkit listeners, Brigadier commands, and data files through the
 handles provided by `ModuleContext`. Modules that need services from other modules declare that
 dependency explicitly via `dependsOn()`, which both enforces initialization order and documents
@@ -83,7 +83,7 @@ instantiated and every dependency is wired. The full wiring sequence in `start()
 4. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`) to the registry.
 5. Construct platform-layer objects and publish them.
 6. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
-7. Create `ModuleRegistry`, register all 25 module instances, call `enableAll()`.
+7. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
 8. Start `AutoSaveTask`.
 9. Register the `/kreiscraft reload` command.
 
@@ -105,7 +105,7 @@ receives, you trace from the call site in `KreiscraftBootstrap.start()` to the m
 
 ### Registration and enable ordering
 
-After all 25 module instances are registered with `ModuleRegistry.register()`, a single call to
+After all 24 module instances are registered with `ModuleRegistry.register()`, a single call to
 `enableAll()` processes them:
 
 1. Iterate all registered modules; collect those with `enabled: true` into a candidate list.

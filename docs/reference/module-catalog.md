@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -14,7 +14,6 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
-| `bot` | `de.kreiscraft.modules.bot` | stable | none | — | Registers the data file used by the Discord bot integration for player–account linking state. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
 | `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players hit entities through non-solid blocks; toggled per-player via the settings GUI. |
 | `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally blocks elytra use while tagged. |
@@ -117,18 +116,6 @@ Detects Bedrock Edition players by their username prefix (default `.`) when they
 ### Services published
 
 - `BedrockService` — query the set of known Bedrock player records.
-
----
-
-## `bot`
-
-**Package:** `de.kreiscraft.modules.bot`
-**Depends on:** none
-**Default enabled:** true
-
-### Description
-
-Registers `BotData` (backed by `data/bot.yml`) with the `ConfigService` auto-save scheduler. This data file holds Discord ↔ Minecraft account link state consumed by the `api` module's Discord bot integration. The module itself exposes no commands or listeners.
 
 ---
 

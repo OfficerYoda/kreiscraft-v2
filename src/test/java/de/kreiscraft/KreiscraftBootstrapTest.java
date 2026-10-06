@@ -8,7 +8,6 @@ import de.kreiscraft.modules.admin.AdminModule;
 import de.kreiscraft.modules.api.ApiModule;
 import de.kreiscraft.modules.anticheat.AntiCheatModule;
 import de.kreiscraft.modules.bedrock.BedrockModule;
-import de.kreiscraft.modules.bot.BotModule;
 import de.kreiscraft.modules.chatformat.ChatFormatModule;
 import de.kreiscraft.modules.clickthrough.ClickthroughModule;
 import de.kreiscraft.modules.combat.CombatModule;
@@ -37,8 +36,7 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 class KreiscraftBootstrapTest {
 
     /** Mirror of KreiscraftBootstrap.start() — sole source of truth for the registered set. */
-    // MODULE_COUNT is updated by Task B.9 when the api module is added (24 → 25).
-    private static final int MODULE_COUNT = 25;
+    private static final int MODULE_COUNT = 24;
 
     private static List<Module> allModules() {
         return List.of(
@@ -46,7 +44,6 @@ class KreiscraftBootstrapTest {
                 new ApiModule(),
                 new AntiCheatModule(),
                 new BedrockModule(),
-                new BotModule(),
                 new ChatFormatModule(),
                 new ClickthroughModule(),
                 new CombatModule(),

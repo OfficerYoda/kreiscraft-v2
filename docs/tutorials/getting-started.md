@@ -71,16 +71,16 @@ The `run-paper` Gradle plugin downloads a Paper server on first run and places e
 On first run you will see Paper bootstrap output followed by plugin startup. Look for the `[Kreiscraft]` prefix in the log. The last line from the plugin is the startup summary:
 
 ```
-[Kreiscraft] [INFO] 20 Module aktiv, 5 deaktiviert, 0 fehlgeschlagen.
+[Kreiscraft] [INFO] 19 Module aktiv, 5 deaktiviert, 0 fehlgeschlagen.
 ```
 
 If you have configured the language to `en` (in `config.yml` → `core.language: en`) it reads:
 
 ```
-[Kreiscraft] [INFO] 20 modules enabled, 5 disabled, 0 failed.
+[Kreiscraft] [INFO] 19 modules enabled, 5 disabled, 0 failed.
 ```
 
-The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. The bundled `config.yml` ships 20 modules enabled; `effects`, `firework`, `glow`, `plugin-hider` and `positions` are disabled by default and only start when explicitly opted in, so a clean run reports 20 enabled and 5 disabled.
+The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. The bundled `config.yml` ships 19 modules enabled; `effects`, `firework`, `glow`, `plugin-hider` and `positions` are disabled by default and only start when explicitly opted in, so a clean run reports 19 enabled and 5 disabled.
 
 If any module fails to start, the log also prints a `SEVERE` line with the module id and exception before the summary. Check that line first when troubleshooting.
 

@@ -105,7 +105,6 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.api.ApiModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
         modules.register(new de.kreiscraft.modules.bedrock.BedrockModule());
-        modules.register(new de.kreiscraft.modules.bot.BotModule());
         modules.register(new de.kreiscraft.modules.chatformat.ChatFormatModule());
         modules.register(new de.kreiscraft.modules.clickthrough.ClickthroughModule());
         modules.register(new de.kreiscraft.modules.combat.CombatModule());

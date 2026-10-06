@@ -39,8 +39,6 @@ modules:
   bedrock:
     enabled: true
     prefix: "."
-  bot:
-    enabled: true
   chat-format:
     enabled: true
     event-priority: LOWEST
