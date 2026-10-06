@@ -2,41 +2,35 @@ package de.kreiscraft.modules.updatemode;
 
 import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.platform.PaperPlatform;
-import java.util.UUID;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 
 public final class UpdateModeListener implements PriorityListener {
 
-    private final DefaultUpdateModeService service;
-    private final PaperPlatform platform;
+    private final UpdateModeService service;
     private final MessageService messages;
 
-    public UpdateModeListener(
-            DefaultUpdateModeService service, PaperPlatform platform, MessageService messages) {
+    public UpdateModeListener(UpdateModeService service, MessageService messages) {
         this.service = service;
-        this.platform = platform;
         this.messages = messages;
     }
 
+    // PlayerLoginEvent is deprecated by Paper (since 1.21.6) but remains the only login-stage
+    // event that exposes a Player, which is required to evaluate the configured bypass permission.
+    @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGH)
-    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+    public void onLogin(PlayerLoginEvent event) {
         if (!service.isActive()) {
             return;
         }
-        UpdateModeConfig cfg = service.config();
-        String name = event.getName();
-        UUID uuid = event.getUniqueId();
-        if (cfg.bypassNames().contains(name)) {
-            return;
-        }
-        if (platform.server().getOfflinePlayer(uuid).isOp()) {
+        Player player = event.getPlayer();
+        if (service.isBypassed(player)) {
             return;
         }
         event.disallow(
-                AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
+                PlayerLoginEvent.Result.KICK_WHITELIST,
                 messages.render("update-mode.kick-message"));
     }
 }

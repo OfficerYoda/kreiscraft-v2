@@ -125,7 +125,13 @@ update-mode:
   deactivated: "<prefix> <green>Maintenance mode deactivated."
   status-on: "<prefix> <yellow>Maintenance mode is ON."
   status-off: "<prefix> <green>Maintenance mode is OFF."
-  kick-message: "<red>Server in maintenance mode</red>"
+  bypass-notice: "<prefix> <gray>Maintenance mode was activated, but you may stay online because you are allowed to bypass it."
+  kick-message: |-
+    <gray>===================================
+    <red><bold>>> UPDATEMODE <<
+    <gray>Kreiscraft is currently receiving <blue>UPDATES<gray>!
+    <gray>□ <blue>Kreiscraft <gray>□
+    <gray>===================================
 wither:
   explosion-title: "<red>Explosion</red>"
 world-mgmt:

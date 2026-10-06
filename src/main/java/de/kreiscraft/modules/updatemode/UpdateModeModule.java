@@ -41,11 +41,13 @@ public final class UpdateModeModule implements Module {
             throw new ModuleException("failed to load data for module " + id(), e);
         }
 
-        this.service = new DefaultUpdateModeService(data, config, ctx.plugin().getLogger());
+        PaperPlatform platform = ctx.services().get(PaperPlatform.class);
+        this.service =
+                new DefaultUpdateModeService(
+                        data, config, platform, ctx.messages(), ctx.plugin().getLogger());
         ctx.services().publish(UpdateModeService.class, service);
 
-        PaperPlatform platform = ctx.services().get(PaperPlatform.class);
-        ctx.events().register(new UpdateModeListener(service, platform, ctx.messages()));
+        ctx.events().register(new UpdateModeListener(service, ctx.messages()));
 
         ctx.commands().register(
                 UpdateModeCommand.build(service, ctx.messages()),

@@ -385,7 +385,7 @@ Updates the tab list header and footer for all online players on a repeating sch
 
 ### Description
 
-When active, kicks players who attempt to log in unless they have the bypass permission or their name appears in `bypass-names`. State (active/inactive) is persisted in `data/update-mode.yml`.
+When active, activation immediately disconnects every online player who is not allowed to bypass, and login attempts from non-bypassed players are blocked. A player bypasses if their name is listed in `bypass-names`, they are an operator, or they hold the configured `bypass-permission`. Bypassed players who are online when maintenance is activated receive a notification instead of being disconnected. State (active/inactive) is persisted in `data/update-mode.yml`.
 
 ### Services published
 

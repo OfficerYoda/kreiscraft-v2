@@ -125,7 +125,13 @@ update-mode:
   deactivated: "<prefix> <green>Wartungsmodus deaktiviert."
   status-on: "<prefix> <yellow>Wartungsmodus ist AN."
   status-off: "<prefix> <green>Wartungsmodus ist AUS."
-  kick-message: "<red>Server im Wartungsmodus</red>"
+  bypass-notice: "<prefix> <gray>Der Wartungsmodus wurde aktiviert, aber du darfst online bleiben, da du ihn umgehen darfst."
+  kick-message: |-
+    <gray>===================================
+    <red><bold>>> UPDATEMODE <<
+    <gray>Kreiscraft erhält gerade <blue>UPDATES<gray>!
+    <gray>□ <blue>Kreiscraft <gray>□
+    <gray>===================================
 wither:
   explosion-title: "<red>Explosion</red>"
 world-mgmt:

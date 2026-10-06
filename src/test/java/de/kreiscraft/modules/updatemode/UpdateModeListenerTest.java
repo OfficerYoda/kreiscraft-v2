@@ -8,56 +8,51 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.UUID;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Server;
-import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.plugin.PluginMock;
 
 class UpdateModeListenerTest {
 
     private static final Logger LOG = Logger.getLogger("test");
-    private static final Component KICK_COMPONENT =
-            MiniMessage.miniMessage().deserialize("<red>Server im Wartungsmodus</red>");
+    private static final String BYPASS_PERMISSION = "kreiscraft.updatemode.bypass";
+    private static final Component KICK_COMPONENT = Component.text("Server in maintenance");
 
     @TempDir
     Path tmp;
 
+    private ServerMock server;
+    private PluginMock plugin;
+    private MessageService messages;
     private DefaultUpdateModeService service;
-    private Server mockServer;
-    private MessageService mockMessages;
     private UpdateModeListener listener;
 
     @BeforeEach
     void setUp() throws IOException {
-        // MockBukkit must be initialised so that AsyncPlayerPreLoginEvent constructor
-        // can call Bukkit.createProfile() without NPE.
-        MockBukkit.mock();
+        server = MockBukkit.mock();
+        plugin = MockBukkit.createMockPlugin();
+        messages = mock(MessageService.class);
+        when(messages.render("update-mode.kick-message")).thenReturn(KICK_COMPONENT);
 
         UpdateModeData data = new UpdateModeData(tmp);
         data.load();
         service = new DefaultUpdateModeService(
-                data, new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of()), LOG);
-
-        // Use a separate Mockito mock for the platform server so we can control
-        // getOfflinePlayer() / isOp() independently of the MockBukkit ServerMock.
-        mockServer = mock(Server.class);
-        PaperPlatform platform = new PaperPlatform(null, mockServer);
-
-        mockMessages = mock(MessageService.class);
-        when(mockMessages.render("update-mode.kick-message")).thenReturn(KICK_COMPONENT);
-
-        listener = new UpdateModeListener(service, platform, mockMessages);
+                data,
+                new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
+                new PaperPlatform(plugin, server),
+                messages,
+                LOG);
+        listener = new UpdateModeListener(service, messages);
     }
 
     @AfterEach
@@ -65,76 +60,120 @@ class UpdateModeListenerTest {
         MockBukkit.unmock();
     }
 
-    @SuppressWarnings("removal")
-    private AsyncPlayerPreLoginEvent preLoginEvent(String name, UUID uuid) throws UnknownHostException {
-        InetAddress addr = InetAddress.getByName("127.0.0.1");
-        return new AsyncPlayerPreLoginEvent(name, addr, uuid);
-    }
-
-    private void mockIsOp(UUID uuid, boolean op) {
-        OfflinePlayer offlinePlayer = mock(OfflinePlayer.class);
-        when(offlinePlayer.isOp()).thenReturn(op);
-        when(mockServer.getOfflinePlayer(uuid)).thenReturn(offlinePlayer);
+    private PlayerLoginEvent loginEvent(PlayerMock player) throws IOException {
+        return new PlayerLoginEvent(player, "localhost", InetAddress.getByName("127.0.0.1"));
     }
 
     @Test
-    void onPreLogin_whenInactive_allowsLogin() throws UnknownHostException {
-        service.setActive(false);
-        UUID uuid = UUID.randomUUID();
-        mockIsOp(uuid, false);
+    void onLogin_whenInactive_allowsLogin() throws IOException {
+        PlayerMock alice = server.addPlayer("Alice");
 
-        AsyncPlayerPreLoginEvent event = preLoginEvent("Player", uuid);
-        listener.onPreLogin(event);
+        PlayerLoginEvent event = loginEvent(alice);
+        listener.onLogin(event);
 
-        assertThat(event.getLoginResult()).isEqualTo(AsyncPlayerPreLoginEvent.Result.ALLOWED);
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.ALLOWED);
     }
 
     @Test
-    void onPreLogin_whenActiveAndNoBypass_kicksPlayer() throws UnknownHostException {
+    void onLogin_whenActiveAndNoBypass_blocksLogin() throws IOException {
         service.setActive(true);
-        UUID uuid = UUID.randomUUID();
-        mockIsOp(uuid, false);
+        PlayerMock alice = server.addPlayer("Alice");
 
-        AsyncPlayerPreLoginEvent event = preLoginEvent("Player", uuid);
-        listener.onPreLogin(event);
+        PlayerLoginEvent event = loginEvent(alice);
+        listener.onLogin(event);
 
-        assertThat(event.getLoginResult()).isEqualTo(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST);
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.KICK_WHITELIST);
+        assertThat(event.kickMessage()).isEqualTo(KICK_COMPONENT);
     }
 
     @Test
-    void onPreLogin_whenActiveAndPlayerInBypassNames_allowsLogin() throws UnknownHostException {
-        service.updateConfig(new UpdateModeConfig("kreiscraft.updatemode.bypass", List.of("Alice")));
+    void onLogin_whenActiveAndPermissionBypass_allowsLogin() throws IOException {
         service.setActive(true);
-        UUID uuid = UUID.randomUUID();
-        mockIsOp(uuid, false);
+        PlayerMock alice = server.addPlayer("Alice");
+        alice.addAttachment(plugin, BYPASS_PERMISSION, true);
 
-        AsyncPlayerPreLoginEvent event = preLoginEvent("Alice", uuid);
-        listener.onPreLogin(event);
+        PlayerLoginEvent event = loginEvent(alice);
+        listener.onLogin(event);
 
-        assertThat(event.getLoginResult()).isEqualTo(AsyncPlayerPreLoginEvent.Result.ALLOWED);
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.ALLOWED);
     }
 
     @Test
-    void onPreLogin_whenActiveAndPlayerIsOp_allowsLogin() throws UnknownHostException {
+    void onLogin_whenActiveAndNameBypass_allowsLogin() throws IOException {
+        service.updateConfig(new UpdateModeConfig(BYPASS_PERMISSION, List.of("Bob")));
         service.setActive(true);
-        UUID uuid = UUID.randomUUID();
-        mockIsOp(uuid, true);
+        PlayerMock bob = server.addPlayer("Bob");
 
-        AsyncPlayerPreLoginEvent event = preLoginEvent("OpPlayer", uuid);
-        listener.onPreLogin(event);
+        PlayerLoginEvent event = loginEvent(bob);
+        listener.onLogin(event);
 
-        assertThat(event.getLoginResult()).isEqualTo(AsyncPlayerPreLoginEvent.Result.ALLOWED);
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.ALLOWED);
     }
 
     @Test
-    void onPreLogin_kickMessage_comesFromMessageService() throws UnknownHostException {
+    void onLogin_whenActiveAndPlayerIsOp_allowsLogin() throws IOException {
         service.setActive(true);
-        UUID uuid = UUID.randomUUID();
-        mockIsOp(uuid, false);
+        PlayerMock op = server.addPlayer("OpPlayer");
+        op.setOp(true);
 
-        AsyncPlayerPreLoginEvent event = preLoginEvent("Player", uuid);
-        listener.onPreLogin(event);
+        PlayerLoginEvent event = loginEvent(op);
+        listener.onLogin(event);
+
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.ALLOWED);
+    }
+
+    @Test
+    void onLogin_kickMessage_comesFromMessageService() throws IOException {
+        service.setActive(true);
+        PlayerMock alice = server.addPlayer("Alice");
+
+        PlayerLoginEvent event = loginEvent(alice);
+        listener.onLogin(event);
 
         assertThat(event.kickMessage()).isEqualTo(KICK_COMPONENT);
+    }
+
+    @Test
+    void onLogin_afterConfigReload_honorsUpdatedBypassPermission() throws IOException {
+        service.setActive(true);
+        PlayerMock alice = server.addPlayer("Alice");
+        alice.addAttachment(plugin, "kreiscraft.custom.bypass", true);
+
+        // Before reload the custom permission is not configured, so Alice is blocked.
+        PlayerLoginEvent before = loginEvent(alice);
+        listener.onLogin(before);
+        assertThat(before.getResult()).isEqualTo(PlayerLoginEvent.Result.KICK_WHITELIST);
+
+        // Reload changes the configured bypass permission to the one Alice holds.
+        service.updateConfig(new UpdateModeConfig("kreiscraft.custom.bypass", List.of()));
+
+        PlayerLoginEvent after = loginEvent(alice);
+        listener.onLogin(after);
+        assertThat(after.getResult()).isEqualTo(PlayerLoginEvent.Result.ALLOWED);
+    }
+
+    @Test
+    void onLogin_afterRestart_stillBlocksNonBypassedPlayers() throws IOException {
+        // First run: activation persists the active state to disk.
+        service.setActive(true);
+
+        // Second run: a fresh service loads the persisted state from the same data folder.
+        UpdateModeData reloaded = new UpdateModeData(tmp);
+        reloaded.load();
+        DefaultUpdateModeService restarted = new DefaultUpdateModeService(
+                reloaded,
+                new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
+                new PaperPlatform(plugin, server),
+                messages,
+                LOG);
+        UpdateModeListener restartedListener = new UpdateModeListener(restarted, messages);
+
+        assertThat(restarted.isActive()).isTrue();
+
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerLoginEvent event = loginEvent(alice);
+        restartedListener.onLogin(event);
+
+        assertThat(event.getResult()).isEqualTo(PlayerLoginEvent.Result.KICK_WHITELIST);
     }
 }

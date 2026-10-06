@@ -54,7 +54,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
 | `/status prefix <text>` | — | `status` | Set your own chat/tablist prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
 | `/status suffix <text>` | — | `status` | Set your own suffix. | `kreiscraft.status.set.self` | true |
-| `/updatemode on` | (sub-cmd `an`) | `update-mode` | Activate maintenance mode. | `kreiscraft.updatemode.admin` | op |
+| `/updatemode on` | (sub-cmd `an`) | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode off` | (sub-cmd `aus`) | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode status` | — | `update-mode` | Show whether maintenance mode is active. | `kreiscraft.updatemode.admin` | op |
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
@@ -163,7 +163,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `update-mode` module
 
 - `kreiscraft.updatemode.admin` — **(op)** — Toggle maintenance mode.
-- `kreiscraft.updatemode.bypass` — **(op)** — Log in during maintenance mode.
+- `kreiscraft.updatemode.bypass` — **(op)** — Stay online when maintenance mode is activated and log in while it is active.
 
 ### `world-mgmt` module
 

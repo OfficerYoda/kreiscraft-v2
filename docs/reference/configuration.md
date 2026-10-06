@@ -244,8 +244,10 @@ These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so 
 
 | Key (relative to `modules.update-mode`) | Type | Default | Description |
 |---|---|---|---|
-| `bypass-permission` | String | `kreiscraft.updatemode.bypass` | Permission node that allows a player to join even when update mode is active. |
+| `bypass-permission` | String | `kreiscraft.updatemode.bypass` | Permission node that allows a player to stay online when update mode is activated and to join while it is active. |
 | `bypass-names` | List\<String\> | `[]` | Exact player names that bypass update mode regardless of permission. |
+
+> Players are also treated as bypassed when they are server operators. The activation and login kick messages are localisable strings in the lang files (`update-mode.kick-message`), so they support full MiniMessage formatting, including multi-line layouts.
 
 ---
 
