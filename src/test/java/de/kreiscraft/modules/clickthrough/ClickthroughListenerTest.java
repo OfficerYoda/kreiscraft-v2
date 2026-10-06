@@ -11,7 +11,6 @@ import de.kreiscraft.modules.settingsgui.SettingsService;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Material;
 import org.bukkit.Rotation;
 import org.bukkit.block.Block;
@@ -46,9 +45,7 @@ class ClickthroughListenerTest {
         when(player.getUniqueId()).thenReturn(playerId);
         when(player.isSneaking()).thenReturn(false);
 
-        AtomicReference<ClickthroughConfig> configRef =
-                new AtomicReference<>(new ClickthroughConfig(6));
-        listener = new ClickthroughListener(configRef, settingsService, scheduler);
+        listener = new ClickthroughListener(settingsService, scheduler);
     }
 
     // --- PlayerInteractEvent (wall sign) ---
@@ -220,6 +217,36 @@ class ClickthroughListenerTest {
 
         scheduler.advance(Duration.ofMillis(50));
         verify(frame).setRotation(Rotation.FLIPPED);
+    }
+
+    @Test
+    void onInteractAtEntity_itemFrame_targetIsEnderChest_opensEnderChestAndRestoresRotation() {
+        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+
+        ItemStack frameItem = mock(ItemStack.class);
+        when(frameItem.getType()).thenReturn(Material.STONE);
+
+        ItemFrame frame = mock(ItemFrame.class);
+        when(frame.getItem()).thenReturn(frameItem);
+        when(frame.getRotation()).thenReturn(Rotation.CLOCKWISE);
+
+        Block targetBlock = mock(Block.class);
+        when(targetBlock.getType()).thenReturn(Material.ENDER_CHEST);
+        when(player.getTargetBlockExact(6)).thenReturn(targetBlock);
+
+        Inventory enderChest = mock(Inventory.class);
+        when(player.getEnderChest()).thenReturn(enderChest);
+
+        PlayerInteractAtEntityEvent event = new PlayerInteractAtEntityEvent(
+                player, frame, new Vector(0, 0, 0));
+
+        listener.onInteractAtEntity(event);
+
+        verify(player).openInventory(enderChest);
+        assertThat(event.isCancelled()).isTrue();
+
+        scheduler.advance(Duration.ofMillis(50));
+        verify(frame).setRotation(Rotation.CLOCKWISE);
     }
 
     @Test

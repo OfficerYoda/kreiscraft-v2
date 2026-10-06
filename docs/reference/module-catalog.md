@@ -15,7 +15,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
-| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players hit entities through non-solid blocks; toggled per-player via the settings GUI. |
+| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled per-player via the settings GUI. |
 | `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally blocks elytra use while tagged. |
 | `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players toggle and choose a personal particle trail emitted around them each tick. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
@@ -141,7 +141,7 @@ Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoi
 
 ### Description
 
-Allows players with the clickthrough setting enabled to hit entities that would normally be blocked by adjacent non-solid blocks (e.g. glass panes). The per-player toggle is stored by `SettingsService`. A ray-cast is performed up to `targetBlockMaxDistance` blocks.
+Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is stored by `SettingsService`.
 
 ---
 

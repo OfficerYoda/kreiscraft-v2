@@ -63,7 +63,7 @@ src/main/java/de/kreiscraft/
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
 | `bedrock` | Bedrock player tracking, `/bedrocklist` command, and Java-only whitelist enforcement |
 | `chat-format` | Custom in-game chat formatting via MiniMessage; bridges messages to the shared `ChatBridge` |
-| `clickthrough` | Per-player toggle to click through grass and flowers; integrates with `settings-gui` |
+| `clickthrough` | Per-player toggle to open containers and Ender Chests through wall signs and filled item frames; integrates with `settings-gui` |
 | `combat` | Combat tag and elytra-block during combat, with per-player toggle via `settings-gui` |
 | `effects` | `/effects` — player-toggled particle trails |
 | `firework` | Custom firework rocket crafting recipe with configurable custom model data |

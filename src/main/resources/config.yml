@@ -46,7 +46,6 @@ modules:
     format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"
   clickthrough:
     enabled: true
-    target-block-max-distance: 6
   combat:
     enabled: true
     tag-duration: 10s

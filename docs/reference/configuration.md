@@ -126,14 +126,6 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 ---
 
-### `clickthrough`
-
-| Key (relative to `modules.clickthrough`) | Type | Default | Description |
-|---|---|---|---|
-| `target-block-max-distance` | int | `6` | Maximum block-ray distance when checking what block a player clicks through. |
-
----
-
 ### `combat`
 
 | Key (relative to `modules.combat`) | Type | Default | Description |

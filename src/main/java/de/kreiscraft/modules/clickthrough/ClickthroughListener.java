@@ -4,7 +4,6 @@ import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.settingsgui.SettingsService;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Material;
 import org.bukkit.Rotation;
 import org.bukkit.block.Block;
@@ -22,15 +21,13 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 public final class ClickthroughListener implements PriorityListener {
 
-    private final AtomicReference<ClickthroughConfig> configRef;
+    /** Fixed ray-cast distance, matching RusticPrism's original click-through behaviour. */
+    private static final int TARGET_BLOCK_MAX_DISTANCE = 6;
+
     private final SettingsService settingsService;
     private final Scheduler scheduler;
 
-    public ClickthroughListener(
-            AtomicReference<ClickthroughConfig> configRef,
-            SettingsService settingsService,
-            Scheduler scheduler) {
-        this.configRef = configRef;
+    public ClickthroughListener(SettingsService settingsService, Scheduler scheduler) {
         this.settingsService = settingsService;
         this.scheduler = scheduler;
     }
@@ -60,15 +57,7 @@ public final class ClickthroughListener implements PriorityListener {
         BlockFace face = event.getBlockFace();
         Block target = clickedBlock.getRelative(face.getOppositeFace());
 
-        if (target.getType() == Material.ENDER_CHEST) {
-            player.openInventory(player.getEnderChest());
-            event.setCancelled(true);
-            return;
-        }
-
-        BlockState state = target.getState();
-        if (state instanceof Container container) {
-            player.openInventory(container.getInventory());
+        if (openTargetInventory(player, target)) {
             event.setCancelled(true);
         }
     }
@@ -91,20 +80,34 @@ public final class ClickthroughListener implements PriorityListener {
             return;
         }
 
-        ClickthroughConfig config = configRef.get();
-        Block target = player.getTargetBlockExact(config.targetBlockMaxDistance());
+        Block target = player.getTargetBlockExact(TARGET_BLOCK_MAX_DISTANCE);
         if (target == null) {
             return;
         }
 
-        BlockState state = target.getState();
-        if (!(state instanceof Container container)) {
+        Rotation originalRotation = frame.getRotation();
+        if (!openTargetInventory(player, target)) {
             return;
         }
 
-        Rotation originalRotation = frame.getRotation();
-        player.openInventory(container.getInventory());
         event.setCancelled(true);
         scheduler.runLater(Duration.ofMillis(50), () -> frame.setRotation(originalRotation));
+    }
+
+    /**
+     * Opens the inventory behind {@code target}: the player's own Ender Chest for an Ender Chest
+     * block, otherwise the container's inventory. Returns whether an inventory was opened.
+     */
+    private static boolean openTargetInventory(Player player, Block target) {
+        if (target.getType() == Material.ENDER_CHEST) {
+            player.openInventory(player.getEnderChest());
+            return true;
+        }
+        BlockState state = target.getState();
+        if (state instanceof Container container) {
+            player.openInventory(container.getInventory());
+            return true;
+        }
+        return false;
     }
 }
