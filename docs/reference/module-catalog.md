@@ -337,7 +337,7 @@ Manages the server spawn point (persisted in `data/spawn.yml`). Includes three o
 
 ### Description
 
-Triggers the season-start ceremony: a countdown broadcast, followed by three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). State is persisted in `data/start-sequence.yml` so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. State is persisted in `data/start-sequence.yml` so a restart does not re-trigger the sequence.
 
 ### Services published
 

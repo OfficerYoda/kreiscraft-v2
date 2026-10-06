@@ -21,15 +21,19 @@ public record StartSequenceConfig(Duration countdown, Double initialBorderSize, 
             targetBorderSize = 30_000_000.0;
         }
         if (phase1Duration == null) {
-            phase1Duration = Duration.ofSeconds(550_000);
+            // RusticPrism used 550000 ticks for the first border phase; 20 ticks = 1 second.
+            phase1Duration = Duration.ofSeconds(27_500);
         }
         if (phase2Duration == null) {
-            phase2Duration = Duration.ofSeconds(300_000);
+            // RusticPrism used 300000 ticks for the second border phase; 20 ticks = 1 second.
+            phase2Duration = Duration.ofSeconds(15_000);
         }
         if (phase1To2Delay == null) {
+            // 150 ticks.
             phase1To2Delay = Duration.ofMillis(7_500);
         }
         if (phase2ToInstantDelay == null) {
+            // 300 ticks.
             phase2ToInstantDelay = Duration.ofMillis(15_000);
         }
     }

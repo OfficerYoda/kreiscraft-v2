@@ -6,6 +6,7 @@ import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.World;
@@ -47,20 +48,20 @@ public final class DefaultStartSequenceService implements StartSequenceService {
         data.setStarted(true);
         this.activeWorld = world;
 
-        long countdownSeconds = config.countdown().toSeconds();
-        for (long s = countdownSeconds; s >= 0; s--) {
-            final long tick = s;
-            Duration delay = Duration.ofSeconds(countdownSeconds - s);
-            Scheduler.Task task = scheduler.runLater(delay, () -> {
-                if (tick > 0) {
-                    showCountdownTitle((int) tick);
-                } else {
-                    showStartedTitle();
-                    triggerBorderSequence(world);
-                }
-            });
-            activeTasks.add(task);
+        // RusticPrism starts its counter at the configured countdown, decrements it before the
+        // first display, and launches the season once it reaches zero. The displayed numbers are
+        // therefore (countdown - 1) .. 1, one per second, with the start title one second after
+        // the final number.
+        long firstNumber = Math.max(0L, config.countdown().toSeconds() - 1L);
+        for (long number = firstNumber; number >= 1L; number--) {
+            final int displayed = (int) number;
+            Duration delay = Duration.ofSeconds(firstNumber - number);
+            activeTasks.add(scheduler.runLater(delay, () -> showCountdownTitle(displayed)));
         }
+        activeTasks.add(scheduler.runLater(Duration.ofSeconds(firstNumber), () -> {
+            showStartedTitle();
+            triggerBorderSequence(world);
+        }));
     }
 
     @Override
@@ -89,27 +90,46 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     private void showCountdownTitle(int seconds) {
         Component title =
                 messages.render("start-sequence.countdown-title", "seconds", String.valueOf(seconds));
-        Title.Times times =
-                Title.Times.times(Duration.ZERO, Duration.ofMillis(1200), Duration.ofMillis(300));
-        platform.server().getOnlinePlayers().forEach(p -> p.showTitle(Title.title(title, Component.empty(), times)));
+        Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ZERO);
+        // Volume and pitch mirror RusticPrism's Sound.sound(..., 100, 100) call.
+        Sound sound = Sound.sound(
+                org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, Sound.Source.PLAYER, 100f, 100f);
+        showToAll(title, Component.empty(), times, sound);
     }
 
     private void showStartedTitle() {
         Component title = messages.render("start-sequence.started");
-        Title.Times times =
-                Title.Times.times(Duration.ZERO, Duration.ofSeconds(4), Duration.ZERO);
-        platform.server().getOnlinePlayers().forEach(p -> p.showTitle(Title.title(title, Component.empty(), times)));
+        Component subtitle = messages.render("start-sequence.started-subtitle");
+        Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(4), Duration.ZERO);
+        // Volume and pitch mirror RusticPrism's Sound.sound(..., 200, 1) call.
+        Sound sound =
+                Sound.sound(org.bukkit.Sound.ITEM_GOAT_HORN_SOUND_2, Sound.Source.PLAYER, 200f, 1f);
+        showToAll(title, subtitle, times, sound);
+    }
+
+    private void showToAll(Component title, Component subtitle, Title.Times times, Sound sound) {
+        platform.server().getOnlinePlayers().forEach(p -> {
+            p.showTitle(Title.title(title, subtitle, times));
+            p.playSound(sound);
+        });
     }
 
     private void triggerBorderSequence(World world) {
-        world.getWorldBorder().changeSize(config.targetBorderSize(), config.phase1Duration().toSeconds());
+        // Bukkit's WorldBorder.changeSize takes a duration in ticks. The configured phases are
+        // tick values (RusticPrism parity), so derive the tick count from each Duration.
+        world.getWorldBorder()
+                .changeSize(config.targetBorderSize(), toTicks(config.phase1Duration()));
 
         Scheduler.Task phase2Task = scheduler.runLater(config.phase1To2Delay(), () -> world.getWorldBorder()
-                .changeSize(config.targetBorderSize(), config.phase2Duration().toSeconds()));
+                .changeSize(config.targetBorderSize(), toTicks(config.phase2Duration())));
         activeTasks.add(phase2Task);
 
         Scheduler.Task instantTask = scheduler.runLater(config.phase2ToInstantDelay(),
                 () -> world.getWorldBorder().setSize(config.targetBorderSize()));
         activeTasks.add(instantTask);
+    }
+
+    private static long toTicks(Duration duration) {
+        return duration.toMillis() / 50L;
     }
 }

@@ -218,15 +218,17 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.start-sequence`) | Type | Default | Description |
 |---|---|---|---|
-| `countdown` | Duration | `10s` | Countdown before the game begins. |
+| `countdown` | Duration | `10s` | Initial countdown value. The sequence displays `countdown - 1` … `1`, one number per second, then the start title. |
 | `initial-border-size` | double | `50.0` | World border diameter at game start (blocks). |
 | `target-border-size` | double | `30000000.0` | World border diameter at full expansion. |
-| `phase-1-duration` | Duration | `550000s` | Duration of border phase 1 (slow shrink). |
-| `phase-2-duration` | Duration | `300000s` | Duration of border phase 2 (faster shrink). |
-| `phase-1-to-2-delay` | Duration | `7500ms` | Pause between phase 1 ending and phase 2 starting. |
-| `phase-2-to-instant-delay` | Duration | `15000ms` | Pause between phase 2 ending and instant collapse. |
+| `phase-1-duration` | Duration | `550000t` (27500 s) | Border phase 1 expansion duration, in ticks. |
+| `phase-2-duration` | Duration | `300000t` (15000 s) | Border phase 2 expansion duration, in ticks. |
+| `phase-1-to-2-delay` | Duration | `150t` (7.5 s) | Delay after the start title before phase 2 begins. |
+| `phase-2-to-instant-delay` | Duration | `300t` (15 s) | Delay after the start title before the border snaps to full size. |
 
 These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so camelCase conversion does not apply.
+
+Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border phase durations and delays are expressed in ticks to mirror the original RusticPrism sequence; Bukkit's `WorldBorder.changeSize` API also takes a duration in ticks, so the service derives the tick count directly from each duration. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
 
 ---
 

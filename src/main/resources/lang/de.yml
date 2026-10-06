@@ -114,6 +114,7 @@ start-sequence:
   already-started: "<prefix> <red>Season läuft bereits."
   countdown-title: "<gradient:#5555ff:#55ffff>Kreiscraft startet in <seconds></gradient>"
   started: "<gradient:#5555ff:#55ffff>Kreiscraft startet jetzt</gradient>"
+  started-subtitle: "<green>Viel Spaß"
   reset: "<prefix> <yellow>Season zurückgesetzt."
   not-started: "<prefix> <red>Season läuft nicht."
 status:

@@ -117,10 +117,12 @@ modules:
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
-    phase-1-duration: 550000s
-    phase-2-duration: 300000s
-    phase-1-to-2-delay: 7500ms
-    phase-2-to-instant-delay: 15000ms
+    # Border phase durations and delays are tick values (20 ticks = 1 second), matching the
+    # original RusticPrism sequence. Bukkit's WorldBorder API also takes a duration in ticks.
+    phase-1-duration: 550000t
+    phase-2-duration: 300000t
+    phase-1-to-2-delay: 150t
+    phase-2-to-instant-delay: 300t
   status:
     enabled: true
   tablist:

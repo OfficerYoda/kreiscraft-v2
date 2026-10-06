@@ -26,8 +26,25 @@ class StartSequenceConfigTest {
         assertThat(cfg.countdown()).isEqualTo(Duration.ofSeconds(10));
         assertThat(cfg.initialBorderSize()).isEqualTo(50.0);
         assertThat(cfg.targetBorderSize()).isEqualTo(30_000_000.0);
-        assertThat(cfg.phase1Duration()).isEqualTo(Duration.ofSeconds(550_000));
-        assertThat(cfg.phase2Duration()).isEqualTo(Duration.ofSeconds(300_000));
+        assertThat(cfg.phase1Duration()).isEqualTo(Duration.ofSeconds(27_500));
+        assertThat(cfg.phase2Duration()).isEqualTo(Duration.ofSeconds(15_000));
+        assertThat(cfg.phase1To2Delay()).isEqualTo(Duration.ofMillis(7_500));
+        assertThat(cfg.phase2ToInstantDelay()).isEqualTo(Duration.ofMillis(15_000));
+    }
+
+    @Test
+    void borderDurations_whenTickNotation_areConvertedToSeconds() throws Exception {
+        CommentedConfigurationNode node = rootNode();
+        node.node("phase-1-duration").set("550000t");
+        node.node("phase-2-duration").set("300000t");
+        node.node("phase-1-to-2-delay").set("150t");
+        node.node("phase-2-to-instant-delay").set("300t");
+
+        StartSequenceConfig cfg = node.get(StartSequenceConfig.class);
+
+        assertThat(cfg).isNotNull();
+        assertThat(cfg.phase1Duration()).isEqualTo(Duration.ofSeconds(27_500));
+        assertThat(cfg.phase2Duration()).isEqualTo(Duration.ofSeconds(15_000));
         assertThat(cfg.phase1To2Delay()).isEqualTo(Duration.ofMillis(7_500));
         assertThat(cfg.phase2ToInstantDelay()).isEqualTo(Duration.ofMillis(15_000));
     }
