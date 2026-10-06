@@ -144,8 +144,8 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `sign-color` module
 
-- `kreiscraft.signcolor.use` — **(true)** — Use MiniMessage on signs.
-- `kreiscraft.signcolor.anvil` — **(true)** — Use MiniMessage in anvil rename.
+- `kreiscraft.signcolor.use` — **(true)** — Format sign lines with legacy ampersand codes, Kreiscraft placeholders, and safe MiniMessage.
+- `kreiscraft.signcolor.anvil` — **(true)** — Format anvil rename text with legacy ampersand codes, Kreiscraft placeholders, and safe MiniMessage.
 
 ### `spawn` module
 

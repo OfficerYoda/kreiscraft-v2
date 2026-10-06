@@ -65,10 +65,10 @@ permissions:
     description: Open the per-player settings GUI
     default: true
   kreiscraft.signcolor.use:
-    description: Use MiniMessage on signs
+    description: Use legacy colours, placeholders and MiniMessage on signs
     default: true
   kreiscraft.signcolor.anvil:
-    description: Use MiniMessage in anvil rename
+    description: Use legacy colours, placeholders and MiniMessage in anvil rename
     default: true
   kreiscraft.spawn.use:
     description: Teleport to spawn

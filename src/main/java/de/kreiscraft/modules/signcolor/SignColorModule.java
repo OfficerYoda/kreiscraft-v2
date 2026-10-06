@@ -1,5 +1,6 @@
 package de.kreiscraft.modules.signcolor;
 
+import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
@@ -25,8 +26,10 @@ public final class SignColorModule implements Module {
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        ctx.events().register(new SignEditListener());
-        ctx.events().register(new AnvilRenameListener());
+        LegacyTextFormatter formatter =
+                new LegacyTextFormatter(ctx.services().get(PlaceholderResolver.class));
+        ctx.events().register(new SignEditListener(formatter));
+        ctx.events().register(new AnvilRenameListener(formatter));
     }
 
     @Override

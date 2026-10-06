@@ -75,7 +75,7 @@ src/main/java/de/kreiscraft/
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
 | `reboot` | `/reboot` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
-| `sign-color` | MiniMessage tags in sign text and anvil rename fields |
+| `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
 | `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |
 | `start-sequence` | Season-start animation: countdown titles + world-border expansion phases; `/start` command |
 | `status` | Per-player prefix/suffix managed with `/status`; fires `StatusChangedEvent` consumed by `chat-format` and `tablist` |

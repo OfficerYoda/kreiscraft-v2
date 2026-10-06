@@ -27,7 +27,7 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Per-player settings GUI (clickthrough toggle, combat display mode selection). |
-| `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Parses MiniMessage tags in sign text and anvil renames for players with the appropriate permission. |
+| `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
@@ -307,7 +307,7 @@ Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles
 
 ### Description
 
-Parses MiniMessage tags in sign lines when a player with `kreiscraft.signcolor.use` edits a sign, and in anvil rename fields when the player has `kreiscraft.signcolor.anvil`. No commands are provided.
+Parses MiniMessage tags, legacy ampersand colour/decoration codes, and established Kreiscraft `%placeholder%` tokens in sign lines when a player with `kreiscraft.signcolor.use` edits a sign, and in anvil rename fields when the player has `kreiscraft.signcolor.anvil`. MiniMessage is restricted to colour, decoration, rainbow, reset, and gradient tags so players cannot inject interactive or client-affecting tags. No commands are provided.
 
 ---
 
