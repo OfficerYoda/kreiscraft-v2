@@ -53,9 +53,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
 | `/status prefix <text>` | — | `status` | Set your own chat/tablist prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
-| `/status prefix <target> <text>` | — | `status` | Set another player's prefix. | `kreiscraft.status.set.other` | op |
 | `/status suffix <text>` | — | `status` | Set your own suffix. | `kreiscraft.status.set.self` | true |
-| `/status suffix <target> <text>` | — | `status` | Set another player's suffix. | `kreiscraft.status.set.other` | op |
 | `/updatemode on` | (sub-cmd `an`) | `update-mode` | Activate maintenance mode. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode off` | (sub-cmd `aus`) | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode status` | — | `update-mode` | Show whether maintenance mode is active. | `kreiscraft.updatemode.admin` | op |
@@ -161,7 +159,6 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `status` module
 
 - `kreiscraft.status.set.self` — **(true)** — Set your own status prefix/suffix.
-- `kreiscraft.status.set.other` — **(op)** — Set another player's status.
 
 ### `update-mode` module
 

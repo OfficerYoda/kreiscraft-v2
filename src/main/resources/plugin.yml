@@ -82,9 +82,6 @@ permissions:
   kreiscraft.status.set.self:
     description: Set your own status prefix/suffix
     default: true
-  kreiscraft.status.set.other:
-    description: Set another player's status
-    default: op
   kreiscraft.updatemode.admin:
     description: Toggle maintenance mode
     default: op

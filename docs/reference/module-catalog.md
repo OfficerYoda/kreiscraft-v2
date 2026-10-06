@@ -30,7 +30,7 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Parses MiniMessage tags in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
-| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores and applies per-player MiniMessage prefix/suffix shown in chat and on the tablist. |
+| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
 | `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, minion spawning, and a death explosion. |
@@ -351,15 +351,15 @@ Triggers the season-start ceremony: a countdown broadcast, followed by three wor
 
 ### Description
 
-Stores a MiniMessage prefix and suffix for each player, persisted in `data/statuses.yml`. The prefix/suffix is applied to scoreboards/teams and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
+Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and team color are applied to every online player's scoreboard team and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
 
 ### Events published
 
-- `StatusChangedEvent` — fired when a player's prefix or suffix changes.
+- `StatusChangedEvent` — fired when a player's prefix, suffix, or color changes.
 
 ### Services published
 
-- `StatusService` — get and set per-player MiniMessage prefix/suffix.
+- `StatusService` — get and set per-player MiniMessage prefix/suffix, and set per-player color.
 
 ---
 

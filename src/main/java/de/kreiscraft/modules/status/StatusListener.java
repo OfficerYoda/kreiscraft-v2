@@ -1,6 +1,8 @@
 package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -23,27 +25,38 @@ public final class StatusListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onJoin(PlayerJoinEvent event) {
-        applyTeam(event.getPlayer());
+        Player joiner = event.getPlayer();
+        // The joiner's fresh scoreboard needs every online player's representation.
+        for (Player subject : server.getOnlinePlayers()) {
+            applyStatusToScoreboard(subject, joiner.getScoreboard());
+        }
+        // Every existing scoreboard needs the joining player's representation.
+        for (Player viewer : server.getOnlinePlayers()) {
+            applyStatusToScoreboard(joiner, viewer.getScoreboard());
+        }
     }
 
     @EventHandler
     public void onStatusChanged(StatusChangedEvent event) {
         Player player = server.getPlayer(event.playerId());
-        if (player != null) {
-            applyTeam(player);
+        if (player == null) {
+            return;
+        }
+        for (Player viewer : server.getOnlinePlayers()) {
+            applyStatusToScoreboard(player, viewer.getScoreboard());
         }
     }
 
-    private void applyTeam(Player player) {
-        Status status = service.get(player.getUniqueId());
-        String teamName = "kc_" + player.getUniqueId().toString().substring(0, 8);
-        Scoreboard sb = player.getScoreboard();
-        Team team = sb.getTeam(teamName);
+    private void applyStatusToScoreboard(Player subject, Scoreboard scoreboard) {
+        Status status = service.get(subject.getUniqueId());
+        String teamName = "kc_" + subject.getUniqueId().toString().substring(0, 8);
+        Team team = scoreboard.getTeam(teamName);
         if (team == null) {
-            team = sb.registerNewTeam(teamName);
+            team = scoreboard.registerNewTeam(teamName);
         }
         team.prefix(miniMessage.deserialize(status.prefix()));
         team.suffix(miniMessage.deserialize(status.suffix()));
-        team.addEntry(player.getName());
+        team.color(NamedTextColor.nearestTo(TextColor.color(status.color() & 0x00FFFFFF)));
+        team.addEntry(subject.getName());
     }
 }

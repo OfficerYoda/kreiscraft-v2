@@ -79,6 +79,20 @@ class StatusCommandTest {
     }
 
     @Test
+    void commandNode_prefixExposesOnlySelfEditingTextArgument() {
+        LiteralCommandNode<CommandSourceStack> node = StatusCommand.build(service, messages);
+        assertThat(node.getChild("prefix").getChild("text")).isNotNull();
+        assertThat(node.getChild("prefix").getChild("target")).isNull();
+    }
+
+    @Test
+    void commandNode_suffixExposesOnlySelfEditingTextArgument() {
+        LiteralCommandNode<CommandSourceStack> node = StatusCommand.build(service, messages);
+        assertThat(node.getChild("suffix").getChild("text")).isNotNull();
+        assertThat(node.getChild("suffix").getChild("target")).isNull();
+    }
+
+    @Test
     void tabComplete_afterStatus_suggestsPrefixAndSuffix() {
         // Brigadier lists literal-child suggestions without evaluating requires() predicates,
         // so no getSender() stub needed here.

@@ -119,7 +119,6 @@ status:
   prefix-set: "<prefix> <green>Prefix updated."
   suffix-set: "<prefix> <green>Suffix updated."
   too-long: "<prefix> <red>Too long (max. 32 visible characters)."
-  no-permission-other: "<prefix> <red>No permission to change others."
 update-mode:
   activated: "<prefix> <yellow>Maintenance mode activated."
   deactivated: "<prefix> <green>Maintenance mode deactivated."
