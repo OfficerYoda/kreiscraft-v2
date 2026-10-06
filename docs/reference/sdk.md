@@ -270,10 +270,10 @@ A `Player` context is optional — tokens that require a player (e.g. `%player_n
 |-------|-----------------|-------------|
 | `%player_name%` | yes | `player.getName()` |
 | `%server_players%` | no | Current online player count (`server.getOnlinePlayers().size()`) as a string |
-| `%tps%` | no | 1-minute TPS, formatted to one decimal place (e.g. `"20.0"`) |
-| `%system_time%` | no | Current server-local time formatted as `HH:mm` (timezone from `core.timezone` in `config.yml`, default `Europe/Berlin`) |
+| `%tps%` | no | 1-minute TPS, capped at `20.0` and rounded to at most two decimal places (e.g. `"20.0"`, `"19.87"`) |
+| `%system_time%` | no | Current server-local time formatted as `HH:mm:ss` (timezone from `core.timezone` in `config.yml`, default `Europe/Berlin`) |
 | `%ping%` | yes | `player.getPing()` in milliseconds as a string |
-| `%playtime%` | yes | Player's `PLAY_ONE_MINUTE` statistic converted to whole minutes as a string |
+| `%playtime%` | yes | Player's `PLAY_ONE_MINUTE` statistic formatted as `HH:MM:SS` (zero-padded hours, minutes and seconds) |
 | `%plugin_prefix%` | no | Literal string `"[Kreiscraft]"` |
 
 ### Method

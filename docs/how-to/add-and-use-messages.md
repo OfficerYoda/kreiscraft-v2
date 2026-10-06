@@ -80,12 +80,12 @@ are **not** available inside the lang YAML files via `MessageService`.
 
 | Token | Value |
 |---|---|
-| `%tps%` | TPS (first sample), one decimal place |
+| `%tps%` | TPS (first sample), capped at 20.0 and rounded to at most two decimals |
 | `%server_players%` | Online player count |
-| `%system_time%` | Current server time `HH:mm` |
+| `%system_time%` | Current server time `HH:mm:ss` |
 | `%player_name%` | Player's display name (requires `Player` context) |
 | `%ping%` | Player's ping in ms (requires `Player` context) |
-| `%playtime%` | Player's playtime in minutes (requires `Player` context) |
+| `%playtime%` | Player's playtime as `HH:MM:SS` (requires `Player` context) |
 | `%plugin_prefix%` | Literal `[Kreiscraft]` |
 
 Access via `ctx.services().get(PlaceholderResolver.class).resolveString(template, player)`.

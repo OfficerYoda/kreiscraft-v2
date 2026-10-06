@@ -41,13 +41,22 @@ public final class TablistUpdater {
      * Called by the scheduler on each interval. Sends resolved header/footer to every online player.
      */
     public void tick() {
-        String h = this.headerTemplate;
-        String f = this.footerTemplate;
-        MiniMessage mm = MiniMessage.miniMessage();
         for (Player player : server.getOnlinePlayers()) {
-            Component header = mm.deserialize(resolver.resolveString(h, player));
-            Component footer = mm.deserialize(resolver.resolveString(f, player));
-            player.sendPlayerListHeaderAndFooter(header, footer);
+            sendTo(player);
         }
+    }
+
+    /**
+     * Resolves and sends the header/footer to a single player. Used both by {@link #tick()} and to
+     * give a joining player the correct presentation immediately instead of waiting for the next
+     * interval.
+     */
+    public void sendTo(Player player) {
+        String headerSource = this.headerTemplate;
+        String footerSource = this.footerTemplate;
+        MiniMessage mm = MiniMessage.miniMessage();
+        Component header = mm.deserialize(resolver.resolveString(headerSource, player));
+        Component footer = mm.deserialize(resolver.resolveString(footerSource, player));
+        player.sendPlayerListHeaderAndFooter(header, footer);
     }
 }

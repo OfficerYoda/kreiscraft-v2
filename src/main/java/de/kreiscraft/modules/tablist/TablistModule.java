@@ -15,7 +15,9 @@ public final class TablistModule implements Module {
 
     private TablistUpdater updater;
     private Scheduler.Task task;
-    private Duration currentUpdateInterval;
+
+    /** The interval the running task was scheduled with; only changes on re-enable. */
+    private Duration runningUpdateInterval;
     private Logger logger;
 
     @Override
@@ -37,10 +39,11 @@ public final class TablistModule implements Module {
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
-        this.currentUpdateInterval = config.updateInterval();
+        this.runningUpdateInterval = config.updateInterval();
         this.updater =
                 new TablistUpdater(
                         platform.server(), resolver, config.headerTemplate(), config.footerTemplate());
+        ctx.events().register(new TablistListener(updater));
         this.task = ctx.scheduler().runRepeating(Duration.ZERO, config.updateInterval(), updater::tick);
     }
 
@@ -61,10 +64,11 @@ public final class TablistModule implements Module {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
 
-        if (!config.updateInterval().equals(currentUpdateInterval)) {
+        if (!config.updateInterval().equals(runningUpdateInterval)) {
+            // The shared task is never rescheduled, so warn on every reload that requests a
+            // different interval until the server is restarted.
             logger.warning(
                     "[tablist] update-interval changed; restart required for new interval to take effect.");
-            currentUpdateInterval = config.updateInterval();
         }
 
         if (updater != null) {

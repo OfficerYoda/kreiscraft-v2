@@ -3,15 +3,36 @@ package de.kreiscraft.modules.tablist;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.kreiscraft.core.config.serializers.KreiscraftSerializers;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.configurate.BasicConfigurationNode;
+import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.ConfigurationOptions;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 class TablistConfigTest {
 
     private static final ConfigurationOptions OPTS =
             ConfigurationOptions.defaults().serializers(KreiscraftSerializers.builder().build());
+
+    private static final String BANNER =
+            "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                ";
+
+    private static final String DEFAULT_HEADER =
+            BANNER + "\n\n<reset><gray>Playtime: <blue>%playtime%\n";
+    private static final String DEFAULT_FOOTER = "\n<gray>Uhrzeit: <blue>%system_time%\n\n"
+            + "<gray>Ping: <blue>%ping%   <gray>Tps: <blue>%tps%\n\n" + BANNER;
+
+    private static YamlConfigurationLoader yamlLoader(String yaml) {
+        return YamlConfigurationLoader.builder()
+                .source(() -> new BufferedReader(new StringReader(yaml)))
+                .defaultOptions(OPTS)
+                .build();
+    }
 
     @Test
     void defaults_whenNodeEmpty() throws Exception {
@@ -19,8 +40,52 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(20 * 50L));
-        assertThat(cfg.headerTemplate()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
-        assertThat(cfg.footerTemplate()).isEqualTo("TPS: %tps% | Players: %server_players%");
+        assertThat(cfg.headerTemplate()).isEqualTo(DEFAULT_HEADER);
+        assertThat(cfg.footerTemplate()).isEqualTo(DEFAULT_FOOTER);
+    }
+
+    @Test
+    void defaults_restoreOriginalPresentation() throws Exception {
+        BasicConfigurationNode node = BasicConfigurationNode.root(OPTS);
+        TablistConfig cfg = node.get(TablistConfig.class);
+        assertThat(cfg).isNotNull();
+        // The shipped defaults use the legacy banner, playtime clock, ping and TPS tokens.
+        assertThat(cfg.headerTemplate()).startsWith(BANNER).contains("%playtime%");
+        assertThat(cfg.footerTemplate())
+                .contains("%system_time%")
+                .contains("%ping%")
+                .contains("%tps%")
+                .endsWith(BANNER);
+    }
+
+    @Test
+    void shippedConfig_parsesToTheSameDefaults() throws Exception {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("config.yml")) {
+            assertThat(in).as("config.yml is on the test classpath").isNotNull();
+            ConfigurationNode root = YamlConfigurationLoader.builder()
+                    .source(() -> new BufferedReader(new InputStreamReader(in)))
+                    .defaultOptions(OPTS)
+                    .build()
+                    .load();
+            TablistConfig cfg = root.node("modules", "tablist").get(TablistConfig.class);
+            assertThat(cfg).isNotNull();
+            assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(1000L));
+            assertThat(cfg.headerTemplate()).isEqualTo(DEFAULT_HEADER);
+            assertThat(cfg.footerTemplate()).isEqualTo(DEFAULT_FOOTER);
+        }
+    }
+
+    @Test
+    void yamlDoubleQuotedEscapes_areDecodedIntoNewlines() throws Exception {
+        ConfigurationNode root = yamlLoader(
+                "update-interval: 20t\n"
+                        + "header: \"line1\\nline2\"\n"
+                        + "footer: \"tail   \"\n")
+                .load();
+        TablistConfig cfg = root.get(TablistConfig.class);
+        assertThat(cfg).isNotNull();
+        assertThat(cfg.headerTemplate()).isEqualTo("line1\nline2");
+        assertThat(cfg.footerTemplate()).isEqualTo("tail   ");
     }
 
     @Test
@@ -35,19 +100,6 @@ class TablistConfigTest {
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(40 * 50L));
         assertThat(cfg.headerTemplate()).isEqualTo("<bold>My Server</bold>");
         assertThat(cfg.footerTemplate()).isEqualTo("ping: %ping%");
-    }
-
-    @Test
-    void roundTrip_wiringDefaults() throws Exception {
-        BasicConfigurationNode node = BasicConfigurationNode.root(OPTS);
-        node.node("update-interval").set("20t");
-        node.node("header").set("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
-        node.node("footer").set("TPS: %tps% | Players: %server_players%");
-        TablistConfig cfg = node.get(TablistConfig.class);
-        assertThat(cfg).isNotNull();
-        assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(1000L));
-        assertThat(cfg.headerTemplate()).isEqualTo("<gradient:#5555ff:#55ffff>Kreiscraft</gradient>");
-        assertThat(cfg.footerTemplate()).isEqualTo("TPS: %tps% | Players: %server_players%");
     }
 
     @Test

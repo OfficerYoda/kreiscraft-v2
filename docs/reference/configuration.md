@@ -234,9 +234,14 @@ These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so 
 
 | Key (relative to `modules.tablist`) | Type | Default | Description |
 |---|---|---|---|
-| `update-interval` | Duration | `20t` (1 s) | How often the tab-list header/footer is refreshed. |
-| `header` | String | `<gradient:#5555ff:#55ffff>Kreiscraft</gradient>` | MiniMessage string rendered as the tab-list header. Supports placeholders. |
-| `footer` | String | `TPS: %tps% \| Players: %server_players%` | Template rendered as the tab-list footer. Supports `%tps%`, `%server_players%`, and other `PlaceholderResolver` tokens. |
+| `update-interval` | Duration | `20t` (1 s) | How often the tab-list header/footer is refreshed. Changing this value requires a server restart. |
+| `header` | String | Legacy Kreiscraft banner + `Playtime: %playtime%` | MiniMessage string rendered as the tab-list header. Supports placeholders. Hot-reloaded. |
+| `footer` | String | Legacy Kreiscraft banner with `Uhrzeit: %system_time%`, `Ping: %ping%` and `Tps: %tps%` | Template rendered as the tab-list footer. Supports `%tps%`, `%ping%`, `%system_time%` and other `PlaceholderResolver` tokens. Hot-reloaded. |
+
+The shipped `header` and `footer` defaults reproduce the original RusticPrism presentation: a
+struck-through Kreiscraft banner with the player's playtime in the header, and the current time,
+ping, TPS and a second banner in the footer. The templates are re-read on `/kreiscraft reload`;
+only `update-interval` needs a restart because the shared repeating task is not rescheduled.
 
 ---
 
@@ -340,3 +345,4 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 
 - `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart.
 - Adding or removing modules — the `enabled` flag is only evaluated at plugin startup.
+- `modules.tablist.update-interval` — the shared repeating task is not rescheduled on reload; header/footer templates still hot-reload.

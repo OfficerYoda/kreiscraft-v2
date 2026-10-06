@@ -373,7 +373,7 @@ Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted i
 
 ### Description
 
-Updates the tab list header and footer for all online players on a repeating scheduler task. Header and footer are MiniMessage strings resolved through `PlaceholderResolver` (supports `%tps%`, `%server_players%`, etc.). Changing `update-interval` requires a restart.
+Updates the tab list header and footer for all online players on a repeating scheduler task. Header and footer are MiniMessage strings resolved through `PlaceholderResolver` (supports `%tps%`, `%ping%`, `%system_time%`, `%playtime%`, etc.). The shipped defaults restore the original Kreiscraft banner, playtime, clock, ping and TPS presentation. A joining player is updated immediately; everyone else is refreshed by the shared task. Header and footer templates hot-reload on `/kreiscraft reload`, but changing `update-interval` requires a restart because the shared task is not rescheduled.
 
 ---
 

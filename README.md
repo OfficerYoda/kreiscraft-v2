@@ -78,7 +78,7 @@ src/main/java/de/kreiscraft/
 | `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |
 | `start-sequence` | Season-start animation: countdown titles + world-border expansion phases; `/start` command |
 | `status` | Per-player prefix/suffix managed with `/status`; fires `StatusChangedEvent` consumed by `chat-format` and `tablist` |
-| `tablist` | Custom tab-list header/footer with MiniMessage templates and `%placeholder%` tokens |
+| `tablist` | Original Kreiscraft tab-list banner, playtime, clock, ping and TPS with MiniMessage templates and `%placeholder%` tokens |
 | `update-mode` | `/updatemode` — maintenance mode that kicks non-bypass players on activation and login |
 | `wither` | Configurable Wither stats (health, damage, minions, explosion) |
 | `world-mgmt` | `/world`, `/portal`, `/setworldspawn` — multi-world navigation |

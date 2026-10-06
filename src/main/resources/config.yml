@@ -126,8 +126,8 @@ modules:
   tablist:
     enabled: true
     update-interval: 20t
-    header: "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>"
-    footer: "TPS: %tps% | Players: %server_players%"
+    header: "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime: <blue>%playtime%\n"
+    footer: "\n<gray>Uhrzeit: <blue>%system_time%\n\n<gray>Ping: <blue>%ping%   <gray>Tps: <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
     bypass-permission: kreiscraft.updatemode.bypass

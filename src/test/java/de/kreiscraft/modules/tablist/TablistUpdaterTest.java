@@ -104,4 +104,18 @@ class TablistUpdaterTest {
         verify(resolver, times(0)).resolveString(HEADER_TPL, alice);
         verify(resolver, times(0)).resolveString(FOOTER_TPL, alice);
     }
+
+    @Test
+    void sendTo_resolvesAndSendsToTheGivenPlayerOnly() {
+        when(resolver.resolveString(eq(HEADER_TPL), eq(alice))).thenReturn("Kreiscraft");
+        when(resolver.resolveString(eq(FOOTER_TPL), eq(alice))).thenReturn("footer");
+        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
+
+        updater.sendTo(alice);
+
+        verify(alice, times(1)).sendPlayerListHeaderAndFooter(any(), any());
+        verify(bob, times(0)).sendPlayerListHeaderAndFooter(any(), any());
+        verify(resolver, times(1)).resolveString(HEADER_TPL, alice);
+        verify(resolver, times(1)).resolveString(FOOTER_TPL, alice);
+    }
 }
