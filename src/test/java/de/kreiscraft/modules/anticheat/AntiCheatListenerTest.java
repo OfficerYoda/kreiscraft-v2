@@ -129,6 +129,32 @@ class AntiCheatListenerTest {
     }
 
     @Test
+    void defaultConfig_fabricPlayer_notKicked() {
+        // Shipped default must not enforce loader kicking.
+        configRef.set(new AntiCheatConfig(null, null, null));
+        when(brandProvider.brandOf(any())).thenReturn(Optional.of("fabric"));
+        registerListener();
+
+        PlayerMock player = server.addPlayer("Eve");
+        scheduler.advance(Duration.ofSeconds(5));
+
+        assertThat(player.isOnline()).isTrue();
+    }
+
+    @Test
+    void explicitOptIn_fabricPlayer_kicked() {
+        configRef.set(new AntiCheatConfig(null, true, Duration.ofSeconds(5)));
+        when(brandProvider.brandOf(any())).thenReturn(Optional.of("fabric"));
+        when(messages.render("anti-cheat.fabric-forge-kick")).thenReturn(Component.text("kicked"));
+        registerListener();
+
+        PlayerMock player = server.addPlayer("Eve");
+        scheduler.advance(Duration.ofSeconds(5));
+
+        assertThat(player.isOnline()).isFalse();
+    }
+
+    @Test
     void onQuit_clearsHandshakeState() {
         when(brandProvider.brandOf(any())).thenReturn(Optional.of("fabric"));
         registerListener();
@@ -173,5 +199,13 @@ class AntiCheatListenerTest {
         PlayerMock bob = server.addPlayer("Bob");
         scheduler.advance(Duration.ofSeconds(5));
         assertThat(bob.isOnline()).isTrue();
+
+        // simulate config reload: re-enable kick
+        configRef.set(new AntiCheatConfig("kreiscraft:mod_checker", true, Duration.ofSeconds(5)));
+
+        // third join: enforcement restored → player is kicked
+        PlayerMock carol = server.addPlayer("Carol");
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(carol.isOnline()).isFalse();
     }
 }

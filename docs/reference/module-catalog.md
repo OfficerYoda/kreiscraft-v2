@@ -65,7 +65,7 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 
 ### Description
 
-Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and optionally kicks players who connect with a Fabric or Forge client before the handshake grace period expires.
+Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`).
 
 ### Services published
 

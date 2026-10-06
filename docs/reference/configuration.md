@@ -91,7 +91,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.anti-cheat`) | Type | Default | Description |
 |---|---|---|---|
 | `channel` | String | `kreiscraft:mod_checker` | Plugin messaging channel used for the mod handshake. |
-| `kick-on-fabric-forge` | boolean | `true` | Whether to kick players detected as Fabric/Forge clients. |
+| `kick-on-fabric-forge` | boolean | `false` | Opt-in: whether to kick players detected as Fabric/Forge clients. Disabled by default. |
 | `handshake-grace-duration` | Duration | `5s` | Time a newly joined player has to complete the mod-checker handshake before action is taken. |
 
 ---

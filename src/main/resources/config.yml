@@ -31,7 +31,7 @@ modules:
   anti-cheat:
     enabled: true
     channel: "kreiscraft:mod_checker"
-    kick-on-fabric-forge: true
+    kick-on-fabric-forge: false
     handshake-grace-duration: 5s
   bedrock:
     enabled: true

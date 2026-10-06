@@ -11,7 +11,7 @@ public record AntiCheatConfig(String channel, Boolean kickOnFabricForge, Duratio
             channel = "kreiscraft:mod_checker";
         }
         if (kickOnFabricForge == null) {
-            kickOnFabricForge = Boolean.TRUE;
+            kickOnFabricForge = Boolean.FALSE;
         }
         if (handshakeGraceDuration == null) {
             handshakeGraceDuration = Duration.ofSeconds(5);
