@@ -36,6 +36,21 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, minion spawning, and a death explosion. |
 | `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, setworldspawn, portal | Commands for teleporting between worlds, setting world spawns, and computing Nether/Overworld portal coordinates. |
 
+### Default-off modules
+
+Most modules ship with `enabled: true` in the bundled `config.yml`. Five ship **disabled by default**
+and only start when an operator explicitly sets `modules.<id>.enabled: true`:
+
+| Module ID | Why it is off by default |
+|-----------|--------------------------|
+| `effects` | Player-facing particle trails are cosmetic; operators opt in per server. |
+| `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
+| `glow` | Player-facing glow effect is cosmetic; operators opt in per server. |
+| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
+| `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
+
+All five implementations are fully functional; enabling the flag is sufficient to activate them.
+
 ---
 
 ## Per-Module Entries
@@ -167,7 +182,7 @@ Tags players in combat when they deal or receive damage, keeping them tagged for
 
 **Package:** `de.kreiscraft.modules.effects`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — opt in with `modules.effects.enabled: true`
 
 ### Description
 
@@ -183,7 +198,7 @@ Spawns a configurable particle effect around a player each tick while they have 
 
 **Package:** `de.kreiscraft.modules.firework`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — opt in with `modules.firework.enabled: true`
 
 ### Description
 
@@ -195,7 +210,7 @@ Registers a Bukkit shaped crafting recipe that yields a firework rocket with the
 
 **Package:** `de.kreiscraft.modules.glow`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — opt in with `modules.glow.enabled: true`
 
 ### Description
 
@@ -239,7 +254,7 @@ Teleports a player to the configured jail `location` and records an entry in `da
 
 **Package:** `de.kreiscraft.modules.pluginhider`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — intentionally disabled by default; opt in with `modules.plugin-hider.enabled: true`
 
 ### Description
 
@@ -255,7 +270,7 @@ Intercepts `TabCompleteEvent` and filters out command suggestions not in the all
 
 **Package:** `de.kreiscraft.modules.positions`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — intentionally disabled by default; opt in with `modules.positions.enabled: true`
 
 ### Description
 

@@ -46,6 +46,18 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
+The bundled `config.yml` enables most modules. The following five are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+
+| Module ID | Rationale |
+|-----------|-----------|
+| `effects` | Cosmetic player particle trails; opt in per server. |
+| `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
+| `glow` | Cosmetic player glow effect; opt in per server. |
+| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
+| `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
+
+Enabling any of these activates its existing implementation; no additional configuration is required.
+
 ---
 
 ## Per-Module Configuration

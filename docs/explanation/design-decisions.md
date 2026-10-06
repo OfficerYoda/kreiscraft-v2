@@ -263,3 +263,33 @@ consumer, enabling `api` to clean up during `disable()` without affecting any ot
 - `ChatBridge` is always present in `ServiceRegistry` regardless of which modules are enabled.
   Published events are silently dropped when there are no subscribers, which is the correct
   behaviour when `api` is disabled.
+
+---
+
+## ADR-9: Five Modules Ship Disabled by Default
+
+**Status:** Accepted
+
+**Context:**  
+`ModuleRegistry` treats a module as active only when `modules.<id>.enabled: true` is present in
+`config.yml`, and the bundled template controls what a fresh install looks like. Most modules are
+useful on every server, but five are not: `effects`, `firework` and `glow` are cosmetic
+player-facing features that a server may not want, while `plugin-hider` and `positions` encode
+server-specific policy (which commands are discoverable, and how players navigate). Shipping them
+active would silently change gameplay on servers that never asked for them.
+
+**Decision:**  
+Ship `effects`, `firework`, `glow`, `plugin-hider` and `positions` with `enabled: false` in the
+bundled `config.yml`. Keep their implementations, commands, listeners and services fully
+registered in `KreiscraftBootstrap`; enabling the flag is the only step required to activate them.
+Document the policy in the Module Catalog, the Configuration reference, and the
+enable/disable how-to, and pin it with a configuration test
+(`YamlConfigServiceTest.everyModuleSection_hasEnabledKey`).
+
+**Consequences:**  
+- A fresh install leaves all five inactive; their commands and listeners are never registered.
+- Operators can opt in per module with `modules.<id>.enabled: true`; no code changes are needed.
+- The set of default-off modules is explicit in code review: changing it requires editing both
+  the bundled config and the configuration test, so the policy cannot drift silently.
+- The distinction between "opt-in cosmetic" (`effects`, `firework`, `glow`) and "opt-in policy"
+  (`plugin-hider`, `positions`) is documented but not enforced in code.

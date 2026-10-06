@@ -1,5 +1,8 @@
 # Kreiscraft configuration.
 # See docs/configuration.md for a full reference of every module and key.
+#
+# Most modules ship enabled. Effects, Firework, Glow, Plugin Hider and Positions ship
+# disabled by default; set `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
@@ -53,7 +56,7 @@ modules:
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: true
+    enabled: false
     default-particle: HAPPY_VILLAGER
     count: 25
     offset-x: 0.9
@@ -61,11 +64,11 @@ modules:
     offset-z: 0.9
     force: true
   firework:
-    enabled: true
+    enabled: false
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
   glow:
-    enabled: true
+    enabled: false
   invsee:
     enabled: true
   jail:
@@ -73,7 +76,7 @@ modules:
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, pay, r]
   plugin-hider:
-    enabled: true
+    enabled: false
     default-allowed-commands:
       - help
       - spawn
@@ -85,7 +88,7 @@ modules:
       - ping
       - status
   positions:
-    enabled: true
+    enabled: false
     gui-rows: 6
     teleport-on-click: true
   reboot:
