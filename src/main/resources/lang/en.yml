@@ -93,10 +93,20 @@ reboot:
   started: "<prefix> <yellow>Reboot in <seconds></yellow>s — <reason>"
   cancelled: "<prefix> <green>Reboot cancelled."
   not-running: "<prefix> <red>No reboot is running."
-  countdown-title: "<red>Reboot in <seconds></red>"
+  countdown-title: "<red>Reboot in <seconds> seconds</red>"
+  countdown-subtitle: "<gray>Reason: <blue><reason></blue></gray>"
   countdown-chat: "<prefix> <red>Reboot in <seconds></red> seconds."
   seed-blocked: "<prefix> <red>/seed is disabled."
-  kick-message: "<red>Server restarting</red>"
+  kick-message: |-
+    <gray>===================================
+    <blue>Restart
+
+    <gray>Reason: <blue><reason>
+    <gray>Restarted by: <blue><initiator>
+    <gray>Website: <blue><website>
+
+    <blue>Restart
+    <gray>==================================="
 settings-gui:
   gui-title: "<gray>Settings"
   click-through-on: "<green>Click-Through: On"

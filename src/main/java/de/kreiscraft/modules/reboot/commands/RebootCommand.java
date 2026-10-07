@@ -20,7 +20,8 @@ public final class RebootCommand {
         return Commands.literal("reboot")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.reboot.admin"))
                 .executes(ctx -> {
-                    service.start(config.defaultCountdown(), "");
+                    String initiator = ctx.getSource().getSender().getName();
+                    service.start(config.defaultCountdown(), "", initiator);
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.literal("cancel")
@@ -35,14 +36,16 @@ public final class RebootCommand {
                 .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
                         .executes(ctx -> {
                             int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
-                            service.start(Duration.ofSeconds(seconds), "");
+                            String initiator = ctx.getSource().getSender().getName();
+                            service.start(Duration.ofSeconds(seconds), "", initiator);
                             return Command.SINGLE_SUCCESS;
                         })
                         .then(Commands.argument("reason", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
                                     String reason = StringArgumentType.getString(ctx, "reason");
-                                    service.start(Duration.ofSeconds(seconds), reason);
+                                    String initiator = ctx.getSource().getSender().getName();
+                                    service.start(Duration.ofSeconds(seconds), reason, initiator);
                                     return Command.SINGLE_SUCCESS;
                                 })))
                 .build();
