@@ -28,7 +28,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
-| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
+| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
@@ -345,7 +345,7 @@ Manages the server spawn point and the single Spawn Radius (module configuration
 
 ### Description
 
-Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown (`countdown` down through `1`, each with a title and sound), followed by the start title and exactly one continuous world-border expansion. The border duration is configured in seconds, represented internally as a `Duration`, and converted to ticks only at Bukkit's `WorldBorder` boundary. The plugin delegates the in-progress transition to Minecraft and keeps no phase, timestamp, or remaining-duration resume state, so a graceful restart resumes the expansion. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
 
 ### Services published
 

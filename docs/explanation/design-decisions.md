@@ -485,3 +485,32 @@ broken command.
   through the alias when authorized and is rejected when the requirement fails — so the behaviour
   is verifiable under MockBukkit without a real vanilla command tree.
 
+---
+
+## ADR-15: Delegate the Start-Sequence Border Expansion to Minecraft
+
+**Status:** Accepted
+
+**Context:**
+The old Start Sequence expanded the world border in three plugin-owned phases (two timed expansions
+and an instant snap) and stored phase state itself. That produced a hidden final snap and required the
+plugin to reason about resume state. A prototype verified that Paper 26.2 build 132 persists a
+world-border transition's current size, target, and remaining ticks across a graceful restart and
+resumes it after downtime.
+
+**Decision:**
+The Start Sequence issues exactly one `WorldBorder.changeSize(target, ticks)` and nothing else. The
+border duration is configured and documented in seconds, represented internally as a `Duration`, and
+converted to ticks (20 ticks = 1 second) only at the Bukkit boundary. The plugin keeps no phase,
+start timestamp, or remaining-duration state. The only persisted value is the operator-owned
+`modules.start-sequence.has-started` completion flag, which prevents re-triggering.
+
+**Consequences:**
+- Minecraft owns the in-progress transition; a graceful restart resumes it without plugin
+  intervention.
+- The countdown is a pure presentation loop: it renders the configured value down through `1`, then
+  the start title, then delegates the single transition.
+- Abrupt process death and cross-version border-state migration are not guaranteed and are
+  documented as unsupported.
+- Tests verify the delegation contract — one transition call and no competing persistence — under
+  MockBukkit rather than automating a real restart.
