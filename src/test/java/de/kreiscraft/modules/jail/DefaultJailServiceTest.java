@@ -104,4 +104,36 @@ class DefaultJailServiceTest {
         svc.jail(uuid, mock(Location.class), "");
         assertThat(svc.allJailed().get(uuid).jailedAt()).isNotNull();
     }
+
+    @Test
+    void jail_persistsToDisk_reloadedServiceSeesJailedPlayer(@TempDir Path tmp) throws IOException {
+        UUID uuid = UUID.randomUUID();
+        JailData data = new JailData(tmp);
+        data.load();
+        new DefaultJailService(data).jail(uuid, null, "griefing");
+        data.flushIfDirty();
+
+        // Reconstruct from disk — simulates a server restart
+        JailData reloadedData = new JailData(tmp);
+        reloadedData.load();
+        DefaultJailService reloaded = new DefaultJailService(reloadedData);
+        assertThat(reloaded.isJailed(uuid)).isTrue();
+        assertThat(reloaded.allJailed().get(uuid).reason()).isEqualTo("griefing");
+    }
+
+    @Test
+    void release_persistsToDisk_reloadedServiceDoesNotSeeReleasedPlayer(@TempDir Path tmp)
+            throws IOException {
+        UUID uuid = UUID.randomUUID();
+        JailData data = new JailData(tmp);
+        data.load();
+        DefaultJailService svc = new DefaultJailService(data);
+        svc.jail(uuid, null, "");
+        svc.release(uuid);
+        data.flushIfDirty();
+
+        JailData reloadedData = new JailData(tmp);
+        reloadedData.load();
+        assertThat(new DefaultJailService(reloadedData).isJailed(uuid)).isFalse();
+    }
 }

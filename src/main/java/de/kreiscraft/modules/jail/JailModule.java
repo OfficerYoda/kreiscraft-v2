@@ -5,7 +5,6 @@ import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.jail.commands.JailCommand;
-import de.kreiscraft.modules.jail.commands.UnjailCommand;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,9 +54,9 @@ public final class JailModule implements Module {
         // Listener
         ctx.events().register(new JailListener(service, configRef, ctx.messages()));
 
-        // Commands
-        ctx.commands().register(JailCommand.build(service, ctx.messages(), configRef), "Jail a player");
-        ctx.commands().register(UnjailCommand.build(service, ctx.messages()), "Release a jailed player");
+        // Commands — /jail and /kerker are identical toggles
+        ctx.commands().register(JailCommand.build(service, ctx.messages(), configRef), "Jail or release a player");
+        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages(), configRef), "Jail or release a player (alias)");
     }
 
     @Override

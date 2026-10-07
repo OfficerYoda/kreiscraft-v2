@@ -100,13 +100,25 @@ class JailListenerTest {
     }
 
     @Test
-    void onCommand_jailedPlayer_unjailCommand_alwaysAllowed() {
+    void onCommand_jailedPlayer_jailCommand_alwaysAllowed() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
-        // Put unjail in blocked list to confirm the override works
-        configRef.set(new JailConfig(jailLocation, List.of("unjail", "msg")));
+        // Put jail in blocked list to confirm the override works
+        configRef.set(new JailConfig(jailLocation, List.of("jail", "msg")));
 
-        PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/unjail Alice");
+        PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/jail Alice");
+        server.getPluginManager().callEvent(event);
+
+        assertThat(event.isCancelled()).isFalse();
+    }
+
+    @Test
+    void onCommand_jailedPlayer_kerkerCommand_alwaysAllowed() {
+        PlayerMock player = server.addPlayer("Alice");
+        service.jail(player.getUniqueId(), player.getLocation(), "test");
+        configRef.set(new JailConfig(jailLocation, List.of("kerker", "msg")));
+
+        PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/kerker Alice");
         server.getPluginManager().callEvent(event);
 
         assertThat(event.isCancelled()).isFalse();
