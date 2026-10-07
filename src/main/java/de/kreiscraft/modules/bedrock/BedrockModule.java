@@ -16,6 +16,7 @@ public final class BedrockModule implements Module {
     private BedrockConfig config;
     private DefaultBedrockService service;
     private BedrockData data;
+    private BedrockAuthorizationData authorizationData;
 
     @Override
     public String id() {
@@ -41,17 +42,28 @@ public final class BedrockModule implements Module {
         } catch (IOException e) {
             throw new ModuleException("failed to load bedrock player data", e);
         }
-        ctx.services().get(ConfigService.class).register(data);
+        this.authorizationData =
+                new BedrockAuthorizationData(ctx.plugin().getDataFolder().toPath());
+        try {
+            authorizationData.load();
+        } catch (IOException e) {
+            throw new ModuleException("failed to load bedrock authorization data", e);
+        }
+
+        ConfigService configService = ctx.services().get(ConfigService.class);
+        configService.register(data);
+        configService.register(authorizationData);
 
         WhitelistService whitelist = ctx.services().get(WhitelistService.class);
 
-        this.service = new DefaultBedrockService(data, config);
+        this.service = new DefaultBedrockService(
+                data, authorizationData, config, whitelist, ctx.plugin().getLogger());
         ctx.services().publish(BedrockService.class, service);
 
         ctx.events().register(new BedrockListener(service, ctx.scheduler()));
 
         ctx.commands().register(
-                BedrockListCommand.build(service, whitelist, ctx.messages()),
+                BedrockListCommand.build(service, ctx.messages()),
                 "Bedrock player whitelist management");
     }
 

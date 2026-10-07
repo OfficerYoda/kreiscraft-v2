@@ -64,8 +64,8 @@ class YamlConfigServiceEditTest {
         ConfigurationNode reloaded = load(tmp.resolve("config.yml"));
         assertThat(reloaded.node("modules", "combat", "enabled").getBoolean()).isFalse();
         assertThat(reloaded.node("core", "language").getString()).isEqualTo("de");
-        assertThat(reloaded.node("modules", "spawn", "glide", "spawn-radius").getInt())
-                .isEqualTo(30);
+        assertThat(reloaded.node("modules", "spawn", "spawn-radius").getInt())
+                .isEqualTo(50);
         assertThat(reloaded.node("modules", "jail", "location", "world").getString())
                 .isEqualTo("world");
         assertThat(reloaded.node("modules", "reboot", "chat-seconds").childrenList()).hasSize(10);

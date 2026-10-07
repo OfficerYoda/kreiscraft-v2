@@ -3,11 +3,14 @@ package de.kreiscraft.core.command;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.MessageComponentSerializer;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
+import net.kyori.adventure.text.Component;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Particle;
 import org.bukkit.Server;
@@ -75,6 +78,26 @@ public final class SuggestionProviders {
                 });
     }
 
+    /**
+     * Suggests the literal {@code all} alongside the names of every currently-online player, so
+     * commands such as {@code /sudo} can offer their broadcast target alongside concrete players.
+     */
+    public static SuggestionProvider<CommandSourceStack> allAndOnlinePlayers(
+            Server server, String permission) {
+        return gated(
+                permission,
+                (ctx, builder) -> {
+                    suggestMatching(builder, "all");
+                    server.getOnlinePlayers().stream()
+                            .map(Player::getName)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .sorted(String.CASE_INSENSITIVE_ORDER)
+                            .forEach(name -> suggestMatching(builder, name));
+                    return builder.buildFuture();
+                });
+    }
+
     /** Suggests every spawnable {@link EntityType} by its lowercase name. */
     public static SuggestionProvider<CommandSourceStack> entityTypes(String permission) {
         return gated(
@@ -91,13 +114,50 @@ public final class SuggestionProviders {
 
     /** Suggests every {@link Particle} by its lowercase name. */
     public static SuggestionProvider<CommandSourceStack> particles(String permission) {
+        return particles(permission, source -> null, source -> null);
+    }
+
+    /**
+     * Suggests every {@link Particle} by its lowercase name, marking the player's effective
+     * preference with a tooltip so the completion reflects the particle the command would actually
+     * use. The effective particle is still suggested even when it is no longer a distinct entry
+     * (for example a particle the player selected before the enum changed).
+     *
+     * @param effectivePreference resolves the sender's effective particle, or {@code null} when none
+     *     applies (the provider then behaves like {@link #particles(String)})
+     * @param preferenceTooltip renders the marker shown on the effective particle's suggestion, or
+     *     {@code null} for no tooltip
+     */
+    public static SuggestionProvider<CommandSourceStack> particles(
+            String permission,
+            Function<CommandSourceStack, Particle> effectivePreference,
+            Function<CommandSourceStack, Component> preferenceTooltip) {
         return gated(
                 permission,
                 (ctx, builder) -> {
+                    CommandSourceStack source = ctx.getSource();
+                    Particle preferred = effectivePreference.apply(source);
+                    String preferredName =
+                            preferred == null ? null : preferred.name().toLowerCase(Locale.ROOT);
+                    Component tooltip =
+                            preferred == null ? null : preferenceTooltip.apply(source);
+
                     Arrays.stream(Particle.values())
                             .map(particle -> particle.name().toLowerCase(Locale.ROOT))
+                            .filter(name -> !name.equals(preferredName))
                             .sorted()
                             .forEach(name -> suggestMatching(builder, name));
+
+                    if (preferredName != null
+                            && preferredName.startsWith(builder.getRemainingLowerCase())) {
+                        if (tooltip != null) {
+                            builder.suggest(
+                                    preferredName,
+                                    MessageComponentSerializer.message().serialize(tooltip));
+                        } else {
+                            builder.suggest(preferredName);
+                        }
+                    }
                     return builder.buildFuture();
                 });
     }

@@ -30,7 +30,6 @@ Located at the top-level `core:` block. These keys are read directly from the ra
 | `core.language` | String | `de` | Server language: selects the fallback language tree from `plugins/Kreiscraft/lang/<language>.yml` and is used for console output. Bundled options: `de`, `en`. A player's persisted language in `data/settings.yml` takes precedence for output addressed to them. |
 | `core.timezone` | String | `Europe/Berlin` | Canonical IANA timezone ID passed to `ZoneId.of()`. Used for every absolute timestamp and time-based placeholder across the plugin. |
 | `core.auto-save-interval` | Duration | `5m` | How often the auto-save task calls `flushIfDirty()` on every registered `DataFile`. Parsed by `Durations.parse`. |
-| `core.debug` | boolean | `false` | Present in the bundled config; reserved for future verbose-logging toggles. Not currently wired to any runtime behaviour. |
 
 ---
 
@@ -46,14 +45,13 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following five are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following four are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
 | `effects` | Cosmetic player particle trails; opt in per server. |
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `glow` | Cosmetic player glow effect; opt in per server. |
-| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
 Enabling any of these activates its existing implementation; no additional configuration is required.
@@ -75,6 +73,58 @@ nothing changes unless the complete candidate is valid and durably written.
 
 The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
 Fields that are not declared there remain YAML-only.
+
+### Server Configuration GUI
+
+Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
+root or with `/settings admin`. `ServerConfigSchema.editableFields()` declares the complete safe,
+GUI-exposed field set; the GUI groups it by the owning unit and picks a control from each field's
+value type:
+
+- Boolean — a toggle that flips on click.
+- Whole number — a stepper, bounded by the field's validator.
+- Decimal number — a stepper, bounded by the field's validator.
+- Duration — a cycled set of durations chosen for the field's scale (for example combat tag
+  durations versus the start-sequence border duration).
+- Enum — a cycled set of the field's allowed values.
+- Material — a cycled set of Bukkit material names (supported for any material-typed field).
+- Location — set to the editing administrator's current position.
+- Text and text list — entered in chat; the entered value is validated before it is written.
+
+Every module `enabled` flag is also exposed and is **restart-only**.
+
+Each accepted edit is written immediately through the validated boundary, so closing the GUI never
+discards work. Closing reports the changes made in that session: hot-reloadable edits offer a
+clickable `/kreiscraft reload` action, and restart-only edits warn that a server restart is required.
+Module lifecycle changes are never reported as hot-applied.
+
+#### Lifecycle classification
+
+A field is hot-reloadable only when the owning module re-reads the value on `/kreiscraft reload`.
+Everything read once at enable time is marked **restart-only** so the close prompt never promises a
+live apply.
+
+| Restart-only field | Why |
+|---|---|
+| every `modules.*.enabled` | Modules are started or skipped only at plugin start. |
+| `core.language` | The message service captures the server language when it is constructed; `reload` only re-reads the language files. |
+| `modules.firework.custom-model-data`, `modules.firework.namespace-key` | Read when the firework recipe is registered; the module has no reload hook. |
+| `modules.tablist.update-interval` | The shared repeating task is not rescheduled on reload. |
+
+#### Kept YAML-only
+
+Credentials, networking and low-level infrastructure, the tab-list header/footer, and
+operator-owned runtime state written by commands stay out of the GUI:
+
+| YAML-only value | Reason |
+|---|---|
+| `modules.api.admin-api-key` | Credential. |
+| `modules.api.host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` | Networking / infrastructure. |
+| `modules.anti-cheat.channel` | Plugin-messaging channel (networking). |
+| `modules.tablist.header`, `modules.tablist.footer` | Tab-list header/footer. |
+| `modules.chat-format.event-priority` | Listener priority is bound at registration and is not applied on reload. |
+| `core.timezone`, `core.auto-save-interval` | Low-level infrastructure / timezone and persistence settings. |
+| `modules.update-mode.active`, `modules.start-sequence.has-started` | Operator-owned state written by commands whose side effects the GUI must not bypass. |
 
 ---
 
@@ -129,7 +179,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.bedrock`) | Type | Default | Description |
 |---|---|---|---|
-| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). |
+| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). It is applied when normalizing names, so `/bedrocklist add <name>` registration and login matching agree on the same canonical identity. |
 
 ---
 
@@ -159,11 +209,18 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.effects`) | Type | Default | Description |
 |---|---|---|---|
 | `default-particle` | Particle | `HAPPY_VILLAGER` | Bukkit `Particle` enum name used for particle effects. |
+| `schedule` | Duration | `5t` (5 ticks) | How often each enabled player's particle trail is emitted. Hot-reloaded: the running task is rescheduled. |
 | `count` | int | `25` | Number of particles to spawn. |
 | `offset-x` | double | `0.9` | Particle spread on the X axis. |
 | `offset-y` | double | `0.9` | Particle spread on the Y axis. |
 | `offset-z` | double | `0.9` | Particle spread on the Z axis. |
 | `force` | boolean | `true` | When `true`, particles are sent even to players beyond the normal view distance. |
+
+Emission is scheduled on the server tick clock and is independent of player movement. Enabled state
+and the chosen particle are player preferences stored in `data/settings.yml`; a player who has never
+chosen defaults to enabled (while the module is enabled) with `default-particle`. `/effects` reports
+the effective state, particle, and usage without mutating anything; `/effects toggle` flips and
+persists the state, and `/effects <particle>` sets and persists the particle.
 
 ---
 
@@ -192,14 +249,6 @@ jail location is set.
 
 ---
 
-### `plugin-hider`
-
-| Key (relative to `modules.plugin-hider`) | Type | Default | Description |
-|---|---|---|---|
-| `default-allowed-commands` | List\<String\> | `[help]` | Commands visible to non-operator players when plugin list is hidden. |
-
----
-
 ### `positions`
 
 | Key (relative to `modules.positions`) | Type | Default | Description |
@@ -223,17 +272,15 @@ jail location is set.
 
 | Key (relative to `modules.spawn`) | Type | Default | Description |
 |---|---|---|---|
-| `teleport-range` | int | `100` | Maximum radius (blocks) from spawn for `/spawn`. Operator-owned; written by `/setspawn <radius>`. |
 | `location` | Location | *(optional)* | Operator-owned server spawn point, written by `/setspawn`. Absent until a spawn has been set; `/spawn` reports that no spawn is set. Not migrated from the retired `data/spawn.yml`. |
-| `glide.enabled` | boolean | `true` | Whether elytra glide is active in the spawn area. |
-| `glide.multiply-value` | int | `3` | Velocity multiplier at glide start. Currently stored but not applied at runtime. |
-| `glide.spawn-radius` | int | `30` | Block radius around spawn within which glide is active. |
-| `glide.launch-location` | Location | *(optional)* | Launch pad location. Null when absent. |
+| `spawn-radius` | int | `50` | The single Spawn Radius (blocks) that bounds both spawn access and glide eligibility. `/spawn` measures horizontal (XZ) distance (the Spawn Access Zone); glide initiation measures full 3D distance (the Glide Zone). |
+| `glide.enabled` | boolean | `true` | Whether elytra glide is active around spawn. |
+| `glide.multiply-value` | int | `3` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
 | `swap-hand-boost.enabled` | boolean | `false` | Whether the offhand-swap velocity boost is active while gliding. |
-| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's velocity on offhand swap. |
-| `spawn-launch.enabled` | boolean | `false` | Whether the block-trigger launch pad is active. |
-| `spawn-launch.trigger` | Location | *(optional)* | Block location that triggers the launch. |
-| `spawn-launch.velocity` | Vector | `{x: 0.0, y: 5.0, z: 0.0}` | Velocity vector applied on launch. Format: `{ x: <n>, y: <n>, z: <n> }`. |
+| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's facing unit vector on offhand swap while gliding. |
+| `glide-boost.enabled` | boolean | `true` | Whether the sneak-triggered boost is active for glides that started inside the Glide Zone. |
+| `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector on the sneak boost. |
+| `glide-boost.cooldown-seconds` | int | `5` | Per-player cooldown between sneak boosts, in seconds. |
 
 ---
 
@@ -242,17 +289,12 @@ jail location is set.
 | Key (relative to `modules.start-sequence`) | Type | Default | Description |
 |---|---|---|---|
 | `has-started` | boolean | `false` | Operator-owned completion flag. `true` once the sequence has run; cleared by `/start reset`. Not migrated from the retired `data/start-sequence.yml`. |
-| `countdown` | Duration | `10s` | Initial countdown value. The sequence displays `countdown - 1` … `1`, one number per second, then the start title. |
+| `countdown` | Duration | `10s` | Countdown value. The ceremony renders `countdown` down through `1`, one number per second, then the start title one second later. |
 | `initial-border-size` | double | `50.0` | World border diameter at game start (blocks). |
-| `target-border-size` | double | `30000000.0` | World border diameter at full expansion. |
-| `phase-1-duration` | Duration | `550000t` (27500 s) | Border phase 1 expansion duration, in ticks. |
-| `phase-2-duration` | Duration | `300000t` (15000 s) | Border phase 2 expansion duration, in ticks. |
-| `phase-1-to-2-delay` | Duration | `150t` (7.5 s) | Delay after the start title before phase 2 begins. |
-| `phase-2-to-instant-delay` | Duration | `300t` (15 s) | Delay after the start title before the border snaps to full size. |
+| `target-border-size` | double | `30000000.0` | World border diameter after the single expansion (blocks). |
+| `border-duration` | Duration | `30000s` (30,000 s) | Duration of the one continuous border expansion, configured in seconds. |
 
-These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so camelCase conversion does not apply.
-
-Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border phase durations and delays are expressed in ticks to mirror the original RusticPrism sequence; Bukkit's `WorldBorder.changeSize` API also takes a duration in ticks, so the service derives the tick count directly from each duration. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
+Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border duration is configured in seconds but represented internally as a `Duration`; it is converted to ticks only at the Bukkit `WorldBorder` boundary (20 ticks = 1 second). The `trigger` call issues exactly one `WorldBorder.changeSize(target-border-size, border-duration-in-ticks)` — no second phase, final snap, phase timestamp, or remaining-duration state is owned by the plugin. Paper persists the in-progress transition across a graceful restart and resumes it, which was verified on Paper 26.2 build 132; abrupt crashes and cross-version migration are not guaranteed. Presentation: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
 
 ---
 
@@ -264,7 +306,7 @@ Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 seco
 | `header` | String | Legacy Kreiscraft banner + `Playtime: %playtime%` | MiniMessage string rendered as the tab-list header. Supports placeholders. Hot-reloaded. |
 | `footer` | String | Legacy Kreiscraft banner with `Uhrzeit: %system_time%`, `Ping: %ping%` and `Tps: %tps%` | Template rendered as the tab-list footer. Supports `%tps%`, `%ping%`, `%system_time%` and other `PlaceholderResolver` tokens. Hot-reloaded. |
 
-The shipped `header` and `footer` defaults reproduce the original RusticPrism presentation: a
+The shipped `header` and `footer` defaults reproduce the classic Kreiscraft tab-list presentation: a
 struck-through Kreiscraft banner with the player's playtime in the header, and the current time,
 ping, TPS and a second banner in the footer. The templates are re-read on `/kreiscraft reload`;
 only `update-interval` needs a restart because the shared repeating task is not rescheduled.
@@ -370,11 +412,14 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 
 **What is reloaded without restart:**
 
-- All core settings (`core.*`)
-- Most per-module keys
+- Most core settings and most per-module keys
+- Every field the Server Configuration GUI marks hot-reloadable
+- `modules.effects.schedule` — the particle-emission task is cancelled and rescheduled with the new period.
 
 **What requires a server restart:**
 
+- `core.language` — the message service captures the server language when it is constructed; `reload` only re-reads the language trees, so a new server language needs a restart. A player's persisted language still takes precedence for output addressed to them.
 - `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart.
 - Adding or removing modules — the `enabled` flag is only evaluated at plugin startup.
+- `modules.firework.custom-model-data`, `modules.firework.namespace-key` — read when the firework recipe is registered.
 - `modules.tablist.update-interval` — the shared repeating task is not rescheduled on reload; header/footer templates still hot-reload.

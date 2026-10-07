@@ -1,13 +1,12 @@
 # Kreiscraft configuration.
 # See docs/configuration.md for a full reference of every module and key.
 #
-# Most modules ship enabled. Effects, Firework, Glow, Plugin Hider and Positions ship
+# Most modules ship enabled. Effects, Firework, Glow and Positions ship
 # disabled by default; set `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
   auto-save-interval: 5m
-  debug: false
 
 modules:
   admin:
@@ -54,6 +53,7 @@ modules:
   effects:
     enabled: false
     default-particle: HAPPY_VILLAGER
+    schedule: 5t
     count: 25
     offset-x: 0.9
     offset-y: 0.9
@@ -72,18 +72,6 @@ modules:
     # Operator-owned state (ADR-10): written by /setjail. `blocked-commands` remains module config.
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, r]
-  plugin-hider:
-    enabled: false
-    default-allowed-commands:
-      - help
-      - spawn
-      - msg
-      - tell
-      - w
-      - r
-      - tps
-      - ping
-      - status
   positions:
     enabled: false
     gui-rows: 6
@@ -99,16 +87,14 @@ modules:
     enabled: true
   spawn:
     enabled: true
-    # Operator-owned state (ADR-10). `teleport-range` is written by /setspawn <radius>;
-    # `location` is written by /setspawn and stays absent until a spawn has been set.
-    teleport-range: 100
+    # Operator-owned state (ADR-10). `location` is written by /setspawn and stays absent until a
+    # spawn has been set.
     # location: { world: world, x: 0.5, y: 64, z: 0.5, yaw: 0, pitch: 0 }
+    # The single Spawn Radius bounds both spawn access (XZ) and glide eligibility (3D).
+    spawn-radius: 50
     glide:
       enabled: true
       multiply-value: 3
-      spawn-radius: 30
-      launch-location:
-        { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
     swap-hand-boost:
       enabled: false
       vector-multiplier: 3.0
@@ -116,10 +102,6 @@ modules:
       enabled: true
       boost-strength: 2.0
       cooldown-seconds: 5
-    spawn-launch:
-      enabled: false
-      trigger: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
-      velocity: { x: 0.0, y: 5.0, z: 0.0 }
   start-sequence:
     enabled: true
     # Operator-owned state (ADR-10): true once the season start sequence has run. Reset with
@@ -128,12 +110,10 @@ modules:
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
-    # Border phase durations and delays are tick values (20 ticks = 1 second), matching the
-    # original RusticPrism sequence. Bukkit's WorldBorder API also takes a duration in ticks.
-    phase-1-duration: 550000t
-    phase-2-duration: 300000t
-    phase-1-to-2-delay: 150t
-    phase-2-to-instant-delay: 300t
+    # One continuous border expansion, configured in seconds. The plugin represents it internally
+    # as a Duration and converts it to ticks (20 ticks = 1 second) only at Bukkit's WorldBorder
+    # boundary, delegating the in-progress transition to Minecraft for graceful-restart persistence.
+    border-duration: 30000s
   status:
     enabled: true
   tablist:

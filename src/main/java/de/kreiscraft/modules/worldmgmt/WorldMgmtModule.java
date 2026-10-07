@@ -5,7 +5,6 @@ import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.worldmgmt.commands.PortalCommand;
-import de.kreiscraft.modules.worldmgmt.commands.SetWorldSpawnCommand;
 import de.kreiscraft.modules.worldmgmt.commands.WorldCommand;
 import de.kreiscraft.platform.PaperPlatform;
 import java.util.List;
@@ -42,10 +41,6 @@ public final class WorldMgmtModule implements Module {
         ctx.commands().register(
                 WorldCommand.build(messages, platform),
                 "Teleport to another world's spawn");
-        ctx.commands().register(
-                SetWorldSpawnCommand.build(messages),
-                "Set the spawn point of the current world",
-                "sws");
         ctx.commands().register(
                 PortalCommand.build(messages),
                 "Compute portal coordinate translations");

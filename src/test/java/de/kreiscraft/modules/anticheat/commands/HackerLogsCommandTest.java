@@ -1,19 +1,32 @@
 package de.kreiscraft.modules.anticheat.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
+import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.anticheat.DefaultHackLogService;
 import de.kreiscraft.modules.anticheat.HackEntry;
 import de.kreiscraft.modules.anticheat.HackLogData;
+import de.kreiscraft.modules.anticheat.HackLogService;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,10 +35,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class HackerLogsCommandTest {
 
     @TempDir
@@ -35,6 +52,9 @@ class HackerLogsCommandTest {
 
     @Mock
     MessageService messages;
+
+    @Mock
+    HackLogService commandService;
 
     private DefaultHackLogService service;
     private UUID targetId;
@@ -55,17 +75,18 @@ class HackerLogsCommandTest {
 
     @Test
     void build_returnsNonNullNode() {
-        assertThat(HackerLogsCommand.build(service, messages)).isNotNull();
+        assertThat(HackerLogsCommand.build(service, messages, server)).isNotNull();
     }
 
     @Test
     void build_nodeName_isHackerlogs() {
-        assertThat(HackerLogsCommand.build(service, messages).getName()).isEqualTo("hackerlogs");
+        assertThat(HackerLogsCommand.build(service, messages, server).getName())
+                .isEqualTo("hackerlogs");
     }
 
     @Test
     void permissionGate_senderWithoutPermission_requiresFails() {
-        var node = HackerLogsCommand.build(service, messages);
+        var node = HackerLogsCommand.build(service, messages, server);
         // The requires predicate should reject senders without permission
         CommandSender noPerms = mock(CommandSender.class);
         when(noPerms.hasPermission("kreiscraft.anticheat.view")).thenReturn(false);
@@ -79,7 +100,7 @@ class HackerLogsCommandTest {
 
     @Test
     void permissionGate_senderWithPermission_requiresPasses() {
-        var node = HackerLogsCommand.build(service, messages);
+        var node = HackerLogsCommand.build(service, messages, server);
         CommandSender withPerms = mock(CommandSender.class);
         when(withPerms.hasPermission("kreiscraft.anticheat.view")).thenReturn(true);
 
@@ -88,6 +109,129 @@ class HackerLogsCommandTest {
         when(src.getSender()).thenReturn(withPerms);
 
         assertThat(node.getRequirement().test(src)).isTrue();
+    }
+
+    // -----------------------------------------------------------------------
+    // Selector cardinality
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_multiPlayerSelector_showsLogsForEverySelectedPlayer() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node =
+                HackerLogsCommand.build(commandService, messages, server);
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+        HackEntry entry = new HackEntry(
+                UUID.randomUUID(), "Bob", HackEntry.Kind.CHEAT, "killaura", Instant.now());
+        when(commandService.forPlayer(any(), eq(HackEntry.Kind.CHEAT))).thenReturn(List.of(entry));
+        when(commandService.forPlayer(any(), eq(HackEntry.Kind.XRAY))).thenReturn(List.of());
+        when(messages.renderFor(any(), eq("anti-cheat.kind-cheats")))
+                .thenReturn(Component.text("cheats"));
+
+        CommandSender sender = mock(CommandSender.class);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(sender);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        PlayerSelectorArgumentResolver resolver = mock(PlayerSelectorArgumentResolver.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", PlayerSelectorArgumentResolver.class)).thenReturn(resolver);
+        when(resolver.resolve(src)).thenReturn(List.of(alice, bob));
+
+        node.getChild("target").getCommand().run(ctx);
+
+        verify(messages)
+                .send(eq(sender), eq("anti-cheat.log-header"),
+                        eq("player"), eq("Alice"), eq("kind"), eq("cheats"));
+        verify(messages)
+                .send(eq(sender), eq("anti-cheat.log-header"),
+                        eq("player"), eq("Bob"), eq("kind"), eq("cheats"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_multiPlayerSelector_withoutLogs_notifiesForEveryPlayer() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node =
+                HackerLogsCommand.build(commandService, messages, server);
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+        when(commandService.forPlayer(any(), any())).thenReturn(List.of());
+
+        CommandSender sender = mock(CommandSender.class);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(sender);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        PlayerSelectorArgumentResolver resolver = mock(PlayerSelectorArgumentResolver.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", PlayerSelectorArgumentResolver.class)).thenReturn(resolver);
+        when(resolver.resolve(src)).thenReturn(List.of(alice, bob));
+
+        node.getChild("target").getCommand().run(ctx);
+
+        verify(messages).send(sender, "anti-cheat.no-logs", "player", "Alice");
+        verify(messages).send(sender, "anti-cheat.no-logs", "player", "Bob");
+    }
+
+    // -----------------------------------------------------------------------
+    // Suggestions
+    // -----------------------------------------------------------------------
+
+    @Test
+    void targetArgument_suggestsOnlineAndKnownOfflineProfiles() {
+        Server suggestionServer = mock(Server.class);
+        List<org.bukkit.entity.Player> online = new java.util.ArrayList<>();
+        online.add(server.addPlayer("Alice"));
+        when(suggestionServer.getOnlinePlayers()).thenAnswer(invocation -> online);
+        OfflinePlayer carol = mock(OfflinePlayer.class);
+        when(carol.hasPlayedBefore()).thenReturn(true);
+        when(carol.getName()).thenReturn("Carol");
+        when(suggestionServer.getOfflinePlayers()).thenReturn(new OfflinePlayer[] {carol});
+        LiteralCommandNode<CommandSourceStack> node =
+                HackerLogsCommand.build(commandService, messages, suggestionServer);
+
+        CommandSender sender = mock(CommandSender.class);
+        when(sender.hasPermission("kreiscraft.anticheat.view")).thenReturn(true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(sender);
+
+        assertThat(SuggestionTestSupport.suggestions(node.getChild("target"), src, ""))
+                .containsExactlyInAnyOrder("Alice", "Carol");
+    }
+
+    // -----------------------------------------------------------------------
+    // Localization
+    // -----------------------------------------------------------------------
+
+    @Test
+    void showLogs_rendersHeaderAndKindLabelInRecipientLanguage(@TempDir Path langDir)
+            throws IOException {
+        ConfigurateMessageService localized = new ConfigurateMessageService(
+                langDir,
+                getClass().getClassLoader(),
+                "de",
+                server,
+                recipient -> "Alice".equals(recipient.getName())
+                        ? Optional.of("en")
+                        : Optional.empty());
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock carol = server.addPlayer("Carol");
+        UUID bobId = UUID.randomUUID();
+        when(commandService.forPlayer(bobId, HackEntry.Kind.CHEAT))
+                .thenReturn(List.of(new HackEntry(
+                        bobId, "Bob", HackEntry.Kind.CHEAT, "killaura", Instant.now())));
+        when(commandService.forPlayer(bobId, HackEntry.Kind.XRAY)).thenReturn(List.of());
+
+        HackerLogsCommand.showLogs(alice, bobId, "Bob", null, commandService, localized);
+        HackerLogsCommand.showLogs(carol, bobId, "Bob", null, commandService, localized);
+
+        assertThat(alice.nextMessage())
+                .as("Alice stored English")
+                .contains("Entries for Bob")
+                .contains("cheats");
+        assertThat(carol.nextMessage())
+                .as("Carol stored no preference and must receive the server language")
+                .contains("Einträge für Bob")
+                .contains("Cheats");
     }
 
     @Test

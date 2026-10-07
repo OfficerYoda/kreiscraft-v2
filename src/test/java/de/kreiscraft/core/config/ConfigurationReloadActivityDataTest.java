@@ -122,6 +122,9 @@ class ConfigurationReloadActivityDataTest {
         assertThat(DataFile.class).isAssignableFrom(de.kreiscraft.modules.jail.JailData.class);
         assertThat(DataFile.class).isAssignableFrom(de.kreiscraft.modules.bedrock.BedrockData.class);
         assertThat(DataFile.class)
+                .isAssignableFrom(
+                        de.kreiscraft.modules.bedrock.BedrockAuthorizationData.class);
+        assertThat(DataFile.class)
                 .isAssignableFrom(de.kreiscraft.modules.anticheat.HackLogData.class);
         assertThat(DataFile.class).isAssignableFrom(de.kreiscraft.modules.status.StatusData.class);
         assertThat(DataFile.class)

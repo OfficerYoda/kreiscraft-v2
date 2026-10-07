@@ -22,17 +22,146 @@ class ServerConfigSchemaTest {
     void fromRoot_declaresEveryModuleEnableFlagAsRestartOnly() throws SerializationException {
         ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "glow"));
 
-        assertThat(schema.fields()).hasSize(2);
-        for (ConfigField field : schema.fields()) {
-            assertThat(field.path()).hasSize(3);
+        List<ConfigField> moduleFlags =
+                schema.fields().stream()
+                        .filter(field -> field.path().size() == 3)
+                        .filter(field -> "enabled".equals(field.path().get(2)))
+                        .toList();
+        assertThat(moduleFlags).hasSize(2);
+        for (ConfigField field : moduleFlags) {
             assertThat(field.path().get(0)).isEqualTo("modules");
-            assertThat(field.path().get(2)).isEqualTo("enabled");
             assertThat(field.type()).isEqualTo(ConfigFieldType.BOOLEAN);
             assertThat(field.guiExposed()).isTrue();
             assertThat(field.lifecycle()).isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
             assertThat(field.restartRequired()).isTrue();
             assertThat(field.hotReloadable()).isFalse();
         }
+    }
+
+    @Test
+    void fromRoot_includesEveryEditableField() throws SerializationException {
+        ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "effects"));
+
+        List<List<Object>> exposedPaths =
+                schema.guiExposed().stream().map(ConfigField::path).toList();
+        for (ConfigField editable : ServerConfigSchema.editableFields()) {
+            assertThat(exposedPaths)
+                    .as("editable field %s is GUI-exposed", editable.path())
+                    .contains(editable.path());
+        }
+    }
+
+    @Test
+    void editableFields_coverEverySupportedValueType() {
+        ServerConfigSchema schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
+
+        assertThat(schema.guiExposed())
+                .extracting(ConfigField::type)
+                .contains(
+                        ConfigFieldType.BOOLEAN,
+                        ConfigFieldType.INTEGER,
+                        ConfigFieldType.DOUBLE,
+                        ConfigFieldType.DURATION,
+                        ConfigFieldType.ENUM,
+                        ConfigFieldType.LOCATION,
+                        ConfigFieldType.STRING,
+                        ConfigFieldType.STRING_LIST);
+        for (ConfigField field : ServerConfigSchema.editableFields()) {
+            assertThat(field.guiExposed()).as("%s is GUI-exposed", field.path()).isTrue();
+        }
+    }
+
+    @Test
+    void editableFields_exposeEveryApprovedSafeField() {
+        ServerConfigSchema schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
+        List<List<Object>> exposed = schema.guiExposed().stream().map(ConfigField::path).toList();
+
+        assertThat(exposed)
+                .contains(
+                        List.of("core", "language"),
+                        List.of("modules", "admin", "links", "website"),
+                        List.of("modules", "anti-cheat", "kick-on-fabric-forge"),
+                        List.of("modules", "anti-cheat", "handshake-grace-duration"),
+                        List.of("modules", "bedrock", "prefix"),
+                        List.of("modules", "chat-format", "format"),
+                        List.of("modules", "combat", "tag-duration"),
+                        List.of("modules", "effects", "default-particle"),
+                        List.of("modules", "effects", "schedule"),
+                        List.of("modules", "effects", "offset-y"),
+                        List.of("modules", "effects", "force"),
+                        List.of("modules", "firework", "custom-model-data"),
+                        List.of("modules", "jail", "location"),
+                        List.of("modules", "jail", "blocked-commands"),
+                        List.of("modules", "positions", "gui-rows"),
+                        List.of("modules", "reboot", "default-countdown"),
+                        List.of("modules", "spawn", "spawn-radius"),
+                        List.of("modules", "spawn", "glide", "enabled"),
+                        List.of("modules", "spawn", "glide-boost", "cooldown-seconds"),
+                        List.of("modules", "start-sequence", "border-duration"),
+                        List.of("modules", "tablist", "update-interval"),
+                        List.of("modules", "update-mode", "bypass-names"),
+                        List.of("modules", "wither", "spawn-explosion-power"),
+                        List.of("modules", "wither", "half-health-explosion-block-damage"),
+                        List.of("modules", "wither", "death-boss-bar-radius"));
+    }
+
+    @Test
+    void editableFields_hideCredentialsNetworkingAndOperatorOwnedState() {
+        ServerConfigSchema schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
+        List<List<Object>> exposed = schema.guiExposed().stream().map(ConfigField::path).toList();
+
+        assertThat(exposed)
+                .as("risky, networking and operator-owned values stay YAML-only")
+                .noneMatch(
+                        path -> path.contains("admin-api-key")
+                                || path.contains("host")
+                                || path.contains("port")
+                                || path.contains("cors-origins")
+                                || path.contains("session-cookie")
+                                || path.contains("channel")
+                                || path.contains("header")
+                                || path.contains("footer")
+                                || path.contains("timezone")
+                                || path.contains("debug")
+                                || path.contains("auto-save-interval")
+                                || path.contains("active")
+                                || path.contains("has-started")
+                                || path.contains("event-priority"));
+    }
+
+    @Test
+    void editableFields_classifyLifecycleAccurately() {
+        ServerConfigSchema schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
+
+        assertThat(lifecycle(schema, "core", "language"))
+                .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
+        assertThat(lifecycle(schema, "modules", "tablist", "update-interval"))
+                .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
+        assertThat(lifecycle(schema, "modules", "firework", "custom-model-data"))
+                .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
+        assertThat(lifecycle(schema, "modules", "combat", "tag-duration"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "spawn", "spawn-radius"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "wither", "death-explosion-power"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+    }
+
+    @Test
+    void discreteFields_declareCyclingOptions() {
+        for (ConfigField field : ServerConfigSchema.editableFields()) {
+            if (field.type() == ConfigFieldType.ENUM
+                    || field.type() == ConfigFieldType.DURATION
+                    || field.type() == ConfigFieldType.MATERIAL) {
+                assertThat(field.options())
+                        .as("%s declares options for its control", field.path())
+                        .isNotEmpty();
+            }
+        }
+    }
+
+    private static ConfigLifecycle lifecycle(ServerConfigSchema schema, Object... path) {
+        return schema.find(List.of(path)).orElseThrow().lifecycle();
     }
 
     @Test
@@ -72,18 +201,14 @@ class ServerConfigSchemaTest {
         ConfigField location = ServerConfigSchema.spawnLocation();
         assertThat(location.path()).containsExactly("modules", "spawn", "location");
         assertThat(location.type()).isEqualTo(ConfigFieldType.LOCATION);
-        assertThat(location.guiExposed()).isFalse();
+        assertThat(location.guiExposed()).isTrue();
         assertThat(location.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
 
         ConfigField jail = ServerConfigSchema.jailLocation();
         assertThat(jail.path()).containsExactly("modules", "jail", "location");
         assertThat(jail.type()).isEqualTo(ConfigFieldType.LOCATION);
-        assertThat(jail.guiExposed()).isFalse();
+        assertThat(jail.guiExposed()).isTrue();
         assertThat(jail.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
-
-        ConfigField range = ServerConfigSchema.spawnTeleportRange();
-        assertThat(range.path()).containsExactly("modules", "spawn", "teleport-range");
-        assertThat(range.type()).isEqualTo(ConfigFieldType.INTEGER);
 
         ConfigField active = ServerConfigSchema.updateModeActive();
         assertThat(active.path()).containsExactly("modules", "update-mode", "active");
@@ -93,7 +218,7 @@ class ServerConfigSchemaTest {
         assertThat(started.path()).containsExactly("modules", "start-sequence", "has-started");
         assertThat(started.type()).isEqualTo(ConfigFieldType.BOOLEAN);
 
-        for (ConfigField field : List.of(location, jail, range, active, started)) {
+        for (ConfigField field : List.of(location, jail, active, started)) {
             assertThat(field.hotReloadable()).isTrue();
             assertThat(field.restartRequired()).isFalse();
         }

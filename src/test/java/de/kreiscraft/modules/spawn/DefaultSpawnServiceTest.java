@@ -37,7 +37,7 @@ class DefaultSpawnServiceTest {
         server = MockBukkit.mock();
         world = server.addSimpleWorld("world");
         config = new YamlConfigService(tmp, getClass().getClassLoader());
-        moduleConfig = new SpawnConfig(50, null, null, null, null);
+        moduleConfig = new SpawnConfig(50, null, null, null);
         service = new DefaultSpawnService(config, moduleConfig);
     }
 
@@ -83,83 +83,148 @@ class DefaultSpawnServiceTest {
     }
 
     @Test
-    void setSpawn_withRadius_persistsRangeToConfig() throws IOException {
-        service.setSpawn(new Location(world, 0, 64, 0), 75);
-
-        ConfigurationNode onDisk = load(tmp.resolve("config.yml"));
-        assertThat(onDisk.node("modules", "spawn", "teleport-range").getInt()).isEqualTo(75);
-    }
-
-    @Test
     void setSpawn_roundTripsThroughAFreshService() throws IOException {
         Location loc = new Location(world, 12, 70, 3);
-        service.setSpawn(loc, 42);
+        service.setSpawn(loc);
 
         YamlConfigService reopened =
                 new YamlConfigService(tmp, getClass().getClassLoader());
         DefaultSpawnService restarted =
-                new DefaultSpawnService(reopened, new SpawnConfig(50, null, null, null, null));
+                new DefaultSpawnService(reopened, new SpawnConfig(50, null, null, null));
 
         assertThat(restarted.spawnLocation()).contains(loc);
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(world, 12 + 30, 70, 3));
-        assertThat(restarted.isInSpawnRadius(player)).isTrue(); // 30 <= 42
+        assertThat(restarted.isInSpawnAccessZone(player)).isTrue(); // 30 <= 50
     }
 
-    // ── radius checks ───────────────────────────────────────────────────────
+    // ── Spawn Access Zone (horizontal) ──────────────────────────────────────
 
     @Test
-    void isInSpawnRadius_returnsFalse_whenNoSpawnSet() {
+    void isInSpawnAccessZone_returnsFalse_whenNoSpawnSet() {
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(world, 0, 64, 0));
-        assertThat(service.isInSpawnRadius(player)).isFalse();
+        assertThat(service.isInSpawnAccessZone(player)).isFalse();
     }
 
     @Test
-    void isInSpawnRadius_returnsTrue_whenClose() {
+    void isInSpawnAccessZone_returnsTrue_whenClose() {
         service.setSpawn(new Location(world, 0, 64, 0));
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(world, 10, 64, 0));
-        assertThat(service.isInSpawnRadius(player)).isTrue(); // 10 < configured 100
+        assertThat(service.isInSpawnAccessZone(player)).isTrue(); // 10 < 50
     }
 
     @Test
-    void isInSpawnRadius_returnsFalse_whenFar() {
+    void isInSpawnAccessZone_returnsFalse_whenFar() {
         service.setSpawn(new Location(world, 0, 64, 0));
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(world, 500, 64, 0));
-        assertThat(service.isInSpawnRadius(player)).isFalse();
+        assertThat(service.isInSpawnAccessZone(player)).isFalse();
     }
 
     @Test
-    void isInSpawnRadius_returnsFalse_whenDifferentWorld() {
+    void isInSpawnAccessZone_returnsFalse_whenDifferentWorld() {
         World otherWorld = server.addSimpleWorld("nether");
         service.setSpawn(new Location(world, 0, 64, 0));
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(otherWorld, 0, 64, 0));
-        assertThat(service.isInSpawnRadius(player)).isFalse();
+        assertThat(service.isInSpawnAccessZone(player)).isFalse();
     }
 
     @Test
-    void setSpawn_withRadius_appliesImmediately() {
-        service.setSpawn(new Location(world, 0, 64, 0), 10);
+    void isInSpawnAccessZone_ignoresVerticalDistance() {
+        // User story #50: /spawn eligibility is based only on horizontal distance, so a player
+        // directly above/below spawn within the horizontal radius is still eligible.
+        service.setSpawn(new Location(world, 0, 64, 0));
         Player player = mock(Player.class);
-        when(player.getLocation()).thenReturn(new Location(world, 25, 64, 0));
-        // The live Server Configuration value (10) wins over the module default (50).
-        assertThat(service.isInSpawnRadius(player)).isFalse();
+        when(player.getLocation()).thenReturn(new Location(world, 30, 320, 0));
+        assertThat(service.isInSpawnAccessZone(player)).isTrue();
     }
 
     @Test
-    void isInSpawnRadius_fallsBackToModuleConfig_whenKeyAbsent() throws IOException {
-        Files.writeString(tmp.resolve("config.yml"), "modules:\n  spawn:\n    enabled: true\n");
-        config.reload();
+    void isInSpawnAccessZone_includesExactBoundary() {
+        service.setSpawn(new Location(world, 0, 64, 0));
+        Player player = mock(Player.class);
 
+        when(player.getLocation()).thenReturn(new Location(world, 50, 64, 0));
+        assertThat(service.isInSpawnAccessZone(player)).isTrue();
+
+        // Diagonal exactly on the radius: 3-4-5 scaled to 30-40-50.
+        when(player.getLocation()).thenReturn(new Location(world, 30, 64, 40));
+        assertThat(service.isInSpawnAccessZone(player)).isTrue();
+
+        when(player.getLocation()).thenReturn(new Location(world, 50.001, 64, 0));
+        assertThat(service.isInSpawnAccessZone(player)).isFalse();
+    }
+
+    @Test
+    void isInSpawnAccessZone_usesReloadedSpawnRadius() {
         service.setSpawn(new Location(world, 0, 64, 0));
         Player player = mock(Player.class);
         when(player.getLocation()).thenReturn(new Location(world, 30, 64, 0));
-        service.updateConfig(new SpawnConfig(20, null, null, null, null));
+        assertThat(service.isInSpawnAccessZone(player)).isTrue(); // within 50
 
-        assertThat(service.isInSpawnRadius(player)).isFalse(); // 30 > module default 20
+        service.updateConfig(new SpawnConfig(20, null, null, null));
+        assertThat(service.isInSpawnAccessZone(player)).isFalse(); // 30 > reloaded 20
+    }
+
+    // ── Glide Zone (three-dimensional) ──────────────────────────────────────
+
+    @Test
+    void isInGlideZone_returnsFalse_whenNoSpawnSet() {
+        Player player = mock(Player.class);
+        when(player.getLocation()).thenReturn(new Location(world, 0, 64, 0));
+        assertThat(service.isInGlideZone(player)).isFalse();
+    }
+
+    @Test
+    void isInGlideZone_returnsFalse_whenDifferentWorld() {
+        World otherWorld = server.addSimpleWorld("nether");
+        service.setSpawn(new Location(world, 0, 64, 0));
+        Player player = mock(Player.class);
+        when(player.getLocation()).thenReturn(new Location(otherWorld, 0, 64, 0));
+        assertThat(service.isInGlideZone(player)).isFalse();
+    }
+
+    @Test
+    void isInGlideZone_countsVerticalDistance() {
+        service.setSpawn(new Location(world, 0, 64, 0));
+        Player player = mock(Player.class);
+
+        // Horizontal 30, vertical 40 → 3D distance exactly 50 → inside.
+        when(player.getLocation()).thenReturn(new Location(world, 30, 104, 0));
+        assertThat(service.isInGlideZone(player)).isTrue();
+
+        // Same horizontal 30, vertical 41 → 3D distance ~50.8 → outside.
+        when(player.getLocation()).thenReturn(new Location(world, 30, 105, 0));
+        assertThat(service.isInGlideZone(player)).isFalse();
+    }
+
+    @Test
+    void isInGlideZone_boundaryIsInclusive() {
+        service.setSpawn(new Location(world, 0, 64, 0));
+        Player player = mock(Player.class);
+
+        when(player.getLocation()).thenReturn(new Location(world, 50, 64, 0));
+        assertThat(service.isInGlideZone(player)).isTrue();
+
+        when(player.getLocation()).thenReturn(new Location(world, 0, 114, 0)); // exactly 50 up
+        assertThat(service.isInGlideZone(player)).isTrue();
+
+        when(player.getLocation()).thenReturn(new Location(world, 0, 115, 0)); // 51 up
+        assertThat(service.isInGlideZone(player)).isFalse();
+    }
+
+    @Test
+    void isInGlideZone_usesReloadedSpawnRadius() {
+        service.setSpawn(new Location(world, 0, 64, 0));
+        Player player = mock(Player.class);
+        when(player.getLocation()).thenReturn(new Location(world, 40, 64, 0));
+        assertThat(service.isInGlideZone(player)).isTrue();
+
+        service.updateConfig(new SpawnConfig(30, null, null, null));
+        assertThat(service.isInGlideZone(player)).isFalse();
     }
 
     @Test
