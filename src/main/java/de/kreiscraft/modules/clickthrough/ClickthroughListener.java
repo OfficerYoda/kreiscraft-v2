@@ -21,7 +21,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 public final class ClickthroughListener implements PriorityListener {
 
-    /** Fixed ray-cast distance, matching RusticPrism's original click-through behaviour. */
+    /** Fixed ray-cast distance for reaching the container behind a sign or item frame. */
     private static final int TARGET_BLOCK_MAX_DISTANCE = 6;
 
     private final PlayerPreferencesService preferences;

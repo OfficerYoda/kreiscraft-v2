@@ -66,9 +66,9 @@ public final class ServerConfigSchema {
      *
      * <p>Deliberately absent so they stay YAML-only: the HTTP API's bind address, port, CORS
      * origins, session cookie, timeouts and {@code admin-api-key}; the anti-cheat plugin-messaging
-     * channel; the tab-list header and footer; the {@code core} persistence/timezone/verbose
-     * settings; and the operator-owned runtime state written by commands ({@code update-mode.active}
-     * and {@code start-sequence.has-started}).
+     * channel; the tab-list header and footer; the {@code core} timezone and auto-save settings;
+     * and the operator-owned runtime state written by commands ({@code update-mode.active} and
+     * {@code start-sequence.has-started}).
      *
      * <p>The complete set is grouped by owning category in the GUI; see {@link
      * de.kreiscraft.modules.settingsgui.ServerConfigGui}.
@@ -215,14 +215,6 @@ public final class ServerConfigSchema {
                 ConfigFieldType.STRING_LIST,
                 ConfigValidators.stringList(),
                 ConfigLifecycle.HOT_RELOAD));
-
-        // ── plugin-hider ────────────────────────────────────────────────────
-        // The allowlist service captures the configured seed list at enable time.
-        fields.add(field(
-                path("modules", "plugin-hider", "default-allowed-commands"),
-                ConfigFieldType.STRING_LIST,
-                ConfigValidators.stringList(),
-                ConfigLifecycle.RESTART_REQUIRED));
 
         // ── positions ───────────────────────────────────────────────────────
         fields.add(field(

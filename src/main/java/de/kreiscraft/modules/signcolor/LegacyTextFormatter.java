@@ -10,7 +10,7 @@ import org.bukkit.entity.Player;
 /**
  * Renders player-authored sign and anvil text into an Adventure {@link Component}.
  *
- * <p>Three input styles are supported, matching the legacy RusticPrism behaviour: established
+ * <p>Three input styles are supported: established
  * Kreiscraft {@code %token%} placeholders, legacy ampersand colour and decoration codes (for
  * example {@code &c} or {@code &l}), and MiniMessage tags.
  *

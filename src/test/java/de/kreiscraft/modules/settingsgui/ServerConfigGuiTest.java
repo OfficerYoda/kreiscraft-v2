@@ -143,7 +143,6 @@ class ServerConfigGuiTest {
                         "effects",
                         "firework",
                         "jail",
-                        "plugin-hider",
                         "positions",
                         "reboot",
                         "spawn",

@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -22,7 +22,6 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
 | `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
-| `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
@@ -37,7 +36,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Five ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Four ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
@@ -45,10 +44,9 @@ and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 | `effects` | Player-facing particle trails are cosmetic; operators opt in per server. |
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `glow` | Player-facing glow effect is cosmetic; operators opt in per server. |
-| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
-All five implementations are fully functional; enabling the flag is sufficient to activate them.
+All four implementations are fully functional; enabling the flag is sufficient to activate them.
 
 ---
 
@@ -248,22 +246,6 @@ Opens a GUI showing another player's inventory or ender chest. The single `kreis
 ### Services published
 
 - `JailService` — jail, release, and query jail state for players.
-
----
-
-## `plugin-hider`
-
-**Package:** `de.kreiscraft.modules.pluginhider`
-**Depends on:** none
-**Default enabled:** false — intentionally disabled by default; opt in with `modules.plugin-hider.enabled: true`
-
-### Description
-
-Intercepts `TabCompleteEvent` and filters out command suggestions not in the allowlist, so non-operators cannot discover which plugins are installed. The allowlist is persisted in `data/plugin-hider.yml`. Players with `kreiscraft.pluginhider.bypass` see all commands regardless.
-
-### Services published
-
-- `PluginHiderService` — query and mutate the command allowlist.
 
 ---
 

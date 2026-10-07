@@ -21,7 +21,7 @@ the server language). In each pass:
 
 1. From the Player Settings root, click the **Server Configuration** entry.
 2. Confirm the category list opens and that the categories `core`, `modules`, `admin`, `anti-cheat`,
-   `bedrock`, `chat-format`, `combat`, `effects`, `firework`, `jail`, `plugin-hider`, `positions`,
+   `bedrock`, `chat-format`, `combat`, `effects`, `firework`, `jail`, `positions`,
    `reboot`, `spawn`, `start-sequence`, `tablist`, `update-mode` and `wither` are present.
 3. Open several categories (including a nested one such as `spawn` and the large `wither` page) and
    confirm the **Back** arrow returns to the category list.
@@ -55,7 +55,7 @@ Confirm the editor never shows a control for:
 - any `modules.api.*` value (host, port, CORS origins, session cookie, timeouts, admin API key),
 - the anti-cheat plugin-messaging channel,
 - the tab-list header or footer,
-- `core.timezone`, `core.auto-save-interval` or `core.debug`,
+- `core.timezone` or `core.auto-save-interval`,
 - `update-mode.active` or `start-sequence.has-started`.
 
 The `tablist` category should only offer `Update interval`.

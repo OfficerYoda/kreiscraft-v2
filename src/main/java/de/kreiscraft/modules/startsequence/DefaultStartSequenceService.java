@@ -95,7 +95,7 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     private void showCountdownTitle(int seconds) {
         String value = String.valueOf(seconds);
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ZERO);
-        // Volume and pitch mirror RusticPrism's Sound.sound(..., 100, 100) call.
+        // Full-volume experience-orb pickup for the countdown tick.
         Sound sound = Sound.sound(
                 org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, Sound.Source.PLAYER, 100f, 100f);
         showToAll(
@@ -107,7 +107,7 @@ public final class DefaultStartSequenceService implements StartSequenceService {
 
     private void showStartedTitle() {
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(4), Duration.ZERO);
-        // Volume and pitch mirror RusticPrism's Sound.sound(..., 200, 1) call.
+        // Full-volume, low-pitch goat horn for the start title.
         Sound sound =
                 Sound.sound(org.bukkit.Sound.ITEM_GOAT_HORN_SOUND_2, Sound.Source.PLAYER, 200f, 1f);
         showToAll(

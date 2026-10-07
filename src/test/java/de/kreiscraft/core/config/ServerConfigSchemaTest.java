@@ -92,7 +92,6 @@ class ServerConfigSchemaTest {
                         List.of("modules", "firework", "custom-model-data"),
                         List.of("modules", "jail", "location"),
                         List.of("modules", "jail", "blocked-commands"),
-                        List.of("modules", "plugin-hider", "default-allowed-commands"),
                         List.of("modules", "positions", "gui-rows"),
                         List.of("modules", "reboot", "default-countdown"),
                         List.of("modules", "spawn", "spawn-radius"),
@@ -139,8 +138,6 @@ class ServerConfigSchemaTest {
         assertThat(lifecycle(schema, "modules", "tablist", "update-interval"))
                 .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
         assertThat(lifecycle(schema, "modules", "firework", "custom-model-data"))
-                .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
-        assertThat(lifecycle(schema, "modules", "plugin-hider", "default-allowed-commands"))
                 .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
         assertThat(lifecycle(schema, "modules", "combat", "tag-duration"))
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
