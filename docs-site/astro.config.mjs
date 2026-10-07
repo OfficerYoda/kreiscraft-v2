@@ -10,6 +10,11 @@ export default defineConfig({
     starlight({
       title: 'Kreiscraft',
       description: 'Documentation for the Kreiscraft Paper plugin.',
+      favicon: '/crafting-table.png',
+      customCss: ['./src/styles/themes.css'],
+      components: {
+        Head: './src/components/Head.astro',
+      },
       sidebar: [
         { label: 'Overview', link: '/' },
         {

@@ -1,0 +1,62 @@
+:root {
+	/* Crafting-table palette: copper, oak, parchment, and walnut. */
+	--craft-copper: #cf7148;
+	--craft-copper-soft: #f0ad83;
+	--craft-copper-deep: #52281d;
+
+	--sl-color-white: #f3ece5;
+	--sl-color-gray-1: #e7ddd4;
+	--sl-color-gray-2: #cec3b8;
+	--sl-color-gray-3: #a99c91;
+	--sl-color-gray-4: #756961;
+	--sl-color-gray-5: #4b4039;
+	--sl-color-gray-6: #2b2420;
+	--sl-color-black: #171310;
+
+	--sl-color-accent-low: var(--craft-copper-deep);
+	--sl-color-accent: var(--craft-copper);
+	--sl-color-accent-high: var(--craft-copper-soft);
+	--sl-color-bg-nav: #251915;
+	--sl-color-bg-sidebar: #1d1815;
+	--sl-color-bg-inline-code: #332823;
+	--sl-color-hairline-light: #4b4039;
+	--sl-color-hairline: #2b2420;
+	--sl-color-hairline-shade: #171310;
+	--sl-color-backdrop-overlay: rgb(23 19 16 / 72%);
+}
+
+:root[data-theme='light'] {
+	--craft-copper: #91451f;
+	--craft-copper-soft: #f1d4bd;
+	--craft-copper-deep: #713216;
+
+	--sl-color-white: #291a10;
+	--sl-color-gray-1: #322116;
+	--sl-color-gray-2: #4a382b;
+	--sl-color-gray-3: #6f5b49;
+	--sl-color-gray-4: #98826b;
+	--sl-color-gray-5: #c8b59c;
+	--sl-color-gray-6: #eadfcf;
+	--sl-color-gray-7: #f7f1e7;
+	--sl-color-black: #fffaf2;
+
+	--sl-color-accent-high: var(--craft-copper-deep);
+	--sl-color-accent: var(--craft-copper);
+	--sl-color-accent-low: var(--craft-copper-soft);
+	--sl-color-bg-nav: #f7f1e7;
+	--sl-color-bg-sidebar: #fbf5ec;
+	--sl-color-bg-inline-code: #eadfcf;
+	--sl-color-hairline-light: #dfd0bc;
+	--sl-color-hairline: #eadfcf;
+	--sl-color-hairline-shade: #dfd0bc;
+	--sl-color-backdrop-overlay: rgb(74 56 43 / 58%);
+}
+
+::selection {
+	background: var(--sl-color-accent-low);
+	color: var(--sl-color-white);
+}
+
+:focus-visible {
+	outline-color: var(--sl-color-accent);
+}
