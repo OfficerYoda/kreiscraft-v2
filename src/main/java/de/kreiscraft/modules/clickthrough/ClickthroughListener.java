@@ -2,7 +2,7 @@ package de.kreiscraft.modules.clickthrough;
 
 import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.scheduler.Scheduler;
-import de.kreiscraft.modules.settingsgui.SettingsService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.time.Duration;
 import org.bukkit.Material;
 import org.bukkit.Rotation;
@@ -24,11 +24,14 @@ public final class ClickthroughListener implements PriorityListener {
     /** Fixed ray-cast distance, matching RusticPrism's original click-through behaviour. */
     private static final int TARGET_BLOCK_MAX_DISTANCE = 6;
 
-    private final SettingsService settingsService;
+    private final PlayerPreferencesService preferences;
+    private final boolean defaultEnabled;
     private final Scheduler scheduler;
 
-    public ClickthroughListener(SettingsService settingsService, Scheduler scheduler) {
-        this.settingsService = settingsService;
+    public ClickthroughListener(
+            PlayerPreferencesService preferences, boolean defaultEnabled, Scheduler scheduler) {
+        this.preferences = preferences;
+        this.defaultEnabled = defaultEnabled;
         this.scheduler = scheduler;
     }
 
@@ -50,7 +53,7 @@ public final class ClickthroughListener implements PriorityListener {
         if (player.isSneaking()) {
             return;
         }
-        if (!settingsService.isClickThroughEnabled(player.getUniqueId())) {
+        if (!preferences.clickThrough(player.getUniqueId(), defaultEnabled)) {
             return;
         }
 
@@ -76,7 +79,7 @@ public final class ClickthroughListener implements PriorityListener {
         if (player.isSneaking()) {
             return;
         }
-        if (!settingsService.isClickThroughEnabled(player.getUniqueId())) {
+        if (!preferences.clickThrough(player.getUniqueId(), defaultEnabled)) {
             return;
         }
 

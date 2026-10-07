@@ -23,10 +23,14 @@ import de.kreiscraft.platform.PlayerBrandProvider;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
+import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesData;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import de.kreiscraft.shared.user.UserListener;
 import de.kreiscraft.shared.user.UserService;
 import de.kreiscraft.shared.whitelist.PaperWhitelistService;
 import de.kreiscraft.shared.whitelist.WhitelistService;
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -96,6 +100,19 @@ public final class KreiscraftBootstrap {
         services.publish(WhitelistService.class, whitelist);
         services.publish(GuiRegistry.class, guiRegistry);
         services.publish(Gui.class, gui);
+
+        // --- always-available player preferences (independent of the settings-gui module) ---
+        PlayerPreferencesData preferencesData =
+                new PlayerPreferencesData(plugin.getDataFolder().toPath());
+        try {
+            preferencesData.load();
+        } catch (IOException e) {
+            throw new IOException("failed to load player preferences", e);
+        }
+        config.register(preferencesData);
+        services.publish(
+                PlayerPreferencesService.class,
+                new DefaultPlayerPreferencesService(preferencesData));
 
         this.modules = new ModuleRegistry(
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),

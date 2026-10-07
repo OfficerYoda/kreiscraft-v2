@@ -15,8 +15,8 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
-| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled per-player via the settings GUI. |
-| `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally removes elytra while tagged. |
+| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | none | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences. |
+| `combat` | `de.kreiscraft.modules.combat` | stable | none | combat | Tags players as in combat on damage; optionally removes elytra while tagged; combat display follows a player preference with a module default. |
 | `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players toggle and choose a personal particle trail emitted around them each tick. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
@@ -136,24 +136,24 @@ Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoi
 ## `clickthrough`
 
 **Package:** `de.kreiscraft.modules.clickthrough`
-**Depends on:** `settings-gui`
+**Depends on:** none
 **Default enabled:** true
 
 ### Description
 
-Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is stored by `SettingsService`.
+Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is read from the always-available `PlayerPreferencesService`, falling back to the module default (enabled) when no preference is stored.
 
 ---
 
 ## `combat`
 
 **Package:** `de.kreiscraft.modules.combat`
-**Depends on:** `settings-gui`
+**Depends on:** none
 **Default enabled:** true
 
 ### Description
 
-Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference stored in `SettingsService` (action bar, chat, or title).
+Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies.
 
 ### Events published
 
@@ -293,11 +293,11 @@ Schedules a server restart with a countdown. At seconds listed in `title-seconds
 
 ### Description
 
-Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles: the clickthrough enable/disable (consumed by the `clickthrough` module) and the combat display mode (consumed by the `combat` module). Settings are persisted in `data/settings.yml`.
+Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles: the clickthrough enable/disable (consumed by the `clickthrough` module) and the combat display mode (consumed by the `combat` module). The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled.
 
 ### Services published
 
-- `SettingsService` — read and write per-player settings (combat display, clickthrough toggle).
+None. The GUI is a client of the shared `PlayerPreferencesService`.
 
 ---
 
