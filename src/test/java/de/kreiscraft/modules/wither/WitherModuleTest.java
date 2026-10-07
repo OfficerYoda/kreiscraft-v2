@@ -25,6 +25,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +94,45 @@ class WitherModuleTest {
         listener.onEntityDamage(damageEvent(halfHealthWither(after)));
         verify(after)
                 .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(8.0f), eq(false), eq(false));
+    }
+
+    @Test
+    void enable_emptyConfigSection_setsDestructiveSpawnExplosionDefaults() throws Exception {
+        WitherListener listener = enableWith(parseYaml("{}"));
+
+        WorldMock world = spiedWorldWithExplosionSupport("module-spawn-defaults");
+        ExplosionPrimeEvent event = new ExplosionPrimeEvent(
+                new WitherMock(server, UUID.randomUUID(), world), 7.0f, false);
+        listener.onExplosionPrime(event);
+
+        assertThat(event.isCancelled()).isTrue();
+        verify(world)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+    }
+
+    @Test
+    void onConfigReload_subsequentSpawnExplosion_usesReloadedSettings() throws Exception {
+        WitherListener listener = enableWith(parseYaml(
+                "spawn-explosion-power: 20.0\n"
+                        + "spawn-explosion-fire: true\n"
+                        + "spawn-explosion-block-damage: true\n"));
+
+        WorldMock before = spiedWorldWithExplosionSupport("module-spawn-reload-before");
+        listener.onExplosionPrime(new ExplosionPrimeEvent(
+                new WitherMock(server, UUID.randomUUID(), before), 7.0f, false));
+        verify(before)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+
+        module.onConfigReload(parseYaml(
+                "spawn-explosion-power: 12.0\n"
+                        + "spawn-explosion-fire: false\n"
+                        + "spawn-explosion-block-damage: false\n"));
+
+        WorldMock after = spiedWorldWithExplosionSupport("module-spawn-reload-after");
+        listener.onExplosionPrime(new ExplosionPrimeEvent(
+                new WitherMock(server, UUID.randomUUID(), after), 7.0f, false));
+        verify(after)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(12.0f), eq(false), eq(false));
     }
 
     // ---- helpers ----
