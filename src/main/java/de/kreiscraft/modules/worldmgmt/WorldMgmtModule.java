@@ -47,7 +47,7 @@ public final class WorldMgmtModule implements Module {
                 "Set the spawn point of the current world",
                 "sws");
         ctx.commands().register(
-                PortalCommand.build(messages, platform),
+                PortalCommand.build(messages),
                 "Compute portal coordinate translations");
     }
 

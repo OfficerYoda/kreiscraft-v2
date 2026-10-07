@@ -19,6 +19,12 @@ public final class WorldCommand {
         return Commands.literal("world")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.worldmgmt.world"))
                 .then(Commands.argument("name", StringArgumentType.word())
+                        .suggests((ctx, builder) -> {
+                            platform.server().getWorlds().stream()
+                                    .map(World::getName)
+                                    .forEach(builder::suggest);
+                            return builder.buildFuture();
+                        })
                         .executes(ctx -> {
                             String name = StringArgumentType.getString(ctx, "name");
                             if (!(ctx.getSource().getSender() instanceof Player player)) {

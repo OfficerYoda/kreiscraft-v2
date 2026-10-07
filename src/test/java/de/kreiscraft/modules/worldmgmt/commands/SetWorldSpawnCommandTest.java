@@ -3,9 +3,13 @@ package de.kreiscraft.modules.worldmgmt.commands;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +53,30 @@ class SetWorldSpawnCommandTest {
         SetWorldSpawnCommand.setWorldSpawn(player, messages);
 
         verify(messages).send(player, "world-mgmt.spawn-set");
+    }
+
+    @Test
+    void build_requiresSetWorldSpawnPermission() {
+        LiteralCommandNode<CommandSourceStack> node = SetWorldSpawnCommand.build(messages);
+
+        CommandSourceStack withPerm = mock(CommandSourceStack.class);
+        Player permPlayer = mock(Player.class);
+        when(withPerm.getSender()).thenReturn(permPlayer);
+        when(permPlayer.hasPermission("kreiscraft.worldmgmt.setworldspawn")).thenReturn(true);
+        assertThat(node.getRequirement().test(withPerm)).isTrue();
+
+        CommandSourceStack withoutPerm = mock(CommandSourceStack.class);
+        Player noPermPlayer = mock(Player.class);
+        when(withoutPerm.getSender()).thenReturn(noPermPlayer);
+        when(noPermPlayer.hasPermission("kreiscraft.worldmgmt.setworldspawn")).thenReturn(false);
+        assertThat(node.getRequirement().test(withoutPerm)).isFalse();
+    }
+
+    /** The node is named "setworldspawn"; WorldMgmtModule registers "sws" as an alias. */
+    @Test
+    void build_returnsNodeNamedSetworldspawn() {
+        LiteralCommandNode<CommandSourceStack> node = SetWorldSpawnCommand.build(messages);
+        assertThat(node.getName()).isEqualTo("setworldspawn");
     }
 
     @Test
