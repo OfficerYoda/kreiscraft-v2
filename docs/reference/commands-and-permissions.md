@@ -33,8 +33,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
 | `/effects <particle>` | — | `effects` | Set your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
-| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.view` | op |
-| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.view` | op |
+| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
+| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/pluginhider add <command>` | — | `plugin-hider` | Add a command to the tab-completion allowlist. | `kreiscraft.pluginhider.admin` | op |
 | `/pluginhider remove <command>` | — | `plugin-hider` | Remove a command from the allowlist. | `kreiscraft.pluginhider.admin` | op |
@@ -64,7 +64,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments complete online plus known-offline names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`) complete online plus known-offline names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 
@@ -119,8 +119,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `invsee` module
 
-- `kreiscraft.invsee.view` — **(op)** — View another player's inventory.
-- `kreiscraft.invsee.edit` — **(op)** — Edit another player's inventory.
+- `kreiscraft.invsee.use` — **(op)** — View and edit another player's inventory or ender chest.
 
 ### `jail` module
 

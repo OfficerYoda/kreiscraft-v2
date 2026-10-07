@@ -387,3 +387,8 @@ Module dependency graph example (subset):
 `chat-format` share `ChatBridge` without any declared dependency on each other — the pub/sub bus
 is the only connection. `PlayerPreferencesService` is published by the composition root, so
 `combat`, `clickthrough`, and `settings-gui` consume it without depending on one another.
+
+The composition root also publishes a `ModuleEnablement` view backed by the `ModuleRegistry`.
+`settings-gui` uses it to omit controls whose owning module is disabled, so the GUI presents only
+features the running server actually offers, while still taking no declared dependency on those
+modules.
