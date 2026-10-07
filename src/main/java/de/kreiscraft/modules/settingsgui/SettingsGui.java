@@ -41,10 +41,14 @@ public final class SettingsGui {
 
     // ---- Root-page slots (package-private for tests) ----
     static final int SLOT_LANGUAGE = 4;
+    static final int SLOT_SERVER_CONFIG = 8;
     static final int SLOT_CLICK_THROUGH = 10;
     static final int SLOT_COMBAT_DISPLAY = 12;
     static final int SLOT_EFFECTS = 14;
     static final int SLOT_GLOW = 16;
+
+    /** Permission that reveals and opens the authorized Server Configuration editor. */
+    public static final String SERVER_CONFIG_PERMISSION = "kreiscraft.settingsgui.admin";
 
     // ---- Effects-page slots ----
     static final int SLOT_EFFECTS_ENABLED = 11;
@@ -70,7 +74,7 @@ public final class SettingsGui {
 
     /** A page of the Player Settings menu. */
     public enum Page {
-        ROOT("settings-gui.gui-title"), EFFECTS("settings-gui.effects-title");
+        ROOT("settings-gui.gui-title"), EFFECTS("settings-gui.effects-title"), SERVER_CONFIG("server-config.title");
 
         private final String titleKey;
 
@@ -97,9 +101,27 @@ public final class SettingsGui {
             MessageService messages,
             Player player,
             Navigator navigator) {
+        return buildRoot(settings, modules, messages, player, navigator, false);
+    }
+
+    /**
+     * Builds the root settings page, optionally including the authorized Server Configuration
+     * entry. The entry is only added when {@code serverConfig} is {@code true}, so an unauthorized
+     * player never sees a control for server policy.
+     */
+    public static Gui buildRoot(
+            SettingsService settings,
+            ModuleEnablement modules,
+            MessageService messages,
+            Player player,
+            Navigator navigator,
+            boolean serverConfig) {
         Gui gui = Gui.empty(9, 3);
         if (SettingsControl.LANGUAGE.isAvailable(modules)) {
             gui.setItem(SLOT_LANGUAGE, languageItem(settings, messages));
+        }
+        if (serverConfig) {
+            gui.setItem(SLOT_SERVER_CONFIG, serverConfigItem(messages, navigator));
         }
         if (SettingsControl.CLICK_THROUGH.isAvailable(modules)) {
             gui.setItem(SLOT_CLICK_THROUGH, clickThroughItem(settings, messages));
@@ -147,6 +169,23 @@ public final class SettingsGui {
             public void handleClick(ClickType clickType, Player player, Click click) {
                 settings.setLanguage(player.getUniqueId(), nextLanguage(settings.language(player.getUniqueId())));
                 notifyWindows();
+            }
+        };
+    }
+
+    private static AbstractItem serverConfigItem(MessageService messages, Navigator navigator) {
+        return new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                return new ItemWrapper(
+                        named(
+                                Material.COMMAND_BLOCK,
+                                messages.renderFor(viewer, "server-config.entry")));
+            }
+
+            @Override
+            public void handleClick(ClickType clickType, Player player, Click click) {
+                navigator.open(player, Page.SERVER_CONFIG);
             }
         };
     }

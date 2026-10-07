@@ -44,6 +44,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
+| `/settings admin` | — | `settings-gui` | Open the authorized Server Configuration editor (categories, typed controls, immediate saves). | `kreiscraft.settingsgui.admin` | op |
 | `/spawn` | — | `spawn` | Teleport to the server spawn when inside the horizontal Spawn Access Zone (overworld only). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
@@ -130,6 +131,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `settings-gui` module
 
 - `kreiscraft.settingsgui.use` — **(true)** — Open the per-player settings GUI.
+- `kreiscraft.settingsgui.admin` — **(op)** — Open the authorized Server Configuration editor from Player Settings or `/settings admin`.
 
 ### `sign-color` module
 
