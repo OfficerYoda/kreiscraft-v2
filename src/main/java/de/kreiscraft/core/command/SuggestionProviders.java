@@ -75,6 +75,26 @@ public final class SuggestionProviders {
                 });
     }
 
+    /**
+     * Suggests the literal {@code all} alongside the names of every currently-online player, so
+     * commands such as {@code /sudo} can offer their broadcast target alongside concrete players.
+     */
+    public static SuggestionProvider<CommandSourceStack> allAndOnlinePlayers(
+            Server server, String permission) {
+        return gated(
+                permission,
+                (ctx, builder) -> {
+                    suggestMatching(builder, "all");
+                    server.getOnlinePlayers().stream()
+                            .map(Player::getName)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .sorted(String.CASE_INSENSITIVE_ORDER)
+                            .forEach(name -> suggestMatching(builder, name));
+                    return builder.buildFuture();
+                });
+    }
+
     /** Suggests every spawnable {@link EntityType} by its lowercase name. */
     public static SuggestionProvider<CommandSourceStack> entityTypes(String permission) {
         return gated(

@@ -10,7 +10,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
-| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
+| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, gm, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode and vanilla-gamemode forwarding, item spawning, player info, TPS, weather). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
@@ -25,9 +25,9 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
-| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Per-player settings GUI (clickthrough toggle, combat display mode selection). |
+| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
-| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
+| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
@@ -111,11 +111,17 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect and records
+their name and UUID in `data/bedrock-players.yml`. Administrators pre-authorize a Bedrock name with
+`/bedrocklist add <name>`, which creates a Pending Bedrock Authorization in
+`data/bedrock-authorizations.yml`: the first matching login binds it to the observed UUID and
+whitelists that identity, and a bound authorization never silently rebinds. Replacing a bound
+identity requires `/bedrocklist remove <name>` followed by re-registration. `/bedrocklist list`
+lists the known players in deterministic order.
 
 ### Services published
 
-- `BedrockService` — query the set of known Bedrock player records.
+- `BedrockService` — query known Bedrock player records and Pending Bedrock Authorizations.
 
 ---
 
@@ -217,7 +223,7 @@ Applies or removes the Bukkit `Glowing` effect for a player via `/glow`. State i
 
 ### Description
 
-Opens a GUI showing another player's inventory or ender chest. Players with `kreiscraft.invsee.edit` can modify the inventory directly; without it they get a read-only view. Offline inventory is read from the player data file via `OfflineInventoryReader`; offline ender-chest viewing is not supported.
+Opens a GUI showing another player's inventory or ender chest. The single `kreiscraft.invsee.use` permission authorizes viewing and editing: a viewer who passes it may modify the target's live inventory directly. GUI titles are rendered through the message service so they are localized per viewer and follow the current message styling boundary. Offline inventory is read from the player data file via `OfflineInventoryReader` and shown as a read-only snapshot; offline ender-chest viewing is not supported.
 
 ---
 
@@ -293,7 +299,9 @@ Schedules a server restart with a countdown. At seconds listed in `title-seconds
 
 ### Description
 
-Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles: the clickthrough enable/disable (consumed by the `clickthrough` module) and the combat display mode (consumed by the `combat` module). The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled.
+Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, effects (enabled state and particle), and glow preferences. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
+
+The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
 
 ### Services published
 
@@ -321,11 +329,11 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 ### Description
 
-Manages the server spawn point and teleport range (operator-owned Server Configuration in `config.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleport-range` blocks of spawn.
+Manages the server spawn point and the single Spawn Radius (module configuration in `config.yml`). `/spawn` is overworld-only and restricted to the horizontal Spawn Access Zone; glide initiation requires the full three-dimensional Glide Zone. Includes three optional subsystems: elytra glide around spawn, a swap-hand velocity boost while gliding, and a persistent sneak boost for glides that started inside the Glide Zone. Spawn-launch behavior has been removed.
 
 ### Services published
 
-- `SpawnService` — get/set the spawn location and check whether a player is within the spawn radius.
+- `SpawnService` — get/set the spawn location and check the Spawn Access Zone (XZ) and the Glide Zone (3D).
 
 ---
 

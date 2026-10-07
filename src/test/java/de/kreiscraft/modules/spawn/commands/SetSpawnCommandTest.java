@@ -77,10 +77,9 @@ class SetSpawnCommandTest {
     }
 
     @Test
-    void build_nodeHasRadiusArgument() {
+    void build_hasNoRadiusArgument() {
+        // The single Spawn Radius is module configuration, so /setspawn takes no radius argument.
         LiteralCommandNode<CommandSourceStack> node = SetSpawnCommand.build(service, messages);
-        // The radius argument is the only child of the setspawn literal.
-        assertThat(node.getChildren()).isNotEmpty();
-        assertThat(node.getChildren().iterator().next().getName()).isEqualTo("radius");
+        assertThat(node.getChildren()).isEmpty();
     }
 }

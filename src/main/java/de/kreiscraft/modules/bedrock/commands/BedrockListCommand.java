@@ -4,23 +4,25 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.modules.bedrock.BedrockAuthorizationResult;
 import de.kreiscraft.modules.bedrock.BedrockRecord;
 import de.kreiscraft.modules.bedrock.BedrockService;
-import de.kreiscraft.shared.whitelist.WhitelistService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Implements {@code /bedrocklist add <name>} and {@code /bedrocklist list}.
+ * Implements {@code /bedrocklist add <name>}, {@code /bedrocklist remove <name>} and
+ * {@code /bedrocklist list}.
  *
  * <ul>
- *   <li>{@code add <name>} — looks up the player in the persisted set and, if found,
- *       whitelists them via {@link WhitelistService#addBedrockPlayer}.</li>
- *   <li>{@code list} — prints every known Bedrock player name in a deterministic,
- *       case-insensitive order, preceded by a header whose count matches the entries.</li>
+ *   <li>{@code add <name>} — registers a Pending Bedrock Authorization for the name. The first
+ *       matching login binds it to the observed UUID and whitelists that identity.</li>
+ *   <li>{@code remove <name>} — explicitly removes and revokes an authorization so it can be
+ *       re-registered, which is the only way to replace a bound identity.</li>
+ *   <li>{@code list} — prints every known Bedrock player name in a deterministic, case-insensitive
+ *       order, preceded by a header whose count matches the entries.</li>
  * </ul>
  *
  * Permission: {@code kreiscraft.bedrock.admin} (default: op).
@@ -30,9 +32,7 @@ public final class BedrockListCommand {
     private BedrockListCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
-            BedrockService service,
-            WhitelistService whitelist,
-            MessageService messages) {
+            BedrockService service, MessageService messages) {
 
         return Commands.literal("bedrocklist")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.bedrock.admin"))
@@ -40,17 +40,27 @@ public final class BedrockListCommand {
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .executes(ctx -> {
                                     String name = ctx.getArgument("name", String.class);
-                                    Optional<BedrockRecord> found = service.knownPlayers().stream()
-                                            .filter(r -> r.name().equalsIgnoreCase(name))
-                                            .findFirst();
-                                    if (found.isPresent()) {
-                                        BedrockRecord r = found.get();
-                                        whitelist.addBedrockPlayer(r.name(), r.uuid());
+                                    BedrockAuthorizationResult result = service.register(name);
+                                    if (result == BedrockAuthorizationResult.ALREADY_REGISTERED) {
                                         messages.send(ctx.getSource().getSender(),
-                                                "bedrock.added", "player", r.name());
+                                                "bedrock.already-authorized", "player", name);
                                     } else {
                                         messages.send(ctx.getSource().getSender(),
-                                                "bedrock.unknown", "player", name);
+                                                "bedrock.authorized", "player", name);
+                                    }
+                                    return Command.SINGLE_SUCCESS;
+                                })))
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    String name = ctx.getArgument("name", String.class);
+                                    BedrockAuthorizationResult result = service.remove(name);
+                                    if (result == BedrockAuthorizationResult.REMOVED) {
+                                        messages.send(ctx.getSource().getSender(),
+                                                "bedrock.revoked", "player", name);
+                                    } else {
+                                        messages.send(ctx.getSource().getSender(),
+                                                "bedrock.not-authorized", "player", name);
                                     }
                                     return Command.SINGLE_SUCCESS;
                                 })))
