@@ -1,57 +1,66 @@
 package de.kreiscraft.modules.glow;
 
-import java.util.Map;
-import java.util.Set;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
+/**
+ * Entity-backed glow implementation.
+ *
+ * <p>There is deliberately no in-memory mirror of the glow state. The live entity is authoritative
+ * for toggling, and the persisted preference is authoritative for what a player wants on join. When
+ * the module is disabled, only glows this module is responsible for (the entity is glowing and the
+ * player's persisted preference is enabled) are cleared, so glow from unrelated sources is left
+ * alone.
+ */
 public final class DefaultGlowService implements GlowService {
 
-    private final Server server;
-    private final Map<UUID, Boolean> state = new ConcurrentHashMap<>();
+    /** Glow is opt-in until the player enables it. */
+    static final boolean GLOW_DEFAULT_ENABLED = false;
 
-    public DefaultGlowService(Server server) {
+    private final Server server;
+    private final PlayerPreferencesService preferences;
+
+    public DefaultGlowService(Server server, PlayerPreferencesService preferences) {
         this.server = server;
+        this.preferences = preferences;
     }
 
     @Override
     public boolean isGlowing(UUID playerId) {
-        return state.getOrDefault(playerId, false);
+        Player player = server.getPlayer(playerId);
+        return player != null && player.isGlowing();
     }
 
     @Override
-    public void toggle(UUID playerId) {
-        boolean newState = !state.getOrDefault(playerId, false);
-        state.put(playerId, newState);
-        Player player = server.getPlayer(playerId);
-        if (player != null) {
-            player.setGlowing(newState);
-        }
+    public boolean toggle(Player player) {
+        boolean newState = !player.isGlowing();
+        player.setGlowing(newState);
+        preferences.setGlowEnabled(player.getUniqueId(), newState);
+        return newState;
+    }
+
+    @Override
+    public void reconcile(Player player) {
+        boolean desired = preferences.preferences(player.getUniqueId())
+                .glowEnabled()
+                .orElse(GLOW_DEFAULT_ENABLED);
+        player.setGlowing(desired);
     }
 
     /**
-     * Removes the player's glow state from the tracking map without modifying the
-     * player entity (called on quit when the player is already leaving).
-     */
-    void removePlayer(UUID playerId) {
-        state.remove(playerId);
-    }
-
-    /**
-     * Clears all glow states; for every tracked UUID that is still online,
-     * explicitly sets {@code setGlowing(false)} before removing. Called from
-     * {@link GlowModule#disable()}.
+     * Clears glow on every online player whose persisted desired state is enabled, so a module
+     * disable does not leave the module's own glow behind.
      */
     void disableAll() {
-        Set<UUID> tracked = Set.copyOf(state.keySet());
-        for (UUID id : tracked) {
-            Player player = server.getPlayer(id);
-            if (player != null) {
+        for (Player player : server.getOnlinePlayers()) {
+            boolean desired = preferences.preferences(player.getUniqueId())
+                    .glowEnabled()
+                    .orElse(GLOW_DEFAULT_ENABLED);
+            if (desired && player.isGlowing()) {
                 player.setGlowing(false);
             }
         }
-        state.clear();
     }
 }
