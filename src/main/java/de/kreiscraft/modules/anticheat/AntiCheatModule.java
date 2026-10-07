@@ -72,7 +72,7 @@ public final class AntiCheatModule implements Module {
         // Register command
         ctx.commands()
                 .register(
-                        HackerLogsCommand.build(service, ctx.messages()),
+                        HackerLogsCommand.build(service, ctx.messages(), ctx.plugin().getServer()),
                         "View hack logs for a player");
     }
 

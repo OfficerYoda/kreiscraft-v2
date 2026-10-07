@@ -41,6 +41,8 @@ anti-cheat:
   no-logs: "<prefix> <yellow>No entries found for <player></yellow>."
   log-header: "<prefix> <gray>Entries for <player> (<kind>):"
   log-entry: "<gray>- <when>: <detail>"
+  kind-cheats: "cheats"
+  kind-xray: "xray"
   invalid-kind: "<red>Unknown kind '<kind>'. Use 'cheats' or 'xray'."
 bedrock:
   added: "<prefix> <green><player></green> added to whitelist (Bedrock)."

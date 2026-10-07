@@ -79,7 +79,7 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 
 ### Description
 
-Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`).
+Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`). The `/hackerlogs <target> [cheats|xray]` command accepts a player selector (`@a`, `@p`, …), reports each selected player's entries with a localized kind label, and completes online plus known-offline profiles through the shared suggestion providers.
 
 ### Services published
 
@@ -153,7 +153,7 @@ Allows players with the clickthrough setting enabled to open containers and Ende
 
 ### Description
 
-Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies.
+Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies. A fresh tag renders its full duration immediately and then counts down exactly once per second, driven by its own scheduler task rather than a shared sweep. The `/combat <target> <seconds>` command accepts a player selector (`@a`, `@p`, …) and tags every selected player.
 
 ### Events published
 
