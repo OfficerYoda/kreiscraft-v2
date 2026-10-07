@@ -40,6 +40,8 @@ anti-cheat:
   no-logs: "<prefix> <yellow>Keine Einträge für <player></yellow>."
   log-header: "<prefix> <gray>Einträge für <player> (<kind>):"
   log-entry: "<gray>- <when>: <detail>"
+  kind-cheats: "Cheats"
+  kind-xray: "X-Ray"
   invalid-kind: "<red>Unbekannte Art '<kind>'. Bitte 'cheats' oder 'xray' verwenden."
 bedrock:
   authorized: "<prefix> <green><player></green> für den Bedrock-Login autorisiert."
