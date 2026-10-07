@@ -6,6 +6,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerPreferences;
+import de.kreiscraft.shared.preferences.PlayerPreferencesData;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -20,9 +24,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class DefaultSettingsServiceTest {
 
     @Mock
-    private SettingsData data;
+    private PlayerPreferencesData data;
 
-    private final Map<UUID, Settings> store = new HashMap<>();
+    private final Map<UUID, PlayerPreferences> store = new HashMap<>();
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -31,28 +35,30 @@ class DefaultSettingsServiceTest {
         // lenient: update is a no-op for read-only tests
         lenient()
                 .doAnswer(inv -> {
-                    ((Consumer<Map<UUID, Settings>>) inv.getArgument(0)).accept(store);
+                    ((Consumer<Map<UUID, PlayerPreferences>>) inv.getArgument(0)).accept(store);
                     return null;
                 })
                 .when(data)
                 .update(any());
     }
 
+    private DefaultSettingsService service() {
+        return new DefaultSettingsService(new DefaultPlayerPreferencesService(data));
+    }
+
     @Test
     void unknownPlayer_clickThrough_returnsDefaultTrue() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        assertThat(svc.isClickThroughEnabled(UUID.randomUUID())).isTrue();
+        assertThat(service().isClickThroughEnabled(UUID.randomUUID())).isTrue();
     }
 
     @Test
     void unknownPlayer_combatDisplay_returnsDefaultActionbar() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        assertThat(svc.getCombatDisplay(UUID.randomUUID())).isEqualTo(CombatDisplay.ACTIONBAR);
+        assertThat(service().getCombatDisplay(UUID.randomUUID())).isEqualTo(CombatDisplay.ACTIONBAR);
     }
 
     @Test
     void setClickThroughEnabled_false_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setClickThroughEnabled(alice, false);
         assertThat(svc.isClickThroughEnabled(alice)).isFalse();
@@ -60,7 +66,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void setClickThroughEnabled_true_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setClickThroughEnabled(alice, false);
         svc.setClickThroughEnabled(alice, true);
@@ -69,7 +75,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void setCombatDisplay_chat_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setCombatDisplay(alice, CombatDisplay.CHAT);
         assertThat(svc.getCombatDisplay(alice)).isEqualTo(CombatDisplay.CHAT);
@@ -77,7 +83,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void setCombatDisplay_title_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setCombatDisplay(alice, CombatDisplay.TITLE);
         assertThat(svc.getCombatDisplay(alice)).isEqualTo(CombatDisplay.TITLE);
@@ -85,7 +91,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void setCombatDisplay_doesNotAffectClickThrough() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setClickThroughEnabled(alice, false);
         svc.setCombatDisplay(alice, CombatDisplay.CHAT);
@@ -94,7 +100,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void toggleClickThrough_firstCall_accepted_andFlips() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         boolean accepted = svc.toggleClickThrough(alice);
         assertThat(accepted).isTrue();
@@ -103,7 +109,7 @@ class DefaultSettingsServiceTest {
 
     @Test
     void toggleClickThrough_immediateSecondCall_debounced() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         boolean first = svc.toggleClickThrough(alice);
         boolean second = svc.toggleClickThrough(alice); // within 1 second

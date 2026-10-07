@@ -2,9 +2,9 @@ package de.kreiscraft.modules.combat;
 
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
-import de.kreiscraft.modules.settingsgui.SettingsService;
 import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -22,7 +22,7 @@ public final class DefaultCombatService implements CombatService {
 
     private final Scheduler scheduler;
     private final MessageService messages;
-    private final SettingsService settingsService;
+    private final PlayerPreferencesService preferences;
     private final PaperPlatform platform;
     private CombatConfig config;
 
@@ -32,12 +32,12 @@ public final class DefaultCombatService implements CombatService {
     public DefaultCombatService(
             Scheduler scheduler,
             MessageService messages,
-            SettingsService settingsService,
+            PlayerPreferencesService preferences,
             PaperPlatform platform,
             CombatConfig config) {
         this.scheduler = scheduler;
         this.messages = messages;
-        this.settingsService = settingsService;
+        this.preferences = preferences;
         this.platform = platform;
         this.config = config;
         // Start global 1s display tick
@@ -116,7 +116,8 @@ public final class DefaultCombatService implements CombatService {
             }
             long secs = remaining(uuid).getSeconds();
             Component msg = messages.render("combat.remaining", "seconds", String.valueOf(secs));
-            CombatDisplay display = settingsService.getCombatDisplay(uuid);
+            // No stored preference means the combat module's configured default applies.
+            CombatDisplay display = preferences.combatDisplay(uuid, config.defaultDisplay());
             switch (display) {
                 case CHAT -> messages.send(player, "combat.remaining", "seconds", String.valueOf(secs));
                 case ACTIONBAR -> player.sendActionBar(msg);

@@ -3,7 +3,7 @@ package de.kreiscraft.modules.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.kreiscraft.core.config.serializers.KreiscraftSerializers;
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
+import de.kreiscraft.shared.preferences.CombatDisplay;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;

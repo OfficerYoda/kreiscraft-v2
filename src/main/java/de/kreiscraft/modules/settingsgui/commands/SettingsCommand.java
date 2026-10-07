@@ -3,10 +3,9 @@ package de.kreiscraft.modules.settingsgui.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
 import de.kreiscraft.modules.settingsgui.DefaultSettingsService;
-import de.kreiscraft.modules.settingsgui.SettingsService;
 import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.shared.preferences.CombatDisplay;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.UUID;
@@ -99,10 +98,10 @@ public final class SettingsCommand {
     private static final class CombatDisplayItem extends AbstractItem {
 
         private final UUID playerId;
-        private final SettingsService service;
+        private final DefaultSettingsService service;
         private final MessageService messages;
 
-        CombatDisplayItem(UUID playerId, SettingsService service, MessageService messages) {
+        CombatDisplayItem(UUID playerId, DefaultSettingsService service, MessageService messages) {
             this.playerId = playerId;
             this.service = service;
             this.messages = messages;
