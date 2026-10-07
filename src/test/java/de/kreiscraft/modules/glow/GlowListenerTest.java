@@ -2,6 +2,9 @@ package de.kreiscraft.modules.glow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
+import net.kyori.adventure.text.Component;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,13 +17,15 @@ class GlowListenerTest {
 
     private ServerMock server;
     private PluginMock plugin;
+    private InMemoryPlayerPreferencesService preferences;
     private DefaultGlowService service;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
-        service = new DefaultGlowService(server);
+        preferences = new InMemoryPlayerPreferencesService();
+        service = new DefaultGlowService(server, preferences);
         server.getPluginManager().registerEvents(new GlowListener(service), plugin);
     }
 
@@ -30,22 +35,32 @@ class GlowListenerTest {
     }
 
     @Test
-    void quit_clearsGlowStateFromMap() {
+    void join_appliesPersistedGlowOntoEntity() {
         PlayerMock alice = server.addPlayer("Alice");
-        service.toggle(alice.getUniqueId());
-        assertThat(service.isGlowing(alice.getUniqueId())).isTrue();
+        preferences.setGlowEnabled(alice.getUniqueId(), true);
 
-        alice.disconnect();
+        server.getPluginManager().callEvent(new PlayerJoinEvent(alice, Component.empty()));
 
-        assertThat(service.isGlowing(alice.getUniqueId())).isFalse();
+        assertThat(alice.isGlowing()).isTrue();
     }
 
     @Test
-    void quit_whenNotGlowing_remainsFalse() {
+    void join_withoutPreference_leavesEntityUnglowing() {
         PlayerMock alice = server.addPlayer("Alice");
 
-        alice.disconnect();
+        server.getPluginManager().callEvent(new PlayerJoinEvent(alice, Component.empty()));
 
-        assertThat(service.isGlowing(alice.getUniqueId())).isFalse();
+        assertThat(alice.isGlowing()).isFalse();
+    }
+
+    @Test
+    void join_persistedFalse_overridesEntityGlowing() {
+        PlayerMock alice = server.addPlayer("Alice");
+        preferences.setGlowEnabled(alice.getUniqueId(), false);
+        alice.setGlowing(true);
+
+        server.getPluginManager().callEvent(new PlayerJoinEvent(alice, Component.empty()));
+
+        assertThat(alice.isGlowing()).isFalse();
     }
 }

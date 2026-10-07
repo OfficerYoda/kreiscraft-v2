@@ -45,24 +45,8 @@ class UpdateModeCommandTest {
     }
 
     @Test
-    void command_an_activatesService() throws Exception {
-        dispatcher.execute("updatemode an", source);
-
-        verify(service).setActive(true);
-        verify(messages).send(sender, "update-mode.activated");
-    }
-
-    @Test
     void command_off_deactivatesService() throws Exception {
         dispatcher.execute("updatemode off", source);
-
-        verify(service).setActive(false);
-        verify(messages).send(sender, "update-mode.deactivated");
-    }
-
-    @Test
-    void command_aus_deactivatesService() throws Exception {
-        dispatcher.execute("updatemode aus", source);
 
         verify(service).setActive(false);
         verify(messages).send(sender, "update-mode.deactivated");

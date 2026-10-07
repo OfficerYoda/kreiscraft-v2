@@ -10,10 +10,38 @@ server-config:
   lifecycle:
     hot-reload: "<green>Applied by <white>/kreiscraft reload</white>."
     restart-required: "<red>Requires a server restart."
+  entry: "<gold>Server Configuration <dark_gray>(admins only)"
+  title: "<gray>Server Configuration"
+  category-title: "<gray>Server Configuration: <category>"
+  category:
+    modules: "Modules"
+    combat: "Combat"
+    effects: "Effects"
+    spawn: "Spawn"
+    chat-format: "Chat Format"
+  field:
+    module-enabled: "Module <module> enabled"
+    combat-disable-elytra: "Disable elytra in combat"
+    effects-count: "Effect count"
+    effects-offset-x: "Effect offset X"
+    combat-tag-duration: "Combat tag duration"
+    combat-default-display: "Combat display"
+    spawn-location: "Spawn location"
+    chat-format-format: "Chat format"
+    combat-excluded-worlds: "Excluded worlds"
+  value-on: "<green>On"
+  value-off: "<red>Off"
+  value-none: "<gray>not set"
+  edit-rejected: "<prefix> <red>Invalid value: <reason>"
+  edit-failed: "<prefix> <red>Save failed; nothing changed."
+  input:
+    prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
+    cancelled: "<prefix> <gray>Input cancelled."
+  close:
+    hot-reload: "<prefix> <yellow><count> change(s) will apply on <click:run_command:'/kc reload'><green><underlined>[Reload now]</underlined></green></click>."
+    restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."
 admin:
-  gamemode-set: "<prefix> <green>Gamemode for <player></green> set to <mode></green>."
   item-given: "<prefix> <green><count>x <item></green>."
-  weather-set: "<prefix> <green>Weather: <weather></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gray><player></gray> IP: <ip>"
   uuid: "<prefix> <gray><player></gray> UUID: <uuid>"
@@ -73,6 +101,10 @@ effects:
 glow:
   enabled: "<prefix> <green>Glow enabled."
   disabled: "<prefix> <yellow>Glow disabled."
+  other-enabled: "<prefix> <green>Glow enabled for <player>."
+  other-disabled: "<prefix> <yellow>Glow disabled for <player>."
+  target-enabled: "<prefix> <green><player> enabled your glow."
+  target-disabled: "<prefix> <yellow><player> disabled your glow."
 invsee:
   gui-title-inv: "<gray>Inventory of <player>"
   gui-title-ec: "<gray>Ender Chest of <player>"
@@ -174,7 +206,6 @@ wither:
 world-mgmt:
   teleported: "<prefix> <green>Teleported to <world></green>."
   unknown-world: "<prefix> <red>World <world></red> does not exist."
-  spawn-set: "<prefix> <green>World spawn set."
   portal-converted: "<prefix> <gray>Portal coordinates: X <x> Z <z></gray>"
   portal-not-overworld: "<prefix> <red>You are not in the Overworld."
   portal-not-nether: "<prefix> <red>You are not in the Nether."
