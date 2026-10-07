@@ -171,6 +171,7 @@ invsee:
   gui-title-inv: "<gray>Inventory of <player>"
   gui-title-ec: "<gray>Ender Chest of <player>"
   offline-empty: "<prefix> <yellow>No inventory data found for <player>.</yellow>"
+  offline-empty-ec: "<prefix> <yellow>No ender chest data found for <player>.</yellow>"
   target-not-found: "<prefix> <red>Player <player></red> not found."
   read-error: "<prefix> <red>Error reading offline data."
 jail:

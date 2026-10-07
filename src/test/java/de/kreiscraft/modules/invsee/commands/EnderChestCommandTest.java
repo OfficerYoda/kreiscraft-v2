@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,13 +12,20 @@ import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerSnapshot;
+import de.kreiscraft.platform.SlottedItem;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +49,7 @@ class EnderChestCommandTest {
     private PluginMock plugin;
     private Gui gui;
     private MessageService messages;
+    private OfflinePlayerData offlineData;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +57,7 @@ class EnderChestCommandTest {
         plugin = MockBukkit.createMockPlugin();
         gui = mock(Gui.class);
         messages = mock(MessageService.class);
+        offlineData = mock(OfflinePlayerData.class);
         when(messages.render(any(), any(Object[].class))).thenReturn(Component.empty());
         when(messages.renderFor(any(org.bukkit.command.CommandSender.class), any(String.class),
                 any(Object[].class))).thenReturn(Component.text("title"));
@@ -60,13 +70,15 @@ class EnderChestCommandTest {
 
     @Test
     void build_commandNameIsEnderchest() {
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         assertThat(node.getLiteral()).isEqualTo("enderchest");
     }
 
     @Test
     void build_requiresInvseeUsePermission_deniedWithoutPerm() {
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         Player viewer = server.addPlayer();
         when(mockSrc.getSender()).thenReturn(viewer);
@@ -75,7 +87,8 @@ class EnderChestCommandTest {
 
     @Test
     void build_requiresInvseeUsePermission_allowedWithPerm() {
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -85,7 +98,8 @@ class EnderChestCommandTest {
 
     @Test
     void build_hasTargetArgument() {
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         assertThat(node.getChildren()).isNotEmpty();
         assertThat(node.getChildren().iterator().next().getName()).isEqualTo("target");
     }
@@ -102,7 +116,7 @@ class EnderChestCommandTest {
         when(suggestionServer.getOfflinePlayers()).thenReturn(new OfflinePlayer[] {known});
 
         LiteralCommandNode<CommandSourceStack> node =
-                EnderChestCommand.build(gui, messages, suggestionServer);
+                EnderChestCommand.build(gui, messages, offlineData, suggestionServer);
         CommandSourceStack source = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -145,15 +159,109 @@ class EnderChestCommandTest {
         PlayerMock viewer = server.addPlayer("editor");
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
         server.addPlayer("target");
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         assertThat(node.getLiteral()).isEqualTo("enderchest");
         assertThat(node.getChildren()).isNotEmpty();
     }
 
     @Test
     void build_offlineTarget_nodeStructureValid() {
-        LiteralCommandNode<CommandSourceStack> node = EnderChestCommand.build(gui, messages, server);
+        LiteralCommandNode<CommandSourceStack> node =
+                EnderChestCommand.build(gui, messages, offlineData, server);
         assertThat(node.getChildren()).isNotEmpty();
+    }
+
+    // -----------------------------------------------------------------------
+    // Execution: offline path
+    // -----------------------------------------------------------------------
+
+    @Test
+    void openOfflineEnderChest_withItems_readsSnapshotAndOpensGui() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(offlineData.read(uuid))
+                .thenReturn(
+                        OfflinePlayerSnapshot.ofEnderItems(
+                                List.of(new SlottedItem(0, new ItemStack(Material.SHULKER_BOX)))));
+
+        EnderChestCommand.openOfflineEnderChest(
+                viewer, offline, "ghost", gui, messages, offlineData);
+
+        verify(offlineData).read(uuid);
+        verify(gui).open(eq(viewer), any(xyz.xenondevs.invui.gui.Gui.class), any(Component.class));
+        verify(messages)
+                .renderFor(eq(viewer), eq("invsee.gui-title-ec"), eq("player"), eq("ghost"));
+    }
+
+    @Test
+    void openOfflineEnderChest_neverPlayed_sendsNotFoundMessage() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        when(offline.hasPlayedBefore()).thenReturn(false);
+
+        EnderChestCommand.openOfflineEnderChest(
+                viewer, offline, "ghost", gui, messages, offlineData);
+
+        verify(messages).send(viewer, "invsee.target-not-found", "player", "ghost");
+        verify(offlineData, never()).read(any());
+        verify(gui, never()).open(any(), any(), any());
+    }
+
+    @Test
+    void openOfflineEnderChest_empty_sendsOfflineEmptyMessage() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(offlineData.read(uuid)).thenReturn(OfflinePlayerSnapshot.empty());
+
+        EnderChestCommand.openOfflineEnderChest(
+                viewer, offline, "ghost", gui, messages, offlineData);
+
+        verify(offlineData).read(uuid);
+        verify(messages).send(viewer, "invsee.offline-empty-ec", "player", "ghost");
+        verify(gui, never()).open(any(), any(), any());
+    }
+
+    @Test
+    void openOfflineEnderChest_inventoryOnly_sendsOfflineEmptyMessage() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(offlineData.read(uuid))
+                .thenReturn(
+                        OfflinePlayerSnapshot.ofInventory(
+                                List.of(new SlottedItem(0, new ItemStack(Material.STONE)))));
+
+        EnderChestCommand.openOfflineEnderChest(
+                viewer, offline, "ghost", gui, messages, offlineData);
+
+        verify(messages).send(viewer, "invsee.offline-empty-ec", "player", "ghost");
+        verify(gui, never()).open(any(), any(), any());
+    }
+
+    @Test
+    void openOfflineEnderChest_readError_sendsReadErrorMessage() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(offlineData.read(uuid)).thenThrow(new IOException("disk error"));
+
+        EnderChestCommand.openOfflineEnderChest(
+                viewer, offline, "ghost", gui, messages, offlineData);
+
+        verify(offlineData).read(uuid);
+        verify(messages).send(viewer, "invsee.read-error");
+        verify(gui, never()).open(any(), any(), any());
     }
 
     private static long countInventoryLinks(xyz.xenondevs.invui.gui.Gui invuiGui) {

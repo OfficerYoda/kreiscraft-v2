@@ -6,12 +6,12 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.invsee.InvseeGui;
-import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.io.IOException;
-import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -23,7 +23,7 @@ import org.bukkit.entity.Player;
  *
  * <p>Viewing and editing share the single {@code kreiscraft.invsee.use} permission: a viewer who
  * passes the command's authorization may modify the target's live inventory directly. Offline
- * targets are shown as a read-only snapshot read through {@link OfflineInventoryReader}.
+ * targets are shown as a read-only snapshot read through {@link OfflinePlayerData}.
  *
  * <p>The target argument completes online players plus every known-offline profile through the
  * shared {@link SuggestionProviders#onlineAndKnownOfflineProfiles} provider.
@@ -34,7 +34,7 @@ public final class InvseeCommand {
     private InvseeCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
-            Gui gui, MessageService messages, OfflineInventoryReader offlineReader, Server server) {
+            Gui gui, MessageService messages, OfflinePlayerData offlineData, Server server) {
         return Commands.literal("invsee")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.invsee.use"))
                 .then(
@@ -54,7 +54,8 @@ public final class InvseeCommand {
                                             if (target != null) {
                                                 openOnlineInventory(viewer, target, gui, messages);
                                             } else {
-                                                lookupAndOpenOffline(viewer, name, gui, messages, offlineReader);
+                                                lookupAndOpenOffline(
+                                                        viewer, name, gui, messages, offlineData);
                                             }
                                             return Command.SINGLE_SUCCESS;
                                         }))
@@ -78,13 +79,13 @@ public final class InvseeCommand {
             String name,
             Gui gui,
             MessageService messages,
-            OfflineInventoryReader offlineReader) {
+            OfflinePlayerData offlineData) {
         OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
-        openOfflineInventory(viewer, offline, name, gui, messages, offlineReader);
+        openOfflineInventory(viewer, offline, name, gui, messages, offlineData);
     }
 
     /**
-     * Opens the offline inventory view.
+     * Opens the read-only offline inventory snapshot.
      *
      * <p>Package-private so tests can inject a pre-built {@link OfflinePlayer} mock directly
      * without triggering {@code Bukkit.getOfflinePlayer} (which hits NMS state in tests).
@@ -95,23 +96,23 @@ public final class InvseeCommand {
             String displayName,
             Gui gui,
             MessageService messages,
-            OfflineInventoryReader offlineReader) {
+            OfflinePlayerData offlineData) {
         if (!offline.hasPlayedBefore()) {
             messages.send(viewer, "invsee.target-not-found", "player", displayName);
             return;
         }
-        List<de.kreiscraft.platform.SlottedItem> items;
+        OfflinePlayerSnapshot snapshot;
         try {
-            items = offlineReader.readInventory(offline.getUniqueId());
+            snapshot = offlineData.read(offline.getUniqueId());
         } catch (IOException e) {
             messages.send(viewer, "invsee.read-error");
             return;
         }
-        if (items.isEmpty()) {
+        if (snapshot.inventory().isEmpty()) {
             messages.send(viewer, "invsee.offline-empty", "player", displayName);
             return;
         }
-        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOffline(items);
+        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineInventory(snapshot);
         Component title = messages.renderFor(viewer, "invsee.gui-title-inv", "player", displayName);
         gui.open(viewer, invuiGui, title);
     }

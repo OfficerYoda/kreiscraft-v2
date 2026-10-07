@@ -6,7 +6,7 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.invsee.commands.EnderChestCommand;
 import de.kreiscraft.modules.invsee.commands.InvseeCommand;
-import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.OfflinePlayerData;
 import de.kreiscraft.shared.gui.Gui;
 import java.util.List;
 import org.bukkit.Server;
@@ -38,16 +38,16 @@ public final class InvseeModule implements Module {
 
         Gui gui = ctx.services().get(Gui.class);
         MessageService messages = ctx.messages();
-        OfflineInventoryReader offlineReader = ctx.services().get(OfflineInventoryReader.class);
+        OfflinePlayerData offlineData = ctx.services().get(OfflinePlayerData.class);
         Server server = ctx.plugin().getServer();
 
         ctx.commands()
                 .register(
-                        InvseeCommand.build(gui, messages, offlineReader, server),
+                        InvseeCommand.build(gui, messages, offlineData, server),
                         "View another player's inventory");
         ctx.commands()
                 .register(
-                        EnderChestCommand.build(gui, messages, server),
+                        EnderChestCommand.build(gui, messages, offlineData, server),
                         "View another player's ender chest",
                         "ec",
                         "echest");
