@@ -17,7 +17,8 @@ admin:
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gray><player></gray> IP: <ip>"
   uuid: "<prefix> <gray><player></gray> UUID: <uuid>"
-  lastonline: "<prefix> <gray><player></gray> last seen: <when>"
+  lastonline: "<prefix> <gray><player></gray> last seen: <when> (<relative>)"
+  lastonline-never: "<prefix> <gray><player></gray> has never been online."
   ping: "<prefix> <gray><player></gray> Ping: <ping> ms"
   tps: "<prefix> <gray>TPS:</gray> <tps>"
   statistic: "<prefix> <gray><player></gray> <stat>: <value>"
@@ -157,3 +158,10 @@ world-mgmt:
   portal-converted: "<prefix> <gray>Portal coordinates: X <x> Z <z></gray>"
   portal-not-overworld: "<prefix> <red>You are not in the Overworld."
   portal-not-nether: "<prefix> <red>You are not in the Nether."
+time:
+  relative:
+    just-now: "just now"
+    seconds: "<count> seconds ago"
+    minutes: "<count> minutes ago"
+    hours: "<count> hours ago"
+    days: "<count> days ago"

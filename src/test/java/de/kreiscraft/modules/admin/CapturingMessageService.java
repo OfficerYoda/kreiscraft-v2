@@ -11,6 +11,7 @@ public final class CapturingMessageService implements MessageService {
 
     public final List<String> sentKeys = new ArrayList<>();
     public final List<Object[]> sentPlaceholders = new ArrayList<>();
+    public final List<String> renderedKeys = new ArrayList<>();
 
     @Override
     public void send(CommandSender sender, String key, Object... placeholders) {
@@ -21,6 +22,12 @@ public final class CapturingMessageService implements MessageService {
     @Override
     public Component render(String key, Object... placeholders) {
         return Component.empty();
+    }
+
+    @Override
+    public Component renderFor(CommandSender recipient, String key, Object... placeholders) {
+        renderedKeys.add(key);
+        return Component.text(key);
     }
 
     @Override
