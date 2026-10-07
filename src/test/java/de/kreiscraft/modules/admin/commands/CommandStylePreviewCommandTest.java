@@ -8,9 +8,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.modules.admin.CapturingMessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import java.util.List;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +21,8 @@ class CommandStylePreviewCommandTest {
     private ServerMock server;
     private PluginMock plugin;
     private CapturingMessageService messages;
+    private xyz.xenondevs.invui.gui.Gui openedBoard;
+    private net.kyori.adventure.text.Component openedTitle;
 
     @BeforeEach
     void setUp() {
@@ -39,7 +38,7 @@ class CommandStylePreviewCommandTest {
 
     @Test
     void build_requiresTemporaryAdminPermission() {
-        LiteralCommandNode<CommandSourceStack> node = CommandStylePreviewCommand.build(messages);
+        LiteralCommandNode<CommandSourceStack> node = previewCommand();
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack source = mock(CommandSourceStack.class);
         when(source.getSender()).thenReturn(player);
@@ -51,8 +50,8 @@ class CommandStylePreviewCommandTest {
     }
 
     @Test
-    void execute_showsFourPalettesWithEverySemanticRoleAndHumanHandoff() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node = CommandStylePreviewCommand.build(messages);
+    void execute_opensComparisonBoardAndHandsOffToHumanSelection() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = previewCommand();
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack source = mock(CommandSourceStack.class);
         when(source.getSender()).thenReturn(player);
@@ -62,29 +61,19 @@ class CommandStylePreviewCommandTest {
         node.getCommand().run(context);
 
         assertThat(messages.sentKeys)
-                .startsWith("admin.style-preview.temporary")
-                .containsSubsequence(
-                        List.of(
-                                "admin.style-preview.header",
-                                "admin.style-preview.inventory-opening",
-                                "admin.style-preview.reason",
-                                "admin.style-preview.value",
-                                "admin.style-preview.success",
-                                "admin.style-preview.warning",
-                                "admin.style-preview.error",
-                                "admin.style-preview.inventory-title",
-                                "admin.style-preview.header"))
-                .endsWith("admin.style-preview.handoff");
-        assertThat(messages.sentKeys).hasSize(34);
-        assertThat(sentPaletteNames()).containsExactly("Classic", "Signal", "Ember", "Requested Hybrid");
+                .containsExactly("admin.style-preview.temporary", "admin.style-preview.handoff");
+        assertThat(openedBoard).isNotNull();
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(openedTitle))
+                .isEqualTo("Classic | Signal | Ember | Requested Hybrid");
     }
 
-    private List<String> sentPaletteNames() {
-        return messages.sentPlaceholders.stream()
-                .filter(placeholders -> placeholders.length == 2)
-                .map(placeholders -> (Component) placeholders[1])
-                .map(PlainTextComponentSerializer.plainText()::serialize)
-                .filter(name -> List.of("Classic", "Signal", "Ember", "Requested Hybrid").contains(name))
-                .toList();
+    private LiteralCommandNode<CommandSourceStack> previewCommand() {
+        return CommandStylePreviewCommand.build(
+                messages,
+                (player, board, title) -> {
+                    openedBoard = board;
+                    openedTitle = title;
+                });
     }
 }

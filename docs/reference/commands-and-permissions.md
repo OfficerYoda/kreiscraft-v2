@@ -21,7 +21,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
 | `/ping [player]` | — | `admin` | Show a player's ping in milliseconds. | `kreiscraft.admin.ping` | true |
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
-| `/commandstylepreview` | — | `admin` | **Temporary:** show the approved Variant A side-by-side comparison board for Classic, Signal, Ember, and Requested Hybrid. It previews ordinary text, player names, reasons, values, success, warnings, errors, and inventory titles; it never selects or persists a palette. | `kreiscraft.admin.style-preview` | op |
+| `/commandstylepreview` | — | `admin` | **Temporary:** open the approved Variant A comparison board: four simultaneous inventory cards for Classic, Signal, Ember, and Requested Hybrid, plus a real inventory title preview. Cards cover ordinary text, player names, reasons, values, success, warnings, errors, and inventory titles. It never selects or persists a palette. | `kreiscraft.admin.style-preview` | op |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |

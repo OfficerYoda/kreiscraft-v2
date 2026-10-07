@@ -14,6 +14,8 @@ import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
+import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.shared.gui.GuiRegistry;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Clock;
 import java.time.ZoneId;
@@ -48,6 +50,7 @@ class AdminModuleTest {
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));
+        services.publish(Gui.class, new Gui(new GuiRegistry()));
         ModuleContext ctx = new ModuleContext(
                 plugin,
                 CommentedConfigurationNode.root(),
