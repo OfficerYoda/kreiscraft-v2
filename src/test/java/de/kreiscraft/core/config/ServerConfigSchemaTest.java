@@ -204,6 +204,12 @@ class ServerConfigSchemaTest {
         assertThat(location.guiExposed()).isTrue();
         assertThat(location.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
 
+        ConfigField jail = ServerConfigSchema.jailLocation();
+        assertThat(jail.path()).containsExactly("modules", "jail", "location");
+        assertThat(jail.type()).isEqualTo(ConfigFieldType.LOCATION);
+        assertThat(jail.guiExposed()).isTrue();
+        assertThat(jail.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
+
         ConfigField active = ServerConfigSchema.updateModeActive();
         assertThat(active.path()).containsExactly("modules", "update-mode", "active");
         assertThat(active.type()).isEqualTo(ConfigFieldType.BOOLEAN);
@@ -212,7 +218,7 @@ class ServerConfigSchemaTest {
         assertThat(started.path()).containsExactly("modules", "start-sequence", "has-started");
         assertThat(started.type()).isEqualTo(ConfigFieldType.BOOLEAN);
 
-        for (ConfigField field : List.of(location, active, started)) {
+        for (ConfigField field : List.of(location, jail, active, started)) {
             assertThat(field.hotReloadable()).isTrue();
             assertThat(field.restartRequired()).isFalse();
         }

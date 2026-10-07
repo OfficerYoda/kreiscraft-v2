@@ -241,11 +241,13 @@ Opens a GUI showing another player's inventory or ender chest. The single `kreis
 
 ### Description
 
-`/jail` and its alias `/kerker` are identical toggles: they jail an unjailed player (teleporting them to the configured jail `location` and recording an entry in `data/jail.yml`) or release an already-jailed player (teleporting them back to their original location). While jailed, a configurable set of commands is blocked; `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed. Players with `kreiscraft.jail.bypass` cannot be jailed, but the bypass permission does not prevent releasing an already-jailed player.
+`/jail` and its alias `/kerker` are identical toggles: they jail an unjailed player (teleporting them to the jail `location` and recording an entry in `data/jail.yml`) or release an already-jailed player (teleporting them back to their original location). A freshly jailed player also receives a localized direct message whose reason is styled distinctly from the surrounding prose. While jailed, a configurable set of commands is blocked; `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed. Players with `kreiscraft.jail.bypass` cannot be jailed, but the bypass permission does not prevent releasing an already-jailed player.
+
+`/setjail` stores the executing player's current location as `modules.jail.location` in `config.yml` through the validated, atomic Server Configuration edit boundary. The jail location is operator-owned Server Configuration; jail entries and their restore locations remain Activity Data in `data/jail.yml`.
 
 ### Services published
 
-- `JailService` — jail, release, and query jail state for players.
+- `JailService` — jail, release, query jail state, and read/write the operator-owned jail location for players.
 
 ---
 

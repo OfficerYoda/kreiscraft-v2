@@ -175,6 +175,8 @@ invsee:
   read-error: "<prefix> <red>Error reading offline data."
 jail:
   jailed: "<prefix> <yellow><player></yellow> has been jailed: <reason>"
+  jailed-target: "<prefix> <red>You have been jailed.</red> <gray>Reason: <blue><reason></blue></gray>"
+  set: "<prefix> <green>Jail location set to your current position."
   released: "<prefix> <green><player></green> has been released."
   already-jailed: "<prefix> <red><player></red> is already jailed."
   not-jailed: "<prefix> <red><player></red> is not jailed."

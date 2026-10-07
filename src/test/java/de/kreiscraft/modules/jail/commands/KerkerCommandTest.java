@@ -8,14 +8,11 @@ import static org.mockito.Mockito.when;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.jail.JailConfig;
 import de.kreiscraft.modules.jail.JailEntry;
 import de.kreiscraft.modules.jail.JailService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.junit.jupiter.api.AfterEach;
@@ -33,7 +30,6 @@ class KerkerCommandTest {
     private PluginMock plugin;
     private JailService service;
     private MessageService messages;
-    private AtomicReference<JailConfig> configRef;
     private World world;
 
     @BeforeEach
@@ -43,8 +39,6 @@ class KerkerCommandTest {
         world = server.addSimpleWorld("world");
         service = mock(JailService.class);
         messages = mock(MessageService.class);
-        configRef = new AtomicReference<>(
-                new JailConfig(new Location(world, 126, 91, 92), List.of("msg")));
     }
 
     @AfterEach
@@ -53,7 +47,7 @@ class KerkerCommandTest {
     }
 
     private LiteralCommandNode<CommandSourceStack> buildNode() {
-        return JailCommand.buildWithName("kerker", service, messages, configRef);
+        return JailCommand.buildWithName("kerker", service, messages);
     }
 
     @Test
@@ -97,6 +91,7 @@ class KerkerCommandTest {
         verify(service).jail(org.mockito.ArgumentMatchers.eq(target.getUniqueId()),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(""));
         verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "");
+        verify(messages).send(target, "jail.jailed-target", "reason", "");
     }
 
     @SuppressWarnings("unchecked")

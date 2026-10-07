@@ -36,7 +36,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
-| `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
+| `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player (sending them a localized message with a distinctly styled reason), or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
+| `/setjail` | — | `jail` | Store your current location as the operator-owned jail location in Server Configuration. | `kreiscraft.jail.set` | op |
 | `/pos` | — | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |
 | `/pos set <name>` | — | `positions` | Save current location as a named position. | `kreiscraft.positions.use` | true |
 | `/pos get <name>` | — | `positions` | Print coordinates for a named position. | `kreiscraft.positions.use` | true |
@@ -122,6 +123,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 - `kreiscraft.jail.use` — **(op)** — Jail or release players.
 - `kreiscraft.jail.bypass` — **(op)** — Cannot be jailed.
+- `kreiscraft.jail.set` — **(op)** — Store your current location as the jail location in Server Configuration.
 
 ### `positions` module
 

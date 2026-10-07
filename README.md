@@ -69,7 +69,7 @@ src/main/java/de/kreiscraft/
 | `firework` | Custom firework rocket crafting recipe with configurable custom model data |
 | `glow` | `/glow` — toggle a player's glowing outline |
 | `invsee` | `/invsee` and `/enderchest` (`/ec`) — inspect online and offline players' inventories |
-| `jail` | `/jail` and `/kerker` — teleport-based jail toggle with configurable location and blocked commands |
+| `jail` | `/jail` and `/kerker` — teleport-based jail toggle with an operator-owned location set by `/setjail` and configurable blocked commands |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |

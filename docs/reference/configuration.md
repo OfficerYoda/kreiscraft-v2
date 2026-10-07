@@ -237,10 +237,13 @@ persists the state, and `/effects <particle>` sets and persists the particle.
 
 | Key (relative to `modules.jail`) | Type | Default | Description |
 |---|---|---|---|
-| `location` | Location | *(required)* | Teleport destination when jailing a player. Format: `{ world: <name>, x: <n>, y: <n>, z: <n>, yaw: <n>, pitch: <n> }`. |
+| `location` | Location | `{ world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }` | Operator-owned teleport destination when jailing a player; written by `/setjail`. Format: `{ world: <name>, x: <n>, y: <n>, z: <n>, yaw: <n>, pitch: <n> }`. |
 | `blocked-commands` | List\<String\> | `[msg, tell, w, r]` | Command names (without `/`) that jailed players are not allowed to execute. |
 
-`location` is required — the module will fail to enable if it is absent from the config file.
+`location` is operator-owned Server Configuration (ADR-10), not module configuration: `/setjail`
+stores the executing player's current position through the validated, atomic edit boundary. If the
+key is absent, jailing still records the player but no teleport destination is available until a
+jail location is set.
 
 `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed for jailed players regardless of `blocked-commands`.
 

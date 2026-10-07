@@ -205,11 +205,7 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.RESTART_REQUIRED));
 
         // ── jail ────────────────────────────────────────────────────────────
-        fields.add(field(
-                path("modules", "jail", "location"),
-                ConfigFieldType.LOCATION,
-                ConfigValidators.alwaysValid(),
-                ConfigLifecycle.HOT_RELOAD));
+        fields.add(jailLocation());
         fields.add(field(
                 path("modules", "jail", "blocked-commands"),
                 ConfigFieldType.STRING_LIST,
@@ -416,13 +412,14 @@ public final class ServerConfigSchema {
 
     // ── operator-owned state ────────────────────────────────────────────────
     //
-    // ADR-10 puts spawn location, update-mode state and start-sequence completion in Server
-    // Configuration. The fields below are the write metadata for those values; commands such as
-    // /setspawn and /updatemode go through ConfigService.applyEdit so an invalid value or an I/O
-    // failure cannot leave the running server and config.yml disagreeing. spawn.location is also
-    // exposed in the Server Configuration GUI as its location control; the remaining
-    // operator-owned values stay YAML-only because editing them in-game would bypass the command
-    // side effects (for example disconnecting non-bypassed players when maintenance mode starts).
+    // ADR-10 puts spawn location, jail location, update-mode state and start-sequence completion in
+    // Server Configuration. The fields below are the write metadata for those values; commands such
+    // as /setspawn, /setjail and /updatemode go through ConfigService.applyEdit so an invalid value
+    // or an I/O failure cannot leave the running server and config.yml disagreeing. spawn.location
+    // and jail.location are also exposed in the Server Configuration GUI as location controls; the
+    // remaining operator-owned values stay YAML-only because editing them in-game would bypass the
+    // command side effects (for example disconnecting non-bypassed players when maintenance mode
+    // starts).
 
     /**
      * Operator-owned spawn {@link org.bukkit.Location}; absent until {@code /setspawn} is used. Also
@@ -431,6 +428,19 @@ public final class ServerConfigSchema {
     public static ConfigField spawnLocation() {
         return new ConfigField(
                 List.of("modules", "spawn", "location"),
+                ConfigFieldType.LOCATION,
+                ConfigValidators.alwaysValid(),
+                true,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
+    /**
+     * Operator-owned jail {@link org.bukkit.Location}; written by {@code /setjail}. Also the Server
+     * Configuration GUI's jail location control.
+     */
+    public static ConfigField jailLocation() {
+        return new ConfigField(
+                List.of("modules", "jail", "location"),
                 ConfigFieldType.LOCATION,
                 ConfigValidators.alwaysValid(),
                 true,
