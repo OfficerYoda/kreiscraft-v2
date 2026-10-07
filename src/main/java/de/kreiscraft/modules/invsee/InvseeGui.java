@@ -50,9 +50,8 @@ public final class InvseeGui {
      * Builds an editable 5-row GUI backed by the player's live inventory (all 41 slots: hotbar,
      * main, armor, offhand). Changes made in the GUI write back to the live inventory immediately.
      *
-     * <p>Layout mirrors {@link #mapPlayerInvToGuiSlots(ItemStack[])} exactly — each GUI slot is
-     * bound to the corresponding Bukkit player-inventory slot via {@link
-     * SlotElement.InventoryLink}.
+     * <p>Layout follows the class-level slot mapping exactly — each GUI slot is bound to the
+     * corresponding Bukkit player-inventory slot via {@link SlotElement.InventoryLink}.
      */
     public static Gui buildEditable(PlayerInventory inv) {
         // fromContents wraps PlayerInventory.getContents() (≥41 slots in Paper).
