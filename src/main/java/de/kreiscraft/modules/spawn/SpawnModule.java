@@ -35,7 +35,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null);
+            config = new SpawnConfig(100, null, null, null, null);
         }
 
         // ── data ────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null);
+            config = new SpawnConfig(100, null, null, null, null);
         }
         if (service != null) {
             service.updateConfig(config);

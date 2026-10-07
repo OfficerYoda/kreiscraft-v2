@@ -39,7 +39,19 @@ class GlideListenerTest {
                 new SpawnConfig.GlideConfig(true, multiplyValue, spawnRadius, null),
                 new SpawnConfig.SwapHandBoostConfig(false, 3.0),
                 new SpawnConfig.SpawnLaunchConfig(false, null,
-                        new Vector(0, 5, 0)));
+                        new Vector(0, 5, 0)),
+                new SpawnConfig.GlideBoostConfig(false, 2.0, 5));
+    }
+
+    private SpawnConfig makeConfigWithBoost(int spawnRadius, int multiplyValue,
+            boolean boostEnabled, double boostStrength, int cooldownSeconds) {
+        return new SpawnConfig(
+                100,
+                new SpawnConfig.GlideConfig(true, multiplyValue, spawnRadius, null),
+                new SpawnConfig.SwapHandBoostConfig(false, 3.0),
+                new SpawnConfig.SpawnLaunchConfig(false, null,
+                        new Vector(0, 5, 0)),
+                new SpawnConfig.GlideBoostConfig(boostEnabled, boostStrength, cooldownSeconds));
     }
 
     @BeforeEach
@@ -231,5 +243,145 @@ class GlideListenerTest {
 
         scheduler.advance(Duration.ofMillis(150));
         assertThat(player.getAllowFlight()).isTrue(); // now inside reloaded radius
+    }
+
+    // ── glide boost eligibility ──────────────────────────────────────────────
+
+    @Test
+    void glideStart_inSpawnZone_withBoostEnabled_marksBoostEligible() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        PlayerMock player = server.addPlayer("lily");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5)); // inside spawn radius
+        player.setAllowFlight(true);
+
+        PlayerToggleFlightEvent event = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(event);
+
+        assertThat(listener.isFlying(player.getUniqueId())).isTrue();
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+    }
+
+    @Test
+    void glideStart_outsideSpawnZone_doesNotMarkBoostEligible() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        PlayerMock player = server.addPlayer("mike");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 200, 64, 200)); // far outside
+
+        PlayerToggleFlightEvent event = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(event);
+
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
+    }
+
+    @Test
+    void sneak_whileEligibleGliding_appliesBoost() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 1);
+        PlayerMock player = server.addPlayer("nina");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5, 0f, 0f));
+        player.setAllowFlight(true);
+
+        // Start glide inside spawn zone → boost-eligible
+        PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(toggle);
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+
+        // Player moves outside zone but stays gliding
+        player.setLocation(new Location(world, 200, 64, 200, 0f, 0f));
+        player.setGliding(true);
+
+        // Trigger sneak boost
+        org.bukkit.event.player.PlayerToggleSneakEvent sneak =
+                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        server.getPluginManager().callEvent(sneak);
+
+        assertThat(player.getVelocity().length()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void sneak_whenNotEligible_doesNotBoost() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        PlayerMock player = server.addPlayer("otto");
+        player.setGliding(true);
+        // player is NOT in boostEligible (did not start glide through the listener)
+
+        player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+        org.bukkit.event.player.PlayerToggleSneakEvent sneak =
+                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        server.getPluginManager().callEvent(sneak);
+
+        assertThat(player.getVelocity().length()).isEqualTo(0.0);
+    }
+
+    @Test
+    void glideEnd_clearsBoostEligibility() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        PlayerMock player = server.addPlayer("penny");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        player.setAllowFlight(true);
+
+        PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(toggle);
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+
+        // Glide ends
+        org.bukkit.event.entity.EntityToggleGlideEvent endGlide =
+                new org.bukkit.event.entity.EntityToggleGlideEvent(player, false);
+        server.getPluginManager().callEvent(endGlide);
+
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
+        assertThat(listener.isFlying(player.getUniqueId())).isFalse();
+    }
+
+    @Test
+    void playerQuit_clearsBoostEligibility() {
+        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        PlayerMock player = server.addPlayer("quinn");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        player.setAllowFlight(true);
+
+        PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(toggle);
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+
+        // Player quits — MockBukkit fires PlayerQuitEvent via disconnect()
+        player.disconnect();
+
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
+    }
+
+    @Test
+    void sneak_duringCooldown_doesNotBoost() {
+        // cooldown of 60 seconds — second sneak in the same session must be ignored
+        config = makeConfigWithBoost(30, 3, true, 2.0, 60);
+        PlayerMock player = server.addPlayer("rose");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5, 0f, 0f));
+        player.setAllowFlight(true);
+
+        PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(toggle);
+
+        player.setGliding(true);
+
+        // First sneak → boost applied
+        org.bukkit.event.player.PlayerToggleSneakEvent first =
+                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        server.getPluginManager().callEvent(first);
+        double firstMag = player.getVelocity().length();
+        assertThat(firstMag).isGreaterThan(0.0);
+
+        // Reset velocity and immediately sneak again (cooldown = 60s, not elapsed)
+        player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+        org.bukkit.event.player.PlayerToggleSneakEvent second =
+                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        server.getPluginManager().callEvent(second);
+
+        // Velocity must still be zero — cooldown blocked the second boost
+        assertThat(player.getVelocity().length()).isEqualTo(0.0);
     }
 }

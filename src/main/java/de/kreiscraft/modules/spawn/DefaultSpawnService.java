@@ -17,12 +17,20 @@ public final class DefaultSpawnService implements SpawnService {
 
     @Override
     public Optional<Location> spawnLocation() {
-        return Optional.ofNullable(data.get().get());
+        return Optional.ofNullable(data.get().location);
     }
 
     @Override
     public void setSpawn(Location location) {
-        data.update(ref -> ref.set(location));
+        data.update(s -> s.location = location);
+    }
+
+    @Override
+    public void setSpawn(Location location, int teleportRange) {
+        data.update(s -> {
+            s.location = location;
+            s.teleportRange = teleportRange;
+        });
     }
 
     @Override
@@ -37,7 +45,9 @@ public final class DefaultSpawnService implements SpawnService {
         if (spawnLoc.getWorld() == null || !spawnLoc.getWorld().equals(playerLoc.getWorld())) {
             return false;
         }
-        return spawnLoc.distance(playerLoc) <= config.teleportRange();
+        SpawnData.SpawnState state = data.get();
+        int range = state.teleportRange > 0 ? state.teleportRange : config.teleportRange();
+        return spawnLoc.distance(playerLoc) <= range;
     }
 
     /** Called by {@link SpawnModule#onConfigReload} to apply updated tunables at runtime. */

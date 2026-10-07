@@ -108,6 +108,7 @@ settings-gui:
 spawn:
   teleported: "<prefix> <green>Zum Spawn teleportiert."
   out-of-range: "<prefix> <red>Du bist zu weit vom Spawn entfernt."
+  wrong-world: "<prefix> <red>Du kannst /spawn nur in der normalen Welt benutzen."
   no-spawn-set: "<prefix> <red>Kein Spawn gesetzt."
   spawn-set: "<prefix> <green>Spawn gesetzt."
 start-sequence:

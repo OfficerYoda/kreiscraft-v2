@@ -30,7 +30,8 @@ class SwapHandBoostListenerTest {
                 new SpawnConfig.GlideConfig(true, 3, 30, null),
                 new SpawnConfig.SwapHandBoostConfig(true, multiplier),
                 new SpawnConfig.SpawnLaunchConfig(false, null,
-                        new Vector(0, 5, 0)));
+                        new Vector(0, 5, 0)),
+                new SpawnConfig.GlideBoostConfig(false, 2.0, 5));
     }
 
     @BeforeEach
