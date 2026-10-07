@@ -6,7 +6,6 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.updatemode.commands.UpdateModeCommand;
 import de.kreiscraft.platform.PaperPlatform;
-import java.io.IOException;
 import java.util.List;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -34,17 +33,14 @@ public final class UpdateModeModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
 
-        UpdateModeData data = new UpdateModeData(ctx.plugin().getDataFolder().toPath());
-        try {
-            data.load();
-        } catch (IOException e) {
-            throw new ModuleException("failed to load data for module " + id(), e);
-        }
-
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
         this.service =
                 new DefaultUpdateModeService(
-                        data, config, platform, ctx.messages(), ctx.plugin().getLogger());
+                        ctx.services().get(ConfigService.class),
+                        config,
+                        platform,
+                        ctx.messages(),
+                        ctx.plugin().getLogger());
         ctx.services().publish(UpdateModeService.class, service);
 
         ctx.events().register(new UpdateModeListener(service, ctx.messages()));
@@ -52,8 +48,6 @@ public final class UpdateModeModule implements Module {
         ctx.commands().register(
                 UpdateModeCommand.build(service, ctx.messages()),
                 "Toggle maintenance mode");
-
-        ctx.services().get(ConfigService.class).register(data);
     }
 
     @Override

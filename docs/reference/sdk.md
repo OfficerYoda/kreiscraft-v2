@@ -233,7 +233,7 @@ A single YAML file in the plugin data folder that persists a typed state object 
 protected DataFile(Path dataFolder, String relativePath)
 ```
 
-`dataFolder` is `ctx.plugin().getDataFolder().toPath()`. `relativePath` is relative to `dataFolder`, e.g. `"data/spawn.yml"`. The file need not exist at construction time; `load()` creates an empty state via `empty()` when the file is absent.
+`dataFolder` is `ctx.plugin().getDataFolder().toPath()`. `relativePath` is relative to `dataFolder`, e.g. `"data/jaildata.yml"`. The file need not exist at construction time; `load()` creates an empty state via `empty()` when the file is absent. `DataFile` is for player and gameplay Activity Data only — operator-owned state belongs in writable `config.yml` (ADR-10).
 
 ### Public methods
 

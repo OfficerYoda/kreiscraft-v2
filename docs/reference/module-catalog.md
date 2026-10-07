@@ -321,7 +321,7 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 ### Description
 
-Manages the server spawn point (persisted in `data/spawn.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleportRange` blocks of spawn.
+Manages the server spawn point and teleport range (operator-owned Server Configuration in `config.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleport-range` blocks of spawn.
 
 ### Services published
 
@@ -337,7 +337,7 @@ Manages the server spawn point (persisted in `data/spawn.yml`). Includes three o
 
 ### Description
 
-Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. State is persisted in `data/start-sequence.yml` so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
 
 ### Services published
 
@@ -385,7 +385,7 @@ Updates the tab list header and footer for all online players on a repeating sch
 
 ### Description
 
-When active, activation immediately disconnects every online player who is not allowed to bypass, and login attempts from non-bypassed players are blocked. A player bypasses if their name is listed in `bypass-names`, they are an operator, or they hold the configured `bypass-permission`. Bypassed players who are online when maintenance is activated receive a notification instead of being disconnected. State (active/inactive) is persisted in `data/update-mode.yml`.
+When active, activation immediately disconnects every online player who is not allowed to bypass, and login attempts from non-bypassed players are blocked. A player bypasses if their name is listed in `bypass-names`, they are an operator, or they hold the configured `bypass-permission`. Bypassed players who are online when maintenance is activated receive a notification instead of being disconnected. The active/inactive state is operator-owned Server Configuration (`modules.update-mode.active` in `config.yml`).
 
 ### Services published
 

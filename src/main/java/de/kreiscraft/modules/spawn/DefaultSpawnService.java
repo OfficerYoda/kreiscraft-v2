@@ -1,36 +1,57 @@
 package de.kreiscraft.modules.spawn;
 
+import de.kreiscraft.core.config.ConfigService;
+import de.kreiscraft.core.config.ServerConfigSchema;
 import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
 
-/** Default implementation of {@link SpawnService}. */
+/**
+ * Default implementation of {@link SpawnService}.
+ *
+ * <p>Per ADR-10 the spawn location and teleport range are operator-owned Server Configuration, so
+ * they are read from and written to {@code config.yml} through {@link ConfigService}. Both are
+ * read live on every call rather than cached, which means a successful command edit and a
+ * {@code /kreiscraft reload} are observed immediately.
+ */
 public final class DefaultSpawnService implements SpawnService {
 
-    private final SpawnData data;
-    private SpawnConfig config;
+    private static final String MODULE = "spawn";
+    private static final String LOCATION = "location";
+    private static final String TELEPORT_RANGE = "teleport-range";
 
-    public DefaultSpawnService(SpawnData data, SpawnConfig config) {
-        this.data = data;
+    private final ConfigService config;
+    private SpawnConfig moduleConfig;
+
+    public DefaultSpawnService(ConfigService config, SpawnConfig moduleConfig) {
         this.config = config;
+        this.moduleConfig = moduleConfig;
     }
 
     @Override
     public Optional<Location> spawnLocation() {
-        return Optional.ofNullable(data.get().getLocation());
+        ConfigurationNode node = config.module(MODULE).node(LOCATION);
+        if (node.virtual() || node.isNull()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.ofNullable(node.get(Location.class));
+        } catch (SerializationException e) {
+            throw new IllegalStateException("invalid spawn location in Server Configuration", e);
+        }
     }
 
     @Override
     public void setSpawn(Location location) {
-        data.update(s -> s.setLocation(location));
+        config.applyEdit(ServerConfigSchema.spawnLocation(), location);
     }
 
     @Override
     public void setSpawn(Location location, int teleportRange) {
-        data.update(s -> {
-            s.setLocation(location);
-            s.setTeleportRange(teleportRange);
-        });
+        config.applyEdit(ServerConfigSchema.spawnLocation(), location);
+        config.applyEdit(ServerConfigSchema.spawnTeleportRange(), teleportRange);
     }
 
     @Override
@@ -45,13 +66,20 @@ public final class DefaultSpawnService implements SpawnService {
         if (spawnLoc.getWorld() == null || !spawnLoc.getWorld().equals(playerLoc.getWorld())) {
             return false;
         }
-        SpawnData.SpawnState state = data.get();
-        int range = state.getTeleportRange() > 0 ? state.getTeleportRange() : config.teleportRange();
-        return spawnLoc.distance(playerLoc) <= range;
+        return spawnLoc.distance(playerLoc) <= teleportRange();
+    }
+
+    /** The live teleport range, falling back to the module-config default when the key is absent. */
+    private int teleportRange() {
+        ConfigurationNode node = config.module(MODULE).node(TELEPORT_RANGE);
+        if (node.virtual() || node.isNull()) {
+            return moduleConfig.teleportRange();
+        }
+        return node.getInt(moduleConfig.teleportRange());
     }
 
     /** Called by {@link SpawnModule#onConfigReload} to apply updated tunables at runtime. */
     public void updateConfig(SpawnConfig config) {
-        this.config = config;
+        this.moduleConfig = config;
     }
 }

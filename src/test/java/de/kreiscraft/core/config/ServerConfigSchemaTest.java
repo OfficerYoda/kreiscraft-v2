@@ -68,6 +68,43 @@ class ServerConfigSchemaTest {
     }
 
     @Test
+    void operatorStateFields_declareExpectedPathsAndLifecycle() {
+        ConfigField location = ServerConfigSchema.spawnLocation();
+        assertThat(location.path()).containsExactly("modules", "spawn", "location");
+        assertThat(location.type()).isEqualTo(ConfigFieldType.LOCATION);
+        assertThat(location.guiExposed()).isFalse();
+        assertThat(location.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
+
+        ConfigField range = ServerConfigSchema.spawnTeleportRange();
+        assertThat(range.path()).containsExactly("modules", "spawn", "teleport-range");
+        assertThat(range.type()).isEqualTo(ConfigFieldType.INTEGER);
+
+        ConfigField active = ServerConfigSchema.updateModeActive();
+        assertThat(active.path()).containsExactly("modules", "update-mode", "active");
+        assertThat(active.type()).isEqualTo(ConfigFieldType.BOOLEAN);
+
+        ConfigField started = ServerConfigSchema.startSequenceStarted();
+        assertThat(started.path()).containsExactly("modules", "start-sequence", "has-started");
+        assertThat(started.type()).isEqualTo(ConfigFieldType.BOOLEAN);
+
+        for (ConfigField field : List.of(location, range, active, started)) {
+            assertThat(field.hotReloadable()).isTrue();
+            assertThat(field.restartRequired()).isFalse();
+        }
+    }
+
+    @Test
+    void operatorStateBooleanFields_rejectNonBooleanCandidates() throws SerializationException {
+        ConfigurationNode notBoolean = CommentedConfigurationNode.root();
+        notBoolean.set("yes");
+
+        assertThat(ServerConfigSchema.updateModeActive().validator().validate(notBoolean))
+                .isPresent();
+        assertThat(ServerConfigSchema.startSequenceStarted().validator().validate(notBoolean))
+                .isPresent();
+    }
+
+    @Test
     void lifecycle_describesHotReloadAndRestart() {
         assertThat(ConfigLifecycle.HOT_RELOAD.hotReloadable()).isTrue();
         assertThat(ConfigLifecycle.HOT_RELOAD.restartRequired()).isFalse();

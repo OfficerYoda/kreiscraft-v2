@@ -6,7 +6,6 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.spawn.commands.SetSpawnCommand;
 import de.kreiscraft.modules.spawn.commands.SpawnCommand;
-import java.io.IOException;
 import java.util.List;
 import org.spongepowered.configurate.ConfigurationNode;
 
@@ -38,17 +37,8 @@ public final class SpawnModule implements Module {
             config = new SpawnConfig(100, null, null, null, null);
         }
 
-        // ── data ────────────────────────────────────────────────────────────
-        SpawnData data = new SpawnData(ctx.plugin().getDataFolder().toPath());
-        try {
-            data.load();
-        } catch (IOException e) {
-            throw new ModuleException("failed to load spawn data", e);
-        }
-        ctx.services().get(ConfigService.class).register(data);
-
         // ── service ─────────────────────────────────────────────────────────
-        this.service = new DefaultSpawnService(data, config);
+        this.service = new DefaultSpawnService(ctx.services().get(ConfigService.class), config);
         ctx.services().publish(SpawnService.class, service);
 
         // ── listeners (config supplied via lambda so reloads propagate) ─────
