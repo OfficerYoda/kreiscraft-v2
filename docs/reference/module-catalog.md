@@ -297,9 +297,17 @@ Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes la
 
 The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
 
+#### Server Configuration editor
+
+Players holding `kreiscraft.settingsgui.admin` also see a **Server Configuration** entry on the Player Settings root, and can open it directly with `/settings admin`. Unauthorized players never see the entry and cannot reach the subcommand.
+
+The editor groups the GUI-exposed `ServerConfigSchema` fields by category (`modules`, `combat`, `effects`, `spawn`, `chat-format`) and presents a typed control per field type: booleans toggle, whole and decimal numbers step, durations/enums/materials cycle, a location is set to the editor's current position, and free-form text and text lists are entered in chat. Categories and category pages have forward/back navigation.
+
+Every edit goes through the validated, atomic `ConfigService` boundary, so a value is validated and durably written the moment it is clicked; a rejected or failed edit changes neither the running configuration nor `config.yml`. The editor is closed with a session-specific report: hot-reloadable edits offer the applicable clickable `/kc reload` action, and restart-only edits (always including every module enable flag) warn that a server restart is required. Module lifecycle changes are never described as hot-applied. Low-level, sensitive, networking, and tab-list header/footer values stay YAML-only.
+
 ### Services published
 
-None. The GUI is a client of the shared `PlayerPreferencesService`.
+None. The GUI is a client of the shared `PlayerPreferencesService` and the validated `ConfigService`.
 
 ---
 

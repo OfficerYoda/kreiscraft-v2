@@ -236,6 +236,33 @@ class SettingsGuiTest {
     }
 
     // ------------------------------------------------------------------
+    // Authorized Server Configuration entry
+    // ------------------------------------------------------------------
+
+    @Test
+    void root_withoutAuthorizedEntry_hidesServerConfiguration() {
+        Gui gui = root();
+
+        assertThat(gui.getItem(SettingsGui.SLOT_SERVER_CONFIG)).isNull();
+    }
+
+    @Test
+    void root_withAuthorizedEntry_showsServerConfiguration() {
+        Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, player, navigator, true);
+
+        assertThat(gui.getItem(SettingsGui.SLOT_SERVER_CONFIG)).isNotNull();
+    }
+
+    @Test
+    void serverConfigurationControl_opensServerConfigurationPage() {
+        Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, player, navigator, true);
+
+        click(gui, SettingsGui.SLOT_SERVER_CONFIG);
+
+        assertThat(navigator.pages).containsExactly(Page.SERVER_CONFIG);
+    }
+
+    // ------------------------------------------------------------------
     // Test doubles
     // ------------------------------------------------------------------
 
