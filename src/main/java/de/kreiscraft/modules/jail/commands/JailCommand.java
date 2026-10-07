@@ -29,6 +29,11 @@ public final class JailCommand {
         return buildWithName("jail", service, messages, configRef);
     }
 
+    /**
+     * Builds the command node under the given {@code name} (use {@code "jail"} for the canonical
+     * command and {@code "kerker"} for the alias). Both roots share identical behavior and
+     * permissions.
+     */
     public static LiteralCommandNode<CommandSourceStack> buildWithName(
             String name,
             JailService service,
