@@ -131,6 +131,49 @@ class SuggestionProvidersTest {
     }
 
     // ---------------------------------------------------------------------
+    // allAndOnlinePlayers
+    // ---------------------------------------------------------------------
+
+    @Test
+    void allAndOnlinePlayers_suggestsAllFirstThenOnlineNames()
+            throws ExecutionException, InterruptedException {
+        Server server = mock(Server.class);
+        when(server.getOnlinePlayers())
+                .thenAnswer(invocation -> List.of(player("bob"), player("Alice")));
+
+        List<String> suggestions =
+                suggestions(SuggestionProviders.allAndOnlinePlayers(server, PERMISSION), "", true);
+
+        // Brigadier returns suggestions in case-insensitive sorted order.
+        assertThat(suggestions).containsExactly("Alice", "all", "bob");
+    }
+
+    @Test
+    void allAndOnlinePlayers_filtersByRemainingInput()
+            throws ExecutionException, InterruptedException {
+        Server server = mock(Server.class);
+        when(server.getOnlinePlayers())
+                .thenAnswer(invocation -> List.of(player("bob"), player("Alice")));
+
+        List<String> suggestions =
+                suggestions(SuggestionProviders.allAndOnlinePlayers(server, PERMISSION), "al", true);
+
+        assertThat(suggestions).containsExactly("Alice", "all");
+    }
+
+    @Test
+    void allAndOnlinePlayers_withoutPermission_suggestsNothing()
+            throws ExecutionException, InterruptedException {
+        Server server = mock(Server.class);
+        when(server.getOnlinePlayers()).thenAnswer(invocation -> List.of(player("Alice")));
+
+        List<String> suggestions =
+                suggestions(SuggestionProviders.allAndOnlinePlayers(server, PERMISSION), "", false);
+
+        assertThat(suggestions).isEmpty();
+    }
+
+    // ---------------------------------------------------------------------
     // entityTypes
     // ---------------------------------------------------------------------
 

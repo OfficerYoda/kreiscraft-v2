@@ -4,24 +4,27 @@ import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
-/** Published service interface for spawn-location management. */
+/** Published service interface for spawn-location management and spawn geometry. */
 public interface SpawnService {
 
     /** Returns the configured spawn location, or empty if none has been set. */
     Optional<Location> spawnLocation();
 
-    /** Persists {@code location} as the new server spawn point (range unchanged). */
+    /** Persists {@code location} as the new server spawn point. */
     void setSpawn(Location location);
 
     /**
-     * Persists {@code location} as the new server spawn point and stores {@code teleportRange}
-     * as the maximum distance from which players may use {@code /spawn}.
+     * Returns {@code true} when a spawn location is set, the player is in the spawn world, and the
+     * player's <em>horizontal</em> (XZ) distance from spawn is within the Spawn Radius. This is the
+     * Spawn Access Zone used by {@code /spawn}; vertical position never affects the result. The
+     * boundary is inclusive.
      */
-    void setSpawn(Location location, int teleportRange);
+    boolean isInSpawnAccessZone(Player player);
 
     /**
-     * Returns {@code true} when a spawn location is set and the player is within the effective
-     * teleport range (persisted value if set, otherwise the module-config default).
+     * Returns {@code true} when a spawn location is set, the player is in the spawn world, and the
+     * player's full three-dimensional distance from spawn is within the Spawn Radius. This is the
+     * Glide Zone; both horizontal and vertical distance count. The boundary is inclusive.
      */
-    boolean isInSpawnRadius(Player player);
+    boolean isInGlideZone(Player player);
 }

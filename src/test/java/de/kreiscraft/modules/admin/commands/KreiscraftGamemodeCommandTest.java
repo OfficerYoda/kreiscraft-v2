@@ -98,4 +98,20 @@ class KreiscraftGamemodeCommandTest {
 
         assertThat(target.getGameMode()).isEqualTo(GameMode.CREATIVE);
     }
+
+    @Test
+    void build_suggestsOnlinePlayersForTarget() {
+        LiteralCommandNode<CommandSourceStack> node =
+                KreiscraftGamemodeCommand.build(messages, server);
+        PlayerMock executor = server.addPlayer("Admin");
+        server.addPlayer("Target");
+        executor.addAttachment(plugin, "kreiscraft.admin.gamemode", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(executor);
+
+        assertThat(
+                de.kreiscraft.core.command.SuggestionTestSupport.suggestions(
+                        node.getChild("mode").getChild("player"), src, ""))
+                .contains("Admin", "Target");
+    }
 }

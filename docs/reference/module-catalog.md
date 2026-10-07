@@ -10,7 +10,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
-| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
+| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, gm, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode and vanilla-gamemode forwarding, item spawning, player info, TPS, weather). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
@@ -27,8 +27,8 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
-| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
-| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
+| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
+| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
@@ -79,7 +79,7 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 
 ### Description
 
-Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`).
+Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`). The `/hackerlogs <target> [cheats|xray]` command accepts a player selector (`@a`, `@p`, …), reports each selected player's entries with a localized kind label, and completes online plus known-offline profiles through the shared suggestion providers.
 
 ### Services published
 
@@ -111,11 +111,17 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect and records
+their name and UUID in `data/bedrock-players.yml`. Administrators pre-authorize a Bedrock name with
+`/bedrocklist add <name>`, which creates a Pending Bedrock Authorization in
+`data/bedrock-authorizations.yml`: the first matching login binds it to the observed UUID and
+whitelists that identity, and a bound authorization never silently rebinds. Replacing a bound
+identity requires `/bedrocklist remove <name>` followed by re-registration. `/bedrocklist list`
+lists the known players in deterministic order.
 
 ### Services published
 
-- `BedrockService` — query the set of known Bedrock player records.
+- `BedrockService` — query known Bedrock player records and Pending Bedrock Authorizations.
 
 ---
 
@@ -153,7 +159,7 @@ Allows players with the clickthrough setting enabled to open containers and Ende
 
 ### Description
 
-Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies.
+Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies. A fresh tag renders its full duration immediately and then counts down exactly once per second, driven by its own scheduler task rather than a shared sweep. The `/combat <target> <seconds>` command accepts a player selector (`@a`, `@p`, …) and tags every selected player.
 
 ### Events published
 
@@ -331,11 +337,11 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 ### Description
 
-Manages the server spawn point and teleport range (operator-owned Server Configuration in `config.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleport-range` blocks of spawn.
+Manages the server spawn point and the single Spawn Radius (module configuration in `config.yml`). `/spawn` is overworld-only and restricted to the horizontal Spawn Access Zone; glide initiation requires the full three-dimensional Glide Zone. Includes three optional subsystems: elytra glide around spawn, a swap-hand velocity boost while gliding, and a persistent sneak boost for glides that started inside the Glide Zone. Spawn-launch behavior has been removed.
 
 ### Services published
 
-- `SpawnService` — get/set the spawn location and check whether a player is within the spawn radius.
+- `SpawnService` — get/set the spawn location and check the Spawn Access Zone (XZ) and the Glide Zone (3D).
 
 ---
 
@@ -347,7 +353,7 @@ Manages the server spawn point and teleport range (operator-owned Server Configu
 
 ### Description
 
-Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown (`countdown` down through `1`, each with a title and sound), followed by the start title and exactly one continuous world-border expansion. The border duration is configured in seconds, represented internally as a `Duration`, and converted to ticks only at Bukkit's `WorldBorder` boundary. The plugin delegates the in-progress transition to Minecraft and keeps no phase, timestamp, or remaining-duration resume state, so a graceful restart resumes the expansion. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
 
 ### Services published
 

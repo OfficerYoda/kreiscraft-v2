@@ -155,6 +155,47 @@ class ConfigurateMessageServiceTest {
     }
 
     @Test
+    void localeFor_usesRecipientLanguageAndFallsBackToServerLanguage(@TempDir Path tmp)
+            throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp,
+                getClass().getClassLoader(),
+                "de",
+                server,
+                recipient -> "Alice".equals(recipient.getName()) ? Optional.of("en") : Optional.empty());
+        Player alice = server.addPlayer("Alice");
+        Player bob = server.addPlayer("Bob");
+
+        assertThat(svc.localeFor(alice))
+                .as("a stored English preference must format dates in English")
+                .isEqualTo(java.util.Locale.ENGLISH);
+        assertThat(svc.localeFor(bob))
+                .as("a recipient without a preference must use the server language")
+                .isEqualTo(java.util.Locale.GERMAN);
+    }
+
+    @Test
+    void render_supportsComponentPlaceholdersWithoutStringifyingThem(@TempDir Path tmp)
+            throws IOException {
+        ConfigurateMessageService svc =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+
+        Component relative = Component.text("2 days ago");
+        String plain =
+                plain(
+                        svc.render(
+                                "admin.lastonline",
+                                "player",
+                                "Bob",
+                                "when",
+                                "2026-01-15 12:34:56",
+                                "relative",
+                                relative));
+
+        assertThat(plain).contains("Bob").contains("2026-01-15 12:34:56").contains("2 days ago");
+    }
+
+    @Test
     void en_and_de_have_identical_key_sets() throws IOException {
         URL deUrl = getClass().getClassLoader().getResource("lang/de.yml");
         URL enUrl = getClass().getClassLoader().getResource("lang/en.yml");

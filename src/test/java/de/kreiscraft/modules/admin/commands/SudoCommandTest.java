@@ -70,4 +70,19 @@ class SudoCommandTest {
 
         assertThat(messages.sentKeys).containsExactly("admin.sudo-executed");
     }
+
+    @Test
+    void build_suggestsAllAndOnlinePlayersForTarget() {
+        LiteralCommandNode<CommandSourceStack> node = SudoCommand.build(messages, server);
+        PlayerMock executor = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        executor.addAttachment(plugin, "kreiscraft.admin.sudo", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(executor);
+
+        assertThat(
+                de.kreiscraft.core.command.SuggestionTestSupport.suggestions(
+                        node.getChild("target"), src, ""))
+                .contains("all", "Admin", "Target");
+    }
 }

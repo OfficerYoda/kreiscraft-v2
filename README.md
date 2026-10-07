@@ -75,8 +75,8 @@ src/main/java/de/kreiscraft/
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |
 | `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
-| `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |
-| `start-sequence` | Season-start animation: countdown titles + world-border expansion phases; `/start` command |
+| `spawn` | `/setspawn`, `/spawn`, spawn glide zone, swap-hand boost, sneak glide boost |
+| `start-sequence` | Season-start animation: countdown titles + one continuous world-border expansion; `/start` command |
 | `status` | Per-player prefix/suffix managed with `/status`; fires `StatusChangedEvent` consumed by `chat-format` and `tablist` |
 | `tablist` | Original Kreiscraft tab-list banner, playtime, clock, ping and TPS with MiniMessage templates and `%placeholder%` tokens |
 | `update-mode` | `/updatemode` — maintenance mode that kicks non-bypass players on activation and login |

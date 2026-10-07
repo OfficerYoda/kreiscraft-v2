@@ -33,6 +33,15 @@ public final class PlaceholderResolver {
         return zone;
     }
 
+    /**
+     * The clock used to evaluate time-dependent placeholders. Exposed so commands that render
+     * relative durations can compute "now" from the same clock the resolver uses, keeping tests
+     * deterministic.
+     */
+    public Clock clock() {
+        return clock;
+    }
+
     public String resolveString(String template, Player context) {
         Matcher m = TOKEN.matcher(template);
         StringBuilder out = new StringBuilder();

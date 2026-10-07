@@ -19,6 +19,15 @@ public interface MessageService {
         return render(key, placeholders);
     }
 
+    /**
+     * Resolves the {@link java.util.Locale} to use when formatting locale-sensitive values such as
+     * dates for {@code recipient}. The default is English so test doubles and alternative
+     * implementations only need to override it when they render locale-aware output.
+     */
+    default java.util.Locale localeFor(CommandSender recipient) {
+        return java.util.Locale.ENGLISH;
+    }
+
     void send(CommandSender sender, String key, Object... placeholders);
 
     void broadcast(String key, Object... placeholders);

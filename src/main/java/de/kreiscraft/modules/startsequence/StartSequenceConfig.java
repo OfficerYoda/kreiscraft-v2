@@ -2,13 +2,21 @@ package de.kreiscraft.modules.startsequence;
 
 import java.time.Duration;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
-import org.spongepowered.configurate.objectmapping.meta.Setting;
 
+/**
+ * Configuration for the Start Sequence.
+ *
+ * <p>The border expansion is configured and documented in seconds but represented internally as a
+ * {@link Duration}. It is converted to ticks only at the Bukkit {@code WorldBorder} boundary, and
+ * the whole expansion is delegated to Minecraft as a single transition. No phase, timestamp, or
+ * remaining-duration state is owned by the plugin.
+ */
 @ConfigSerializable
-public record StartSequenceConfig(Duration countdown, Double initialBorderSize, Double targetBorderSize,
-        @Setting("phase-1-duration") Duration phase1Duration, @Setting("phase-2-duration") Duration phase2Duration,
-        @Setting("phase-1-to-2-delay") Duration phase1To2Delay,
-        @Setting("phase-2-to-instant-delay") Duration phase2ToInstantDelay) {
+public record StartSequenceConfig(
+        Duration countdown,
+        Double initialBorderSize,
+        Double targetBorderSize,
+        Duration borderDuration) {
 
     public StartSequenceConfig {
         if (countdown == null) {
@@ -20,21 +28,9 @@ public record StartSequenceConfig(Duration countdown, Double initialBorderSize, 
         if (targetBorderSize == null) {
             targetBorderSize = 30_000_000.0;
         }
-        if (phase1Duration == null) {
-            // RusticPrism used 550000 ticks for the first border phase; 20 ticks = 1 second.
-            phase1Duration = Duration.ofSeconds(27_500);
-        }
-        if (phase2Duration == null) {
-            // RusticPrism used 300000 ticks for the second border phase; 20 ticks = 1 second.
-            phase2Duration = Duration.ofSeconds(15_000);
-        }
-        if (phase1To2Delay == null) {
-            // 150 ticks.
-            phase1To2Delay = Duration.ofMillis(7_500);
-        }
-        if (phase2ToInstantDelay == null) {
-            // 300 ticks.
-            phase2ToInstantDelay = Duration.ofMillis(15_000);
+        if (borderDuration == null) {
+            // Configured in seconds; converted to ticks only at the Bukkit WorldBorder boundary.
+            borderDuration = Duration.ofSeconds(30_000);
         }
     }
 }

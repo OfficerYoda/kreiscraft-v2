@@ -47,7 +47,7 @@ public final class CombatModule implements Module {
         ctx.events().register(elytraListener);
 
         ctx.commands().register(
-                CombatCommand.build(service, ctx.messages()),
+                CombatCommand.build(service, ctx.messages(), platform.server()),
                 "Manually tag a player as in combat");
     }
 

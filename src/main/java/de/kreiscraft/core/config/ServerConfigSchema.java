@@ -136,16 +136,6 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.HOT_RELOAD);
     }
 
-    /** Operator-owned {@code /spawn} teleport range, in blocks. */
-    public static ConfigField spawnTeleportRange() {
-        return new ConfigField(
-                List.of("modules", "spawn", "teleport-range"),
-                ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, Integer.MAX_VALUE),
-                false,
-                ConfigLifecycle.HOT_RELOAD);
-    }
-
     /** Operator-owned maintenance-mode state. */
     public static ConfigField updateModeActive() {
         return new ConfigField(
