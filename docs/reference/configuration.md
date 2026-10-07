@@ -239,17 +239,12 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.start-sequence`) | Type | Default | Description |
 |---|---|---|---|
 | `has-started` | boolean | `false` | Operator-owned completion flag. `true` once the sequence has run; cleared by `/start reset`. Not migrated from the retired `data/start-sequence.yml`. |
-| `countdown` | Duration | `10s` | Initial countdown value. The sequence displays `countdown - 1` … `1`, one number per second, then the start title. |
+| `countdown` | Duration | `10s` | Countdown value. The ceremony renders `countdown` down through `1`, one number per second, then the start title one second later. |
 | `initial-border-size` | double | `50.0` | World border diameter at game start (blocks). |
-| `target-border-size` | double | `30000000.0` | World border diameter at full expansion. |
-| `phase-1-duration` | Duration | `550000t` (27500 s) | Border phase 1 expansion duration, in ticks. |
-| `phase-2-duration` | Duration | `300000t` (15000 s) | Border phase 2 expansion duration, in ticks. |
-| `phase-1-to-2-delay` | Duration | `150t` (7.5 s) | Delay after the start title before phase 2 begins. |
-| `phase-2-to-instant-delay` | Duration | `300t` (15 s) | Delay after the start title before the border snaps to full size. |
+| `target-border-size` | double | `30000000.0` | World border diameter after the single expansion (blocks). |
+| `border-duration` | Duration | `30000s` (30,000 s) | Duration of the one continuous border expansion, configured in seconds. |
 
-These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so camelCase conversion does not apply.
-
-Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border phase durations and delays are expressed in ticks to mirror the original RusticPrism sequence; Bukkit's `WorldBorder.changeSize` API also takes a duration in ticks, so the service derives the tick count directly from each duration. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
+Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border duration is configured in seconds but represented internally as a `Duration`; it is converted to ticks only at the Bukkit `WorldBorder` boundary (20 ticks = 1 second). The `trigger` call issues exactly one `WorldBorder.changeSize(target-border-size, border-duration-in-ticks)` — no second phase, final snap, phase timestamp, or remaining-duration state is owned by the plugin. Paper persists the in-progress transition across a graceful restart and resumes it, which was verified on Paper 26.2 build 132; abrupt crashes and cross-version migration are not guaranteed. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
 
 ---
 
