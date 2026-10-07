@@ -33,7 +33,7 @@ public final class StartSequenceModule implements Module {
             throw new ModuleException("Failed to load config for module " + id(), e);
         }
         if (this.config == null) {
-            this.config = new StartSequenceConfig(null, null, null, null, null, null, null);
+            this.config = new StartSequenceConfig(null, null, null, null);
         }
 
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
