@@ -205,11 +205,11 @@ Registers a Bukkit shaped crafting recipe that yields a firework rocket with the
 
 ### Description
 
-Applies or removes the Bukkit `Glowing` effect for a player via `/glow`. State is tracked in `DefaultGlowService` and all active glow effects are cleared on module disable.
+Applies or removes the Bukkit `Glowing` effect for a player via `/glow`, and for another online player via `/glow <player>` (requires `kreiscraft.glow.other`). The entity's current glowing state is the toggle truth; the resulting value is persisted as the player's desired glow preference, which is reconciled onto the entity on join. When one player changes another's glow, both the actor and the target are notified in their own language. Active glow effects owned by this module are cleared on module disable.
 
 ### Services published
 
-- `GlowService` — toggle and query glow state for players.
+- `GlowService` — toggle, query, and reconcile the glow state of players.
 
 ---
 
