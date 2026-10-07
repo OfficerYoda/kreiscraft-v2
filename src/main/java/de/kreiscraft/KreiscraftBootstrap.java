@@ -10,6 +10,7 @@ import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
+import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.module.ModuleRegistry;
 import de.kreiscraft.core.module.StartupSummary;
 import de.kreiscraft.core.scheduler.BukkitScheduler;
@@ -129,6 +130,7 @@ public final class KreiscraftBootstrap {
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),
                 config.root(),
                 plugin.getLogger());
+        services.publish(ModuleEnablement.class, modules);
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.api.ApiModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
