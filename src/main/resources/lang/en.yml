@@ -10,6 +10,36 @@ server-config:
   lifecycle:
     hot-reload: "<green>Applied by <white>/kreiscraft reload</white>."
     restart-required: "<red>Requires a server restart."
+  entry: "<gold>Server Configuration <dark_gray>(admins only)"
+  title: "<gray>Server Configuration"
+  category-title: "<gray>Server Configuration: <category>"
+  category:
+    modules: "Modules"
+    combat: "Combat"
+    effects: "Effects"
+    spawn: "Spawn"
+    chat-format: "Chat Format"
+  field:
+    module-enabled: "Module <module> enabled"
+    combat-disable-elytra: "Disable elytra in combat"
+    effects-count: "Effect count"
+    effects-offset-x: "Effect offset X"
+    combat-tag-duration: "Combat tag duration"
+    combat-default-display: "Combat display"
+    spawn-location: "Spawn location"
+    chat-format-format: "Chat format"
+    combat-excluded-worlds: "Excluded worlds"
+  value-on: "<green>On"
+  value-off: "<red>Off"
+  value-none: "<gray>not set"
+  edit-rejected: "<prefix> <red>Invalid value: <reason>"
+  edit-failed: "<prefix> <red>Save failed; nothing changed."
+  input:
+    prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
+    cancelled: "<prefix> <gray>Input cancelled."
+  close:
+    hot-reload: "<prefix> <yellow><count> change(s) will apply on <click:run_command:'/kc reload'><green><underlined>[Reload now]</underlined></green></click>."
+    restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."
 admin:
   item-given: "<prefix> <green><count>x <item></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."

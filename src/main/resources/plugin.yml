@@ -62,6 +62,9 @@ permissions:
   kreiscraft.settingsgui.use:
     description: Open the per-player settings GUI
     default: true
+  kreiscraft.settingsgui.admin:
+    description: Open the Server Configuration editor from Player Settings or /settings admin
+    default: op
   kreiscraft.signcolor.use:
     description: Use legacy colours, placeholders and MiniMessage on signs
     default: true

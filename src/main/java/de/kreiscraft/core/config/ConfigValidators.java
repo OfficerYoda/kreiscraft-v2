@@ -89,6 +89,18 @@ public final class ConfigValidators {
         };
     }
 
+    /** Requires a string value matching one of {@code allowed}, ignoring case. */
+    public static ConfigValidator oneOf(String... allowed) {
+        List<String> values = List.of(allowed);
+        return value -> {
+            String name = value.getString();
+            if (name != null && values.stream().anyMatch(option -> option.equalsIgnoreCase(name))) {
+                return Optional.empty();
+            }
+            return Optional.of("must be one of " + values);
+        };
+    }
+
     /** Requires a non-blank string. */
     public static ConfigValidator nonEmptyString() {
         return value -> {

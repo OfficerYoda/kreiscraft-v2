@@ -2,57 +2,47 @@ package de.kreiscraft.modules.settingsgui.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.core.module.ModuleEnablement;
-import de.kreiscraft.modules.settingsgui.SettingsGui;
 import de.kreiscraft.modules.settingsgui.SettingsGui.Page;
-import de.kreiscraft.modules.settingsgui.SettingsService;
-import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.modules.settingsgui.SettingsNavigator;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
+/**
+ * Builds {@code /settings} and its {@code admin} subcommand.
+ *
+ * <p>{@code /settings} opens the Player Settings root for any player with {@code
+ * kreiscraft.settingsgui.use}. {@code /settings admin} opens the authorized Server Configuration
+ * editor and additionally requires {@code kreiscraft.settingsgui.admin}; a player without it cannot
+ * reach the subcommand.
+ */
 public final class SettingsCommand {
+
+    /** Permission required to open the Player Settings GUI. */
+    public static final String USE_PERMISSION = "kreiscraft.settingsgui.use";
+
+    /** Permission required to open the Server Configuration editor. */
+    public static final String ADMIN_PERMISSION = "kreiscraft.settingsgui.admin";
 
     private SettingsCommand() {}
 
-    /**
-     * Builds the {@code /settings} command node. The command opens the module-aware Player Settings
-     * GUI for the invoking player and wires page navigation back through itself.
-     */
-    public static LiteralCommandNode<CommandSourceStack> build(
-            SettingsService service,
-            ModuleEnablement modules,
-            MessageService messages,
-            Gui gui) {
+    public static LiteralCommandNode<CommandSourceStack> build(SettingsNavigator navigator) {
         return Commands.literal("settings")
-                .requires(src -> src.getSender().hasPermission("kreiscraft.settingsgui.use"))
+                .requires(src -> src.getSender().hasPermission(USE_PERMISSION))
                 .executes(ctx -> {
-                    if (!(ctx.getSource().getSender() instanceof Player player)) {
-                        return Command.SINGLE_SUCCESS;
+                    if (ctx.getSource().getSender() instanceof Player player) {
+                        navigator.open(player, Page.ROOT);
                     }
-                    open(player, service, modules, messages, gui, Page.ROOT);
                     return Command.SINGLE_SUCCESS;
                 })
+                .then(Commands.literal("admin")
+                        .requires(src -> src.getSender().hasPermission(ADMIN_PERMISSION))
+                        .executes(ctx -> {
+                            if (ctx.getSource().getSender() instanceof Player player) {
+                                navigator.openAdmin(player);
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        }))
                 .build();
-    }
-
-    private static void open(
-            Player player,
-            SettingsService service,
-            ModuleEnablement modules,
-            MessageService messages,
-            Gui gui,
-            Page page) {
-        SettingsGui.Navigator navigator =
-                (viewer, target) -> open(viewer, service, modules, messages, gui, target);
-        xyz.xenondevs.invui.gui.Gui invui =
-                switch (page) {
-                    case ROOT -> SettingsGui.buildRoot(service, modules, messages, player, navigator);
-                    case EFFECTS -> SettingsGui.buildEffects(service, messages, navigator);
-                };
-        Component title = messages.renderFor(player, page.titleKey());
-        gui.open(player, invui, title);
     }
 }
