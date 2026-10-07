@@ -187,7 +187,7 @@ class ElytraDenyListenerTest {
         when(service.isInCombat(player.getUniqueId())).thenReturn(true);
         player.getInventory().setChestplate(new ItemStack(Material.ELYTRA));
 
-        // RusticPrism removed elytra continuously while tagged, not only on a glide attempt.
+        // The elytra is removed continuously while tagged, not only on a glide attempt.
         scheduler.advance(Duration.ofSeconds(1));
 
         assertThat(player.getInventory().getChestplate()).isNull();

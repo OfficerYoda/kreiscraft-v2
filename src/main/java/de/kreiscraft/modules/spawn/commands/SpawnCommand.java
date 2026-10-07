@@ -16,8 +16,7 @@ import org.bukkit.entity.Player;
  *
  * <p>Guards: the player must be in the overworld ({@link World.Environment#NORMAL}) and inside the
  * horizontal Spawn Access Zone (XZ distance from spawn within the Spawn Radius). On success, 30
- * {@link Particle#CRIT} particles are spawned at the player's location — matching the original
- * RusticPrism behaviour.
+ * {@link Particle#CRIT} particles are spawned at the player's departure location.
  */
 public final class SpawnCommand {
 
