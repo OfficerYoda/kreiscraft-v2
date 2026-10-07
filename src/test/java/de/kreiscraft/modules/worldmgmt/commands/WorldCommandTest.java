@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,6 +89,29 @@ class WorldCommandTest {
 
         verify(messages, never())
                 .send(player, "world-mgmt.unknown-world", "world", "the_nether");
+    }
+
+    @Test
+    void build_requiresWorldPermission() {
+        LiteralCommandNode<CommandSourceStack> node = WorldCommand.build(messages, platform);
+
+        CommandSourceStack withPerm = mock(CommandSourceStack.class);
+        Player permPlayer = mock(Player.class);
+        when(withPerm.getSender()).thenReturn(permPlayer);
+        when(permPlayer.hasPermission("kreiscraft.worldmgmt.world")).thenReturn(true);
+        assertThat(node.getRequirement().test(withPerm)).isTrue();
+
+        CommandSourceStack withoutPerm = mock(CommandSourceStack.class);
+        Player noPermPlayer = mock(Player.class);
+        when(withoutPerm.getSender()).thenReturn(noPermPlayer);
+        when(noPermPlayer.hasPermission("kreiscraft.worldmgmt.world")).thenReturn(false);
+        assertThat(node.getRequirement().test(withoutPerm)).isFalse();
+    }
+
+    @Test
+    void build_returnsNodeNamedWorld() {
+        LiteralCommandNode<CommandSourceStack> node = WorldCommand.build(messages, platform);
+        assertThat(node.getName()).isEqualTo("world");
     }
 
     @Test

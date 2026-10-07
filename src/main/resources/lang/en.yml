@@ -139,5 +139,6 @@ world-mgmt:
   teleported: "<prefix> <green>Teleported to <world></green>."
   unknown-world: "<prefix> <red>World <world></red> does not exist."
   spawn-set: "<prefix> <green>World spawn set."
-  portal-converted: "<prefix> <gray>Portal coordinates: <x> <y> <z></gray>"
-  portal-no-target: "<prefix> <red>No target world found."
+  portal-converted: "<prefix> <gray>Portal coordinates: X <x> Z <z></gray>"
+  portal-not-overworld: "<prefix> <red>You are not in the Overworld."
+  portal-not-nether: "<prefix> <red>You are not in the Nether."
