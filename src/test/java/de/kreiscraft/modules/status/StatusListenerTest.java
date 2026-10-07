@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scoreboard.Scoreboard;
@@ -72,6 +73,52 @@ class StatusListenerTest {
         assertThat(team.prefix()).isEqualTo(MM.deserialize(defaults.prefix()));
         assertThat(team.suffix()).isEqualTo(MM.deserialize(defaults.suffix()));
         assertThat(team.color()).isEqualTo(NamedTextColor.GRAY);
+    }
+
+    @Test
+    void onJoin_setsDisplayNameWithPrefixNameColourAndSuffix() {
+        PlayerMock player = new PlayerMock(server, "Bob");
+        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        when(service.get(player.getUniqueId())).thenReturn(status);
+
+        server.addPlayer(player);
+
+        Component expected = Component.text("Admin", NamedTextColor.GOLD)
+                .append(Component.text("Bob").color(TextColor.color(GOLD)))
+                .append(Component.text(" [A]"));
+        assertThat(player.displayName()).isEqualTo(expected);
+    }
+
+    @Test
+    void onJoin_setsPlayerListNameWithStatusColourOnly() {
+        PlayerMock player = new PlayerMock(server, "Bob");
+        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        when(service.get(player.getUniqueId())).thenReturn(status);
+
+        server.addPlayer(player);
+
+        // The scoreboard team contributes prefix/suffix to the list entry; the list name
+        // carries only the exact status colour so the two are not duplicated.
+        assertThat(player.playerListName())
+                .isEqualTo(Component.text("Bob").color(TextColor.color(GOLD)));
+    }
+
+    @Test
+    void onJoin_reappliesIdentityToEveryOnlinePlayer() {
+        Status aliceStatus = new Status("<aqua>Alice</aqua>", " [A]", 0x5555FF);
+        PlayerMock alice = new PlayerMock(server, "Alice");
+        when(service.get(alice.getUniqueId())).thenReturn(aliceStatus);
+        server.addPlayer(alice);
+
+        // A later join must leave the already-online player's identity intact.
+        server.addPlayer("Bob");
+
+        Component expected = Component.text("Alice", NamedTextColor.AQUA)
+                .append(Component.text("Alice").color(TextColor.color(0x5555FF)))
+                .append(Component.text(" [A]"));
+        assertThat(alice.displayName()).isEqualTo(expected);
+        assertThat(alice.playerListName())
+                .isEqualTo(Component.text("Alice").color(TextColor.color(0x5555FF)));
     }
 
     @Test
@@ -138,6 +185,24 @@ class StatusListenerTest {
         assertThat(team.prefix()).isEqualTo(MM.deserialize(updated.prefix()));
         assertThat(team.suffix()).isEqualTo(MM.deserialize(updated.suffix()));
         assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
+    }
+
+    @Test
+    void onStatusChanged_updatesDisplayNameAndPlayerListName() {
+        PlayerMock player = server.addPlayer("OnlinePlayer");
+
+        Status updated = new Status("<red>Admin</red>", " [A]", GOLD);
+        when(service.get(player.getUniqueId())).thenReturn(updated);
+
+        server.getPluginManager()
+                .callEvent(new StatusChangedEvent(player.getUniqueId(), Status.defaults(), updated));
+
+        Component expectedName = Component.text("Admin", NamedTextColor.RED)
+                .append(Component.text("OnlinePlayer").color(TextColor.color(GOLD)))
+                .append(Component.text(" [A]"));
+        assertThat(player.displayName()).isEqualTo(expectedName);
+        assertThat(player.playerListName())
+                .isEqualTo(Component.text("OnlinePlayer").color(TextColor.color(GOLD)));
     }
 
     @Test

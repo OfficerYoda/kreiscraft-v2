@@ -8,10 +8,19 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.effects.EffectsService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import java.util.UUID;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 
-/** Handles {@code /effects} (toggle) and {@code /effects <particle>} (choose particle type). */
+/**
+ * Handles {@code /effects} (report state and usage), {@code /effects toggle} (flip and persist), and
+ * {@code /effects <particle>} (choose and persist a particle type).
+ *
+ * <p>The bare command never mutates state: it only reports the effective state and particle plus
+ * the available usage, so a player cannot change their trail by accident. The particle argument's
+ * completion reflects the player's effective preference with a marker tooltip.
+ */
 public final class EffectsCommand {
 
     private EffectsCommand() {}
@@ -25,18 +34,35 @@ public final class EffectsCommand {
                                         .hasPermission("kreiscraft.effects.use"))
                 .executes(
                         ctx -> {
-                            Player player = (Player) ctx.getSource().getSender();
-                            service.toggle(player.getUniqueId());
-                            String key =
-                                    service.isEnabled(player.getUniqueId())
-                                            ? "effects.enabled"
-                                            : "effects.disabled";
-                            messages.send(player, key);
+                            report(service, messages, (Player) ctx.getSource().getSender());
                             return Command.SINGLE_SUCCESS;
                         })
                 .then(
+                        Commands.literal("toggle")
+                                .executes(
+                                        ctx -> {
+                                            Player player =
+                                                    (Player) ctx.getSource().getSender();
+                                            service.toggle(player.getUniqueId());
+                                            String key =
+                                                    service.isEnabled(player.getUniqueId())
+                                                            ? "effects.enabled"
+                                                            : "effects.disabled";
+                                            messages.send(player, key);
+                                            return Command.SINGLE_SUCCESS;
+                                        }))
+                .then(
                         Commands.argument("particle", StringArgumentType.word())
-                                .suggests(SuggestionProviders.particles("kreiscraft.effects.use"))
+                                .suggests(
+                                        SuggestionProviders.particles(
+                                                "kreiscraft.effects.use",
+                                                src -> src.getSender() instanceof Player player
+                                                        ? service.getParticle(
+                                                                player.getUniqueId())
+                                                        : null,
+                                                src -> messages.renderFor(
+                                                        src.getSender(),
+                                                        "effects.completion-current")))
                                 .executes(
                                         ctx -> {
                                             Player player = (Player) ctx.getSource().getSender();
@@ -62,5 +88,20 @@ public final class EffectsCommand {
                                             return Command.SINGLE_SUCCESS;
                                         }))
                 .build();
+    }
+
+    private static void report(EffectsService service, MessageService messages, Player player) {
+        UUID id = player.getUniqueId();
+        Component state =
+                messages.renderFor(
+                        player, service.isEnabled(id) ? "effects.state-on" : "effects.state-off");
+        messages.send(
+                player,
+                "effects.status",
+                "state",
+                state,
+                "particle",
+                service.getParticle(id).name());
+        messages.send(player, "effects.usage");
     }
 }

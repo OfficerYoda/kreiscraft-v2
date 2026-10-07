@@ -17,7 +17,7 @@ Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and event
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
 | `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | none | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences. |
 | `combat` | `de.kreiscraft.modules.combat` | stable | none | combat | Tags players as in combat on damage; optionally removes elytra while tagged; combat display follows a player preference with a module default. |
-| `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players toggle and choose a personal particle trail emitted around them each tick. |
+| `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players report, toggle, and choose a personal particle trail emitted on a configurable schedule (default 5 ticks) independent of movement; state and particle persist as player preferences. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
@@ -28,7 +28,7 @@ Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and event
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
-| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
+| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to chat, the Bukkit display name, the scoreboard/overhead name, and the tab list. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
 | `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, independently configurable spawn, half-health, and death explosions, and minion spawning. |
@@ -177,11 +177,19 @@ Tags players in combat when they deal or receive damage, keeping them tagged for
 
 ### Description
 
-Spawns a configurable particle effect around a player each tick while they have effects enabled. Players can toggle their trail on/off and choose the particle type via `/effects`. State is stored in memory (not persisted).
+Spawns a configurable particle effect around a player on a configurable tick schedule (default `5t`) while they have effects enabled; emission is independent of movement. Players can report their state and particle with bare `/effects`, toggle it with `/effects toggle`, and choose the particle type with `/effects <particle>`. A new player defaults to enabled once the module is enabled, and the enabled state and particle are stored as player preferences in `data/settings.yml`, so they survive reconnects. The particle argument's completion marks the player's effective particle.
+
+### Configuration
+
+| Key (relative to `modules.effects`) | Type | Default | Description |
+|---|---|---|---|
+| `default-particle` | Particle | `HAPPY_VILLAGER` | Particle used until the player chooses one. |
+| `schedule` | Duration | `5t` | Emission period; hot-reloaded. |
+| `count` / `offset-x` / `offset-y` / `offset-z` / `force` | — | — | Emission shape and visibility, as in the Configuration reference. |
 
 ### Services published
 
-- `EffectsService` — enable, disable, and query particle effects for players.
+- `EffectsService` — report, toggle, and select particle effects for players, backed by persisted preferences.
 
 ---
 
@@ -351,7 +359,7 @@ Triggers the season-start ceremony: a countdown (`countdown` down through `1`, e
 
 ### Description
 
-Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and team color are applied to every online player's scoreboard team and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
+Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and color are applied to every online viewer's scoreboard team (the overhead/nametag presentation), to the Bukkit display name, and to the tab-list player name. A `StatusChangedEvent` is broadcast so other modules (`chat-format`, `tablist`) can react. On join and on every status change, each online viewer's scoreboard is rebuilt so all viewers stay synchronized, and the player's display/tab-list names are refreshed.
 
 ### Events published
 

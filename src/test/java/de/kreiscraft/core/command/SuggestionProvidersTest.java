@@ -13,6 +13,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import net.kyori.adventure.text.Component;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Particle;
 import org.bukkit.Server;
@@ -236,6 +237,45 @@ class SuggestionProvidersTest {
         assertThat(suggestions).isEmpty();
     }
 
+    @Test
+    void particles_marksEffectivePreferenceWithTooltip()
+            throws ExecutionException, InterruptedException {
+        List<Suggestion> suggestions =
+                rawSuggestions(
+                        SuggestionProviders.particles(
+                                PERMISSION,
+                                source -> Particle.FLAME,
+                                source -> Component.text("current")),
+                        "",
+                        true);
+
+        Suggestion flame =
+                suggestions.stream()
+                        .filter(s -> s.getText().equals("flame"))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(flame.getTooltip()).isNotNull();
+
+        Suggestion heart =
+                suggestions.stream()
+                        .filter(s -> s.getText().equals("heart"))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(heart.getTooltip()).isNull();
+    }
+
+    @Test
+    void particles_withoutEffectivePreference_hasNoTooltips()
+            throws ExecutionException, InterruptedException {
+        List<Suggestion> suggestions =
+                rawSuggestions(
+                        SuggestionProviders.particles(PERMISSION, source -> null, source -> null),
+                        "",
+                        true);
+
+        assertThat(suggestions).allSatisfy(s -> assertThat(s.getTooltip()).isNull());
+    }
+
     // ---------------------------------------------------------------------
     // helpers
     // ---------------------------------------------------------------------
@@ -244,14 +284,20 @@ class SuggestionProvidersTest {
     private static List<String> suggestions(
             SuggestionProvider<CommandSourceStack> provider, String input, boolean permitted)
             throws ExecutionException, InterruptedException {
+        return rawSuggestions(provider, input, permitted).stream().map(Suggestion::getText).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Suggestion> rawSuggestions(
+            SuggestionProvider<CommandSourceStack> provider, String input, boolean permitted)
+            throws ExecutionException, InterruptedException {
         CommandSourceStack source = source(permitted);
         CommandContext<CommandSourceStack> context = mock(CommandContext.class);
         when(context.getSource()).thenReturn(source);
         SuggestionsBuilder builder = new SuggestionsBuilder(input, 0);
         try {
             return provider.getSuggestions(context, builder)
-                    .thenApply(
-                            suggestions -> suggestions.getList().stream().map(Suggestion::getText).toList())
+                    .thenApply(suggestions -> List.copyOf(suggestions.getList()))
                     .get();
         } catch (CommandSyntaxException e) {
             throw new ExecutionException(e);
