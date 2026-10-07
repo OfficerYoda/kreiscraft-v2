@@ -107,8 +107,9 @@ class DefaultStartSequenceServiceTest {
         scheduler.advance(Duration.ZERO);
 
         // RusticPrism decrements before displaying: a countdown of 3 first shows 2.
-        verify(messages).render("start-sequence.countdown-title", "seconds", "2");
-        verify(messages, never()).render("start-sequence.countdown-title", "seconds", "3");
+        verify(messages).renderFor(player, "start-sequence.countdown-title", "seconds", "2");
+        verify(messages, never())
+                .renderFor(player, "start-sequence.countdown-title", "seconds", "3");
     }
 
     @Test
@@ -127,16 +128,17 @@ class DefaultStartSequenceServiceTest {
         scheduler.advance(Duration.ofSeconds(2));
 
         InOrder order = inOrder(messages);
-        order.verify(messages).render("start-sequence.countdown-title", "seconds", "2");
-        order.verify(messages).render("start-sequence.countdown-title", "seconds", "1");
-        order.verify(messages).render("start-sequence.started");
-        order.verify(messages).render("start-sequence.started-subtitle");
+        order.verify(messages).renderFor(player, "start-sequence.countdown-title", "seconds", "2");
+        order.verify(messages).renderFor(player, "start-sequence.countdown-title", "seconds", "1");
+        order.verify(messages).renderFor(player, "start-sequence.started");
+        order.verify(messages).renderFor(player, "start-sequence.started-subtitle");
     }
 
     @Test
     void trigger_countdownAndStartPresentation_matchRusticPrism() {
-        when(messages.render("start-sequence.started")).thenReturn(Component.text("started"));
-        when(messages.render("start-sequence.started-subtitle")).thenReturn(Component.text("have-fun"));
+        when(messages.renderFor(player, "start-sequence.started")).thenReturn(Component.text("started"));
+        when(messages.renderFor(player, "start-sequence.started-subtitle"))
+                .thenReturn(Component.text("have-fun"));
 
         DefaultStartSequenceService svc = createService();
         svc.trigger(world);

@@ -58,7 +58,7 @@ public final class SettingsCommand {
                         .addIngredient('W', new WipItem(messages))
                         .build();
 
-        Component title = messages.render("settings-gui.gui-title");
+        Component title = messages.renderFor(player, "settings-gui.gui-title");
         gui.open(player, invui, title);
     }
 
@@ -81,7 +81,7 @@ public final class SettingsCommand {
             boolean on = service.isClickThroughEnabled(playerId);
             Material mat = on ? Material.LIME_DYE : Material.RED_DYE;
             String key = on ? "settings-gui.click-through-on" : "settings-gui.click-through-off";
-            Component name = messages.render(key);
+            Component name = messages.renderFor(viewer, key);
             ItemStack stack = new ItemStack(mat);
             stack.editMeta(m -> m.displayName(name));
             return new ItemWrapper(stack);
@@ -112,7 +112,7 @@ public final class SettingsCommand {
             CombatDisplay display = service.getCombatDisplay(playerId);
             Material mat = materialFor(display);
             String key = langKeyFor(display);
-            Component name = messages.render(key);
+            Component name = messages.renderFor(viewer, key);
             ItemStack stack = new ItemStack(mat);
             stack.editMeta(m -> m.displayName(name));
             return new ItemWrapper(stack);
@@ -158,7 +158,7 @@ public final class SettingsCommand {
 
         @Override
         public ItemProvider getItemProvider(Player viewer) {
-            Component name = messages.render("settings-gui.wip");
+            Component name = messages.renderFor(viewer, "settings-gui.wip");
             ItemStack stack = new ItemStack(Material.BARRIER);
             stack.editMeta(m -> m.displayName(name));
             return new ItemWrapper(stack);

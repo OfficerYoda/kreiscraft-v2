@@ -182,18 +182,19 @@ Nested interface returned by all scheduling methods.
 **Package:** `de.kreiscraft.core.message`
 **Type:** `interface`
 
-Locale-aware, MiniMessage-based message service. Lang files live in `src/main/resources/lang/<lang>.yml` and are loaded from `<dataFolder>/lang/<lang>.yml` at startup. The active language is configured under `core.language` in `config.yml` (default: `de`).
+Recipient-aware, MiniMessage-based message service. Every bundled language tree lives in `src/main/resources/lang/<lang>.yml` and is loaded from `<dataFolder>/lang/<lang>.yml` at startup. The server language is configured under `core.language` in `config.yml` (default: `de`) and is used for console output and for any recipient without a stored preference.
 
-Messages support `<prefix>` as a built-in MiniMessage tag that expands to the value of the top-level `prefix:` key in the active lang file. Additional `%token%` placeholders are resolved by `PlaceholderResolver`.
+Messages support `<prefix>` as a built-in MiniMessage tag that expands to the value of the top-level `prefix:` key in the recipient's language tree. Additional `%token%` placeholders are resolved by `PlaceholderResolver`.
 
 ### Methods
 
 | Signature | Description |
 |-----------|-------------|
-| `Component render(String key, Object... placeholders)` | Resolves the lang key, substitutes placeholder pairs, and returns an Adventure `Component`. `placeholders` is a flat alternating array of `(name, value)` pairs: `render("foo.bar", "player", player.getName(), "count", 3)`. Returns a red error component if the key is missing. |
-| `void send(CommandSender sender, String key, Object... placeholders)` | Calls `render()` and sends the result to `sender`. |
-| `void broadcast(String key, Object... placeholders)` | Calls `render()` and sends the result to every online player and the console. |
-| `void reload() throws IOException` | Reloads the lang file from disk. Called automatically by `/kreiscraft reload`. Should not be called from module code. |
+| `Component render(String key, Object... placeholders)` | Resolves the lang key in the **server language** tree, substitutes placeholder pairs, and returns an Adventure `Component`. `placeholders` is a flat alternating array of `(name, value)` pairs: `render("foo.bar", "player", player.getName(), "count", 3)`. Returns a red error component if the key is missing. |
+| `Component renderFor(CommandSender recipient, String key, Object... placeholders)` | Renders for a specific recipient using their persisted language when one is stored, otherwise the server language. An unknown stored locale warns once and falls back. The default interface method ignores the recipient and delegates to `render`. |
+| `void send(CommandSender sender, String key, Object... placeholders)` | Renders for `sender` and sends the result to them. |
+| `void broadcast(String key, Object... placeholders)` | Renders per online player — each receives their own persisted language — and sends the server-language rendering to the console. |
+| `void reload() throws IOException` | Reloads every language tree from disk. Called automatically by `/kreiscraft reload`. Should not be called from module code. |
 
 **Placeholder convention:** Pass placeholder values as `(String name, Object value)` pairs in varargs. The value is converted to a string with `String.valueOf()`. Built-in `%token%` placeholders (see `PlaceholderResolver`) do not need to be supplied — they are resolved automatically.
 

@@ -24,6 +24,7 @@ import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
 import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
 import de.kreiscraft.shared.preferences.PlayerPreferencesData;
 import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import de.kreiscraft.shared.user.UserListener;
@@ -34,6 +35,8 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
+import java.util.Optional;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class KreiscraftBootstrap {
@@ -59,9 +62,27 @@ public final class KreiscraftBootstrap {
         this.config = new YamlConfigService(plugin.getDataFolder().toPath(),
                 plugin.getClass().getClassLoader());
         String lang = config.root().node("core", "language").getString("de");
+
+        // Always-available player preferences are loaded before the message service so that every
+        // recipient can be rendered in their persisted language independently of the settings GUI.
+        PlayerPreferencesData preferencesData =
+                new PlayerPreferencesData(plugin.getDataFolder().toPath());
+        try {
+            preferencesData.load();
+        } catch (IOException e) {
+            throw new IOException("failed to load player preferences", e);
+        }
+        config.register(preferencesData);
+        PlayerPreferencesService preferences =
+                new DefaultPlayerPreferencesService(preferencesData);
+
         this.messages = new ConfigurateMessageService(plugin.getDataFolder().toPath(),
                 plugin.getClass().getClassLoader(),
-                lang, plugin.getServer());
+                lang, plugin.getServer(),
+                recipient -> recipient instanceof Player player
+                        ? preferences.preferences(player.getUniqueId()).language()
+                                .map(PlayerLanguage::code)
+                        : Optional.empty());
 
         this.scheduler = new BukkitScheduler(plugin);
         this.events = new EventBus(plugin);
@@ -102,17 +123,7 @@ public final class KreiscraftBootstrap {
         services.publish(Gui.class, gui);
 
         // --- always-available player preferences (independent of the settings-gui module) ---
-        PlayerPreferencesData preferencesData =
-                new PlayerPreferencesData(plugin.getDataFolder().toPath());
-        try {
-            preferencesData.load();
-        } catch (IOException e) {
-            throw new IOException("failed to load player preferences", e);
-        }
-        config.register(preferencesData);
-        services.publish(
-                PlayerPreferencesService.class,
-                new DefaultPlayerPreferencesService(preferencesData));
+        services.publish(PlayerPreferencesService.class, preferences);
 
         this.modules = new ModuleRegistry(
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),

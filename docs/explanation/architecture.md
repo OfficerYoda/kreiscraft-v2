@@ -82,14 +82,15 @@ a `KreiscraftBootstrap` and calls `bootstrap.start()`; `onDisable()` calls `boot
 instantiated and every dependency is wired. The full wiring sequence in `start()` is:
 
 1. Build `YamlConfigService` (reads `config.yml`).
-2. Build `ConfigurateMessageService` (reads the language file from config).
-3. Build `BukkitScheduler`, `EventBus`, `PaperCommandRegistrar`, `ServiceRegistry`.
-4. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`) to the registry.
-5. Construct platform-layer objects and publish them.
-6. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, `PlayerPreferencesService`, etc.) and publish them.
-7. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
-8. Start `AutoSaveTask`.
-9. Register the `/kreiscraft reload` command.
+2. Load `PlayerPreferencesData` and build the always-available `PlayerPreferencesService`.
+3. Build `ConfigurateMessageService`, loading every language tree and resolving each recipient's persisted language through the preferences service.
+4. Build `BukkitScheduler`, `EventBus`, `PaperCommandRegistrar`, `ServiceRegistry`.
+5. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`, `PlayerPreferencesService`) to the registry.
+6. Construct platform-layer objects and publish them.
+7. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
+8. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
+9. Start `AutoSaveTask`.
+10. Register the `/kreiscraft reload` command.
 
 `stop()` does the inverse: close all GUIs, stop auto-save, disable all modules in reverse order,
 and unregister all Bukkit event listeners.
@@ -301,7 +302,7 @@ When an admin runs `/kreiscraft reload`, `ReloadCommand` executes three steps in
 
 ```java
 cfg.reload();                          // re-read config.yml from disk
-messages.reload();                     // re-read the language file from disk
+messages.reload();                     // re-read every language tree from disk
 modules.reloadConfigs(cfg.root());     // dispatch to each enabled module
 ```
 

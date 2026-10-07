@@ -8,10 +8,12 @@ import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
 public final class DefaultStartSequenceService implements StartSequenceService {
 
@@ -93,28 +95,37 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     }
 
     private void showCountdownTitle(int seconds) {
-        Component title =
-                messages.render("start-sequence.countdown-title", "seconds", String.valueOf(seconds));
+        String value = String.valueOf(seconds);
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ZERO);
         // Volume and pitch mirror RusticPrism's Sound.sound(..., 100, 100) call.
         Sound sound = Sound.sound(
                 org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, Sound.Source.PLAYER, 100f, 100f);
-        showToAll(title, Component.empty(), times, sound);
+        showToAll(
+                player -> messages.renderFor(player, "start-sequence.countdown-title", "seconds", value),
+                player -> Component.empty(),
+                times,
+                sound);
     }
 
     private void showStartedTitle() {
-        Component title = messages.render("start-sequence.started");
-        Component subtitle = messages.render("start-sequence.started-subtitle");
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(4), Duration.ZERO);
         // Volume and pitch mirror RusticPrism's Sound.sound(..., 200, 1) call.
         Sound sound =
                 Sound.sound(org.bukkit.Sound.ITEM_GOAT_HORN_SOUND_2, Sound.Source.PLAYER, 200f, 1f);
-        showToAll(title, subtitle, times, sound);
+        showToAll(
+                player -> messages.renderFor(player, "start-sequence.started"),
+                player -> messages.renderFor(player, "start-sequence.started-subtitle"),
+                times,
+                sound);
     }
 
-    private void showToAll(Component title, Component subtitle, Title.Times times, Sound sound) {
+    private void showToAll(
+            Function<Player, Component> titleFor,
+            Function<Player, Component> subtitleFor,
+            Title.Times times,
+            Sound sound) {
         platform.server().getOnlinePlayers().forEach(p -> {
-            p.showTitle(Title.title(title, subtitle, times));
+            p.showTitle(Title.title(titleFor.apply(p), subtitleFor.apply(p), times));
             p.playSound(sound);
         });
     }

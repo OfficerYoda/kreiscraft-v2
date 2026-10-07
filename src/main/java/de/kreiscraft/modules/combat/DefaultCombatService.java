@@ -115,7 +115,7 @@ public final class DefaultCombatService implements CombatService {
                 continue;
             }
             long secs = remaining(uuid).getSeconds();
-            Component msg = messages.render("combat.remaining", "seconds", String.valueOf(secs));
+            Component msg = messages.renderFor(player, "combat.remaining", "seconds", String.valueOf(secs));
             // No stored preference means the combat module's configured default applies.
             CombatDisplay display = preferences.combatDisplay(uuid, config.defaultDisplay());
             switch (display) {

@@ -55,12 +55,13 @@ public final class LinkGuiPrompt {
             Runnable onAccept,
             Runnable onDecline) {
 
-        // Build the InvUI Gui
-        xyz.xenondevs.invui.gui.Gui invui = buildInvUiGui(browserDescription, onAccept, onDecline);
+        // Build the InvUI Gui for the target viewer
+        xyz.xenondevs.invui.gui.Gui invui =
+                buildInvUiGui(target, browserDescription, onAccept, onDecline);
 
-        // Title from MessageService
+        // Title from MessageService, rendered in the target's language
         Component title =
-                messages.render("api.link-prompt-title", "browser", browserDescription);
+                messages.renderFor(target, "api.link-prompt-title", "browser", browserDescription);
 
         gui.open(target, invui, title);
     }
@@ -81,22 +82,22 @@ public final class LinkGuiPrompt {
      * </pre>
      */
     xyz.xenondevs.invui.gui.Gui buildInvUiGui(
-            String browserDescription, Runnable onAccept, Runnable onDecline) {
+            Player viewer, String browserDescription, Runnable onAccept, Runnable onDecline) {
 
         // Filler item — black stained-glass pane, empty name
         Item filler = Item.simple(createItemStack(Material.BLACK_STAINED_GLASS_PANE, Component.text(" ")));
 
         // Info item — paper with browser description
         Component infoName =
-                messages.render("api.link-prompt-info", "browser", browserDescription);
+                messages.renderFor(viewer, "api.link-prompt-info", "browser", browserDescription);
         Item infoItem = Item.simple(createItemStack(Material.PAPER, infoName));
 
         // Accept item — green wool
-        Component acceptName = messages.render("api.link-prompt-accept");
+        Component acceptName = messages.renderFor(viewer, "api.link-prompt-accept");
         AbstractItem acceptItem = createClickItem(Material.GREEN_WOOL, acceptName, onAccept);
 
         // Decline item — red wool
-        Component declineName = messages.render("api.link-prompt-decline");
+        Component declineName = messages.renderFor(viewer, "api.link-prompt-decline");
         AbstractItem declineItem = createClickItem(Material.RED_WOOL, declineName, onDecline);
 
         xyz.xenondevs.invui.gui.Gui invui =

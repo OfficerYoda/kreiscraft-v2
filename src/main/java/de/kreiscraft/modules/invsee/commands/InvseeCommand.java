@@ -67,7 +67,7 @@ public final class InvseeCommand {
         } else {
             invuiGui = InvseeGui.buildReadOnly(target.getInventory().getContents());
         }
-        Component title = messages.render("invsee.gui-title-inv", "player", target.getName());
+        Component title = messages.renderFor(viewer, "invsee.gui-title-inv", "player", target.getName());
         gui.open(viewer, invuiGui, title);
     }
 
@@ -111,7 +111,7 @@ public final class InvseeCommand {
             return;
         }
         xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOffline(items);
-        Component title = messages.render("invsee.gui-title-inv", "player", displayName);
+        Component title = messages.renderFor(viewer, "invsee.gui-title-inv", "player", displayName);
         gui.open(viewer, invuiGui, title);
     }
 }

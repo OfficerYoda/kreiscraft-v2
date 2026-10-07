@@ -94,20 +94,21 @@ public final class DefaultRebootService implements RebootService {
 
         // Announce current value BEFORE decrementing (announces the supplied starting second first)
         if (config.titleSeconds().contains((int) remainingSeconds)) {
-            Component titleMain = messages.render(
-                    "reboot.countdown-title",
-                    "seconds", String.valueOf(remainingSeconds),
-                    "reason", currentReason);
-            Component titleSub = messages.render(
-                    "reboot.countdown-subtitle",
-                    "reason", currentReason,
-                    "seconds", String.valueOf(remainingSeconds));
-            Title adventureTitle = Title.title(
-                    titleMain,
-                    titleSub,
-                    Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(4), Duration.ofSeconds(1)));
+            Title.Times times =
+                    Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(4), Duration.ofSeconds(1));
+            String seconds = String.valueOf(remainingSeconds);
             for (Player player : platform.server().getOnlinePlayers()) {
-                player.showTitle(adventureTitle);
+                Component titleMain = messages.renderFor(
+                        player,
+                        "reboot.countdown-title",
+                        "seconds", seconds,
+                        "reason", currentReason);
+                Component titleSub = messages.renderFor(
+                        player,
+                        "reboot.countdown-subtitle",
+                        "reason", currentReason,
+                        "seconds", seconds);
+                player.showTitle(Title.title(titleMain, titleSub, times));
             }
         }
 
@@ -123,12 +124,13 @@ public final class DefaultRebootService implements RebootService {
                 task.cancel();
                 task = null;
             }
-            Component kickMessage = messages.render(
-                    "reboot.kick-message",
-                    "reason", currentReason,
-                    "initiator", currentInitiator,
-                    "website", "kreiscraft.de");
             for (Player player : platform.server().getOnlinePlayers()) {
+                Component kickMessage = messages.renderFor(
+                        player,
+                        "reboot.kick-message",
+                        "reason", currentReason,
+                        "initiator", currentInitiator,
+                        "website", "kreiscraft.de");
                 player.kick(kickMessage, PlayerKickEvent.Cause.RESTART_COMMAND);
             }
             platform.server().shutdown();

@@ -58,7 +58,7 @@ public final class AntiCheatListener implements PriorityListener {
             if (service.hasHandshakePassed(playerId)) {
                 return;
             }
-            player.kick(messages.render("anti-cheat.fabric-forge-kick"));
+            player.kick(messages.renderFor(player, "anti-cheat.fabric-forge-kick"));
         });
     }
 

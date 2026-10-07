@@ -68,7 +68,7 @@ public final class EnderChestCommand {
         } else {
             invuiGui = InvseeGui.buildEnderChestReadOnly(target.getEnderChest());
         }
-        Component title = messages.render("invsee.gui-title-ec", "player", target.getName());
+        Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", target.getName());
         gui.open(viewer, invuiGui, title);
     }
 }
