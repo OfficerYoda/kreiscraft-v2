@@ -13,7 +13,8 @@ import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.platform.SlottedItem;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -49,7 +50,7 @@ class InvseeCommandTest {
     private PluginMock plugin;
     private Gui gui;
     private MessageService messages;
-    private OfflineInventoryReader offlineReader;
+    private OfflinePlayerData offlineData;
 
     @BeforeEach
     void setUp() {
@@ -57,7 +58,7 @@ class InvseeCommandTest {
         plugin = MockBukkit.createMockPlugin();
         gui = mock(Gui.class);
         messages = mock(MessageService.class);
-        offlineReader = mock(OfflineInventoryReader.class);
+        offlineData = mock(OfflinePlayerData.class);
         when(messages.render(any(), any(Object[].class))).thenReturn(Component.text("title"));
         when(messages.renderFor(any(), anyString(), any(Object[].class)))
                 .thenReturn(Component.text("title"));
@@ -75,14 +76,14 @@ class InvseeCommandTest {
     @Test
     void build_commandNameIsInvsee() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, server);
+                InvseeCommand.build(gui, messages, offlineData, server);
         assertThat(node.getLiteral()).isEqualTo("invsee");
     }
 
     @Test
     void build_requiresInvseeUsePermission_deniedWithoutPerm() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, server);
+                InvseeCommand.build(gui, messages, offlineData, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         Player viewer = server.addPlayer();
         when(mockSrc.getSender()).thenReturn(viewer);
@@ -92,7 +93,7 @@ class InvseeCommandTest {
     @Test
     void build_requiresInvseeUsePermission_allowedWithPerm() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, server);
+                InvseeCommand.build(gui, messages, offlineData, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -103,7 +104,7 @@ class InvseeCommandTest {
     @Test
     void build_hasTargetArgument() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, server);
+                InvseeCommand.build(gui, messages, offlineData, server);
         assertThat(node.getChildren()).isNotEmpty();
         assertThat(node.getChildren().iterator().next().getName()).isEqualTo("target");
     }
@@ -123,7 +124,7 @@ class InvseeCommandTest {
                 .thenReturn(new OfflinePlayer[] {known, neverPlayed});
 
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, suggestionServer);
+                InvseeCommand.build(gui, messages, offlineData, suggestionServer);
         CommandSourceStack source = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -141,7 +142,7 @@ class InvseeCommandTest {
         when(suggestionServer.getOnlinePlayers()).thenAnswer(invocation -> List.of());
 
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineReader, suggestionServer);
+                InvseeCommand.build(gui, messages, offlineData, suggestionServer);
         CommandSourceStack source = mock(CommandSourceStack.class);
         Player viewer = server.addPlayer();
         when(source.getSender()).thenReturn(viewer);
@@ -189,18 +190,20 @@ class InvseeCommandTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void openOfflineInventory_withItems_callsOfflineReaderAndOpensGui() throws IOException {
+    void openOfflineInventory_withItems_readsSnapshotAndOpensGui() throws IOException {
         PlayerMock viewer = server.addPlayer("viewer");
         OfflinePlayer offline = mock(OfflinePlayer.class);
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineReader.readInventory(uuid))
-                .thenReturn(List.of(new SlottedItem(9, new ItemStack(Material.DIRT))));
+        when(offlineData.read(uuid))
+                .thenReturn(
+                        OfflinePlayerSnapshot.ofInventory(
+                                List.of(new SlottedItem(9, new ItemStack(Material.DIRT)))));
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineReader);
+        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
 
-        verify(offlineReader).readInventory(uuid);
+        verify(offlineData).read(uuid);
         verify(gui).open(eq(viewer), any(xyz.xenondevs.invui.gui.Gui.class), any(Component.class));
         verify(messages)
                 .renderFor(eq(viewer), eq("invsee.gui-title-inv"), eq("player"), eq("ghost"));
@@ -212,10 +215,10 @@ class InvseeCommandTest {
         OfflinePlayer offline = mock(OfflinePlayer.class);
         when(offline.hasPlayedBefore()).thenReturn(false);
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineReader);
+        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
 
         verify(messages).send(viewer, "invsee.target-not-found", "player", "ghost");
-        verify(offlineReader, never()).readInventory(any());
+        verify(offlineData, never()).read(any());
         verify(gui, never()).open(any(), any(), any());
     }
 
@@ -226,11 +229,29 @@ class InvseeCommandTest {
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineReader.readInventory(uuid)).thenReturn(List.of());
+        when(offlineData.read(uuid)).thenReturn(OfflinePlayerSnapshot.empty());
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineReader);
+        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
 
-        verify(offlineReader).readInventory(uuid);
+        verify(offlineData).read(uuid);
+        verify(messages).send(viewer, "invsee.offline-empty", "player", "ghost");
+        verify(gui, never()).open(any(), any(), any());
+    }
+
+    @Test
+    void openOfflineInventory_enderItemsOnly_sendsOfflineEmptyMessage() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(offlineData.read(uuid))
+                .thenReturn(
+                        OfflinePlayerSnapshot.ofEnderItems(
+                                List.of(new SlottedItem(0, new ItemStack(Material.STONE)))));
+
+        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
+
         verify(messages).send(viewer, "invsee.offline-empty", "player", "ghost");
         verify(gui, never()).open(any(), any(), any());
     }
@@ -242,11 +263,11 @@ class InvseeCommandTest {
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineReader.readInventory(uuid)).thenThrow(new IOException("disk error"));
+        when(offlineData.read(uuid)).thenThrow(new IOException("disk error"));
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineReader);
+        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
 
-        verify(offlineReader).readInventory(uuid);
+        verify(offlineData).read(uuid);
         verify(messages).send(viewer, "invsee.read-error");
         verify(gui, never()).open(any(), any(), any());
     }

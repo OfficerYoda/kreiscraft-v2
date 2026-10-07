@@ -17,8 +17,11 @@ import de.kreiscraft.core.scheduler.BukkitScheduler;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.core.util.Durations;
+import de.kreiscraft.platform.NmsPlayerDataCodec;
 import de.kreiscraft.platform.NmsWhitelist;
-import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerDataStore;
+import de.kreiscraft.platform.PaperPlayerDataPaths;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.platform.PlayerBrandProvider;
 import de.kreiscraft.shared.chat.ChatBridge;
@@ -100,12 +103,14 @@ public final class KreiscraftBootstrap {
         PaperPlatform platform = new PaperPlatform(plugin, plugin.getServer());
         PlayerBrandProvider brands = new PlayerBrandProvider(platform);
         NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
-        OfflineInventoryReader offlineInv = new OfflineInventoryReader(platform);
+        OfflinePlayerData offlineData =
+                new OfflinePlayerDataStore(
+                        PaperPlayerDataPaths.playerDataDirectory(platform), new NmsPlayerDataCodec());
 
         services.publish(PaperPlatform.class, platform);
         services.publish(PlayerBrandProvider.class, brands);
         services.publish(NmsWhitelist.class, nmsWhitelist);
-        services.publish(OfflineInventoryReader.class, offlineInv);
+        services.publish(OfflinePlayerData.class, offlineData);
 
         // --- shared services ---
         this.userService = new UserService(platform, Clock.systemDefaultZone());

@@ -47,7 +47,7 @@ calls `Bukkit.getServer()` or other static methods directly. `PaperPlatform` is 
 `record(JavaPlugin, Server)` that is constructed once in the composition root and injected
 wherever it is needed. This design means that any class that operates only on `PaperPlatform`
 can be instantiated in a test without starting a real server. Other platform classes
-(`NmsWhitelist`, `OfflineInventoryReader`, `PlayerBrandProvider`) follow the same pattern: they
+(`NmsWhitelist`, `OfflinePlayerDataStore`, `PlayerBrandProvider`) follow the same pattern: they
 accept a `PaperPlatform` as a constructor argument instead of reaching into global Bukkit state.
 
 **Core layer** (`core/`)  
@@ -333,7 +333,7 @@ for the implementation pattern.
 │     EventBus · CommandRegistrar · ServiceRegistry               │
 │                                                                 │
 │  2. Build platform layer                                        │
-│     PaperPlatform · NmsWhitelist · OfflineInventoryReader       │
+│     PaperPlatform · NmsWhitelist · OfflinePlayerDataStore       │
 │     PlayerBrandProvider                                         │
 │                                                                 │
 │  3. Build shared layer                                          │

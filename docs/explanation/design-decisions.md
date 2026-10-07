@@ -514,3 +514,33 @@ start timestamp, or remaining-duration state. The only persisted value is the op
   documented as unsupported.
 - Tests verify the delegation contract — one transition call and no competing persistence — under
   MockBukkit rather than automating a real restart.
+
+---
+
+## ADR-16: Version-Isolated Offline Player-Data Access
+
+**Status:** Accepted
+
+**Context:**
+Reading an offline player's inventory requires the server's NMS NBT and item-conversion surface,
+which is unavailable under MockBukkit's test classpath and differs across Paper versions. The
+`invsee` module nevertheless needs to display ordinary inventories, armor, offhand, and Ender Chest
+contents, and the same surface must later support committed offline writes. Letting gameplay code
+import NMS directly would make the module untestable and entangle it with the version-specific
+reader.
+
+**Decision:**
+Offline player data is reached through a version-independent `OfflinePlayerData` interface that
+returns an immutable-by-copy `OfflinePlayerSnapshot` of ordinary-inventory and Ender Chest slot
+items. File access (`OfflinePlayerDataStore`) is plain Java over a player-data directory and a
+`PlayerDataCodec`; the NMS decode (`NmsPlayerDataCodec`) and the world-directory lookup
+(`PaperPlayerDataPaths`) are the only version-specific classes. The composition root wires the NMS
+codec behind the store and publishes only the interface to the service registry.
+
+**Consequences:**
+- The file protocol — missing files, reading without writing, and decode failures — is tested
+  against real temporary files with a substitute codec; the NMS decode is a documented seam.
+- The module never imports NMS and remains fully testable under MockBukkit.
+- Offline writes for a later change extend the same boundary (staging and commit) without leaking
+  NMS into gameplay code or the commands.
+
