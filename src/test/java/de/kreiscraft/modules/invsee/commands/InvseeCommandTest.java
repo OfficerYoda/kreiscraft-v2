@@ -13,19 +13,28 @@ import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflineCommitResult;
+import de.kreiscraft.platform.OfflinePlayerDataEditor;
+import de.kreiscraft.platform.OfflinePlayerEditSession;
 import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.platform.SlottedItem;
+import de.kreiscraft.platform.StagedOfflineWrite;
 import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.testsupport.MockScheduler;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +59,9 @@ class InvseeCommandTest {
     private PluginMock plugin;
     private Gui gui;
     private MessageService messages;
-    private OfflinePlayerData offlineData;
+    private OfflinePlayerDataEditor editor;
+    private OfflinePlayerEditSession session;
+    private MockScheduler scheduler;
 
     @BeforeEach
     void setUp() {
@@ -58,7 +69,9 @@ class InvseeCommandTest {
         plugin = MockBukkit.createMockPlugin();
         gui = mock(Gui.class);
         messages = mock(MessageService.class);
-        offlineData = mock(OfflinePlayerData.class);
+        editor = mock(OfflinePlayerDataEditor.class);
+        session = mock(OfflinePlayerEditSession.class);
+        scheduler = new MockScheduler();
         when(messages.render(any(), any(Object[].class))).thenReturn(Component.text("title"));
         when(messages.renderFor(any(), anyString(), any(Object[].class)))
                 .thenReturn(Component.text("title"));
@@ -76,14 +89,14 @@ class InvseeCommandTest {
     @Test
     void build_commandNameIsInvsee() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, server);
+                InvseeCommand.build(gui, messages, editor, scheduler, server);
         assertThat(node.getLiteral()).isEqualTo("invsee");
     }
 
     @Test
     void build_requiresInvseeUsePermission_deniedWithoutPerm() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, server);
+                InvseeCommand.build(gui, messages, editor, scheduler, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         Player viewer = server.addPlayer();
         when(mockSrc.getSender()).thenReturn(viewer);
@@ -93,7 +106,7 @@ class InvseeCommandTest {
     @Test
     void build_requiresInvseeUsePermission_allowedWithPerm() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, server);
+                InvseeCommand.build(gui, messages, editor, scheduler, server);
         CommandSourceStack mockSrc = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -104,7 +117,7 @@ class InvseeCommandTest {
     @Test
     void build_hasTargetArgument() {
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, server);
+                InvseeCommand.build(gui, messages, editor, scheduler, server);
         assertThat(node.getChildren()).isNotEmpty();
         assertThat(node.getChildren().iterator().next().getName()).isEqualTo("target");
     }
@@ -124,7 +137,7 @@ class InvseeCommandTest {
                 .thenReturn(new OfflinePlayer[] {known, neverPlayed});
 
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, suggestionServer);
+                InvseeCommand.build(gui, messages, editor, scheduler, suggestionServer);
         CommandSourceStack source = mock(CommandSourceStack.class);
         PlayerMock viewer = server.addPlayer();
         viewer.addAttachment(plugin, "kreiscraft.invsee.use", true);
@@ -142,7 +155,7 @@ class InvseeCommandTest {
         when(suggestionServer.getOnlinePlayers()).thenAnswer(invocation -> List.of());
 
         LiteralCommandNode<CommandSourceStack> node =
-                InvseeCommand.build(gui, messages, offlineData, suggestionServer);
+                InvseeCommand.build(gui, messages, editor, scheduler, suggestionServer);
         CommandSourceStack source = mock(CommandSourceStack.class);
         Player viewer = server.addPlayer();
         when(source.getSender()).thenReturn(viewer);
@@ -186,25 +199,34 @@ class InvseeCommandTest {
     }
 
     // -----------------------------------------------------------------------
-    // Execution: offline path
+    // Execution: offline open path
     // -----------------------------------------------------------------------
 
     @Test
-    void openOfflineInventory_withItems_readsSnapshotAndOpensGui() throws IOException {
+    void openOfflineInventory_withItems_opensEditableSnapshotGui() throws IOException {
         PlayerMock viewer = server.addPlayer("viewer");
         OfflinePlayer offline = mock(OfflinePlayer.class);
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineData.read(uuid))
+        when(editor.openForEdit(uuid))
+                .thenReturn(
+                        Optional.of(session));
+        when(session.snapshot())
                 .thenReturn(
                         OfflinePlayerSnapshot.ofInventory(
                                 List.of(new SlottedItem(9, new ItemStack(Material.DIRT)))));
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, editor, scheduler, server);
 
-        verify(offlineData).read(uuid);
-        verify(gui).open(eq(viewer), any(xyz.xenondevs.invui.gui.Gui.class), any(Component.class));
+        verify(editor).openForEdit(uuid);
+        verify(gui)
+                .open(
+                        eq(viewer),
+                        any(xyz.xenondevs.invui.gui.Gui.class),
+                        any(Component.class),
+                        any());
         verify(messages)
                 .renderFor(eq(viewer), eq("invsee.gui-title-inv"), eq("player"), eq("ghost"));
     }
@@ -215,45 +237,28 @@ class InvseeCommandTest {
         OfflinePlayer offline = mock(OfflinePlayer.class);
         when(offline.hasPlayedBefore()).thenReturn(false);
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, editor, scheduler, server);
 
         verify(messages).send(viewer, "invsee.target-not-found", "player", "ghost");
-        verify(offlineData, never()).read(any());
-        verify(gui, never()).open(any(), any(), any());
+        verify(editor, never()).openForEdit(any());
+        verify(gui, never()).open(any(), any(), any(), any());
     }
 
     @Test
-    void openOfflineInventory_emptyInventory_sendsOfflineEmptyMessage() throws IOException {
+    void openOfflineInventory_missingFile_sendsOfflineEmptyMessage() throws IOException {
         PlayerMock viewer = server.addPlayer("viewer");
         OfflinePlayer offline = mock(OfflinePlayer.class);
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineData.read(uuid)).thenReturn(OfflinePlayerSnapshot.empty());
+        when(editor.openForEdit(uuid)).thenReturn(Optional.empty());
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
-
-        verify(offlineData).read(uuid);
-        verify(messages).send(viewer, "invsee.offline-empty", "player", "ghost");
-        verify(gui, never()).open(any(), any(), any());
-    }
-
-    @Test
-    void openOfflineInventory_enderItemsOnly_sendsOfflineEmptyMessage() throws IOException {
-        PlayerMock viewer = server.addPlayer("viewer");
-        OfflinePlayer offline = mock(OfflinePlayer.class);
-        UUID uuid = UUID.randomUUID();
-        when(offline.hasPlayedBefore()).thenReturn(true);
-        when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineData.read(uuid))
-                .thenReturn(
-                        OfflinePlayerSnapshot.ofEnderItems(
-                                List.of(new SlottedItem(0, new ItemStack(Material.STONE)))));
-
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, editor, scheduler, server);
 
         verify(messages).send(viewer, "invsee.offline-empty", "player", "ghost");
-        verify(gui, never()).open(any(), any(), any());
+        verify(gui, never()).open(any(), any(), any(), any());
     }
 
     @Test
@@ -263,13 +268,166 @@ class InvseeCommandTest {
         UUID uuid = UUID.randomUUID();
         when(offline.hasPlayedBefore()).thenReturn(true);
         when(offline.getUniqueId()).thenReturn(uuid);
-        when(offlineData.read(uuid)).thenThrow(new IOException("disk error"));
+        when(editor.openForEdit(uuid)).thenThrow(new IOException("disk error"));
 
-        InvseeCommand.openOfflineInventory(viewer, offline, "ghost", gui, messages, offlineData);
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, editor, scheduler, server);
 
-        verify(offlineData).read(uuid);
         verify(messages).send(viewer, "invsee.read-error");
-        verify(gui, never()).open(any(), any(), any());
+        verify(gui, never()).open(any(), any(), any(), any());
+    }
+
+    // -----------------------------------------------------------------------
+    // Execution: offline commit path (triggered by window close)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void close_committed_stagesPreservingEnderItemsAndSendsSaved() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+
+        StagedOfflineWrite staged =
+                new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1});
+        when(session.stage(any(), any())).thenReturn(staged);
+        when(session.commit(eq(staged), any())).thenReturn(OfflineCommitResult.COMMITTED);
+
+        Consumer<InventoryCloseEvent.Reason> onClose = openAndCaptureClose(viewer, offline);
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        // The untouched Ender Chest is passed through to stage.
+        verify(session)
+                .stage(
+                        any(),
+                        eq(OfflinePlayerSnapshot.empty().enderItems()));
+        verify(messages).send(viewer, "invsee.saved", "player", "ghost");
+    }
+
+    @Test
+    void close_targetOnline_sendsCollisionWithReopenOption() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+
+        StagedOfflineWrite staged =
+                new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1});
+        when(session.stage(any(), any())).thenReturn(staged);
+        when(session.commit(eq(staged), any()))
+                .thenReturn(OfflineCommitResult.ABORTED_TARGET_ONLINE);
+
+        Consumer<InventoryCloseEvent.Reason> onClose = openAndCaptureClose(viewer, offline);
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        verify(messages).send(viewer, "invsee.commit-player-online", "player", "ghost");
+    }
+
+    @Test
+    void close_sourceChanged_sendsStaleSourceAbort() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+
+        StagedOfflineWrite staged =
+                new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1});
+        when(session.stage(any(), any())).thenReturn(staged);
+        when(session.commit(eq(staged), any()))
+                .thenReturn(OfflineCommitResult.ABORTED_SOURCE_CHANGED);
+
+        Consumer<InventoryCloseEvent.Reason> onClose = openAndCaptureClose(viewer, offline);
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        verify(messages).send(viewer, "invsee.commit-source-changed", "player", "ghost");
+    }
+
+    @Test
+    void close_stageFailure_sendsWriteErrorAndNeverCommits() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+        when(session.stage(any(), any())).thenThrow(new IOException("disk full"));
+
+        Consumer<InventoryCloseEvent.Reason> onClose = openAndCaptureClose(viewer, offline);
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        verify(messages).send(viewer, "invsee.write-error");
+        verify(session, never()).commit(any(), any());
+    }
+
+    @Test
+    void close_commitFailure_sendsWriteError() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+        when(session.stage(any(), any()))
+                .thenReturn(new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1}));
+        when(session.commit(any(), any())).thenThrow(new IOException("replace failed"));
+
+        Consumer<InventoryCloseEvent.Reason> onClose = openAndCaptureClose(viewer, offline);
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        verify(messages).send(viewer, "invsee.write-error");
+    }
+
+    @Test
+    void close_commitPredicate_isFalseWhenTargetOnline() throws IOException {
+        PlayerMock viewer = server.addPlayer("viewer");
+        UUID uuid = UUID.randomUUID();
+        OfflinePlayer offline = offlineWithInventory(uuid, new ItemStack(Material.DIRT));
+        when(session.stage(any(), any()))
+                .thenReturn(new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1}));
+        when(session.commit(any(), any())).thenReturn(OfflineCommitResult.COMMITTED);
+
+        // A different Server reports the target as online.
+        Server onlineServer = mock(Server.class);
+        Player onlineTarget = mock(Player.class);
+        when(onlineServer.getPlayer(uuid)).thenReturn(onlineTarget);
+
+        OfflinePlayerDataEditor localEditor = mock(OfflinePlayerDataEditor.class);
+        when(localEditor.openForEdit(uuid)).thenReturn(Optional.of(session));
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, localEditor, scheduler, onlineServer);
+        Consumer<InventoryCloseEvent.Reason> onClose = captureClose();
+
+        onClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        ArgumentCaptor<BooleanSupplier> predicate = ArgumentCaptor.forClass(BooleanSupplier.class);
+        verify(session).commit(any(), predicate.capture());
+        assertThat(predicate.getValue().getAsBoolean()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private OfflinePlayer offlineWithInventory(UUID uuid, ItemStack item) throws IOException {
+        OfflinePlayer offline = mock(OfflinePlayer.class);
+        when(offline.hasPlayedBefore()).thenReturn(true);
+        when(offline.getUniqueId()).thenReturn(uuid);
+        when(editor.openForEdit(uuid)).thenReturn(Optional.of(session));
+        when(session.snapshot())
+                .thenReturn(
+                        OfflinePlayerSnapshot.ofInventory(List.of(new SlottedItem(9, item))));
+        return offline;
+    }
+
+    private Consumer<InventoryCloseEvent.Reason> openAndCaptureClose(
+            Player viewer, OfflinePlayer offline) {
+        InvseeCommand.openOfflineInventory(
+                viewer, offline, "ghost", gui, messages, editor, scheduler, server);
+        return captureClose();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Consumer<InventoryCloseEvent.Reason> captureClose() {
+        ArgumentCaptor<Consumer<InventoryCloseEvent.Reason>> captor =
+                ArgumentCaptor.forClass(Consumer.class);
+        verify(gui)
+                .open(
+                        any(),
+                        any(xyz.xenondevs.invui.gui.Gui.class),
+                        any(Component.class),
+                        captor.capture());
+        return captor.getValue();
     }
 
     private static long countInventoryLinks(xyz.xenondevs.invui.gui.Gui invuiGui) {

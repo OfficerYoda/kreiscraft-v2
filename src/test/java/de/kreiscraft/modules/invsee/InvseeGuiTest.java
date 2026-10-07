@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import xyz.xenondevs.invui.gui.SlotElement;
+import xyz.xenondevs.invui.inventory.VirtualInventory;
 
 class InvseeGuiTest {
 
@@ -34,7 +35,7 @@ class InvseeGuiTest {
     }
 
     // -----------------------------------------------------------------------
-    // buildOfflineInventory — five-row snapshot layout
+    // buildOfflineInventory — five-row editable snapshot layout
     // -----------------------------------------------------------------------
 
     @Test
@@ -100,7 +101,7 @@ class InvseeGuiTest {
                 InvseeGui.buildOfflineInventory(OfflinePlayerSnapshot.empty());
 
         for (int i = InvseeGui.OFFLINE_FILLER_FIRST; i <= InvseeGui.OFFLINE_FILLER_LAST; i++) {
-            assertThat(gui.getItem(i)).as("GUI slot %d should hold a barrier", i).isNotNull();
+            assertThat(stackAt(gui, i)).as("GUI slot %d should hold a barrier", i).isNotNull();
             assertThat(stackAt(gui, i).getType()).as("GUI slot %d", i).isEqualTo(Material.BARRIER);
             assertThat(gui.getSlotElement(i)).isNotInstanceOf(SlotElement.InventoryLink.class);
         }
@@ -124,9 +125,9 @@ class InvseeGuiTest {
         xyz.xenondevs.invui.gui.Gui gui =
                 InvseeGui.buildOfflineInventory(OfflinePlayerSnapshot.empty());
 
-        assertThat(gui.getItem(0)).as("empty helmet slot").isNull();
-        assertThat(gui.getItem(9)).as("empty main slot").isNull();
-        assertThat(gui.getItem(44)).as("empty hotbar slot").isNull();
+        assertThat(stackAt(gui, 0)).as("empty helmet slot").isNull();
+        assertThat(stackAt(gui, 9)).as("empty main slot").isNull();
+        assertThat(stackAt(gui, 44)).as("empty hotbar slot").isNull();
     }
 
     @Test
@@ -159,13 +160,50 @@ class InvseeGuiTest {
             if (i >= InvseeGui.OFFLINE_FILLER_FIRST) {
                 assertThat(stackAt(gui, i).getType()).isEqualTo(Material.BARRIER);
             } else {
-                assertThat(gui.getItem(i)).isNull();
+                assertThat(stackAt(gui, i)).isNull();
             }
         }
     }
 
     // -----------------------------------------------------------------------
-    // buildOfflineEnderChest — three-row snapshot
+    // Editable offline inventory round-trips
+    // -----------------------------------------------------------------------
+
+    @Test
+    void offlineInventoryContents_roundTripsEditsThroughToSlottedItems() {
+        VirtualInventory contents =
+                InvseeGui.offlineInventoryContents(
+                        OfflinePlayerSnapshot.ofInventory(
+                                List.of(new SlottedItem(39, new ItemStack(Material.IRON_HELMET)))));
+
+        contents.setItem(null, 0, new ItemStack(Material.DIAMOND, 5));
+        contents.setItem(null, 40, new ItemStack(Material.SHIELD));
+
+        assertThat(InvseeGui.toSlottedItems(contents))
+                .containsExactlyInAnyOrder(
+                        new SlottedItem(0, new ItemStack(Material.DIAMOND, 5)),
+                        new SlottedItem(39, new ItemStack(Material.IRON_HELMET)),
+                        new SlottedItem(40, new ItemStack(Material.SHIELD)));
+    }
+
+    @Test
+    void buildOfflineInventory_bindsEveryNonFillerSlotToEditableInventory() {
+        VirtualInventory contents = InvseeGui.offlineInventoryContents(OfflinePlayerSnapshot.empty());
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildOfflineInventory(contents);
+
+        for (int i = 0; i < InvseeGui.OFFLINE_INVENTORY_GUI_SIZE; i++) {
+            boolean filler =
+                    i >= InvseeGui.OFFLINE_FILLER_FIRST && i <= InvseeGui.OFFLINE_FILLER_LAST;
+            if (filler) {
+                assertThat(gui.getSlotElement(i)).isNotInstanceOf(SlotElement.InventoryLink.class);
+            } else {
+                assertThat(gui.getSlotElement(i)).isInstanceOf(SlotElement.InventoryLink.class);
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // buildOfflineEnderChest — three-row editable snapshot
     // -----------------------------------------------------------------------
 
     @Test
@@ -182,7 +220,22 @@ class InvseeGuiTest {
         assertThat(gui.getSize()).isEqualTo(InvseeGui.ENDER_CHEST_GUI_SIZE);
         assertThat(stackAt(gui, 0).getType()).isEqualTo(Material.SHULKER_BOX);
         assertThat(stackAt(gui, 26).getType()).isEqualTo(Material.ENDER_PEARL);
-        assertThat(gui.getItem(1)).isNull();
+        assertThat(stackAt(gui, 1)).isNull();
+    }
+
+    @Test
+    void offlineEnderChestContents_roundTripsEditsThroughToSlottedItems() {
+        VirtualInventory contents =
+                InvseeGui.offlineEnderChestContents(
+                        OfflinePlayerSnapshot.ofEnderItems(
+                                List.of(new SlottedItem(2, new ItemStack(Material.ENDER_PEARL)))));
+
+        contents.setItem(null, 7, new ItemStack(Material.DIAMOND, 3));
+
+        assertThat(InvseeGui.toSlottedItems(contents))
+                .containsExactlyInAnyOrder(
+                        new SlottedItem(2, new ItemStack(Material.ENDER_PEARL)),
+                        new SlottedItem(7, new ItemStack(Material.DIAMOND, 3)));
     }
 
     // -----------------------------------------------------------------------
@@ -242,7 +295,8 @@ class InvseeGuiTest {
     }
 
     private ItemStack stackAt(xyz.xenondevs.invui.gui.Gui gui, int slot) {
-        return gui.getItem(slot).getItemProvider(player).get();
+        SlotElement element = gui.getSlotElement(slot);
+        return element == null ? null : element.getItemStack(player);
     }
 
     private static String plain(Component component) {

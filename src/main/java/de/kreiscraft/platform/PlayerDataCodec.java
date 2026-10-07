@@ -1,6 +1,7 @@
 package de.kreiscraft.platform;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Version-specific decode boundary for an offline player's compressed NBT bytes.
@@ -20,4 +21,22 @@ public interface PlayerDataCodec {
      * @throws IOException if the bytes are not valid player-data NBT
      */
     OfflinePlayerSnapshot decode(byte[] nbtBytes) throws IOException;
+
+    /**
+     * Encodes edited inventory and Ender Chest items as compressed player-data NBT, preserving
+     * every unrelated root tag and item component from {@code sourceNbtBytes}.
+     *
+     * <p>Only the {@code Inventory} and {@code EnderItems} lists are replaced; the complete source
+     * document is otherwise copied through untouched, so no unrelated player data or item metadata
+     * is lost.
+     *
+     * @param sourceNbtBytes the compressed {@code <uuid>.dat} contents the edits were made against
+     * @param inventory the ordinary inventory slots to write (Bukkit slots 0–40)
+     * @param enderItems the Ender Chest slots to write (0–26)
+     * @return compressed player-data NBT with the two edited lists replaced
+     * @throws IOException if the source bytes are not valid player-data NBT or encoding fails
+     */
+    byte[] encode(
+            byte[] sourceNbtBytes, List<SlottedItem> inventory, List<SlottedItem> enderItems)
+            throws IOException;
 }

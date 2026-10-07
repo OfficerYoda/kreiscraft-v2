@@ -20,6 +20,7 @@ import de.kreiscraft.core.util.Durations;
 import de.kreiscraft.platform.NmsPlayerDataCodec;
 import de.kreiscraft.platform.NmsWhitelist;
 import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerDataEditor;
 import de.kreiscraft.platform.OfflinePlayerDataStore;
 import de.kreiscraft.platform.PaperPlayerDataPaths;
 import de.kreiscraft.platform.PaperPlatform;
@@ -103,7 +104,7 @@ public final class KreiscraftBootstrap {
         PaperPlatform platform = new PaperPlatform(plugin, plugin.getServer());
         PlayerBrandProvider brands = new PlayerBrandProvider(platform);
         NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
-        OfflinePlayerData offlineData =
+        OfflinePlayerDataStore offlineData =
                 new OfflinePlayerDataStore(
                         PaperPlayerDataPaths.playerDataDirectory(platform), new NmsPlayerDataCodec());
 
@@ -111,6 +112,7 @@ public final class KreiscraftBootstrap {
         services.publish(PlayerBrandProvider.class, brands);
         services.publish(NmsWhitelist.class, nmsWhitelist);
         services.publish(OfflinePlayerData.class, offlineData);
+        services.publish(OfflinePlayerDataEditor.class, offlineData);
 
         // --- shared services ---
         this.userService = new UserService(platform, Clock.systemDefaultZone());

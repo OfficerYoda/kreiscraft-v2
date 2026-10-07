@@ -34,8 +34,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/effects <particle>` | — | `effects` | Set and persist your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
 | `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
-| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
-| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
+| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory; offline targets open as an editable snapshot. | `kreiscraft.invsee.use` | op |
+| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest; offline targets open as an editable snapshot. | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player (sending them a localized message with a distinctly styled reason), or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/setjail` | — | `jail` | Store your current location as the operator-owned jail location in Server Configuration. | `kreiscraft.jail.set` | op |
 | `/pos` | — | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |

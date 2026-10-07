@@ -2,9 +2,8 @@ package de.kreiscraft.modules.invsee;
 
 import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.platform.SlottedItem;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -12,6 +11,7 @@ import org.bukkit.inventory.PlayerInventory;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.gui.SlotElement;
 import xyz.xenondevs.invui.inventory.ReferencingInventory;
+import xyz.xenondevs.invui.inventory.VirtualInventory;
 import xyz.xenondevs.invui.item.Item;
 
 /**
@@ -26,7 +26,7 @@ import xyz.xenondevs.invui.item.Item;
  *   <li>Row 5 (GUI 36–44): hotbar (Bukkit slots 0–8)
  * </ul>
  *
- * <p>Slot mapping for the read-only 5-row offline snapshot (GUI slots 0–44):
+ * <p>Slot mapping for the editable 5-row offline snapshot (GUI slots 0–44):
  *
  * <ul>
  *   <li>Row 1 (GUI 0–4): helmet, chestplate, leggings, boots, offhand (Bukkit 39, 38, 37, 36, 40);
@@ -34,6 +34,9 @@ import xyz.xenondevs.invui.item.Item;
  *   <li>Rows 2–4 (GUI 9–35): main inventory (Bukkit slots 9–35) — GUI index equals the Bukkit slot.
  *   <li>Row 5 (GUI 36–44): hotbar (Bukkit slots 0–8).
  * </ul>
+ *
+ * <p>Offline contents are held in a detached {@link VirtualInventory} indexed by Bukkit slot, so a
+ * snapshot can be edited without touching the source until the module stages and commits it.
  */
 public final class InvseeGui {
 
@@ -49,7 +52,7 @@ public final class InvseeGui {
     /** GUI size for the full 5-row player-inventory view. */
     static final int PLAYER_GUI_SIZE = 45;
 
-    /** GUI size for the read-only 5-row offline snapshot. */
+    /** GUI size for the editable 5-row offline snapshot. */
     static final int OFFLINE_INVENTORY_GUI_SIZE = 45;
 
     /** GUI size for the 3-row ender-chest view. */
@@ -96,59 +99,93 @@ public final class InvseeGui {
     }
 
     // -----------------------------------------------------------------------
-    // Read-only: offline snapshot — 5-row view
+    // Editable: offline snapshot — 5-row view
     // -----------------------------------------------------------------------
 
-    /** Builds the read-only 5-row offline inventory view for {@code snapshot}. */
-    public static Gui buildOfflineInventory(OfflinePlayerSnapshot snapshot) {
-        return buildOfflineInventory(snapshot.inventory());
+    /**
+     * Seeds a detached, editable inventory from {@code snapshot}, indexed by Bukkit player-inventory
+     * slot (0–40). Empty slots are {@code null}; reading the same instance after the GUI closes
+     * yields the edits.
+     */
+    public static VirtualInventory offlineInventoryContents(OfflinePlayerSnapshot snapshot) {
+        ItemStack[] items = new ItemStack[PLAYER_SLOTS];
+        for (SlottedItem item : snapshot.inventory()) {
+            if (item.slot() >= 0 && item.slot() < PLAYER_SLOTS) {
+                items[item.slot()] = item.stack();
+            }
+        }
+        return new VirtualInventory(items);
     }
 
-    static Gui buildOfflineInventory(List<SlottedItem> items) {
-        Map<Integer, ItemStack> bySlot = bySlot(items);
-        ItemStack[] cells = new ItemStack[OFFLINE_INVENTORY_GUI_SIZE];
+    /**
+     * Builds the editable 5-row offline inventory view bound to {@code contents}, which must hold
+     * {@link #PLAYER_SLOTS} slots indexed by Bukkit slot.
+     */
+    public static Gui buildOfflineInventory(VirtualInventory contents) {
+        Gui gui = Gui.empty(9, 5);
         // Top row: armor worn on the head first, then offhand (GUI 0-4).
-        put(cells, bySlot, 39, 0); // helmet
-        put(cells, bySlot, 38, 1); // chestplate
-        put(cells, bySlot, 37, 2); // leggings
-        put(cells, bySlot, 36, 3); // boots
-        put(cells, bySlot, 40, 4); // offhand
+        gui.setSlotElement(0, new SlotElement.InventoryLink(contents, 39)); // helmet
+        gui.setSlotElement(1, new SlotElement.InventoryLink(contents, 38)); // chestplate
+        gui.setSlotElement(2, new SlotElement.InventoryLink(contents, 37)); // leggings
+        gui.setSlotElement(3, new SlotElement.InventoryLink(contents, 36)); // boots
+        gui.setSlotElement(4, new SlotElement.InventoryLink(contents, 40)); // offhand
         // No inventory position exists for GUI 5-8: render immovable barriers.
         for (int i = OFFLINE_FILLER_FIRST; i <= OFFLINE_FILLER_LAST; i++) {
-            cells[i] = new ItemStack(Material.BARRIER);
+            gui.setItem(i, Item.simple(new ItemStack(Material.BARRIER)));
         }
         // Main inventory: GUI index equals the Bukkit slot (9-35).
         for (int slot = 9; slot <= 35; slot++) {
-            put(cells, bySlot, slot, slot);
+            gui.setSlotElement(slot, new SlotElement.InventoryLink(contents, slot));
         }
         // Hotbar: bottom row (Bukkit 0-8 → GUI 36-44).
         for (int slot = 0; slot <= 8; slot++) {
-            put(cells, bySlot, slot, 36 + slot);
+            gui.setSlotElement(36 + slot, new SlotElement.InventoryLink(contents, slot));
         }
-        return buildGuiFromItems(cells, 9, 5);
+        return gui;
+    }
+
+    /** Builds the editable 5-row offline inventory view for {@code snapshot}. */
+    public static Gui buildOfflineInventory(OfflinePlayerSnapshot snapshot) {
+        return buildOfflineInventory(offlineInventoryContents(snapshot));
     }
 
     // -----------------------------------------------------------------------
-    // Read-only: offline snapshot — 3-row Ender Chest view
+    // Editable: offline snapshot — 3-row Ender Chest view
     // -----------------------------------------------------------------------
 
-    /** Builds the read-only 3-row offline Ender Chest view for {@code snapshot}. */
-    public static Gui buildOfflineEnderChest(OfflinePlayerSnapshot snapshot) {
-        return buildOfflineEnderChest(snapshot.enderItems());
-    }
-
-    static Gui buildOfflineEnderChest(List<SlottedItem> items) {
-        ItemStack[] cells = new ItemStack[ENDER_CHEST_GUI_SIZE];
-        for (SlottedItem si : items) {
-            if (si.slot() >= 0 && si.slot() < ENDER_CHEST_GUI_SIZE) {
-                cells[si.slot()] = si.stack();
+    /**
+     * Seeds a detached, editable inventory from {@code snapshot}'s {@code EnderItems}, indexed by
+     * Ender Chest slot (0–26).
+     */
+    public static VirtualInventory offlineEnderChestContents(OfflinePlayerSnapshot snapshot) {
+        ItemStack[] items = new ItemStack[ENDER_CHEST_GUI_SIZE];
+        for (SlottedItem item : snapshot.enderItems()) {
+            if (item.slot() >= 0 && item.slot() < ENDER_CHEST_GUI_SIZE) {
+                items[item.slot()] = item.stack();
             }
         }
-        return buildGuiFromItems(cells, 9, 3);
+        return new VirtualInventory(items);
+    }
+
+    /**
+     * Builds the editable 3-row offline Ender Chest view bound to {@code contents}, which must hold
+     * {@link #ENDER_CHEST_GUI_SIZE} slots indexed by Ender Chest slot.
+     */
+    public static Gui buildOfflineEnderChest(VirtualInventory contents) {
+        Gui gui = Gui.empty(9, 3);
+        for (int slot = 0; slot < ENDER_CHEST_GUI_SIZE; slot++) {
+            gui.setSlotElement(slot, new SlotElement.InventoryLink(contents, slot));
+        }
+        return gui;
+    }
+
+    /** Builds the editable 3-row offline Ender Chest view for {@code snapshot}. */
+    public static Gui buildOfflineEnderChest(OfflinePlayerSnapshot snapshot) {
+        return buildOfflineEnderChest(offlineEnderChestContents(snapshot));
     }
 
     // -----------------------------------------------------------------------
-    // Ender chest — editable 3-row view
+    // Ender chest — editable 3-row live view
     // -----------------------------------------------------------------------
 
     /**
@@ -163,32 +200,22 @@ public final class InvseeGui {
     }
 
     // -----------------------------------------------------------------------
-    // Private builder helpers
+    // Snapshot extraction
     // -----------------------------------------------------------------------
 
-    private static Map<Integer, ItemStack> bySlot(List<SlottedItem> items) {
-        Map<Integer, ItemStack> bySlot = new LinkedHashMap<>();
-        for (SlottedItem item : items) {
-            bySlot.put(item.slot(), item.stack());
-        }
-        return bySlot;
-    }
-
-    private static void put(
-            ItemStack[] cells, Map<Integer, ItemStack> bySlot, int bukkitSlot, int guiIndex) {
-        ItemStack stack = bySlot.get(bukkitSlot);
-        if (stack != null) {
-            cells[guiIndex] = stack;
-        }
-    }
-
-    private static Gui buildGuiFromItems(ItemStack[] items, int width, int height) {
-        Gui gui = Gui.empty(width, height);
-        for (int i = 0; i < items.length && i < width * height; i++) {
-            if (items[i] != null) {
-                gui.setItem(i, Item.simple(items[i]));
+    /**
+     * Converts an editable offline {@link VirtualInventory} back into slot items, omitting empty
+     * slots and air stacks. Works for both the 41-slot inventory and the 27-slot Ender Chest.
+     */
+    public static List<SlottedItem> toSlottedItems(VirtualInventory contents) {
+        ItemStack[] items = contents.getItems();
+        List<SlottedItem> out = new ArrayList<>();
+        for (int slot = 0; slot < items.length; slot++) {
+            ItemStack stack = items[slot];
+            if (stack != null && !stack.getType().isAir()) {
+                out.add(new SlottedItem(slot, stack));
             }
         }
-        return gui;
+        return out;
     }
 }
