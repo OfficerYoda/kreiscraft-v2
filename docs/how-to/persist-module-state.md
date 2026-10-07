@@ -60,7 +60,8 @@ state via explicit node paths rather than a single top-level record.
 > **Operator-owned state is not a `DataFile`.** Values that represent operator choices — the spawn
 > location, update-mode state, start-sequence completion — live in writable `config.yml` and are
 > written through `ConfigService` (see ADR-10). Use `DataFile` only for player and gameplay
-> Activity Data such as jail records, saved positions, Bedrock identities, and anti-cheat logs.
+> Activity Data such as jail records, saved positions, Bedrock identities and pre-login
+> authorizations, and anti-cheat logs.
 
 ### 2. Load the file in `enable()`
 

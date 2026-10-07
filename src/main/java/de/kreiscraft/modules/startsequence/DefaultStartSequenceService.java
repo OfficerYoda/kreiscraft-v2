@@ -55,19 +55,17 @@ public final class DefaultStartSequenceService implements StartSequenceService {
         configService.applyEdit(ServerConfigSchema.startSequenceStarted(), true);
         this.activeWorld = world;
 
-        // RusticPrism starts its counter at the configured countdown, decrements it before the
-        // first display, and launches the season once it reaches zero. The displayed numbers are
-        // therefore (countdown - 1) .. 1, one per second, with the start title one second after
-        // the final number.
-        long firstNumber = Math.max(0L, config.countdown().toSeconds() - 1L);
-        for (long number = firstNumber; number >= 1L; number--) {
+        // Render the full promise before starting: countdown, countdown - 1, ..., 1, one number
+        // per second, then the start title one second after the final number.
+        long seconds = Math.max(0L, config.countdown().toSeconds());
+        for (long number = seconds; number >= 1L; number--) {
             final int displayed = (int) number;
-            Duration delay = Duration.ofSeconds(firstNumber - number);
+            Duration delay = Duration.ofSeconds(seconds - number);
             activeTasks.add(scheduler.runLater(delay, () -> showCountdownTitle(displayed)));
         }
-        activeTasks.add(scheduler.runLater(Duration.ofSeconds(firstNumber), () -> {
+        activeTasks.add(scheduler.runLater(Duration.ofSeconds(seconds), () -> {
             showStartedTitle();
-            triggerBorderSequence(world);
+            startBorderTransition(world);
         }));
     }
 
@@ -130,19 +128,12 @@ public final class DefaultStartSequenceService implements StartSequenceService {
         });
     }
 
-    private void triggerBorderSequence(World world) {
-        // Bukkit's WorldBorder.changeSize takes a duration in ticks. The configured phases are
-        // tick values (RusticPrism parity), so derive the tick count from each Duration.
-        world.getWorldBorder()
-                .changeSize(config.targetBorderSize(), toTicks(config.phase1Duration()));
-
-        Scheduler.Task phase2Task = scheduler.runLater(config.phase1To2Delay(), () -> world.getWorldBorder()
-                .changeSize(config.targetBorderSize(), toTicks(config.phase2Duration())));
-        activeTasks.add(phase2Task);
-
-        Scheduler.Task instantTask = scheduler.runLater(config.phase2ToInstantDelay(),
-                () -> world.getWorldBorder().setSize(config.targetBorderSize()));
-        activeTasks.add(instantTask);
+    private void startBorderTransition(World world) {
+        // One continuous expansion, delegated to Minecraft. Bukkit owns the in-progress transition
+        // and Paper persists it across a graceful restart, so the plugin keeps no phase, timestamp,
+        // or remaining-duration resume state. The Duration is converted to ticks only here, at the
+        // Bukkit boundary (20 ticks = 1 second).
+        world.getWorldBorder().changeSize(config.targetBorderSize(), toTicks(config.borderDuration()));
     }
 
     private static long toTicks(Duration duration) {

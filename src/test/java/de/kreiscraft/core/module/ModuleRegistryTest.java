@@ -154,4 +154,23 @@ class ModuleRegistryTest {
 
         assertThat(log).containsExactly("disable:a", "disable:b");
     }
+
+    @Test
+    void isEnabled_reflectsEnableAllAndUnknownIds() {
+        Recording a = new Recording("a", List.of(), new ArrayList<>());
+        Recording b = new Recording("b", List.of(), new ArrayList<>());
+
+        ConfigurationNode cfg = configWithEnabled("a");
+        ModuleRegistry reg = new ModuleRegistry(m -> null, cfg, Logger.getAnonymousLogger());
+        reg.register(a);
+        reg.register(b);
+
+        assertThat(reg.isEnabled("a")).as("not enabled until enableAll runs").isFalse();
+
+        reg.enableAll();
+
+        assertThat(reg.isEnabled("a")).isTrue();
+        assertThat(reg.isEnabled("b")).as("disabled modules report false").isFalse();
+        assertThat(reg.isEnabled("ghost")).as("unknown ids report false").isFalse();
+    }
 }

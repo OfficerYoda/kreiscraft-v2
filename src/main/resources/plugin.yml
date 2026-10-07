@@ -37,11 +37,8 @@ permissions:
   kreiscraft.glow.use:
     description: Toggle glow effect
     default: true
-  kreiscraft.invsee.view:
-    description: View another player's inventory
-    default: op
-  kreiscraft.invsee.edit:
-    description: Edit another player's inventory
+  kreiscraft.invsee.use:
+    description: View and edit another player's inventory or ender chest
     default: op
   kreiscraft.jail.use:
     description: Jail and unjail players

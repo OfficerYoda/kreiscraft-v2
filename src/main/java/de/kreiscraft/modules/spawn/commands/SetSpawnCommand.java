@@ -1,7 +1,6 @@
 package de.kreiscraft.modules.spawn.commands;
 
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.spawn.SpawnService;
@@ -10,9 +9,11 @@ import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.entity.Player;
 
 /**
- * Sets the server spawn point to the executing player's current location and stores the given
- * teleport radius. Both operator-owned values are written to Server Configuration
- * ({@code modules.spawn.location} and {@code modules.spawn.teleport-range} in {@code config.yml}).
+ * Sets the server spawn point to the executing player's current location.
+ *
+ * <p>The operator-owned location is written to Server Configuration
+ * ({@code modules.spawn.location} in {@code config.yml}). The single Spawn Radius is module
+ * configuration ({@code modules.spawn.spawn-radius}) and is edited directly in {@code config.yml}.
  */
 public final class SetSpawnCommand {
 
@@ -22,16 +23,14 @@ public final class SetSpawnCommand {
             SpawnService service, MessageService messages) {
         return Commands.literal("setspawn")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.spawn.set"))
-                .then(Commands.argument("radius", IntegerArgumentType.integer(1))
-                        .executes(ctx -> {
-                            if (!(ctx.getSource().getSender() instanceof Player player)) {
-                                return Command.SINGLE_SUCCESS;
-                            }
-                            int radius = IntegerArgumentType.getInteger(ctx, "radius");
-                            service.setSpawn(player.getLocation(), radius);
-                            messages.send(player, "spawn.spawn-set");
-                            return Command.SINGLE_SUCCESS;
-                        }))
+                .executes(ctx -> {
+                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                        return Command.SINGLE_SUCCESS;
+                    }
+                    service.setSpawn(player.getLocation());
+                    messages.send(player, "spawn.spawn-set");
+                    return Command.SINGLE_SUCCESS;
+                })
                 .build();
     }
 }

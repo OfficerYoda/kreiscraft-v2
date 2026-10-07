@@ -19,7 +19,7 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.plugin.PluginMock;
 
-class KHelpCommandTest {
+class KcHelpCommandTest {
 
     private ServerMock server;
     private PluginMock plugin;
@@ -40,7 +40,7 @@ class KHelpCommandTest {
     @Test
     void build_requiresPermission_whenMissing_returnsFalse() {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null));
+                KcHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -50,7 +50,7 @@ class KHelpCommandTest {
     @Test
     void build_requiresPermission_whenGranted_returnsTrue() {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null));
+                KcHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.admin.help", true);
         CommandSourceStack src = mock(CommandSourceStack.class);
@@ -62,7 +62,7 @@ class KHelpCommandTest {
     @Test
     void execute_sendsHelpTextKey() throws Exception {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null));
+                KcHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -79,7 +79,7 @@ class KHelpCommandTest {
     void execute_afterConfigChange_usesNewWebsiteUrl() throws Exception {
         AdminConfig[] configHolder = {new AdminConfig(null)};
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> configHolder[0]);
+                KcHelpCommand.build(messages, () -> configHolder[0]);
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);

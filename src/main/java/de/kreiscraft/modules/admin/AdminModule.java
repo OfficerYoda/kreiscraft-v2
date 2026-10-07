@@ -8,7 +8,7 @@ import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.admin.commands.HeadCommand;
 import de.kreiscraft.modules.admin.commands.IpCommand;
 import de.kreiscraft.modules.admin.commands.ItemCommand;
-import de.kreiscraft.modules.admin.commands.KHelpCommand;
+import de.kreiscraft.modules.admin.commands.KcHelpCommand;
 import de.kreiscraft.modules.admin.commands.KreiscraftGamemodeCommand;
 import de.kreiscraft.modules.admin.commands.LastOnlineCommand;
 import de.kreiscraft.modules.admin.commands.PingCommand;
@@ -57,6 +57,9 @@ public final class AdminModule implements Module {
                         KreiscraftGamemodeCommand.build(messages, server),
                         "Change a player's gamemode",
                         "kreiscraftgm", "kcgamemode", "kcgm");
+        ctx.commands()
+                .registerRedirect(
+                        "gm", "gamemode", "Alias for the vanilla /gamemode command");
         ctx.commands().register(ItemCommand.build(messages), "Spawn items", "i");
         ctx.commands()
                 .register(SkullCommand.build(messages, server), "Get a player head", "kopf");
@@ -84,7 +87,7 @@ public final class AdminModule implements Module {
         ctx.commands().register(SudoCommand.build(messages, server), "Force a player to chat");
         ctx.commands()
                 .register(
-                        KHelpCommand.build(messages, () -> this.config),
+                        KcHelpCommand.build(messages, () -> this.config),
                         "Show Kreiscraft help links",
                         "?", "kchelp");
     }

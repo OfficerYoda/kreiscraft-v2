@@ -9,9 +9,9 @@ import io.papermc.paper.command.brigadier.Commands;
 import java.util.function.Supplier;
 import org.bukkit.command.CommandSender;
 
-public final class KHelpCommand {
+public final class KcHelpCommand {
 
-    private KHelpCommand() {}
+    private KcHelpCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
             MessageService messages, Supplier<AdminConfig> configSupplier) {

@@ -75,10 +75,6 @@ class ServerConfigSchemaTest {
         assertThat(location.guiExposed()).isFalse();
         assertThat(location.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
 
-        ConfigField range = ServerConfigSchema.spawnTeleportRange();
-        assertThat(range.path()).containsExactly("modules", "spawn", "teleport-range");
-        assertThat(range.type()).isEqualTo(ConfigFieldType.INTEGER);
-
         ConfigField active = ServerConfigSchema.updateModeActive();
         assertThat(active.path()).containsExactly("modules", "update-mode", "active");
         assertThat(active.type()).isEqualTo(ConfigFieldType.BOOLEAN);
@@ -87,7 +83,7 @@ class ServerConfigSchemaTest {
         assertThat(started.path()).containsExactly("modules", "start-sequence", "has-started");
         assertThat(started.type()).isEqualTo(ConfigFieldType.BOOLEAN);
 
-        for (ConfigField field : List.of(location, range, active, started)) {
+        for (ConfigField field : List.of(location, active, started)) {
             assertThat(field.hotReloadable()).isTrue();
             assertThat(field.restartRequired()).isFalse();
         }
