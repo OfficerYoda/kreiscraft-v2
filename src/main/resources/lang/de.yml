@@ -115,6 +115,17 @@ admin:
   sudo-executed: "<prefix> <gray>sudo <player>: <text>"
   help:
     text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+  style-preview:
+    temporary: "<prefix> <yellow>Temporäre Vorschau für den Command Message Style — dieser Befehl wählt oder speichert keine Palette.</yellow>"
+    header: "<dark_gray>━━━━━━━━ <palette> <dark_gray>━━━━━━━━"
+    inventory-opening: "<line>"
+    reason: "<line>"
+    value: "<line>"
+    success: "<line>"
+    warning: "<line>"
+    error: "<line>"
+    inventory-title: "<line>"
+    handoff: "<prefix> <yellow>Eine menschliche Auswahl in #60 ist erforderlich. Wähle Classic, Signal, Ember oder fordere einen Hybrid an; es wurde keine Palette angewendet.</yellow>"
   target-not-found: "<prefix> <red>Spieler <player></red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
 api:

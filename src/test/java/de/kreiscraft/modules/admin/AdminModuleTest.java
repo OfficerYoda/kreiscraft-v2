@@ -1,10 +1,12 @@
 package de.kreiscraft.modules.admin;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.CommandRegistrar;
 import de.kreiscraft.core.event.EventBus;
 import de.kreiscraft.core.message.MessageService;
@@ -12,6 +14,7 @@ import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
@@ -39,7 +42,7 @@ class AdminModuleTest {
     }
 
     @Test
-    void enable_registersGmAsRedirectToVanillaGamemode() {
+    void enable_registersGmRedirectAndTemporaryStylePreview() {
         CommandRegistrar commands = mock(CommandRegistrar.class);
         ServiceRegistry services = new ServiceRegistry();
         services.publish(
@@ -58,5 +61,11 @@ class AdminModuleTest {
 
         verify(commands)
                 .registerRedirect(eq("gm"), eq("gamemode"), anyString());
+        verify(commands)
+                .register(
+                        argThat(
+                                (LiteralCommandNode<CommandSourceStack> node) -> node.getName()
+                                        .equals("commandstylepreview")),
+                        anyString());
     }
 }

@@ -115,6 +115,17 @@ admin:
   sudo-executed: "<prefix> <gray>sudo <player>: <text>"
   help:
     text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+  style-preview:
+    temporary: "<prefix> <yellow>Temporary Command Message Style preview — this command does not select or save a palette.</yellow>"
+    header: "<dark_gray>━━━━━━━━ <palette> <dark_gray>━━━━━━━━"
+    inventory-opening: "<line>"
+    reason: "<line>"
+    value: "<line>"
+    success: "<line>"
+    warning: "<line>"
+    error: "<line>"
+    inventory-title: "<line>"
+    handoff: "<prefix> <yellow>Human selection is required in #60. Choose Classic, Signal, Ember, or request a hybrid; no palette has been applied.</yellow>"
   target-not-found: "<prefix> <red>Player <player></red> not found."
   usage: "<prefix> <red>Usage: <usage>"
 api:

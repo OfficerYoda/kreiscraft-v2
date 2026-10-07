@@ -9,6 +9,7 @@ import de.kreiscraft.modules.admin.commands.HeadCommand;
 import de.kreiscraft.modules.admin.commands.IpCommand;
 import de.kreiscraft.modules.admin.commands.ItemCommand;
 import de.kreiscraft.modules.admin.commands.KcHelpCommand;
+import de.kreiscraft.modules.admin.commands.CommandStylePreviewCommand;
 import de.kreiscraft.modules.admin.commands.LastOnlineCommand;
 import de.kreiscraft.modules.admin.commands.PingCommand;
 import de.kreiscraft.modules.admin.commands.SkullCommand;
@@ -71,6 +72,10 @@ public final class AdminModule implements Module {
         ctx.commands()
                 .register(PingCommand.build(messages, server), "Show a player's ping");
         ctx.commands().register(TpsCommand.build(messages, resolver), "Show server TPS");
+        ctx.commands()
+                .register(
+                        CommandStylePreviewCommand.build(messages),
+                        "Temporarily preview Command Message Style candidates");
         ctx.commands()
                 .register(
                         StatisticCommand.build(messages, server),
