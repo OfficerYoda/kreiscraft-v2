@@ -132,7 +132,7 @@ the `Javalin` instance and exposes `start()` / `stop()` methods. `ApiModule.disa
 
 ## ADR-5: `DataFile<T>` for Runtime State, Separate from `config.yml`
 
-**Status:** Accepted
+**Status:** Accepted; amended by ADR-10
 
 **Context:**  
 Several modules need to persist data that changes at runtime: the spawn location, jailed players,
@@ -159,6 +159,9 @@ cancelling the repeating task.
   forgetting this means the file is never auto-saved.
 - Data files are not hot-reloaded by `/kreiscraft reload` — their contents are managed
   exclusively at runtime, not by admin config changes.
+
+ADR-10 narrows this decision: values deliberately owned by an operator belong in writable
+`config.yml` even when an in-game command changes them.
 
 ---
 
@@ -293,3 +296,33 @@ enable/disable how-to, and pin it with a configuration test
   the bundled config and the configuration test, so the policy cannot drift silently.
 - The distinction between "opt-in cosmetic" (`effects`, `firework`, `glow`) and "opt-in policy"
   (`plugin-hider`, `positions`) is documented but not enforced in code.
+
+---
+
+## ADR-10: Writable Server Configuration and Activity Data Boundary
+
+**Status:** Accepted
+
+**Context:**
+Administrators need to edit most gameplay configuration through an in-game GUI, and commands such
+as `/setspawn` change values that are conceptually operator choices. The previous rule put every
+runtime mutation under `data/`, which created duplicate sources such as spawn range in both
+`config.yml` and `data/spawn.yml`. Moving all mutable records into `config.yml`, however, would make
+reloads capable of overwriting player activity and operational history.
+
+**Decision:**
+Make `config.yml` writable through an admin GUI and store operator-owned choices there, including
+spawn location, update-mode state, and start-sequence completion. Keep player and gameplay activity
+records in dedicated data files: player settings, statuses, saved positions, active jail records,
+Bedrock identities, and anti-cheat logs. GUI edits are validated and saved atomically on each
+click. A context-aware message shown when the GUI closes offers config reload when useful and
+identifies changes that require a full server restart. Existing operator-owned data files are not
+migrated; the new config values start from defaults.
+
+**Consequences:**
+- `ConfigService` must support validated, atomic writes in addition to reloads.
+- Module enablement remains a restart boundary; config reload does not alter module lifecycle.
+- Sensitive and low-level infrastructure values remain YAML-only.
+- Activity data remains protected from ordinary config reloads.
+- The admin GUI is a supported configuration surface, so every exposed field needs validation,
+  lifecycle metadata, documentation, and tests.
