@@ -5,11 +5,9 @@ api-version: '26.2'
 author: OfficerYoda
 description: Combined Kreiscraft plugin (gameplay + web API)
 permissions:
-  kreiscraft.admin.gamemode: { description: Change gamemode, default: op }
   kreiscraft.admin.item: { description: Spawn items, default: op }
   kreiscraft.admin.skull: { description: Get a player head, default: op }
   kreiscraft.admin.head: { description: Swap held item and helmet, default: op }
-  kreiscraft.admin.weather: { description: Change weather, default: op }
   kreiscraft.admin.spawnmob: { description: Spawn mobs, default: op }
   kreiscraft.admin.ip: { description: See a player's IP, default: op }
   kreiscraft.admin.uuid: { description: See a player's UUID, default: op }
@@ -87,9 +85,6 @@ permissions:
     default: op
   kreiscraft.worldmgmt.world:
     description: Teleport between worlds
-    default: op
-  kreiscraft.worldmgmt.setworldspawn:
-    description: Set the spawn point of the current world
     default: op
   kreiscraft.worldmgmt.portal:
     description: Compute portal coordinate translations

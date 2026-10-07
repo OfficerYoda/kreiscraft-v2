@@ -11,12 +11,10 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | Command | Aliases | Module | Description | Permission | Default |
 |---------|---------|--------|-------------|-----------|---------|
 | `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
-| `/kreiscraftgamemode <mode> [player]` | `kreiscraftgm`, `kcgamemode`, `kcgm` | `admin` | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). | `kreiscraft.admin.gamemode` | op |
 | `/gm <gamemode> [<target>]` | — | `admin` | Forward to the vanilla `/gamemode` command, inheriting its syntax, suggestions, and authorization. | `minecraft.command.gamemode` (vanilla) | op |
-| `/item <material> [count]` | `i` | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
+| `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
-| `/kreiscraftweather <clear\|rain\|thunder>` | `kcweather` | `admin` | Change the weather in your current world. | `kreiscraft.admin.weather` | op |
 | `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 50). | `kreiscraft.admin.spawnmob` | op |
 | `/ip [player]` | — | `admin` | Show a player's IP address. | `kreiscraft.admin.ip` | op |
 | `/uuid [player]` | — | `admin` | Show a player's UUID. | `kreiscraft.admin.uuid` | op |
@@ -55,11 +53,10 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
 | `/status prefix <text>` | — | `status` | Set your own chat/tablist prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
 | `/status suffix <text>` | — | `status` | Set your own suffix. | `kreiscraft.status.set.self` | true |
-| `/updatemode on` | (sub-cmd `an`) | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
-| `/updatemode off` | (sub-cmd `aus`) | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
+| `/updatemode on` | — | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
+| `/updatemode off` | — | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode status` | — | `update-mode` | Show whether maintenance mode is active. | `kreiscraft.updatemode.admin` | op |
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
-| `/setworldspawn` | `sws` | `world-mgmt` | Set the current world's spawn to your location. | `kreiscraft.worldmgmt.setworldspawn` | op |
 | `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
 | `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
 
@@ -79,11 +76,9 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `admin` module
 
-- `kreiscraft.admin.gamemode` — **(op)** — Change gamemode.
 - `kreiscraft.admin.item` — **(op)** — Spawn items.
 - `kreiscraft.admin.skull` — **(op)** — Get a player head.
 - `kreiscraft.admin.head` — **(op)** — Swap held item and helmet.
-- `kreiscraft.admin.weather` — **(op)** — Change weather.
 - `kreiscraft.admin.spawnmob` — **(op)** — Spawn mobs.
 - `kreiscraft.admin.ip` — **(op)** — See a player's IP.
 - `kreiscraft.admin.uuid` — **(op)** — See a player's UUID.
@@ -170,7 +165,6 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `world-mgmt` module
 
 - `kreiscraft.worldmgmt.world` — **(op)** — Teleport between worlds.
-- `kreiscraft.worldmgmt.setworldspawn` — **(op)** — Set the spawn point of the current world.
 - `kreiscraft.worldmgmt.portal` — **(true)** — Compute portal coordinate translations.
 
 ---
