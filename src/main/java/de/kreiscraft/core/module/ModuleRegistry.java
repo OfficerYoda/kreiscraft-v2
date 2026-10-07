@@ -12,7 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 
-public final class ModuleRegistry {
+public final class ModuleRegistry implements ModuleEnablement {
 
     private final Function<Module, ModuleContext> contextFactory;
     private final ConfigurationNode configRoot;
@@ -36,6 +36,22 @@ public final class ModuleRegistry {
     /** Returns an unmodifiable view of all registered module ids (enabled and disabled). */
     public Set<String> registeredIds() {
         return Collections.unmodifiableSet(allModules.keySet());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Reports live enablement, so a client that queries lazily (for example when a GUI is
+     * opened) sees modules enabled after this registry finished {@link #enableAll()}.
+     */
+    @Override
+    public boolean isEnabled(String moduleId) {
+        for (Module m : enabledInOrder) {
+            if (m.id().equals(moduleId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public StartupSummary enableAll() {

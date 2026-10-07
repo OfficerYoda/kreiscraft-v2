@@ -25,7 +25,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
-| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Per-player settings GUI (clickthrough toggle, combat display mode selection). |
+| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
@@ -293,7 +293,9 @@ Schedules a server restart with a countdown. At seconds listed in `title-seconds
 
 ### Description
 
-Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles: the clickthrough enable/disable (consumed by the `clickthrough` module) and the combat display mode (consumed by the `combat` module). The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled.
+Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, effects (enabled state and particle), and glow preferences. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
+
+The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
 
 ### Services published
 
