@@ -217,7 +217,7 @@ Applies or removes the Bukkit `Glowing` effect for a player via `/glow`. State i
 
 ### Description
 
-Opens a GUI showing another player's inventory or ender chest. Players with `kreiscraft.invsee.edit` can modify the inventory directly; without it they get a read-only view. Offline inventory is read from the player data file via `OfflineInventoryReader`; offline ender-chest viewing is not supported.
+Opens a GUI showing another player's inventory or ender chest. The single `kreiscraft.invsee.use` permission authorizes viewing and editing: a viewer who passes it may modify the target's live inventory directly. GUI titles are rendered through the message service so they are localized per viewer and follow the current message styling boundary. Offline inventory is read from the player data file via `OfflineInventoryReader` and shown as a read-only snapshot; offline ender-chest viewing is not supported.
 
 ---
 

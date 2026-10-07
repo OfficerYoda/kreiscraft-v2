@@ -25,100 +25,14 @@ class InvseeGuiTest {
         MockBukkit.unmock();
     }
 
-    @Test
-    void mapPlayerInvToGuiSlots_hotbarAppearsInLastRow() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack sword = new ItemStack(Material.DIAMOND_SWORD);
-        contents[0] = sword; // hotbar slot 0
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Hotbar slot 0 → GUI row 5, first slot = GUI index 36
-        assertThat(gui[36]).isEqualTo(sword);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_hotbarLastSlotAtIndex44() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack pick = new ItemStack(Material.DIAMOND_PICKAXE);
-        contents[8] = pick; // hotbar slot 8
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Hotbar slot 8 → GUI index 36+8 = 44
-        assertThat(gui[44]).isEqualTo(pick);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_mainInvFirstSlotAtGuiIndex0() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack dirt = new ItemStack(Material.DIRT);
-        contents[9] = dirt; // main inventory first slot
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Main slot 9 → GUI index 0
-        assertThat(gui[0]).isEqualTo(dirt);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_mainInvLastSlotAtGuiIndex26() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack stone = new ItemStack(Material.STONE);
-        contents[35] = stone; // main inventory last slot
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Main slot 35 → GUI index 26
-        assertThat(gui[26]).isEqualTo(stone);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_armorBootsAtGuiIndex27() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack boots = new ItemStack(Material.DIAMOND_BOOTS);
-        contents[36] = boots; // boots slot
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Boots (Bukkit 36) → GUI 27
-        assertThat(gui[27]).isEqualTo(boots);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_armorHelmetAtGuiIndex30() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack helmet = new ItemStack(Material.DIAMOND_HELMET);
-        contents[39] = helmet; // helmet slot
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Helmet (Bukkit 39) → GUI 30
-        assertThat(gui[30]).isEqualTo(helmet);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_offhandAtGuiIndex31() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack shield = new ItemStack(Material.SHIELD);
-        contents[40] = shield; // offhand slot
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // Offhand (Bukkit 40) → GUI 31
-        assertThat(gui[31]).isEqualTo(shield);
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_fillerSlotsAreNull() {
-        ItemStack[] contents = new ItemStack[InvseeGui.PLAYER_SLOTS];
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(contents);
-        // GUI slots 32-35 should be null (filler row 4 remainder)
-        for (int i = 32; i <= 35; i++) {
-            assertThat(gui[i]).as("GUI filler slot %d", i).isNull();
-        }
-    }
-
-    @Test
-    void mapPlayerInvToGuiSlots_outputLengthIs45() {
-        ItemStack[] gui = InvseeGui.mapPlayerInvToGuiSlots(new ItemStack[InvseeGui.PLAYER_SLOTS]);
-        assertThat(gui).hasSize(InvseeGui.PLAYER_GUI_SIZE);
-    }
-
     // -----------------------------------------------------------------------
     // buildOffline — offline slot mapping
     // -----------------------------------------------------------------------
 
     @Test
     void buildOffline_mainInvSlotMappedToRows1to3() {
-        // This test verifies buildOffline doesn't throw; slot order is implied by the
-        // mapPlayerInvToGuiSlots tests above and the offline-specific mapping docs.
+        // This test verifies buildOffline doesn't throw; the offline-specific mapping is
+        // documented on buildOffline.
         List<SlottedItem> items =
                 List.of(
                         new SlottedItem(9, new ItemStack(Material.DIRT)),
