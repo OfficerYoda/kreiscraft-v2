@@ -65,7 +65,31 @@ class CommandStylePreviewCommandTest {
         assertThat(openedBoard).isNotNull();
         assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
                 .serialize(openedTitle))
-                .isEqualTo("Classic | Signal | Ember | Requested Hybrid");
+                .isEqualTo("Command Message Style Comparison");
+    }
+
+    @Test
+    void titleNavigation_opensARealInventoryOfSteveTitleForEveryPaletteWithoutSelectingOne()
+            throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = previewCommand();
+        PlayerMock player = server.addPlayer("Alice");
+        CommandSourceStack source = mock(CommandSourceStack.class);
+        when(source.getSender()).thenReturn(player);
+        CommandContext<CommandSourceStack> context = mock(CommandContext.class);
+        when(context.getSource()).thenReturn(source);
+
+        int[] playerColors = {0xFFAA00, 0x55FFFF, 0xFFFF55, 0x55FFFF};
+        String[] palettes = {"classic", "signal", "ember", "hybrid"};
+        for (int index = 0; index < palettes.length; index++) {
+            String palette = palettes[index];
+            node.getChild("title").getChild(palette).getCommand().run(context);
+            assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(openedTitle)).isEqualTo("Inventory of Steve");
+            assertThat(openedTitle.children().getFirst().color())
+                    .isEqualTo(net.kyori.adventure.text.format.TextColor.color(playerColors[index]));
+        }
+        assertThat(messages.sentKeys)
+                .containsOnly("admin.style-preview.temporary", "admin.style-preview.handoff");
     }
 
     private LiteralCommandNode<CommandSourceStack> previewCommand() {
