@@ -220,17 +220,15 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.spawn`) | Type | Default | Description |
 |---|---|---|---|
-| `teleport-range` | int | `100` | Maximum radius (blocks) from spawn for `/spawn`. Operator-owned; written by `/setspawn <radius>`. |
 | `location` | Location | *(optional)* | Operator-owned server spawn point, written by `/setspawn`. Absent until a spawn has been set; `/spawn` reports that no spawn is set. Not migrated from the retired `data/spawn.yml`. |
-| `glide.enabled` | boolean | `true` | Whether elytra glide is active in the spawn area. |
-| `glide.multiply-value` | int | `3` | Velocity multiplier at glide start. Currently stored but not applied at runtime. |
-| `glide.spawn-radius` | int | `30` | Block radius around spawn within which glide is active. |
-| `glide.launch-location` | Location | *(optional)* | Launch pad location. Null when absent. |
+| `spawn-radius` | int | `50` | The single Spawn Radius (blocks) that bounds both spawn access and glide eligibility. `/spawn` measures horizontal (XZ) distance (the Spawn Access Zone); glide initiation measures full 3D distance (the Glide Zone). |
+| `glide.enabled` | boolean | `true` | Whether elytra glide is active around spawn. |
+| `glide.multiply-value` | int | `3` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
 | `swap-hand-boost.enabled` | boolean | `false` | Whether the offhand-swap velocity boost is active while gliding. |
-| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's velocity on offhand swap. |
-| `spawn-launch.enabled` | boolean | `false` | Whether the block-trigger launch pad is active. |
-| `spawn-launch.trigger` | Location | *(optional)* | Block location that triggers the launch. |
-| `spawn-launch.velocity` | Vector | `{x: 0.0, y: 5.0, z: 0.0}` | Velocity vector applied on launch. Format: `{ x: <n>, y: <n>, z: <n> }`. |
+| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's facing unit vector on offhand swap while gliding. |
+| `glide-boost.enabled` | boolean | `true` | Whether the sneak-triggered boost is active for glides that started inside the Glide Zone. |
+| `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector on the sneak boost. |
+| `glide-boost.cooldown-seconds` | int | `5` | Per-player cooldown between sneak boosts, in seconds. |
 
 ---
 

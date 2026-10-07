@@ -134,6 +134,7 @@ settings-gui:
 spawn:
   teleported: "<prefix> <green>Zum Spawn teleportiert."
   out-of-range: "<prefix> <red>Du bist zu weit vom Spawn entfernt."
+  glide-outside-zone: "<prefix> <red>Du kannst nur innerhalb der Spawn-Gleit-Zone mit dem Gleiten beginnen."
   wrong-world: "<prefix> <red>Du kannst /spawn nur in der normalen Welt benutzen."
   no-spawn-set: "<prefix> <red>Kein Spawn gesetzt."
   spawn-set: "<prefix> <green>Spawn gesetzt."

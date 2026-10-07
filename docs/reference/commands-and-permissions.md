@@ -48,7 +48,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
-| `/spawn` | — | `spawn` | Teleport to the server spawn (within `teleport-range` blocks). | `kreiscraft.spawn.use` | true |
+| `/spawn` | — | `spawn` | Teleport to the server spawn when inside the horizontal Spawn Access Zone (overworld only). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
