@@ -39,9 +39,7 @@ public final class InvseeCommand {
                                 .executes(
                                         ctx -> {
                                             if (!(ctx.getSource().getSender() instanceof Player viewer)) {
-                                                messages.send(
-                                                        ctx.getSource().getSender(),
-                                                        "core.player-only");
+                                                messages.send(ctx.getSource().getSender(), "core.player-only");
                                                 return Command.SINGLE_SUCCESS;
                                             }
                                             String name =
@@ -50,8 +48,7 @@ public final class InvseeCommand {
                                             if (target != null) {
                                                 openOnlineInventory(viewer, target, gui, messages);
                                             } else {
-                                                lookupAndOpenOffline(
-                                                        viewer, name, gui, messages, offlineReader);
+                                                lookupAndOpenOffline(viewer, name, gui, messages, offlineReader);
                                             }
                                             return Command.SINGLE_SUCCESS;
                                         }))
@@ -75,7 +72,6 @@ public final class InvseeCommand {
     }
 
     /** Resolves the offline player and delegates to {@link #openOfflineInventory}. */
-    @SuppressWarnings("deprecation")
     private static void lookupAndOpenOffline(
             Player viewer,
             String name,

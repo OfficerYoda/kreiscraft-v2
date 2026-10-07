@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     java
     checkstyle
@@ -70,6 +72,25 @@ tasks.processResources {
 
 tasks.build {
     dependsOn(tasks.shadowJar)
+}
+
+val verifyInvuiCompatibility = tasks.register("verifyInvuiCompatibility") {
+    group = "verification"
+    description = "Rejects the legacy InventoryAccess implementation that fails on modern Paper."
+    dependsOn(tasks.shadowJar)
+
+    doLast {
+        val jar = tasks.shadowJar.get().archiveFile.get().asFile
+        ZipFile(jar).use { zip ->
+            check(zip.getEntry("xyz/xenondevs/inventoryaccess/InventoryAccess.class") == null) {
+                "The shaded JAR contains legacy InventoryAccess classes that are incompatible with Paper 26.x"
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(verifyInvuiCompatibility)
 }
 
 spotless {

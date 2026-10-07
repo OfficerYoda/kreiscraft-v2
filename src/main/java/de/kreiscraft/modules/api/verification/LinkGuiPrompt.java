@@ -6,12 +6,12 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import xyz.xenondevs.inventoryaccess.component.AdventureComponentWrapper;
+import org.bukkit.inventory.ItemStack;
+import xyz.xenondevs.invui.Click;
+import xyz.xenondevs.invui.item.AbstractItem;
+import xyz.xenondevs.invui.item.Item;
 import xyz.xenondevs.invui.item.ItemProvider;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
-import xyz.xenondevs.invui.item.impl.AbstractItem;
-import xyz.xenondevs.invui.item.impl.SimpleItem;
+import xyz.xenondevs.invui.item.ItemWrapper;
 
 /**
  * Opens a 3×9 chest GUI for the target player asking them to accept or decline a browser link
@@ -84,19 +84,12 @@ public final class LinkGuiPrompt {
             String browserDescription, Runnable onAccept, Runnable onDecline) {
 
         // Filler item — black stained-glass pane, empty name
-        SimpleItem filler =
-                new SimpleItem(
-                        new ItemBuilder(Material.BLACK_STAINED_GLASS_PANE)
-                                .setDisplayName(
-                                        new AdventureComponentWrapper(Component.text(" "))));
+        Item filler = Item.simple(createItemStack(Material.BLACK_STAINED_GLASS_PANE, Component.text(" ")));
 
         // Info item — paper with browser description
         Component infoName =
                 messages.render("api.link-prompt-info", "browser", browserDescription);
-        SimpleItem infoItem =
-                new SimpleItem(
-                        new ItemBuilder(Material.PAPER)
-                                .setDisplayName(new AdventureComponentWrapper(infoName)));
+        Item infoItem = Item.simple(createItemStack(Material.PAPER, infoName));
 
         // Accept item — green wool
         Component acceptName = messages.render("api.link-prompt-accept");
@@ -107,7 +100,7 @@ public final class LinkGuiPrompt {
         AbstractItem declineItem = createClickItem(Material.RED_WOOL, declineName, onDecline);
 
         xyz.xenondevs.invui.gui.Gui invui =
-                xyz.xenondevs.invui.gui.Gui.normal()
+                xyz.xenondevs.invui.gui.Gui.builder()
                         .setStructure(
                                 "F F F F I F F F F",
                                 "F F A F F F D F F",
@@ -131,22 +124,26 @@ public final class LinkGuiPrompt {
      */
     private static AbstractItem createClickItem(
             Material material, Component displayName, Runnable onClick) {
-        ItemProvider provider =
-                new ItemBuilder(material)
-                        .setDisplayName(new AdventureComponentWrapper(displayName));
+        ItemProvider provider = new ItemWrapper(createItemStack(material, displayName));
 
         return new AbstractItem() {
             @Override
-            public ItemProvider getItemProvider() {
+            public ItemProvider getItemProvider(Player viewer) {
                 return provider;
             }
 
             @Override
             public void handleClick(
-                    ClickType clickType, Player player, InventoryClickEvent event) {
+                    ClickType clickType, Player player, Click click) {
                 player.closeInventory();
                 onClick.run();
             }
         };
+    }
+
+    private static ItemStack createItemStack(Material material, Component displayName) {
+        ItemStack stack = new ItemStack(material);
+        stack.editMeta(meta -> meta.displayName(displayName));
+        return stack;
     }
 }

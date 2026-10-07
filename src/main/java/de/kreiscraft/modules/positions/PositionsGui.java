@@ -9,14 +9,13 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import xyz.xenondevs.inventoryaccess.component.AdventureComponentWrapper;
+import org.bukkit.inventory.ItemStack;
+import xyz.xenondevs.invui.Click;
 import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.item.AbstractItem;
 import xyz.xenondevs.invui.item.Item;
 import xyz.xenondevs.invui.item.ItemProvider;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
-import xyz.xenondevs.invui.item.impl.AbstractItem;
-import xyz.xenondevs.invui.item.impl.SimpleItem;
+import xyz.xenondevs.invui.item.ItemWrapper;
 
 /**
  * Builds the InvUI {@link Gui} for the positions menu.
@@ -58,15 +57,13 @@ public final class PositionsGui {
         String[] structure = buildStructure(rows);
 
         // Border items
-        SimpleItem blueCorner = new SimpleItem(
-                new ItemBuilder(Material.BLUE_STAINED_GLASS_PANE)
-                        .setDisplayName(new AdventureComponentWrapper(Component.text(" "))));
-        SimpleItem grayEdge = new SimpleItem(
-                new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE)
-                        .setDisplayName(new AdventureComponentWrapper(Component.text(" "))));
+        Item blueCorner = Item.simple(createItemStack(
+                Material.BLUE_STAINED_GLASS_PANE, Component.text(" "), List.of()));
+        Item grayEdge = Item.simple(createItemStack(
+                Material.GRAY_STAINED_GLASS_PANE, Component.text(" "), List.of()));
 
         Gui gui =
-                Gui.normal()
+                Gui.builder()
                         .setStructure(structure)
                         .addIngredient('B', blueCorner)
                         .addIngredient('E', grayEdge)
@@ -124,28 +121,33 @@ public final class PositionsGui {
                         + (int) entry.location().getZ()
                 : "?";
 
-        ItemProvider provider =
-                new ItemBuilder(material)
-                        .setDisplayName(
-                                new AdventureComponentWrapper(Component.text(name)))
-                        .addLoreLines(
-                                new AdventureComponentWrapper(
-                                        Component.text(coordLine)));
+        ItemProvider provider = new ItemWrapper(createItemStack(
+                material, Component.text(name), List.of(Component.text(coordLine))));
 
         return new AbstractItem() {
             @Override
-            public ItemProvider getItemProvider() {
+            public ItemProvider getItemProvider(Player viewer) {
                 return provider;
             }
 
             @Override
             public void handleClick(
-                    ClickType clickType, Player player, InventoryClickEvent event) {
+                    ClickType clickType, Player player, Click click) {
                 if (teleportOnClick) {
                     onTeleport.accept(player, entry);
                 }
             }
         };
+    }
+
+    private static ItemStack createItemStack(
+            Material material, Component displayName, List<Component> lore) {
+        ItemStack stack = new ItemStack(material);
+        stack.editMeta(meta -> {
+            meta.displayName(displayName);
+            meta.lore(lore);
+        });
+        return stack;
     }
 
     /**

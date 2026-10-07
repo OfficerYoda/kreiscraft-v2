@@ -33,6 +33,6 @@ public final class PlayerBrandProvider {
         if (handle == null || handle.connection == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(handle.connection.playerBrand);
+        return Optional.ofNullable(handle.connection.clientBrand);
     }
 }

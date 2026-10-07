@@ -160,7 +160,7 @@ class InvseeGuiTest {
         xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
         int invSlotCount = 0;
         for (int i = 0; i < InvseeGui.PLAYER_GUI_SIZE; i++) {
-            if (gui.getSlotElement(i) instanceof SlotElement.InventorySlotElement) {
+            if (gui.getSlotElement(i) instanceof SlotElement.InventoryLink) {
                 invSlotCount++;
             }
         }
@@ -174,10 +174,10 @@ class InvseeGuiTest {
         target.getInventory().setHelmet(new ItemStack(Material.DIAMOND_HELMET));
         xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
         xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(30);
-        assertThat(elem).isInstanceOf(SlotElement.InventorySlotElement.class);
-        SlotElement.InventorySlotElement invElem = (SlotElement.InventorySlotElement) elem;
+        assertThat(elem).isInstanceOf(SlotElement.InventoryLink.class);
+        SlotElement.InventoryLink invElem = (SlotElement.InventoryLink) elem;
         // Slot 30 in the GUI is bound to Bukkit slot 39 (helmet)
-        assertThat(invElem.getSlot()).isEqualTo(39);
+        assertThat(invElem.slot()).isEqualTo(39);
     }
 
     @Test
@@ -185,17 +185,17 @@ class InvseeGuiTest {
         PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
         xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
         xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(31);
-        assertThat(elem).isInstanceOf(SlotElement.InventorySlotElement.class);
-        SlotElement.InventorySlotElement invElem = (SlotElement.InventorySlotElement) elem;
+        assertThat(elem).isInstanceOf(SlotElement.InventoryLink.class);
+        SlotElement.InventoryLink invElem = (SlotElement.InventoryLink) elem;
         // Offhand is Bukkit slot 40
-        assertThat(invElem.getSlot()).isEqualTo(40);
+        assertThat(invElem.slot()).isEqualTo(40);
     }
 
     @Test
     void buildEditable_fillerSlotsHaveNoInventoryBinding() {
         PlayerMock target = (PlayerMock) MockBukkit.getMock().addPlayer();
         xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(target.getInventory());
-        // GUI slots 32-35 are filler — no InventorySlotElement
+        // GUI slots 32-35 are filler — no InventoryLink
         for (int i = 32; i <= 35; i++) {
             assertThat(gui.getSlotElement(i))
                     .as("GUI slot %d should be empty filler", i)

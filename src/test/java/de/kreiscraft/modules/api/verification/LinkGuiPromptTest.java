@@ -15,25 +15,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import xyz.xenondevs.invui.Click;
 import xyz.xenondevs.invui.item.Item;
 
 /**
  * Tests for {@link LinkGuiPrompt}.
  *
- * <p><b>Note on click simulation:</b> InvUI 1.44 does not expose a straightforward public API for
+ * <p><b>Note on click simulation:</b> InvUI does not expose a straightforward public API for
  * simulating inventory click events on a window in tests. The {@code Window.open()} path requires a
- * full inventory-view creation cycle that is not fully supported in MockBukkit 4.115. Therefore,
+ * full inventory-view creation cycle that is not fully supported in MockBukkit. Therefore,
  * click tests use a <em>Mockito-based fallback</em>: the package-visible
  * {@link LinkGuiPrompt#buildInvUiGui} method is called directly to obtain the raw InvUI Gui, and
- * {@link Item#handleClick} is invoked on the returned item objects with a mocked
- * {@link InventoryClickEvent}. This avoids the Window/InventoryView lifecycle entirely while still
+ * {@link Item#handleClick} is invoked on the returned item objects with an InvUI click value. This
+ * avoids the Window/InventoryView lifecycle entirely while still
  * exercising the actual handler wiring.
  *
  * <p>The {@code open_registersWindowWithGuiRegistry} test verifies that
@@ -52,7 +52,7 @@ class LinkGuiPromptTest {
         server.addSimpleWorld("world");
 
         messages = mock(MessageService.class);
-        // Return a predictable Component for any key so ItemBuilder calls don't fail
+        // Return a predictable Component for every message key.
         when(messages.render(anyString())).thenReturn(Component.text("mock"));
         when(messages.render(anyString(), anyString(), anyString()))
                 .thenReturn(Component.text("mock"));
@@ -114,8 +114,7 @@ class LinkGuiPromptTest {
         Item acceptItem = invui.getItem(11);
         assertThat(acceptItem).isNotNull();
 
-        InventoryClickEvent event = mock(InventoryClickEvent.class);
-        acceptItem.handleClick(ClickType.LEFT, player, event);
+        acceptItem.handleClick(ClickType.LEFT, player, new Click(player, ClickType.LEFT));
 
         assertThat(accepted.get()).isTrue();
         assertThat(declined.get()).isFalse();
@@ -136,8 +135,7 @@ class LinkGuiPromptTest {
         Item declineItem = invui.getItem(15);
         assertThat(declineItem).isNotNull();
 
-        InventoryClickEvent event = mock(InventoryClickEvent.class);
-        declineItem.handleClick(ClickType.LEFT, player, event);
+        declineItem.handleClick(ClickType.LEFT, player, new Click(player, ClickType.LEFT));
 
         assertThat(declined.get()).isTrue();
         assertThat(accepted.get()).isFalse();
@@ -158,8 +156,7 @@ class LinkGuiPromptTest {
         Item fillerItem = invui.getItem(0);
         assertThat(fillerItem).isNotNull();
 
-        InventoryClickEvent event = mock(InventoryClickEvent.class);
-        fillerItem.handleClick(ClickType.LEFT, player, event);
+        fillerItem.handleClick(ClickType.LEFT, player, new Click(player, ClickType.LEFT));
 
         assertThat(accepted.get()).isFalse();
         assertThat(declined.get()).isFalse();

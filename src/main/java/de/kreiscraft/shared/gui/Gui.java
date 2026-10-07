@@ -2,7 +2,6 @@ package de.kreiscraft.shared.gui;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
-import xyz.xenondevs.inventoryaccess.component.AdventureComponentWrapper;
 import xyz.xenondevs.invui.window.Window;
 
 /**
@@ -11,7 +10,7 @@ import xyz.xenondevs.invui.window.Window;
  * plugin disable.
  *
  * <p>The facade is intentionally minimal. Modules compose their InvUI {@link
- * xyz.xenondevs.invui.gui.Gui} using InvUI's builders (SimpleItem, AbstractItem, layouts, etc.);
+ * xyz.xenondevs.invui.gui.Gui} using InvUI's builders (Item, AbstractItem, layouts, etc.);
  * this class only handles the Window boilerplate and registry bookkeeping.
  */
 public final class Gui {
@@ -32,15 +31,15 @@ public final class Gui {
     public GuiRegistry.Handle open(
             Player viewer, xyz.xenondevs.invui.gui.Gui invui, Component title) {
         Window window =
-                Window.single()
+                Window.builder()
                         .setViewer(viewer)
-                        .setGui(invui)
-                        .setTitle(new AdventureComponentWrapper(title))
+                        .setUpperGui(invui)
+                        .setTitle(title)
                         .build();
 
         GuiRegistry.Handle handle = window::close;
         registry.register(handle);
-        window.addCloseHandler(() -> registry.unregister(handle));
+        window.addCloseHandler(reason -> registry.unregister(handle));
         window.open();
         return handle;
     }

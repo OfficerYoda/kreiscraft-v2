@@ -14,10 +14,11 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import xyz.xenondevs.invui.Click;
+import xyz.xenondevs.invui.item.AbstractItem;
 import xyz.xenondevs.invui.item.ItemProvider;
-import xyz.xenondevs.invui.item.impl.AbstractItem;
+import xyz.xenondevs.invui.item.ItemWrapper;
 
 public final class SettingsCommand {
 
@@ -48,7 +49,7 @@ public final class SettingsCommand {
         UUID playerId = player.getUniqueId();
 
         xyz.xenondevs.invui.gui.Gui invui =
-                xyz.xenondevs.invui.gui.Gui.normal()
+                xyz.xenondevs.invui.gui.Gui.builder()
                         .setStructure(
                                 ". . . . . . . . .",
                                 ". T . C . W . W .",
@@ -77,18 +78,18 @@ public final class SettingsCommand {
         }
 
         @Override
-        public ItemProvider getItemProvider() {
+        public ItemProvider getItemProvider(Player viewer) {
             boolean on = service.isClickThroughEnabled(playerId);
             Material mat = on ? Material.LIME_DYE : Material.RED_DYE;
             String key = on ? "settings-gui.click-through-on" : "settings-gui.click-through-off";
             Component name = messages.render(key);
             ItemStack stack = new ItemStack(mat);
             stack.editMeta(m -> m.displayName(name));
-            return lang -> stack;
+            return new ItemWrapper(stack);
         }
 
         @Override
-        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, Click click) {
             if (service.toggleClickThrough(player.getUniqueId())) {
                 notifyWindows();
             }
@@ -108,18 +109,18 @@ public final class SettingsCommand {
         }
 
         @Override
-        public ItemProvider getItemProvider() {
+        public ItemProvider getItemProvider(Player viewer) {
             CombatDisplay display = service.getCombatDisplay(playerId);
             Material mat = materialFor(display);
             String key = langKeyFor(display);
             Component name = messages.render(key);
             ItemStack stack = new ItemStack(mat);
             stack.editMeta(m -> m.displayName(name));
-            return lang -> stack;
+            return new ItemWrapper(stack);
         }
 
         @Override
-        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, Click click) {
             CombatDisplay current = service.getCombatDisplay(player.getUniqueId());
             CombatDisplay next = nextDisplay(current);
             service.setCombatDisplay(player.getUniqueId(), next);
@@ -157,15 +158,15 @@ public final class SettingsCommand {
         }
 
         @Override
-        public ItemProvider getItemProvider() {
+        public ItemProvider getItemProvider(Player viewer) {
             Component name = messages.render("settings-gui.wip");
             ItemStack stack = new ItemStack(Material.BARRIER);
             stack.editMeta(m -> m.displayName(name));
-            return lang -> stack;
+            return new ItemWrapper(stack);
         }
 
         @Override
-        public void handleClick(ClickType clickType, Player player, InventoryClickEvent event) {
+        public void handleClick(ClickType clickType, Player player, Click click) {
             // WIP: no action
         }
     }

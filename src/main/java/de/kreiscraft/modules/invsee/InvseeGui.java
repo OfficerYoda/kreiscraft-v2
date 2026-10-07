@@ -8,7 +8,7 @@ import org.bukkit.inventory.PlayerInventory;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.gui.SlotElement;
 import xyz.xenondevs.invui.inventory.ReferencingInventory;
-import xyz.xenondevs.invui.item.impl.SimpleItem;
+import xyz.xenondevs.invui.item.Item;
 
 /**
  * Factory for InvUI {@link Gui} instances used by the invsee and enderchest commands.
@@ -66,7 +66,7 @@ public final class InvseeGui {
      *
      * <p>Layout mirrors {@link #mapPlayerInvToGuiSlots(ItemStack[])} exactly — each GUI slot is
      * bound to the corresponding Bukkit player-inventory slot via {@link
-     * SlotElement.InventorySlotElement}.
+     * SlotElement.InventoryLink}.
      */
     public static Gui buildEditable(PlayerInventory inv) {
         // fromContents wraps PlayerInventory.getContents() (≥41 slots in Paper).
@@ -75,18 +75,18 @@ public final class InvseeGui {
         Gui gui = Gui.empty(9, 5);
         // Main inventory (Bukkit 9-35 → GUI 0-26)
         for (int i = 0; i < 27; i++) {
-            gui.setSlotElement(i, new SlotElement.InventorySlotElement(ref, i + 9));
+            gui.setSlotElement(i, new SlotElement.InventoryLink(ref, i + 9));
         }
         // Armor (Bukkit 36-39 → GUI 27-30)
         for (int i = 0; i < 4; i++) {
-            gui.setSlotElement(27 + i, new SlotElement.InventorySlotElement(ref, 36 + i));
+            gui.setSlotElement(27 + i, new SlotElement.InventoryLink(ref, 36 + i));
         }
         // Offhand (Bukkit 40 → GUI 31)
-        gui.setSlotElement(31, new SlotElement.InventorySlotElement(ref, 40));
+        gui.setSlotElement(31, new SlotElement.InventoryLink(ref, 40));
         // GUI 32-35: filler (intentionally left empty)
         // Hotbar (Bukkit 0-8 → GUI 36-44)
         for (int i = 0; i < 9; i++) {
-            gui.setSlotElement(36 + i, new SlotElement.InventorySlotElement(ref, i));
+            gui.setSlotElement(36 + i, new SlotElement.InventoryLink(ref, i));
         }
         return gui;
     }
@@ -180,7 +180,7 @@ public final class InvseeGui {
         Gui gui = Gui.empty(width, height);
         for (int i = 0; i < items.length && i < width * height; i++) {
             if (items[i] != null) {
-                gui.setItem(i, new SimpleItem(items[i]));
+                gui.setItem(i, Item.simple(items[i]));
             }
         }
         return gui;
