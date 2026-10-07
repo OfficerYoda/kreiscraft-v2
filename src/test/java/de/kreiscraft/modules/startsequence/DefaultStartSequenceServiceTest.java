@@ -11,9 +11,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.config.YamlConfigService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.testsupport.MockScheduler;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
@@ -47,7 +49,7 @@ class DefaultStartSequenceServiceTest {
     private StartSequenceConfig config;
     private MessageService messages;
     private PaperPlatform platform;
-    private StartSequenceData data;
+    private YamlConfigService configService;
     private World world;
     private WorldBorder border;
     private Player player;
@@ -80,12 +82,15 @@ class DefaultStartSequenceServiceTest {
         border = mock(WorldBorder.class);
         when(world.getWorldBorder()).thenReturn(border);
 
-        data = new StartSequenceData(tempDir);
-        data.load();
+        configService = new YamlConfigService(tempDir, getClass().getClassLoader());
     }
 
     private DefaultStartSequenceService createService() {
-        return new DefaultStartSequenceService(scheduler, config, messages, platform, data);
+        return new DefaultStartSequenceService(scheduler, config, messages, platform, configService);
+    }
+
+    private YamlConfigService reopenConfig() throws IOException {
+        return new YamlConfigService(tempDir, getClass().getClassLoader());
     }
 
     @Test
@@ -212,7 +217,7 @@ class DefaultStartSequenceServiceTest {
         Server emptyServer = mock(Server.class);
         doReturn(Collections.emptySet()).when(emptyServer).getOnlinePlayers();
         DefaultStartSequenceService svc = new DefaultStartSequenceService(
-                scheduler, config, messages, new PaperPlatform(null, emptyServer), data);
+                scheduler, config, messages, new PaperPlatform(null, emptyServer), configService);
 
         svc.trigger(world);
         scheduler.advance(Duration.ofSeconds(2));
@@ -261,12 +266,12 @@ class DefaultStartSequenceServiceTest {
         DefaultStartSequenceService svc = createService();
         svc.trigger(world);
         svc.reset();
-        data.flushIfDirty();
 
-        StartSequenceData reloaded = new StartSequenceData(tempDir);
-        reloaded.load();
+        DefaultStartSequenceService restarted =
+                new DefaultStartSequenceService(
+                        scheduler, config, messages, platform, reopenConfig());
 
-        assertThat(reloaded.hasStarted()).isFalse();
+        assertThat(restarted.hasStarted()).isFalse();
     }
 
     @Test
@@ -284,16 +289,29 @@ class DefaultStartSequenceServiceTest {
     void trigger_persistsStartedStateAcrossRestart() throws Exception {
         DefaultStartSequenceService svc = createService();
         svc.trigger(world);
-        data.flushIfDirty();
-
-        StartSequenceData reloaded = new StartSequenceData(tempDir);
-        reloaded.load();
-        assertThat(reloaded.hasStarted()).isTrue();
 
         DefaultStartSequenceService restarted =
-                new DefaultStartSequenceService(scheduler, config, messages, platform, reloaded);
+                new DefaultStartSequenceService(
+                        scheduler, config, messages, platform, reopenConfig());
         assertThat(restarted.hasStarted()).isTrue();
         assertThatThrownBy(() -> restarted.trigger(world)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void trigger_writesStartedToServerConfiguration_andNoRetiredDataFile() throws Exception {
+        DefaultStartSequenceService svc = createService();
+        svc.trigger(world);
+
+        assertThat(
+                org.spongepowered.configurate.yaml.YamlConfigurationLoader.builder()
+                        .path(tempDir.resolve("config.yml"))
+                        .build()
+                        .load()
+                        .node("modules", "start-sequence", "has-started")
+                        .getBoolean())
+                .isTrue();
+        assertThat(java.nio.file.Files.exists(tempDir.resolve("data/start-sequence.yml")))
+                .isFalse();
     }
 
     @Test

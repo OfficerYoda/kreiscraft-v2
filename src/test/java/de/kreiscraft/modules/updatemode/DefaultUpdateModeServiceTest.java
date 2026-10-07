@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.config.YamlConfigService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import java.io.IOException;
@@ -22,6 +23,8 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.plugin.PluginMock;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 class DefaultUpdateModeServiceTest {
 
@@ -34,10 +37,16 @@ class DefaultUpdateModeServiceTest {
     private ServerMock server;
     private PluginMock plugin;
     private MessageService messages;
+    private YamlConfigService config;
     private DefaultUpdateModeService service;
 
     private static UpdateModeConfig defaultConfig() {
         return new UpdateModeConfig(BYPASS_PERMISSION, List.of());
+    }
+
+    private DefaultUpdateModeService serviceWith(YamlConfigService configService) {
+        return new DefaultUpdateModeService(
+                configService, defaultConfig(), new PaperPlatform(plugin, server), messages, LOG);
     }
 
     @BeforeEach
@@ -47,10 +56,8 @@ class DefaultUpdateModeServiceTest {
         messages = mock(MessageService.class);
         when(messages.renderFor(any(), any(), any())).thenReturn(Component.text("kick"));
 
-        UpdateModeData data = new UpdateModeData(tmp);
-        data.load();
-        service = new DefaultUpdateModeService(
-                data, defaultConfig(), new PaperPlatform(plugin, server), messages, LOG);
+        config = new YamlConfigService(tmp, getClass().getClassLoader());
+        service = serviceWith(config);
     }
 
     @AfterEach
@@ -61,15 +68,19 @@ class DefaultUpdateModeServiceTest {
     // --- persistence -------------------------------------------------------
 
     @Test
-    void setActive_true_persists() throws IOException {
+    void initialState_isFalse() {
+        assertThat(service.isActive()).isFalse();
+    }
+
+    @Test
+    void setActive_true_persistsToServerConfiguration() throws IOException {
         service.setActive(true);
 
-        // Verify in-memory state
         assertThat(service.isActive()).isTrue();
-
-        // Verify on-disk persistence
-        assertThat(Files.exists(tmp.resolve("data/update-mode.yml"))).isTrue();
-        assertThat(Files.readString(tmp.resolve("data/update-mode.yml"))).contains("active: true");
+        ConfigurationNode onDisk = load(tmp.resolve("config.yml"));
+        assertThat(onDisk.node("modules", "update-mode", "active").getBoolean()).isTrue();
+        // ADR-10: operator-owned state is not written to the retired data file.
+        assertThat(Files.exists(tmp.resolve("data/update-mode.yml"))).isFalse();
     }
 
     @Test
@@ -78,30 +89,19 @@ class DefaultUpdateModeServiceTest {
         service.setActive(false);
 
         assertThat(service.isActive()).isFalse();
-        assertThat(Files.readString(tmp.resolve("data/update-mode.yml"))).contains("active: false");
+        ConfigurationNode onDisk = load(tmp.resolve("config.yml"));
+        assertThat(onDisk.node("modules", "update-mode", "active").getBoolean()).isFalse();
     }
 
     @Test
-    void stateLoaded_fromDisk() throws IOException {
-        // First service writes active=true
-        UpdateModeData data1 = new UpdateModeData(tmp);
-        data1.load();
-        DefaultUpdateModeService svc1 = new DefaultUpdateModeService(
-                data1, defaultConfig(), new PaperPlatform(plugin, server), messages, LOG);
-        svc1.setActive(true);
+    void stateLoaded_fromServerConfiguration() throws IOException {
+        service.setActive(true);
 
-        // Second service loads from same directory
-        UpdateModeData data2 = new UpdateModeData(tmp);
-        data2.load();
-        DefaultUpdateModeService svc2 = new DefaultUpdateModeService(
-                data2, defaultConfig(), new PaperPlatform(plugin, server), messages, LOG);
+        YamlConfigService reopened =
+                new YamlConfigService(tmp, getClass().getClassLoader());
+        DefaultUpdateModeService restarted = serviceWith(reopened);
 
-        assertThat(svc2.isActive()).isTrue();
-    }
-
-    @Test
-    void initialState_isFalse() {
-        assertThat(service.isActive()).isFalse();
+        assertThat(restarted.isActive()).isTrue();
     }
 
     @Test
@@ -196,5 +196,9 @@ class DefaultUpdateModeServiceTest {
         PlayerMock alice = server.addPlayer("Alice");
 
         assertThat(service.isBypassed(alice)).isFalse();
+    }
+
+    private static ConfigurationNode load(Path file) throws IOException {
+        return YamlConfigurationLoader.builder().path(file).build().load();
     }
 }

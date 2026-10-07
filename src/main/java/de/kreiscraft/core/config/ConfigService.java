@@ -35,4 +35,28 @@ public interface ConfigService {
      * {@link ConfigEditResult} for the possible outcomes.
      */
     ConfigEditResult edit(ConfigEdit edit);
+
+    /**
+     * Applies one edit and requires it to be durably written.
+     *
+     * <p>Commands that change operator-owned state have no useful recovery from a rejected or
+     * failed write, so this convenience method turns the {@link ConfigEditResult} into an
+     * exception. A rejection is a programming error in the caller (the value should have been
+     * valid) and an I/O failure is an operational problem; both leave the live configuration and
+     * the file untouched, exactly as {@link #edit(ConfigEdit)} does.
+     *
+     * @throws IllegalArgumentException when the value is rejected by the field validator
+     * @throws IllegalStateException when the candidate could not be persisted
+     */
+    default void applyEdit(ConfigField field, Object value) {
+        ConfigEditResult result = edit(new ConfigEdit(field, value));
+        if (result instanceof ConfigEditResult.Rejected rejected) {
+            throw new IllegalArgumentException(
+                    "rejected Server Configuration edit for " + field.path() + ": " + rejected.reason());
+        }
+        if (result instanceof ConfigEditResult.Failed failed) {
+            throw new IllegalStateException(
+                    "failed Server Configuration edit for " + field.path(), failed.cause());
+        }
+    }
 }

@@ -1,5 +1,7 @@
 package de.kreiscraft.modules.startsequence;
 
+import de.kreiscraft.core.config.ConfigService;
+import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.platform.PaperPlatform;
@@ -15,10 +17,13 @@ import org.bukkit.entity.Player;
 
 public final class DefaultStartSequenceService implements StartSequenceService {
 
+    private static final String MODULE = "start-sequence";
+    private static final String HAS_STARTED = "has-started";
+
     private final Scheduler scheduler;
+    private final ConfigService configService;
     private final MessageService messages;
     private final PaperPlatform platform;
-    private final StartSequenceData data;
     private StartSequenceConfig config;
 
     private final List<Scheduler.Task> activeTasks = new ArrayList<>();
@@ -29,25 +34,25 @@ public final class DefaultStartSequenceService implements StartSequenceService {
             StartSequenceConfig config,
             MessageService messages,
             PaperPlatform platform,
-            StartSequenceData data) {
+            ConfigService configService) {
         this.scheduler = scheduler;
         this.config = config;
         this.messages = messages;
         this.platform = platform;
-        this.data = data;
+        this.configService = configService;
     }
 
     @Override
     public boolean hasStarted() {
-        return data.hasStarted();
+        return configService.module(MODULE).node(HAS_STARTED).getBoolean(false);
     }
 
     @Override
     public void trigger(World world) {
-        if (data.hasStarted()) {
+        if (hasStarted()) {
             throw new IllegalStateException("Season has already started; call reset() first");
         }
-        data.setStarted(true);
+        configService.applyEdit(ServerConfigSchema.startSequenceStarted(), true);
         this.activeWorld = world;
 
         // RusticPrism starts its counter at the configured countdown, decrements it before the
@@ -73,7 +78,7 @@ public final class DefaultStartSequenceService implements StartSequenceService {
             activeWorld.getWorldBorder().setSize(config.initialBorderSize());
             activeWorld = null;
         }
-        data.setStarted(false);
+        configService.applyEdit(ServerConfigSchema.startSequenceStarted(), false);
     }
 
     public void updateConfig(StartSequenceConfig newConfig) {

@@ -262,12 +262,13 @@ between them. It costs a small amount of indirection but preserves full opt-in i
 
 ## `DataFile<T>` and the Separation of Config vs State
 
-`config.yml` is the admin configuration file. It is managed by humans, version-controlled, and
-should not be overwritten by runtime events. Runtime state — jail entries, saved positions,
-start-sequence flags, spawn location — changes during normal server operation and must be
-persisted independently.
+`config.yml` is the writable Server Configuration file. It holds admin-managed settings and the
+operator-owned choices that in-game commands write, such as the spawn location, the update-mode
+flag, and start-sequence completion (see ADR-10). Player and gameplay **Activity Data** — jail
+entries and restore locations, saved positions, Bedrock identities, statuses, anti-cheat logs, and
+player settings — changes during normal server operation and is persisted separately.
 
-`DataFile<T>` is an abstract base class for YAML-backed runtime state:
+`DataFile<T>` is an abstract base class for YAML-backed Activity Data:
 
 ```java
 public abstract class DataFile<T> {
@@ -281,7 +282,7 @@ public abstract class DataFile<T> {
 }
 ```
 
-A concrete subclass (e.g. `SpawnData`, `JailData`, `HackLogData`) implements three abstract
+A concrete subclass (e.g. `JailData`, `HackLogData`, `PositionsData`) implements three abstract
 methods: `load(ConfigurationNode)`, `save(T, ConfigurationNode)`, and `empty()`. The `dirty`
 flag means that disk I/O only happens when something actually changed, which keeps the periodic
 save cycle cheap.

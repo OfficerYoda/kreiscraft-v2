@@ -135,15 +135,16 @@ the `Javalin` instance and exposes `start()` / `stop()` methods. `ApiModule.disa
 **Status:** Accepted; amended by ADR-10
 
 **Context:**  
-Several modules need to persist data that changes at runtime: the spawn location, jailed players,
-saved positions, anti-cheat hack logs, start-sequence state. Storing this in `config.yml` would
-mean that every admin config reload risks overwriting or merging runtime data, and it would be
-unclear at a glance which fields are admin-controlled vs server-generated.
+Several modules need to persist data that changes at runtime: jailed players, saved positions, and
+anti-cheat hack logs. (ADR-10 later moved the operator-owned spawn location, update-mode and
+start-sequence state out of data files and into writable `config.yml`.) Storing all runtime data
+in `config.yml` would mean that every admin config reload risks overwriting or merging runtime
+data, and it would be unclear at a glance which fields are admin-controlled vs server-generated.
 
 **Decision:**  
 Each domain that needs persistent runtime state subclasses `DataFile<T>`, which writes to a
-dedicated YAML file under `data/` inside the plugin data folder (e.g. `data/spawn.yml`,
-`data/jaildata.yml`). Modules register their `DataFile` instances with `ConfigService` during
+dedicated YAML file under `data/` inside the plugin data folder (e.g. `data/jaildata.yml`,
+`data/hacklogs.yml`). Modules register their `DataFile` instances with `ConfigService` during
 `enable()`. `AutoSaveTask` calls `flushIfDirty()` on all registered files at a configurable
 interval (default 5 minutes). On shutdown, `AutoSaveTask.stop()` performs a final flush before
 cancelling the repeating task.
@@ -326,6 +327,14 @@ migrated; the new config values start from defaults.
 - Activity data remains protected from ordinary config reloads.
 - The admin GUI is a supported configuration surface, so every exposed field needs validation,
   lifecycle metadata, documentation, and tests.
+
+**Applied keys:** The operator-owned values live at `modules.spawn.location`,
+`modules.spawn.teleport-range`, `modules.update-mode.active` and
+`modules.start-sequence.has-started`. Their write metadata is declared in `ServerConfigSchema`
+and commands persist them through `ConfigService.applyEdit`, which rejects or fails without
+touching the live tree or the file. The retired `data/spawn.yml`, `data/update-mode.yml` and
+`data/start-sequence.yml` files are no longer read or written, so no migration occurs and config
+reloads cannot touch the remaining Activity Data.
 
 ---
 

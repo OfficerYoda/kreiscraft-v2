@@ -11,7 +11,8 @@ import org.bukkit.entity.Player;
 
 /**
  * Sets the server spawn point to the executing player's current location and stores the given
- * teleport radius. Both the location and the radius are persisted to {@code data/spawn.yml}.
+ * teleport radius. Both operator-owned values are written to Server Configuration
+ * ({@code modules.spawn.location} and {@code modules.spawn.teleport-range} in {@code config.yml}).
  */
 public final class SetSpawnCommand {
 

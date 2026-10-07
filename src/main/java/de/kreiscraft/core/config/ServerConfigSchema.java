@@ -52,6 +52,55 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.RESTART_REQUIRED);
     }
 
+    // ── operator-owned state ────────────────────────────────────────────────
+    //
+    // ADR-10 puts spawn location, update-mode state and start-sequence completion in Server
+    // Configuration. The fields below are the write metadata for those values; commands such as
+    // /setspawn and /updatemode go through ConfigService.applyEdit so an invalid value or an I/O
+    // failure cannot leave the running server and config.yml disagreeing. They become visible in
+    // the Server Configuration GUI when its own stage exposes them, so they are declared
+    // not-yet-GUI-exposed here.
+
+    /** Operator-owned spawn {@link org.bukkit.Location}; absent until {@code /setspawn} is used. */
+    public static ConfigField spawnLocation() {
+        return new ConfigField(
+                List.of("modules", "spawn", "location"),
+                ConfigFieldType.LOCATION,
+                ConfigValidators.alwaysValid(),
+                false,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
+    /** Operator-owned {@code /spawn} teleport range, in blocks. */
+    public static ConfigField spawnTeleportRange() {
+        return new ConfigField(
+                List.of("modules", "spawn", "teleport-range"),
+                ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, Integer.MAX_VALUE),
+                false,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
+    /** Operator-owned maintenance-mode state. */
+    public static ConfigField updateModeActive() {
+        return new ConfigField(
+                List.of("modules", "update-mode", "active"),
+                ConfigFieldType.BOOLEAN,
+                ConfigValidators.booleanValue(),
+                false,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
+    /** Operator-owned season-start completion flag. */
+    public static ConfigField startSequenceStarted() {
+        return new ConfigField(
+                List.of("modules", "start-sequence", "has-started"),
+                ConfigFieldType.BOOLEAN,
+                ConfigValidators.booleanValue(),
+                false,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
     /** Every declared field. */
     public List<ConfigField> fields() {
         return fields;
