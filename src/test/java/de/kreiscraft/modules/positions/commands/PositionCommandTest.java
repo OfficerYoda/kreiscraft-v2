@@ -211,7 +211,7 @@ class PositionCommandTest {
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.positions.use", true);
         when(service.forPlayer(player.getUniqueId())).thenReturn(Map.of());
-        when(messages.render("positions.gui-title")).thenReturn(Component.text("Positions"));
+        when(messages.renderFor(player, "positions.gui-title")).thenReturn(Component.text("Positions"));
 
         buildDispatcher().execute("pos", sourceFor(player));
 

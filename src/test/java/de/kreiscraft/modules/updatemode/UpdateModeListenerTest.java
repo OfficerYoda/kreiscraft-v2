@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.updatemode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +43,8 @@ class UpdateModeListenerTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         messages = mock(MessageService.class);
-        when(messages.render("update-mode.kick-message")).thenReturn(KICK_COMPONENT);
+        when(messages.renderFor(any(), any())).thenReturn(KICK_COMPONENT);
+        when(messages.renderFor(any(), any(), any())).thenReturn(KICK_COMPONENT);
 
         UpdateModeData data = new UpdateModeData(tmp);
         data.load();

@@ -33,18 +33,18 @@ public final class ModCheckerChannel implements PluginMessageListener {
             case "cheats" -> {
                 service.record(new HackEntry(
                         player.getUniqueId(), player.getName(), HackEntry.Kind.CHEAT, value, Instant.now()));
-                player.kick(messages.render("anti-cheat.cheat-kick", "detail", value));
+                player.kick(messages.renderFor(player, "anti-cheat.cheat-kick", "detail", value));
             }
             case "xray" -> {
                 service.record(new HackEntry(
                         player.getUniqueId(), player.getName(), HackEntry.Kind.XRAY, value, Instant.now()));
-                player.kick(messages.render("anti-cheat.xray-kick", "detail", value));
+                player.kick(messages.renderFor(player, "anti-cheat.xray-kick", "detail", value));
             }
             case "freecam" -> {
                 if ("false".equals(value)) {
                     service.markHandshakePassed(player.getUniqueId());
                 } else if ("true".equals(value)) {
-                    player.kick(messages.render("anti-cheat.freecam-kick"));
+                    player.kick(messages.renderFor(player, "anti-cheat.freecam-kick"));
                 }
             }
             default -> {

@@ -5,9 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.bukkit.Particle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -126,5 +132,46 @@ class PlayerPreferencesDataTest {
         data.load();
 
         assertThat(data.get().get(BOB)).isNull();
+    }
+
+    @Test
+    void invalidStoredLanguage_warnsAndLoadsAsAbsent(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("data/settings.yml");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, ALICE + ":\n  language: fr\n");
+
+        Logger logger = Logger.getLogger(PlayerPreferencesData.class.getName());
+        List<LogRecord> records = new ArrayList<>();
+        Handler handler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                records.add(record);
+            }
+
+            @Override
+            public void flush() {
+                // no-op
+            }
+
+            @Override
+            public void close() {
+                // no-op
+            }
+        };
+        logger.addHandler(handler);
+        try {
+            PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+            data.load();
+
+            assertThat(data.get().get(ALICE).language())
+                    .as("an invalid stored language must be treated as absent so rendering falls back")
+                    .isEmpty();
+        } finally {
+            logger.removeHandler(handler);
+        }
+
+        assertThat(records)
+                .anyMatch(record -> record.getLevel() == Level.WARNING
+                        && record.getMessage().contains("invalid stored language"));
     }
 }

@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.updatemode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +45,7 @@ class DefaultUpdateModeServiceTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         messages = mock(MessageService.class);
-        when(messages.render("update-mode.kick-message")).thenReturn(Component.text("kick"));
+        when(messages.renderFor(any(), any(), any())).thenReturn(Component.text("kick"));
 
         UpdateModeData data = new UpdateModeData(tmp);
         data.load();
@@ -121,7 +122,7 @@ class DefaultUpdateModeServiceTest {
         service.setActive(true);
 
         assertThat(alice.isOnline()).isFalse();
-        verify(messages).render("update-mode.kick-message");
+        verify(messages).renderFor(alice, "update-mode.kick-message");
     }
 
     @Test

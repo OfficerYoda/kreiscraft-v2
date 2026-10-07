@@ -40,7 +40,7 @@ class KHelpCommandTest {
     @Test
     void build_requiresPermission_whenMissing_returnsFalse() {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null, null));
+                KHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -50,7 +50,7 @@ class KHelpCommandTest {
     @Test
     void build_requiresPermission_whenGranted_returnsTrue() {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null, null));
+                KHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.admin.help", true);
         CommandSourceStack src = mock(CommandSourceStack.class);
@@ -62,7 +62,7 @@ class KHelpCommandTest {
     @Test
     void execute_sendsHelpTextKey() throws Exception {
         LiteralCommandNode<CommandSourceStack> node =
-                KHelpCommand.build(messages, () -> new AdminConfig(null, null));
+                KHelpCommand.build(messages, () -> new AdminConfig(null));
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -77,7 +77,7 @@ class KHelpCommandTest {
     @SuppressWarnings("unchecked")
     @Test
     void execute_afterConfigChange_usesNewWebsiteUrl() throws Exception {
-        AdminConfig[] configHolder = {new AdminConfig(null, null)};
+        AdminConfig[] configHolder = {new AdminConfig(null)};
         LiteralCommandNode<CommandSourceStack> node =
                 KHelpCommand.build(messages, () -> configHolder[0]);
         PlayerMock player = server.addPlayer("Alice");
@@ -97,8 +97,7 @@ class KHelpCommandTest {
                         new Links(
                                 URI.create("https://new-website.example"),
                                 URI.create("https://discord.gg/new"),
-                                URI.create("https://youtube.com/@new")),
-                        null);
+                                URI.create("https://youtube.com/@new")));
         messages.sentKeys.clear();
         messages.sentPlaceholders.clear();
 

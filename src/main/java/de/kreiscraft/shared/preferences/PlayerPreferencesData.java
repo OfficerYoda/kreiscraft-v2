@@ -39,7 +39,7 @@ public final class PlayerPreferencesData extends DataFile<Map<UUID, PlayerPrefer
             ConfigurationNode n = entry.getValue();
             UUID id = UUID.fromString(String.valueOf(entry.getKey()));
             map.put(id, new PlayerPreferences(
-                    PlayerLanguage.fromCode(n.node("language").getString()),
+                    readLanguage(id, n.node("language")),
                     Optional.ofNullable(readBoolean(n.node("click-through"))),
                     Optional.ofNullable(readCombatDisplay(n.node("combat-display"))),
                     Optional.ofNullable(readBoolean(n.node("effects-enabled"))),
@@ -98,6 +98,26 @@ public final class PlayerPreferencesData extends DataFile<Map<UUID, PlayerPrefer
                         + "starting with no stored preferences. Tried: " + relativePath(),
                 failure);
         return empty();
+    }
+
+    /**
+     * Resolves a stored language code. An unrecognised value is not migrated: it warns and loads as
+     * absent so rendering falls back to the server language.
+     */
+    private static Optional<PlayerLanguage> readLanguage(UUID id, ConfigurationNode node) {
+        String raw = node.getString();
+        if (raw == null) {
+            return Optional.empty();
+        }
+        Optional<PlayerLanguage> language = PlayerLanguage.fromCode(raw);
+        if (language.isEmpty()) {
+            LOGGER.log(
+                    Level.WARNING,
+                    "invalid stored language ''{0}'' for player {1}; falling back to the server "
+                            + "language",
+                    new Object[] {raw, id});
+        }
+        return language;
     }
 
     private static Boolean readBoolean(ConfigurationNode node) {

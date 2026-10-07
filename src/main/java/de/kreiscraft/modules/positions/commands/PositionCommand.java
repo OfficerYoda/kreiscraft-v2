@@ -72,7 +72,7 @@ public final class PositionCommand {
                             gui.open(
                                     player,
                                     invuiGui,
-                                    messages.render("positions.gui-title"));
+                                    messages.renderFor(player, "positions.gui-title"));
                             return Command.SINGLE_SUCCESS;
                         })
                 // /pos set <name>

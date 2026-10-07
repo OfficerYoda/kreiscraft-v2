@@ -27,8 +27,8 @@ Located at the top-level `core:` block. These keys are read directly from the ra
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `core.language` | String | `de` | Language tag used to select the active lang file from `plugins/Kreiscraft/lang/<language>.yml`. Bundled options: `de`, `en`. |
-| `core.timezone` | String | `Europe/Berlin` | IANA timezone ID passed to `ZoneId.of()`. Used by the admin module and any time-based placeholder. |
+| `core.language` | String | `de` | Server language: selects the fallback language tree from `plugins/Kreiscraft/lang/<language>.yml` and is used for console output. Bundled options: `de`, `en`. A player's persisted language in `data/settings.yml` takes precedence for output addressed to them. |
+| `core.timezone` | String | `Europe/Berlin` | Canonical IANA timezone ID passed to `ZoneId.of()`. Used for every absolute timestamp and time-based placeholder across the plugin. |
 | `core.auto-save-interval` | Duration | `5m` | How often the auto-save task calls `flushIfDirty()` on every registered `DataFile`. Parsed by `Durations.parse`. |
 | `core.debug` | boolean | `false` | Present in the bundled config; reserved for future verbose-logging toggles. Not currently wired to any runtime behaviour. |
 
@@ -90,7 +90,6 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.admin`) | Type | Default | Description |
 |---|---|---|---|
-| `timezone` | String | `UTC` | Timezone used for admin-visible timestamps. |
 | `links.website` | URI | `https://kreiscraft.de` | Server website URL, displayed in admin-facing output. |
 | `links.discord` | URI | `https://discord.gg/example` | Discord invite URL. |
 | `links.youtube` | URI | `https://youtube.com/@example` | YouTube channel URL. |

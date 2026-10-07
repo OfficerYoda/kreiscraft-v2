@@ -2,6 +2,7 @@ package de.kreiscraft.modules.reboot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -16,6 +17,7 @@ import java.time.Duration;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +53,8 @@ class DefaultRebootServiceTest {
         when(platform.server()).thenReturn(server);
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
         when(messages.render(any(), any(Object[].class))).thenReturn(Component.empty());
+        when(messages.renderFor(any(CommandSender.class), anyString(), any(Object[].class)))
+                .thenReturn(Component.empty());
         service = new DefaultRebootService(scheduler, messages, platform, config);
     }
 
@@ -118,7 +122,9 @@ class DefaultRebootServiceTest {
     void tick_atZero_kicksAllWithRestartCauseAndShutsDown() {
         Player player = mock(Player.class);
         Component kickComponent = Component.text("Server restarting");
-        doReturn(kickComponent).when(messages).render(eq("reboot.kick-message"), any(Object[].class));
+        doReturn(kickComponent)
+                .when(messages)
+                .renderFor(eq(player), eq("reboot.kick-message"), any(Object[].class));
         doReturn(List.of(player)).when(server).getOnlinePlayers();
 
         service.start(Duration.ofSeconds(1), "test", "alice");
@@ -131,13 +137,17 @@ class DefaultRebootServiceTest {
 
     @Test
     void tick_atZero_rendersKickMessageWithReasonInitiatorWebsite() {
-        doReturn(Component.empty()).when(messages).render(eq("reboot.kick-message"), any(Object[].class));
-        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
+        Player player = mock(Player.class);
+        doReturn(Component.empty())
+                .when(messages)
+                .renderFor(eq(player), eq("reboot.kick-message"), any(Object[].class));
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
 
         service.start(Duration.ofSeconds(1), "planned", "alice");
         scheduler.advance(Duration.ofSeconds(1));
 
-        verify(messages).render(
+        verify(messages).renderFor(
+                eq(player),
                 eq("reboot.kick-message"),
                 eq("reason"), eq("planned"),
                 eq("initiator"), eq("alice"),
@@ -146,12 +156,14 @@ class DefaultRebootServiceTest {
 
     @Test
     void tick_atTitleSecond_showsTitleWithReasonSubtitle() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
         service.start(Duration.ofSeconds(10), "maintenance", "alice");
         scheduler.advance(Duration.ofSeconds(1));
 
         // 10 is in titleSeconds; subtitle should be rendered with the reason
-        verify(messages).render(eq("reboot.countdown-subtitle"), eq("reason"), eq("maintenance"), eq("seconds"),
-                eq("10"));
+        verify(messages).renderFor(eq(player), eq("reboot.countdown-subtitle"), eq("reason"),
+                eq("maintenance"), eq("seconds"), eq("10"));
     }
 
     @Test

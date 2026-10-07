@@ -54,7 +54,7 @@ public final class DefaultUpdateModeService implements UpdateModeService {
             if (isBypassed(player)) {
                 messages.send(player, "update-mode.bypass-notice");
             } else {
-                player.kick(messages.render("update-mode.kick-message"));
+                player.kick(messages.renderFor(player, "update-mode.kick-message"));
             }
         }
     }

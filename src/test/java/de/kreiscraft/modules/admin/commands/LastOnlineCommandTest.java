@@ -6,9 +6,11 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import de.kreiscraft.modules.admin.AdminConfig;
+import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.modules.admin.CapturingMessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.time.Clock;
+import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +37,14 @@ class LastOnlineCommandTest {
         MockBukkit.unmock();
     }
 
+    private static PlaceholderResolver resolver(ServerMock server, String zone) {
+        return new PlaceholderResolver(server, ZoneId.of(zone), Clock.systemUTC());
+    }
+
     @Test
     void build_requiresPermission_whenMissing_returnsFalse() {
-        LiteralCommandNode<CommandSourceStack> node =
-                LastOnlineCommand.build(messages, server, () -> new AdminConfig(null, null));
+        LiteralCommandNode<CommandSourceStack> node = LastOnlineCommand.build(
+                messages, server, resolver(server, "Europe/Berlin"));
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
@@ -47,8 +53,8 @@ class LastOnlineCommandTest {
 
     @Test
     void build_requiresPermission_whenGranted_returnsTrue() {
-        LiteralCommandNode<CommandSourceStack> node =
-                LastOnlineCommand.build(messages, server, () -> new AdminConfig(null, null));
+        LiteralCommandNode<CommandSourceStack> node = LastOnlineCommand.build(
+                messages, server, resolver(server, "Europe/Berlin"));
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.admin.lastonline", true);
         CommandSourceStack src = mock(CommandSourceStack.class);
@@ -59,8 +65,8 @@ class LastOnlineCommandTest {
     @SuppressWarnings("unchecked")
     @Test
     void execute_sendsLastOnlineKey() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node =
-                LastOnlineCommand.build(messages, server, () -> new AdminConfig(null, null));
+        LiteralCommandNode<CommandSourceStack> node = LastOnlineCommand.build(
+                messages, server, resolver(server, "Europe/Berlin"));
         PlayerMock target = server.addPlayer("Bob");
         PlayerMock executor = server.addPlayer("Admin");
         CommandSourceStack src = mock(CommandSourceStack.class);
@@ -76,11 +82,11 @@ class LastOnlineCommandTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    void execute_usesConfiguredTimezone() throws Exception {
-        // UTC+9 is a fixed-offset zone (no DST) so the offset is deterministic.
-        AdminConfig configTz = new AdminConfig(null, "UTC+9");
+    void execute_usesCanonicalCoreTimezone() throws Exception {
+        // UTC+9 is a fixed-offset zone (no DST) so the offset is deterministic. The command reads
+        // the canonical core timezone from PlaceholderResolver, not an admin-module setting.
         LiteralCommandNode<CommandSourceStack> node =
-                LastOnlineCommand.build(messages, server, () -> configTz);
+                LastOnlineCommand.build(messages, server, resolver(server, "UTC+9"));
         server.addPlayer("Bob");
         PlayerMock executor = server.addPlayer("Admin");
         CommandSourceStack src = mock(CommandSourceStack.class);
