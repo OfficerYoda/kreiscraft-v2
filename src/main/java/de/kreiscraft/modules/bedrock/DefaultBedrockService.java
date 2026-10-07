@@ -58,6 +58,19 @@ public final class DefaultBedrockService implements BedrockService {
         return prefix + body.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Ensures {@code name} carries the configured prefix while preserving the body's case. The
+     * stored name is used for whitelist additions and removals, so a registration made without a
+     * prefix still routes through the Bedrock whitelist path.
+     */
+    private String prefixed(String name) {
+        String prefix = config.prefix();
+        if (prefix.isEmpty() || name.regionMatches(true, 0, prefix, 0, prefix.length())) {
+            return name;
+        }
+        return prefix + name;
+    }
+
     @Override
     public BedrockAuthorizationResult register(String name) {
         Objects.requireNonNull(name, "name");
@@ -66,7 +79,9 @@ public final class DefaultBedrockService implements BedrockService {
             return BedrockAuthorizationResult.ALREADY_REGISTERED;
         }
         authorizationData.update(
-                map -> map.put(key, new PendingBedrockAuthorization(key, name, null, Instant.now())));
+                map -> map.put(
+                        key,
+                        new PendingBedrockAuthorization(key, prefixed(name), null, Instant.now())));
         return BedrockAuthorizationResult.REGISTERED;
     }
 

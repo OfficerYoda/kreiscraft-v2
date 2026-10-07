@@ -106,6 +106,20 @@ class DefaultBedrockServiceTest {
         assertThat(svc.authorizations()).hasSize(1);
     }
 
+    @Test
+    void register_withoutPrefix_storesPrefixedNameForWhitelist(@TempDir Path tmp)
+            throws IOException {
+        DefaultBedrockService svc = service(tmp, ".");
+        svc.register("Steve"); // no prefix
+
+        PendingBedrockAuthorization auth = svc.authorizations().iterator().next();
+        assertThat(auth.name()).isEqualTo(".Steve");
+
+        UUID uuid = UUID.randomUUID();
+        svc.handleLogin(".Steve", uuid);
+        verify(whitelist).addBedrockPlayer(".Steve", uuid);
+    }
+
     // ── login binding ───────────────────────────────────────────────────────
 
     @Test
@@ -202,6 +216,16 @@ class DefaultBedrockServiceTest {
         assertThat(result).isEqualTo(BedrockAuthorizationResult.REMOVED);
         assertThat(svc.authorizations()).isEmpty();
         verify(whitelist).remove(".Steve");
+    }
+
+    @Test
+    void remove_withCustomPrefix_revokesUsingPrefixedName(@TempDir Path tmp) throws IOException {
+        DefaultBedrockService svc = service(tmp, "_");
+        svc.register("Alice"); // no prefix
+        svc.handleLogin("_Alice", UUID.randomUUID());
+
+        assertThat(svc.remove("_alice")).isEqualTo(BedrockAuthorizationResult.REMOVED);
+        verify(whitelist).remove("_Alice");
     }
 
     @Test

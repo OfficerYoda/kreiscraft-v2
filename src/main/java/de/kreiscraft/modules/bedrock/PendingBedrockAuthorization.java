@@ -10,7 +10,9 @@ import java.util.UUID;
  *
  * <p>The authorization is keyed by its {@link #normalizedName() normalized name} — the configured
  * Bedrock prefix plus the lower-cased name body — so that registration and login matching agree on
- * a single canonical identity. It starts unbound ({@link #boundUuid()} is {@code null}) and is
+ * a single canonical identity. {@link #name()} is the registered name carrying the configured
+ * prefix, which keeps whitelist additions and removals on the Bedrock path. It starts unbound
+ * ({@link #boundUuid()} is {@code null}) and is
  * bound permanently to the first matching observed UUID by
  * {@link BedrockService#handleLogin(String, UUID)}. A bound authorization never silently rebinds;
  * replacing it requires explicit removal and re-registration.
