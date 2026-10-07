@@ -122,7 +122,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 |---|---|---|---|
 | `event-priority` | EventPriority | `LOWEST` | Bukkit `AsyncChatEvent` priority at which the formatter registers. Values: `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, `MONITOR`. |
 | `allow-mini-message-in-body` | boolean | `false` | Whether players can use MiniMessage tags in their message body. |
-| `format` | String | `<team-prefix><name-colored><team-suffix><gray>: <reset><body>` | MiniMessage chat format template. Available placeholders: `<team-prefix>`, `<name-colored>`, `<team-suffix>`, `<body>`. |
+| `format` | String | `<team-prefix> <name-colored> <team-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<team-prefix>`, `<name-colored>`, `<team-suffix>`, `<body>`. |
 
 ---
 
@@ -164,7 +164,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.jail`) | Type | Default | Description |
 |---|---|---|---|
 | `location` | Location | *(required)* | Teleport destination when jailing a player. Format: `{ world: <name>, x: <n>, y: <n>, z: <n>, yaw: <n>, pitch: <n> }`. |
-| `blocked-commands` | List\<String\> | `[msg, tell, w, pay, r]` | Command names (without `/`) that jailed players are not allowed to execute. |
+| `blocked-commands` | List\<String\> | `[msg, tell, w, r]` | Command names (without `/`) that jailed players are not allowed to execute. |
 
 `location` is required — the module will fail to enable if it is absent from the config file.
 

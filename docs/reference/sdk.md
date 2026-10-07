@@ -344,7 +344,7 @@ Gui gui = ctx.services().get(Gui.class);
 |-----------|-------------|
 | `GuiRegistry.Handle open(Player viewer, xyz.xenondevs.invui.gui.Gui invui, Component title)` | Wraps `invui` in a single-viewer InvUI `Window`, opens it for `viewer`, registers it with `GuiRegistry`, and returns a `Handle`. The handle auto-unregisters when the player closes the window normally. Call `handle.close()` to close it programmatically. |
 
-Build the `xyz.xenondevs.invui.gui.Gui` object using InvUI's own builder API (`SimpleItem`, `AbstractItem`, layouts, etc.) and pass it to `Gui.open()`. `Gui` only manages the window and registry bookkeeping.
+Build the `xyz.xenondevs.invui.gui.Gui` object using InvUI's own builder API (`Item`, `AbstractItem`, layouts, etc.) and pass it to `Gui.open()`. `Gui` only manages the window and registry bookkeeping.
 
 ### `GuiRegistry`
 
