@@ -9,7 +9,10 @@ import de.kreiscraft.modules.spawn.commands.SpawnCommand;
 import java.util.List;
 import org.spongepowered.configurate.ConfigurationNode;
 
-/** Spawn module — configures server spawn, glide zone, swap-hand boost, and launch pad. */
+/**
+ * Spawn module — configures the server spawn point, the shared Spawn Radius, the spawn glide zone,
+ * and the swap-hand / sneak glide boosts.
+ */
 public final class SpawnModule implements Module {
 
     private SpawnConfig config;
@@ -34,7 +37,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null, null);
         }
 
         // ── service ─────────────────────────────────────────────────────────
@@ -44,14 +47,12 @@ public final class SpawnModule implements Module {
         // ── listeners (config supplied via lambda so reloads propagate) ─────
         if (config.glide().enabled()) {
             this.glideListener = new GlideListener(
-                    service, () -> this.config, ctx.scheduler(), ctx.plugin().getServer());
+                    service, ctx.messages(), () -> this.config, ctx.scheduler(),
+                    ctx.plugin().getServer());
             ctx.events().register(glideListener);
         }
         if (config.swapHandBoost().enabled()) {
             ctx.events().register(new SwapHandBoostListener(() -> this.config));
-        }
-        if (config.spawnLaunch().enabled()) {
-            ctx.events().register(new SpawnLaunchListener(() -> this.config));
         }
 
         // ── commands ────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null, null);
         }
         if (service != null) {
             service.updateConfig(config);

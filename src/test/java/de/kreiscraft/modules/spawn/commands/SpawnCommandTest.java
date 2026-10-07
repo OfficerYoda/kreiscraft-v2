@@ -114,7 +114,7 @@ class SpawnCommandTest {
         when(mockWorld.getEnvironment()).thenReturn(World.Environment.NORMAL);
         when(mockPlayer.getWorld()).thenReturn(mockWorld);
         when(service.spawnLocation()).thenReturn(Optional.of(new Location(normalWorld, 0, 64, 0)));
-        when(service.isInSpawnRadius(mockPlayer)).thenReturn(false);
+        when(service.isInSpawnAccessZone(mockPlayer)).thenReturn(false);
 
         SpawnCommand.execute(mockPlayer, service, messages);
 
@@ -132,7 +132,7 @@ class SpawnCommandTest {
         when(mockWorld.getEnvironment()).thenReturn(World.Environment.NORMAL);
         when(mockPlayer.getWorld()).thenReturn(mockWorld);
         when(service.spawnLocation()).thenReturn(Optional.of(spawn));
-        when(service.isInSpawnRadius(mockPlayer)).thenReturn(true);
+        when(service.isInSpawnAccessZone(mockPlayer)).thenReturn(true);
         // getLocation() is called once before teleport to capture the departure point
         when(mockPlayer.getLocation()).thenReturn(departure);
 

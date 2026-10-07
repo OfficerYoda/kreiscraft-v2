@@ -69,6 +69,21 @@ class PaperWhitelistServiceTest {
     }
 
     @Test
+    void remove_bedrockNameWithCustomPrefix_routesToNms() {
+        UUID uuid = UUID.randomUUID();
+        svc.addBedrockPlayer("_steve", uuid);
+        svc.remove("_steve");
+        verify(nms).remove(any(GameProfile.class));
+    }
+
+    @Test
+    void isWhitelisted_bedrockNameWithCustomPrefix_checksNms() {
+        when(nms.isWhitelisted(any())).thenReturn(true);
+        svc.addBedrockPlayer("_steve", UUID.randomUUID());
+        assertThat(svc.isWhitelisted("_steve")).isTrue();
+    }
+
+    @Test
     void isWhitelisted_checksBothSides() {
         PlayerMock alice = server.addPlayer("Alice");
         svc.addJavaPlayer("Alice");

@@ -27,7 +27,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
 | `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player. | `kreiscraft.anticheat.view` | op |
-| `/bedrocklist add <name>` | — | `bedrock` | Add a known Bedrock player to the whitelist. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist add <name>` | — | `bedrock` | Register a Pending Bedrock Authorization by name for pre-login access. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist remove <name>` | — | `bedrock` | Explicitly remove a Bedrock authorization and revoke a bound whitelist entry. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
 | `/combat <target> <seconds>` | — | `combat` | Manually tag a player as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
@@ -48,7 +49,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
-| `/spawn` | — | `spawn` | Teleport to the server spawn (within `teleport-range` blocks). | `kreiscraft.spawn.use` | true |
+| `/spawn` | — | `spawn` | Teleport to the server spawn when inside the horizontal Spawn Access Zone (overworld only). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |

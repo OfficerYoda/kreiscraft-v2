@@ -27,7 +27,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
-| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
+| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
@@ -111,11 +111,17 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect and records
+their name and UUID in `data/bedrock-players.yml`. Administrators pre-authorize a Bedrock name with
+`/bedrocklist add <name>`, which creates a Pending Bedrock Authorization in
+`data/bedrock-authorizations.yml`: the first matching login binds it to the observed UUID and
+whitelists that identity, and a bound authorization never silently rebinds. Replacing a bound
+identity requires `/bedrocklist remove <name>` followed by re-registration. `/bedrocklist list`
+lists the known players in deterministic order.
 
 ### Services published
 
-- `BedrockService` — query the set of known Bedrock player records.
+- `BedrockService` — query known Bedrock player records and Pending Bedrock Authorizations.
 
 ---
 
@@ -323,11 +329,11 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 ### Description
 
-Manages the server spawn point and teleport range (operator-owned Server Configuration in `config.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleport-range` blocks of spawn.
+Manages the server spawn point and the single Spawn Radius (module configuration in `config.yml`). `/spawn` is overworld-only and restricted to the horizontal Spawn Access Zone; glide initiation requires the full three-dimensional Glide Zone. Includes three optional subsystems: elytra glide around spawn, a swap-hand velocity boost while gliding, and a persistent sneak boost for glides that started inside the Glide Zone. Spawn-launch behavior has been removed.
 
 ### Services published
 
-- `SpawnService` — get/set the spawn location and check whether a player is within the spawn radius.
+- `SpawnService` — get/set the spawn location and check the Spawn Access Zone (XZ) and the Glide Zone (3D).
 
 ---
 

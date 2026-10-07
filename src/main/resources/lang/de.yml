@@ -44,8 +44,10 @@ anti-cheat:
   log-entry: "<gray>- <when>: <detail>"
   invalid-kind: "<red>Unbekannte Art '<kind>'. Bitte 'cheats' oder 'xray' verwenden."
 bedrock:
-  added: "<prefix> <green><player></green> zur Whitelist hinzugefügt (Bedrock)."
-  unknown: "<prefix> <red>Kein Bedrock-Spieler namens <player></red> gesehen."
+  authorized: "<prefix> <green><player></green> für den Bedrock-Login autorisiert."
+  already-authorized: "<prefix> <yellow><player></yellow> ist bereits autorisiert."
+  revoked: "<prefix> <green>Bedrock-Autorisierung für <player> entfernt.</green>"
+  not-authorized: "<prefix> <red>Keine Bedrock-Autorisierung für <player></red>."
   list-header: "<prefix> <gray>Bekannte Bedrock-Spieler (<count>):"
   list-entry: "<gray>- <player></gray>"
   list-empty: "<prefix> <yellow>(keine)"
@@ -133,6 +135,7 @@ settings-gui:
 spawn:
   teleported: "<prefix> <green>Zum Spawn teleportiert."
   out-of-range: "<prefix> <red>Du bist zu weit vom Spawn entfernt."
+  glide-outside-zone: "<prefix> <red>Du kannst nur innerhalb der Spawn-Gleit-Zone mit dem Gleiten beginnen."
   wrong-world: "<prefix> <red>Du kannst /spawn nur in der normalen Welt benutzen."
   no-spawn-set: "<prefix> <red>Kein Spawn gesetzt."
   spawn-set: "<prefix> <green>Spawn gesetzt."

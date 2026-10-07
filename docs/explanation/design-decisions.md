@@ -329,12 +329,12 @@ migrated; the new config values start from defaults.
   lifecycle metadata, documentation, and tests.
 
 **Applied keys:** The operator-owned values live at `modules.spawn.location`,
-`modules.spawn.teleport-range`, `modules.update-mode.active` and
-`modules.start-sequence.has-started`. Their write metadata is declared in `ServerConfigSchema`
-and commands persist them through `ConfigService.applyEdit`, which rejects or fails without
-touching the live tree or the file. The retired `data/spawn.yml`, `data/update-mode.yml` and
-`data/start-sequence.yml` files are no longer read or written, so no migration occurs and config
-reloads cannot touch the remaining Activity Data.
+`modules.update-mode.active` and `modules.start-sequence.has-started`. Their write metadata is
+declared in `ServerConfigSchema` and commands persist them through `ConfigService.applyEdit`, which
+rejects or fails without touching the live tree or the file. The single Spawn Radius is module
+configuration (`modules.spawn.spawn-radius`), not operator-owned state. The retired `data/spawn.yml`,
+`data/update-mode.yml` and `data/start-sequence.yml` files are no longer read or written, so no
+migration occurs and config reloads cannot touch the remaining Activity Data.
 
 ---
 
@@ -417,7 +417,39 @@ flags are always restart-only.
 
 ---
 
-## ADR-13: Forwarding Aliases via Brigadier Redirect
+## ADR-13: Pending Bedrock Authorization Binds Once
+
+**Status:** Accepted
+
+**Context:**
+Bedrock players connect with a configured name prefix (default `.`) and a synthetic UUID that the
+Mojang profile service cannot resolve. An administrator may need to admit a Bedrock player before
+that player has ever connected, but a name is not an identity: the same name could later present a
+different UUID. Treating a pre-approved name as permanently interchangeable would let an identity
+silently take over another player's authorization.
+
+**Decision:**
+Model pre-login access as a Pending Bedrock Authorization. `/bedrocklist add <name>` stores an
+unbound authorization in `data/bedrock-authorizations.yml`, keyed by the normalized name
+(configured prefix plus lower-cased name body). On pre-login, the first matching login binds the
+authorization permanently to the observed UUID and whitelists that identity. A bound authorization
+is never rebound to a different UUID; replacing it requires `/bedrocklist remove <name>` and
+re-registration, which starts from a fresh unbound state. Authorization records are Activity Data,
+not operator-owned Server Configuration, so ordinary config reloads cannot overwrite them.
+
+**Consequences:**
+- Registration and login matching share one normalization step, so the configured prefix and case
+  cannot disagree between the two paths.
+- A rebound attempt leaves the original binding intact and is logged; it does not admit the new
+  UUID.
+- Removal revokes the bound whitelist entry, so the explicit lifecycle cannot leave a stale
+  identity whitelisted.
+- The lifecycle is covered by removal/re-registration tests rather than by an implicit
+  overwrite.
+
+---
+
+## ADR-14: Forwarding Aliases via Brigadier Redirect
 
 **Status:** Accepted
 
@@ -452,3 +484,4 @@ broken command.
 - Tests exercise the redirect seam directly with a synthetic dispatcher — the target subtree runs
   through the alias when authorized and is rejected when the requirement fails — so the behaviour
   is verifiable under MockBukkit without a real vanilla command tree.
+
