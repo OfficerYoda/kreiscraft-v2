@@ -63,6 +63,11 @@ combat:
 effects:
   enabled: "<prefix> <green>Effects enabled."
   disabled: "<prefix> <yellow>Effects disabled."
+  status: "<prefix> Effects: <state> <dark_gray>|</dark_gray> <gray>Particle: <yellow><particle></yellow>"
+  state-on: "<green>On"
+  state-off: "<red>Off"
+  usage: "<prefix> <gray>Use <yellow>/effects toggle</yellow> to change it or <yellow>/effects <particle></yellow> to pick a particle."
+  completion-current: "<gray>current"
   particle-set: "<prefix> <green>Particle: <particle></green>."
   unknown-particle: "<prefix> <red>Unknown particle: <particle></red>."
 glow:
