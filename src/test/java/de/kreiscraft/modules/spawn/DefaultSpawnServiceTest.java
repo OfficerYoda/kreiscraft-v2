@@ -31,7 +31,7 @@ class DefaultSpawnServiceTest {
         world = server.addSimpleWorld("world");
         data = new SpawnData(tmp);
         data.load();
-        config = new SpawnConfig(50, null, null, null);
+        config = new SpawnConfig(50, null, null, null, null);
         service = new DefaultSpawnService(data, config);
     }
 
@@ -99,7 +99,7 @@ class DefaultSpawnServiceTest {
         assertThat(service.isInSpawnRadius(player)).isTrue();
 
         // shrink range to 20
-        service.updateConfig(new SpawnConfig(20, null, null, null));
+        service.updateConfig(new SpawnConfig(20, null, null, null, null));
         assertThat(service.isInSpawnRadius(player)).isFalse(); // 30 > 20
     }
 
@@ -107,8 +107,26 @@ class DefaultSpawnServiceTest {
     void setSpawn_persistsToData() {
         Location loc = new Location(world, 5, 100, 5);
         service.setSpawn(loc);
-        // data.get() is the AtomicReference
-        assertThat(data.get().get()).isEqualTo(loc);
+        assertThat(data.get().getLocation()).isEqualTo(loc);
+    }
+
+    @Test
+    void setSpawn_withRadius_persistsRange() {
+        Location loc = new Location(world, 0, 64, 0);
+        service.setSpawn(loc, 75);
+        assertThat(data.get().getTeleportRange()).isEqualTo(75);
+        assertThat(data.get().getLocation()).isEqualTo(loc);
+    }
+
+    @Test
+    void isInSpawnRadius_usesPersistedRange_overConfigDefault() {
+        // config default is 50; persisted range will be 10
+        Location spawn = new Location(world, 0, 64, 0);
+        service.setSpawn(spawn, 10);
+        Player player = mock(Player.class);
+        when(player.getLocation()).thenReturn(new Location(world, 25, 64, 0)); // distance = 25
+        // config range 50 would return true, but persisted range 10 < 25 → false
+        assertThat(service.isInSpawnRadius(player)).isFalse();
     }
 
     @Test

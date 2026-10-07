@@ -7,7 +7,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 /** Spawn-module configuration. */
 @ConfigSerializable
 public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostConfig swapHandBoost,
-        SpawnLaunchConfig spawnLaunch) {
+        SpawnLaunchConfig spawnLaunch, GlideBoostConfig glideBoost) {
 
     /** Apply safe defaults for every nested config that was absent from YAML. */
     public SpawnConfig {
@@ -22,6 +22,9 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
         }
         if (spawnLaunch == null) {
             spawnLaunch = new SpawnLaunchConfig(false, null, new Vector(0, 5, 0));
+        }
+        if (glideBoost == null) {
+            glideBoost = new GlideBoostConfig(false, 2.0, 5);
         }
     }
 
@@ -81,6 +84,27 @@ public record SpawnConfig(int teleportRange, GlideConfig glide, SwapHandBoostCon
             // (0, 0, 0) treated as "not configured" — no meaningful launch uses zero velocity.
             if (velocity == null || (velocity.getX() == 0.0 && velocity.getY() == 0.0 && velocity.getZ() == 0.0)) {
                 velocity = new Vector(0, 5, 0);
+            }
+        }
+    }
+
+    /**
+     * Configuration for the persistent glide boost triggered by sneaking.
+     *
+     * <p>Players that START gliding inside the spawn zone become boost-eligible for the
+     * duration of that glide. While still gliding (even outside the zone), pressing sneak
+     * applies a directional velocity boost — subject to the configured cooldown.
+     */
+    @ConfigSerializable
+    public record GlideBoostConfig(boolean enabled, double boostStrength, int cooldownSeconds) {
+
+        public GlideBoostConfig {
+            // 0.0 / 0 mean "missing from config" — apply safe defaults.
+            if (boostStrength == 0.0) {
+                boostStrength = 2.0;
+            }
+            if (cooldownSeconds == 0) {
+                cooldownSeconds = 5;
             }
         }
     }

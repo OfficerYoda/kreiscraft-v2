@@ -36,7 +36,8 @@ class SpawnLaunchListenerTest {
                 new SpawnConfig.SpawnLaunchConfig(
                         true,
                         new Location(world, TX, TY, TZ, 0f, 0f),
-                        new Vector(0, vy, 0)));
+                        new Vector(0, vy, 0)),
+                new SpawnConfig.GlideBoostConfig(false, 2.0, 5));
     }
 
     @BeforeEach

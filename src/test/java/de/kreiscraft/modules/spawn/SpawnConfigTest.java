@@ -47,6 +47,9 @@ class SpawnConfigTest {
         node.node("glide", "launch-location", "pitch").set(0.0);
         node.node("swap-hand-boost", "enabled").set(true);
         node.node("swap-hand-boost", "vector-multiplier").set(2.5);
+        node.node("glide-boost", "enabled").set(true);
+        node.node("glide-boost", "boost-strength").set(3.0);
+        node.node("glide-boost", "cooldown-seconds").set(10);
         node.node("spawn-launch", "enabled").set(false);
         node.node("spawn-launch", "trigger", "world").set("world");
         node.node("spawn-launch", "trigger", "x").set(0.0);
@@ -69,6 +72,9 @@ class SpawnConfigTest {
         assertThat(cfg.glide().launchLocation().getWorld().getName()).isEqualTo("world");
         assertThat(cfg.swapHandBoost().enabled()).isTrue();
         assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(2.5);
+        assertThat(cfg.glideBoost().enabled()).isTrue();
+        assertThat(cfg.glideBoost().boostStrength()).isEqualTo(3.0);
+        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(10);
         assertThat(cfg.spawnLaunch().enabled()).isFalse();
         assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(10.0);
     }
@@ -90,6 +96,9 @@ class SpawnConfigTest {
         assertThat(cfg.glide().spawnRadius()).isEqualTo(30); // default: 0 → 30
         assertThat(cfg.swapHandBoost().enabled()).isFalse(); // boolean zero = false
         assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(3.0); // default: 0 → 3.0
+        assertThat(cfg.glideBoost().enabled()).isFalse(); // boolean zero = false
+        assertThat(cfg.glideBoost().boostStrength()).isEqualTo(2.0); // default: 0 → 2.0
+        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(5); // default: 0 → 5
         assertThat(cfg.spawnLaunch().enabled()).isFalse(); // boolean zero = false
         // velocity all-zero → compact constructor applies (0, 5, 0)
         assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(5.0);

@@ -108,6 +108,10 @@ modules:
     swap-hand-boost:
       enabled: false
       vector-multiplier: 3.0
+    glide-boost:
+      enabled: true
+      boost-strength: 2.0
+      cooldown-seconds: 5
     spawn-launch:
       enabled: false
       trigger: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
