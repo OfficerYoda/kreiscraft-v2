@@ -68,12 +68,9 @@ public final class JailCommand {
             messages.send(sender, "jail.target-not-found", "player", targetName);
             return Command.SINGLE_SUCCESS;
         }
-        if (target.hasPermission("kreiscraft.jail.bypass")) {
-            messages.send(sender, "jail.target-has-bypass", "player", target.getName());
-            return Command.SINGLE_SUCCESS;
-        }
 
         if (service.isJailed(target.getUniqueId())) {
+            // Release — bypass permission does not prevent releasing an already-jailed player.
             Optional<JailEntry> released = service.release(target.getUniqueId());
             released.ifPresent(entry -> {
                 Location restore = entry.restoreLocation();
@@ -83,6 +80,11 @@ public final class JailCommand {
             });
             messages.send(sender, "jail.released", "player", target.getName());
         } else {
+            // Jail — refuse if the target has bypass permission.
+            if (target.hasPermission("kreiscraft.jail.bypass")) {
+                messages.send(sender, "jail.target-has-bypass", "player", target.getName());
+                return Command.SINGLE_SUCCESS;
+            }
             service.jail(target.getUniqueId(), target.getLocation(), reason);
             Location jailLocation = configRef.get().location();
             if (jailLocation != null) {

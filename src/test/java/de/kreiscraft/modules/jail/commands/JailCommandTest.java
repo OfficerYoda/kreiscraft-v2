@@ -118,6 +118,7 @@ class JailCommandTest {
         PlayerMock admin = server.addPlayer("Admin");
         PlayerMock target = server.addPlayer("Target");
         target.addAttachment(plugin, "kreiscraft.jail.bypass", true);
+        when(service.isJailed(target.getUniqueId())).thenReturn(false);
 
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(admin);
@@ -130,6 +131,30 @@ class JailCommandTest {
         verify(messages).send(admin, "jail.target-has-bypass", "player", "Target");
         verify(service, never()).jail(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_jailedTargetWithBypass_releasesRegardlessly() throws Exception {
+        // bypass must not prevent releasing an already-jailed player
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        target.addAttachment(plugin, "kreiscraft.jail.bypass", true);
+        JailEntry entry = new JailEntry(null, "", Instant.now());
+        when(service.isJailed(target.getUniqueId())).thenReturn(true);
+        when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+
+        node.getChild("target").getCommand().run(ctx);
+
+        verify(service).release(target.getUniqueId());
+        verify(messages).send(admin, "jail.released", "player", "Target");
     }
 
     @SuppressWarnings("unchecked")
