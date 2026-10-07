@@ -6,8 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.modules.admin.CapturingMessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.bukkit.Statistic;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,5 +73,20 @@ class StatisticCommandTest {
         node.getChild("player").getChild("stat").getCommand().run(ctx);
 
         assertThat(messages.sentKeys).containsExactly("admin.statistic");
+    }
+
+    @Test
+    void playerArgument_suggestsOnlinePlayers() {
+        LiteralCommandNode<CommandSourceStack> node = StatisticCommand.build(messages, server);
+        PlayerMock admin = server.addPlayer("Admin");
+        server.addPlayer("Alice");
+        admin.addAttachment(plugin, "kreiscraft.admin.statistic", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("player"), src, "");
+
+        assertThat(suggestions).containsExactly("Admin", "Alice");
     }
 }
