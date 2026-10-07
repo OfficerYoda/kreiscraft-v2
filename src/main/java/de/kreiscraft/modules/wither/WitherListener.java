@@ -23,6 +23,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
@@ -72,6 +73,28 @@ public final class WitherListener implements PriorityListener {
             armorAttr.setBaseValue(cfg.armor());
         }
         addToWitherTeam(wither.getServer(), wither);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onExplosionPrime(ExplosionPrimeEvent event) {
+        if (!(event.getEntity() instanceof Wither wither)) {
+            return;
+        }
+        WitherConfig cfg = config.get();
+        // Paper emits ExplosionPrimeEvent once for the vanilla post-charge spawn blast. Cancel it
+        // so the configured power/fire/block-damage settings can replace it exactly once.
+        // World#createExplosion does not emit another ExplosionPrimeEvent, so this cannot recurse
+        // or produce a second immediate blast.
+        event.setCancelled(true);
+        Location loc = wither.getLocation();
+        wither.getWorld()
+                .createExplosion(
+                        loc.getX(),
+                        loc.getY(),
+                        loc.getZ(),
+                        (float) cfg.spawnExplosionPower(),
+                        cfg.spawnExplosionFire(),
+                        cfg.spawnExplosionBlockDamage());
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -141,7 +164,9 @@ public final class WitherListener implements PriorityListener {
                                 loc.getX(),
                                 loc.getY(),
                                 loc.getZ(),
-                                (float) config.get().deathExplosionPower());
+                                (float) config.get().deathExplosionPower(),
+                                config.get().deathExplosionFire(),
+                                config.get().deathExplosionBlockDamage());
                 bars.forEach(Player::hideBossBar);
                 if (taskRef[0] != null) {
                     taskRef[0].cancel();

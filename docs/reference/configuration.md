@@ -286,11 +286,16 @@ only `update-interval` needs a restart because the shared repeating task is not 
 | `armor` | double | `8.0` | Armor attribute value. |
 | `half-health-threshold` | double | `300.0` | Health value at which the half-health phase triggers. |
 | `minion-count` | int | `4` | Number of minions spawned at the half-health phase. |
+| `spawn-explosion-power` | double | `20.0` | Explosion power replacing the Wither's vanilla post-charge spawn blast. |
+| `spawn-explosion-fire` | boolean | `true` | Whether the spawn explosion sets fire to nearby blocks. |
+| `spawn-explosion-block-damage` | boolean | `true` | Whether the spawn explosion breaks blocks. |
 | `half-health-explosion-power` | double | `4.0` | Explosion power at the half-health trigger. |
 | `half-health-explosion-fire` | boolean | `true` | Whether the half-health explosion sets fire to nearby blocks. |
 | `half-health-explosion-block-damage` | boolean | `true` | Whether the half-health explosion breaks blocks. |
-| `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
 | `death-explosion-power` | double | `20.0` | Explosion power at death. |
+| `death-explosion-fire` | boolean | `true` | Whether the death explosion sets fire to nearby blocks. |
+| `death-explosion-block-damage` | boolean | `true` | Whether the death explosion breaks blocks. |
+| `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
 
 ---
 
