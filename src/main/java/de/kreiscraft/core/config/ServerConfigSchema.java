@@ -27,7 +27,7 @@ public final class ServerConfigSchema {
 
     /**
      * Builds a schema declaring the module enable flags found under {@code modules} in the given
-     * root.
+     * root, followed by the representative safe fields the Server Configuration GUI exposes.
      */
     public static ServerConfigSchema fromRoot(ConfigurationNode root) {
         Objects.requireNonNull(root, "root");
@@ -35,7 +35,68 @@ public final class ServerConfigSchema {
         for (Object moduleId : root.node("modules").childrenMap().keySet()) {
             fields.add(moduleEnabled(String.valueOf(moduleId)));
         }
+        fields.addAll(representativeFields());
         return new ServerConfigSchema(fields);
+    }
+
+    /**
+     * The initial representative set of safe, GUI-editable module fields.
+     *
+     * <p>One entry per value shape the Server Configuration GUI supports: boolean, whole number,
+     * decimal number, duration, enum, location, text, and text list. Every one of these is
+     * hot-reloadable — the owning module reads the new value the next time {@code /kreiscraft
+     * reload} runs. Module enable flags are declared separately by {@link #moduleEnabled(String)}
+     * and are always restart-only.
+     *
+     * <p>Fields that are low-level, sensitive, networking, or the tab-list header/footer are
+     * deliberately absent: they stay YAML-only.
+     */
+    public static List<ConfigField> representativeFields() {
+        List<ConfigField> fields = new ArrayList<>();
+        fields.add(new ConfigField(
+                List.of("modules", "combat", "disable-elytra"),
+                ConfigFieldType.BOOLEAN,
+                ConfigValidators.booleanValue(),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(
+                List.of("modules", "effects", "count"),
+                ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 1_000),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(
+                List.of("modules", "effects", "offset-x"),
+                ConfigFieldType.DOUBLE,
+                ConfigValidators.decimalRange(0.0, 10.0),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(
+                List.of("modules", "combat", "tag-duration"),
+                ConfigFieldType.DURATION,
+                ConfigValidators.duration(),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(
+                List.of("modules", "combat", "default-display"),
+                ConfigFieldType.ENUM,
+                ConfigValidators.oneOf("CHAT", "ACTIONBAR", "TITLE"),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(spawnLocation());
+        fields.add(new ConfigField(
+                List.of("modules", "chat-format", "format"),
+                ConfigFieldType.STRING,
+                ConfigValidators.nonEmptyString(),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(
+                List.of("modules", "combat", "excluded-worlds"),
+                ConfigFieldType.STRING_LIST,
+                ConfigValidators.stringList(),
+                true,
+                ConfigLifecycle.HOT_RELOAD));
+        return fields;
     }
 
     /**
@@ -57,27 +118,21 @@ public final class ServerConfigSchema {
     // ADR-10 puts spawn location, update-mode state and start-sequence completion in Server
     // Configuration. The fields below are the write metadata for those values; commands such as
     // /setspawn and /updatemode go through ConfigService.applyEdit so an invalid value or an I/O
-    // failure cannot leave the running server and config.yml disagreeing. They become visible in
-    // the Server Configuration GUI when its own stage exposes them, so they are declared
-    // not-yet-GUI-exposed here.
+    // failure cannot leave the running server and config.yml disagreeing. spawn.location is also
+    // exposed in the Server Configuration GUI as its representative location control; the remaining
+    // operator-owned values stay YAML-only because editing them in-game would bypass the command
+    // side effects (for example disconnecting non-bypassed players when maintenance mode starts).
 
-    /** Operator-owned spawn {@link org.bukkit.Location}; absent until {@code /setspawn} is used. */
+    /**
+     * Operator-owned spawn {@link org.bukkit.Location}; absent until {@code /setspawn} is used. Also
+     * the Server Configuration GUI's representative location control.
+     */
     public static ConfigField spawnLocation() {
         return new ConfigField(
                 List.of("modules", "spawn", "location"),
                 ConfigFieldType.LOCATION,
                 ConfigValidators.alwaysValid(),
-                false,
-                ConfigLifecycle.HOT_RELOAD);
-    }
-
-    /** Operator-owned {@code /spawn} teleport range, in blocks. */
-    public static ConfigField spawnTeleportRange() {
-        return new ConfigField(
-                List.of("modules", "spawn", "teleport-range"),
-                ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, Integer.MAX_VALUE),
-                false,
+                true,
                 ConfigLifecycle.HOT_RELOAD);
     }
 

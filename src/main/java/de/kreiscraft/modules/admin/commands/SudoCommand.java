@@ -3,6 +3,7 @@ package de.kreiscraft.modules.admin.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -19,6 +20,9 @@ public final class SudoCommand {
         return Commands.literal("sudo")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.admin.sudo"))
                 .then(Commands.argument("target", StringArgumentType.word())
+                        .suggests(
+                                SuggestionProviders.allAndOnlinePlayers(
+                                        server, "kreiscraft.admin.sudo"))
                         .then(Commands.argument("text", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     CommandSender sender = ctx.getSource().getSender();

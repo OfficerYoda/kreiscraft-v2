@@ -11,16 +11,18 @@ import org.spongepowered.configurate.serialize.SerializationException;
 /**
  * Default implementation of {@link SpawnService}.
  *
- * <p>Per ADR-10 the spawn location and teleport range are operator-owned Server Configuration, so
- * they are read from and written to {@code config.yml} through {@link ConfigService}. Both are
- * read live on every call rather than cached, which means a successful command edit and a
- * {@code /kreiscraft reload} are observed immediately.
+ * <p>Per ADR-10 the spawn location is operator-owned Server Configuration, so it is read from and
+ * written to {@code config.yml} through {@link ConfigService}. The location is read live on every
+ * call rather than cached, so a successful command edit and a {@code /kreiscraft reload} are
+ * observed immediately.
+ *
+ * <p>The single Spawn Radius lives in the spawn module configuration; both the Spawn Access Zone
+ * (XZ) and the Glide Zone (3D) are measured against it.
  */
 public final class DefaultSpawnService implements SpawnService {
 
     private static final String MODULE = "spawn";
     private static final String LOCATION = "location";
-    private static final String TELEPORT_RANGE = "teleport-range";
 
     private final ConfigService config;
     private SpawnConfig moduleConfig;
@@ -49,33 +51,47 @@ public final class DefaultSpawnService implements SpawnService {
     }
 
     @Override
-    public void setSpawn(Location location, int teleportRange) {
-        config.applyEdit(ServerConfigSchema.spawnLocation(), location);
-        config.applyEdit(ServerConfigSchema.spawnTeleportRange(), teleportRange);
+    public boolean isInSpawnAccessZone(Player player) {
+        Location spawnLoc = spawnInPlayerWorld(player);
+        if (spawnLoc == null) {
+            return false;
+        }
+        Location playerLoc = player.getLocation();
+        double dx = spawnLoc.getX() - playerLoc.getX();
+        double dz = spawnLoc.getZ() - playerLoc.getZ();
+        return Math.hypot(dx, dz) <= spawnRadius();
     }
 
     @Override
-    public boolean isInSpawnRadius(Player player) {
+    public boolean isInGlideZone(Player player) {
+        Location spawnLoc = spawnInPlayerWorld(player);
+        if (spawnLoc == null) {
+            return false;
+        }
+        return spawnLoc.distance(player.getLocation()) <= spawnRadius();
+    }
+
+    /**
+     * Returns the configured spawn location when it shares the player's world, otherwise
+     * {@code null}. {@code Location#distance} throws when the two locations are in different
+     * worlds, so world equality is checked first.
+     */
+    private Location spawnInPlayerWorld(Player player) {
         Optional<Location> spawn = spawnLocation();
         if (spawn.isEmpty()) {
-            return false;
+            return null;
         }
         Location spawnLoc = spawn.get();
         Location playerLoc = player.getLocation();
-        // distance() throws if the two locations are in different worlds.
         if (spawnLoc.getWorld() == null || !spawnLoc.getWorld().equals(playerLoc.getWorld())) {
-            return false;
+            return null;
         }
-        return spawnLoc.distance(playerLoc) <= teleportRange();
+        return spawnLoc;
     }
 
-    /** The live teleport range, falling back to the module-config default when the key is absent. */
-    private int teleportRange() {
-        ConfigurationNode node = config.module(MODULE).node(TELEPORT_RANGE);
-        if (node.virtual() || node.isNull()) {
-            return moduleConfig.teleportRange();
-        }
-        return node.getInt(moduleConfig.teleportRange());
+    /** The configured Spawn Radius. */
+    private int spawnRadius() {
+        return moduleConfig.spawnRadius();
     }
 
     /** Called by {@link SpawnModule#onConfigReload} to apply updated tunables at runtime. */

@@ -26,9 +26,15 @@ public final class PaperWhitelistService implements WhitelistService {
 
     @Override
     public boolean isWhitelisted(String name) {
+        // A cached Bedrock profile is authoritative regardless of the configured
+        // Bedrock prefix, so dispatch on the cache before falling back to the
+        // conventional "." check.
+        GameProfile cached = bedrockProfiles.get(name.toLowerCase());
+        if (cached != null) {
+            return nms.isWhitelisted(cached);
+        }
         if (isBedrockName(name)) {
-            GameProfile profile = bedrockProfiles.get(name.toLowerCase());
-            return profile != null && nms.isWhitelisted(profile);
+            return false;
         }
         OfflinePlayer offline = platform.server().getOfflinePlayer(name);
         return offline.isWhitelisted();
@@ -49,11 +55,14 @@ public final class PaperWhitelistService implements WhitelistService {
 
     @Override
     public void remove(String name) {
+        // Revoke a cached Bedrock profile first so removal stays symmetric with
+        // addBedrockPlayer for any configured Bedrock prefix, not just ".".
+        GameProfile profile = bedrockProfiles.remove(name.toLowerCase());
+        if (profile != null) {
+            nms.remove(profile);
+            return;
+        }
         if (isBedrockName(name)) {
-            GameProfile profile = bedrockProfiles.remove(name.toLowerCase());
-            if (profile != null) {
-                nms.remove(profile);
-            }
             return;
         }
         OfflinePlayer offline = platform.server().getOfflinePlayer(name);

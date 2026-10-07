@@ -22,16 +22,56 @@ class ServerConfigSchemaTest {
     void fromRoot_declaresEveryModuleEnableFlagAsRestartOnly() throws SerializationException {
         ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "glow"));
 
-        assertThat(schema.fields()).hasSize(2);
-        for (ConfigField field : schema.fields()) {
-            assertThat(field.path()).hasSize(3);
+        List<ConfigField> moduleFlags =
+                schema.fields().stream()
+                        .filter(field -> field.path().size() == 3)
+                        .filter(field -> "enabled".equals(field.path().get(2)))
+                        .toList();
+        assertThat(moduleFlags).hasSize(2);
+        for (ConfigField field : moduleFlags) {
             assertThat(field.path().get(0)).isEqualTo("modules");
-            assertThat(field.path().get(2)).isEqualTo("enabled");
             assertThat(field.type()).isEqualTo(ConfigFieldType.BOOLEAN);
             assertThat(field.guiExposed()).isTrue();
             assertThat(field.lifecycle()).isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
             assertThat(field.restartRequired()).isTrue();
             assertThat(field.hotReloadable()).isFalse();
+        }
+    }
+
+    @Test
+    void fromRoot_includesRepresentativeSafeFields() throws SerializationException {
+        ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "effects"));
+
+        List<List<Object>> exposedPaths =
+                schema.guiExposed().stream().map(ConfigField::path).toList();
+        for (ConfigField representative : ServerConfigSchema.representativeFields()) {
+            assertThat(exposedPaths)
+                    .as("representative field %s is GUI-exposed", representative.path())
+                    .contains(representative.path());
+        }
+    }
+
+    @Test
+    void representativeFields_coverEverySupportedValueType() {
+        ServerConfigSchema schema =
+                new ServerConfigSchema(ServerConfigSchema.representativeFields());
+
+        assertThat(schema.guiExposed())
+                .extracting(ConfigField::type)
+                .contains(
+                        ConfigFieldType.BOOLEAN,
+                        ConfigFieldType.INTEGER,
+                        ConfigFieldType.DOUBLE,
+                        ConfigFieldType.DURATION,
+                        ConfigFieldType.ENUM,
+                        ConfigFieldType.LOCATION,
+                        ConfigFieldType.STRING,
+                        ConfigFieldType.STRING_LIST);
+        for (ConfigField field : ServerConfigSchema.representativeFields()) {
+            assertThat(field.guiExposed()).as("%s is GUI-exposed", field.path()).isTrue();
+            assertThat(field.hotReloadable())
+                    .as("%s is hot-reloadable", field.path())
+                    .isTrue();
         }
     }
 
@@ -72,12 +112,8 @@ class ServerConfigSchemaTest {
         ConfigField location = ServerConfigSchema.spawnLocation();
         assertThat(location.path()).containsExactly("modules", "spawn", "location");
         assertThat(location.type()).isEqualTo(ConfigFieldType.LOCATION);
-        assertThat(location.guiExposed()).isFalse();
+        assertThat(location.guiExposed()).isTrue();
         assertThat(location.lifecycle()).isEqualTo(ConfigLifecycle.HOT_RELOAD);
-
-        ConfigField range = ServerConfigSchema.spawnTeleportRange();
-        assertThat(range.path()).containsExactly("modules", "spawn", "teleport-range");
-        assertThat(range.type()).isEqualTo(ConfigFieldType.INTEGER);
 
         ConfigField active = ServerConfigSchema.updateModeActive();
         assertThat(active.path()).containsExactly("modules", "update-mode", "active");
@@ -87,7 +123,7 @@ class ServerConfigSchemaTest {
         assertThat(started.path()).containsExactly("modules", "start-sequence", "has-started");
         assertThat(started.type()).isEqualTo(ConfigFieldType.BOOLEAN);
 
-        for (ConfigField field : List.of(location, range, active, started)) {
+        for (ConfigField field : List.of(location, active, started)) {
             assertThat(field.hotReloadable()).isTrue();
             assertThat(field.restartRequired()).isFalse();
         }

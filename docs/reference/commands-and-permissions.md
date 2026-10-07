@@ -11,29 +11,30 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | Command | Aliases | Module | Description | Permission | Default |
 |---------|---------|--------|-------------|-----------|---------|
 | `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
-| `/kreiscraftgamemode <mode> [player]` | `kreiscraftgm`, `kcgamemode`, `kcgm` | `admin` | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). | `kreiscraft.admin.gamemode` | op |
-| `/item <material> [count]` | `i` | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
+| `/gm <gamemode> [<target>]` | — | `admin` | Forward to the vanilla `/gamemode` command, inheriting its syntax, suggestions, and authorization. | `minecraft.command.gamemode` (vanilla) | op |
+| `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
-| `/kreiscraftweather <clear\|rain\|thunder>` | `kcweather` | `admin` | Change the weather in your current world. | `kreiscraft.admin.weather` | op |
 | `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 50). | `kreiscraft.admin.spawnmob` | op |
 | `/ip [player]` | — | `admin` | Show a player's IP address. | `kreiscraft.admin.ip` | op |
 | `/uuid [player]` | — | `admin` | Show a player's UUID. | `kreiscraft.admin.uuid` | op |
-| `/lastonline <player>` | — | `admin` | Show when a player was last online. | `kreiscraft.admin.lastonline` | op |
+| `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
 | `/ping [player]` | — | `admin` | Show a player's ping in milliseconds. | `kreiscraft.admin.ping` | true |
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
-| `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player. | `kreiscraft.anticheat.view` | op |
-| `/bedrocklist add <name>` | — | `bedrock` | Add a known Bedrock player to the whitelist. | `kreiscraft.bedrock.admin` | op |
+| `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player selector (`@a` shows every selected player). | `kreiscraft.anticheat.view` | op |
+| `/bedrocklist add <name>` | — | `bedrock` | Register a Pending Bedrock Authorization by name for pre-login access. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist remove <name>` | — | `bedrock` | Explicitly remove a Bedrock authorization and revoke a bound whitelist entry. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
-| `/combat <target> <seconds>` | — | `combat` | Manually tag a player as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
+| `/combat <target> <seconds>` | — | `combat` | Manually tag every player matched by the selector as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
 | `/effects <particle>` | — | `effects` | Set your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
-| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.view` | op |
-| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.view` | op |
+| `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
+| `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
+| `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/pluginhider add <command>` | — | `plugin-hider` | Add a command to the tab-completion allowlist. | `kreiscraft.pluginhider.admin` | op |
 | `/pluginhider remove <command>` | — | `plugin-hider` | Remove a command from the allowlist. | `kreiscraft.pluginhider.admin` | op |
@@ -47,23 +48,23 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
-| `/spawn` | — | `spawn` | Teleport to the server spawn (within `teleport-range` blocks). | `kreiscraft.spawn.use` | true |
+| `/settings admin` | — | `settings-gui` | Open the authorized Server Configuration editor (categories, typed controls, immediate saves). | `kreiscraft.settingsgui.admin` | op |
+| `/spawn` | — | `spawn` | Teleport to the server spawn when inside the horizontal Spawn Access Zone (overworld only). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
 | `/status prefix <text>` | — | `status` | Set your own chat/overhead/tab-list prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
 | `/status suffix <text>` | — | `status` | Set your own suffix. | `kreiscraft.status.set.self` | true |
-| `/updatemode on` | (sub-cmd `an`) | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
-| `/updatemode off` | (sub-cmd `aus`) | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
+| `/updatemode on` | — | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
+| `/updatemode off` | — | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode status` | — | `update-mode` | Show whether maintenance mode is active. | `kreiscraft.updatemode.admin` | op |
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
-| `/setworldspawn` | `sws` | `world-mgmt` | Set the current world's spawn to your location. | `kreiscraft.worldmgmt.setworldspawn` | op |
 | `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
 | `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments complete online plus known-offline names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 
@@ -77,11 +78,9 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `admin` module
 
-- `kreiscraft.admin.gamemode` — **(op)** — Change gamemode.
 - `kreiscraft.admin.item` — **(op)** — Spawn items.
 - `kreiscraft.admin.skull` — **(op)** — Get a player head.
 - `kreiscraft.admin.head` — **(op)** — Swap held item and helmet.
-- `kreiscraft.admin.weather` — **(op)** — Change weather.
 - `kreiscraft.admin.spawnmob` — **(op)** — Spawn mobs.
 - `kreiscraft.admin.ip` — **(op)** — See a player's IP.
 - `kreiscraft.admin.uuid` — **(op)** — See a player's UUID.
@@ -115,11 +114,11 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `glow` module
 
 - `kreiscraft.glow.use` — **(true)** — Toggle glow effect.
+- `kreiscraft.glow.other` — **(op)** — Toggle glow effect for another player.
 
 ### `invsee` module
 
-- `kreiscraft.invsee.view` — **(op)** — View another player's inventory.
-- `kreiscraft.invsee.edit` — **(op)** — Edit another player's inventory.
+- `kreiscraft.invsee.use` — **(op)** — View and edit another player's inventory or ender chest.
 
 ### `jail` module
 
@@ -142,6 +141,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `settings-gui` module
 
 - `kreiscraft.settingsgui.use` — **(true)** — Open the per-player settings GUI.
+- `kreiscraft.settingsgui.admin` — **(op)** — Open the authorized Server Configuration editor from Player Settings or `/settings admin`.
 
 ### `sign-color` module
 
@@ -169,7 +169,6 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `world-mgmt` module
 
 - `kreiscraft.worldmgmt.world` — **(op)** — Teleport between worlds.
-- `kreiscraft.worldmgmt.setworldspawn` — **(op)** — Set the spawn point of the current world.
 - `kreiscraft.worldmgmt.portal` — **(true)** — Compute portal coordinate translations.
 
 ---

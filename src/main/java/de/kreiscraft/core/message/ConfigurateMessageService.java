@@ -132,6 +132,23 @@ public final class ConfigurateMessageService implements MessageService {
     }
 
     @Override
+    public Locale localeFor(CommandSender recipient) {
+        String code = localeResolver.localeCodeFor(recipient).orElse(null);
+        String effective = (code != null && treeForLocale(code) != null) ? code : defaultLanguage;
+        return localeOf(effective);
+    }
+
+    private static Locale localeOf(String code) {
+        if (code == null) {
+            return Locale.ENGLISH;
+        }
+        return switch (code.toLowerCase(Locale.ROOT)) {
+            case "de" -> Locale.GERMAN;
+            default -> Locale.ENGLISH;
+        };
+    }
+
+    @Override
     public Component renderFor(CommandSender recipient, String key, Object... placeholders) {
         String code = localeResolver.localeCodeFor(recipient).orElse(null);
         ConfigurationNode tree = treeForLocale(code);
@@ -178,7 +195,12 @@ public final class ConfigurateMessageService implements MessageService {
         for (int i = 0; i < placeholders.length; i += 2) {
             String name = (String) placeholders[i];
             Object value = placeholders[i + 1];
-            out[1 + (i / 2)] = Placeholder.parsed(name, String.valueOf(value));
+            // Component placeholders keep their own styling and recipient-language rendering;
+            // everything else is treated as MiniMessage-aware text.
+            out[1 + (i / 2)] =
+                    value instanceof Component component
+                            ? Placeholder.component(name, component)
+                            : Placeholder.parsed(name, String.valueOf(value));
         }
         return out;
     }

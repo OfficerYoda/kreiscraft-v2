@@ -76,6 +76,24 @@ nothing changes unless the complete candidate is valid and durably written.
 The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
 Fields that are not declared there remain YAML-only.
 
+### Server Configuration GUI
+
+Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
+root or with `/settings admin`. The initial representative set of safe editable fields is declared by
+`ServerConfigSchema.representativeFields()` and covers every supported control type: boolean
+(`modules.combat.disable-elytra`), whole number (`modules.effects.count`), decimal number
+(`modules.effects.offset-x`), duration (`modules.combat.tag-duration`), enum
+(`modules.combat.default-display`), location (`modules.spawn.location`), text
+(`modules.chat-format.format`), and text list (`modules.combat.excluded-worlds`). All module
+`enabled` flags are also exposed and are restart-only.
+
+Each accepted edit is written immediately through the validated boundary, so closing the GUI never
+discards work. Closing reports the changes made in that session: hot-reloadable edits offer a
+clickable `/kreiscraft reload` action, and restart-only edits warn that a server restart is required.
+Module lifecycle changes are never reported as hot-applied. Credentials (`modules.api.admin-api-key`),
+network settings (`modules.api.host`, `modules.api.port`), and the tab-list header/footer stay
+YAML-only.
+
 ---
 
 ## Per-Module Configuration
@@ -129,7 +147,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.bedrock`) | Type | Default | Description |
 |---|---|---|---|
-| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). |
+| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). It is applied when normalizing names, so `/bedrocklist add <name>` registration and login matching agree on the same canonical identity. |
 
 ---
 
@@ -220,17 +238,15 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.spawn`) | Type | Default | Description |
 |---|---|---|---|
-| `teleport-range` | int | `100` | Maximum radius (blocks) from spawn for `/spawn`. Operator-owned; written by `/setspawn <radius>`. |
 | `location` | Location | *(optional)* | Operator-owned server spawn point, written by `/setspawn`. Absent until a spawn has been set; `/spawn` reports that no spawn is set. Not migrated from the retired `data/spawn.yml`. |
-| `glide.enabled` | boolean | `true` | Whether elytra glide is active in the spawn area. |
-| `glide.multiply-value` | int | `3` | Velocity multiplier at glide start. Currently stored but not applied at runtime. |
-| `glide.spawn-radius` | int | `30` | Block radius around spawn within which glide is active. |
-| `glide.launch-location` | Location | *(optional)* | Launch pad location. Null when absent. |
+| `spawn-radius` | int | `50` | The single Spawn Radius (blocks) that bounds both spawn access and glide eligibility. `/spawn` measures horizontal (XZ) distance (the Spawn Access Zone); glide initiation measures full 3D distance (the Glide Zone). |
+| `glide.enabled` | boolean | `true` | Whether elytra glide is active around spawn. |
+| `glide.multiply-value` | int | `3` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
 | `swap-hand-boost.enabled` | boolean | `false` | Whether the offhand-swap velocity boost is active while gliding. |
-| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's velocity on offhand swap. |
-| `spawn-launch.enabled` | boolean | `false` | Whether the block-trigger launch pad is active. |
-| `spawn-launch.trigger` | Location | *(optional)* | Block location that triggers the launch. |
-| `spawn-launch.velocity` | Vector | `{x: 0.0, y: 5.0, z: 0.0}` | Velocity vector applied on launch. Format: `{ x: <n>, y: <n>, z: <n> }`. |
+| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's facing unit vector on offhand swap while gliding. |
+| `glide-boost.enabled` | boolean | `true` | Whether the sneak-triggered boost is active for glides that started inside the Glide Zone. |
+| `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector on the sneak boost. |
+| `glide-boost.cooldown-seconds` | int | `5` | Per-player cooldown between sneak boosts, in seconds. |
 
 ---
 
@@ -239,17 +255,12 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.start-sequence`) | Type | Default | Description |
 |---|---|---|---|
 | `has-started` | boolean | `false` | Operator-owned completion flag. `true` once the sequence has run; cleared by `/start reset`. Not migrated from the retired `data/start-sequence.yml`. |
-| `countdown` | Duration | `10s` | Initial countdown value. The sequence displays `countdown - 1` … `1`, one number per second, then the start title. |
+| `countdown` | Duration | `10s` | Countdown value. The ceremony renders `countdown` down through `1`, one number per second, then the start title one second later. |
 | `initial-border-size` | double | `50.0` | World border diameter at game start (blocks). |
-| `target-border-size` | double | `30000000.0` | World border diameter at full expansion. |
-| `phase-1-duration` | Duration | `550000t` (27500 s) | Border phase 1 expansion duration, in ticks. |
-| `phase-2-duration` | Duration | `300000t` (15000 s) | Border phase 2 expansion duration, in ticks. |
-| `phase-1-to-2-delay` | Duration | `150t` (7.5 s) | Delay after the start title before phase 2 begins. |
-| `phase-2-to-instant-delay` | Duration | `300t` (15 s) | Delay after the start title before the border snaps to full size. |
+| `target-border-size` | double | `30000000.0` | World border diameter after the single expansion (blocks). |
+| `border-duration` | Duration | `30000s` (30,000 s) | Duration of the one continuous border expansion, configured in seconds. |
 
-These keys use explicit `@Setting` annotations in `StartSequenceConfig.java` so camelCase conversion does not apply.
-
-Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border phase durations and delays are expressed in ticks to mirror the original RusticPrism sequence; Bukkit's `WorldBorder.changeSize` API also takes a duration in ticks, so the service derives the tick count directly from each duration. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
+Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border duration is configured in seconds but represented internally as a `Duration`; it is converted to ticks only at the Bukkit `WorldBorder` boundary (20 ticks = 1 second). The `trigger` call issues exactly one `WorldBorder.changeSize(target-border-size, border-duration-in-ticks)` — no second phase, final snap, phase timestamp, or remaining-duration state is owned by the plugin. Paper persists the in-progress transition across a graceful restart and resumes it, which was verified on Paper 26.2 build 132; abrupt crashes and cross-version migration are not guaranteed. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
 
 ---
 
