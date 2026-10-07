@@ -32,7 +32,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
-| `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, minion spawning, and a death explosion. |
+| `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, independently configurable spawn, half-health, and death explosions, and minion spawning. |
 | `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, setworldspawn, portal | Commands for teleporting between worlds, setting world spawns, and computing Nether/Overworld portal coordinates. |
 
 ### Default-off modules
@@ -401,7 +401,7 @@ When active, activation immediately disconnects every online player who is not a
 
 ### Description
 
-Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers an explosion whose power, fire, and block-damage behavior are configurable. On death it creates a large explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks.
+Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. The Wither's vanilla post-charge spawn blast is intercepted through `ExplosionPrimeEvent`, cancelled, and synchronously replaced once with the configured `spawn-explosion-*` power, fire, and block-damage settings. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers a `half-health-explosion-*` explosion. On death it creates a `death-explosion-*` explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks. Each of the three phases independently honors its own power, fire, and block-damage fields, including after a configuration reload.
 
 ---
 

@@ -151,10 +151,15 @@ modules:
     armor: 8.0
     half-health-threshold: 300.0
     minion-count: 4
+    spawn-explosion-power: 20.0
+    spawn-explosion-fire: true
+    spawn-explosion-block-damage: true
     half-health-explosion-power: 4.0
     half-health-explosion-fire: true
     half-health-explosion-block-damage: true
-    death-boss-bar-radius: 50
     death-explosion-power: 20.0
+    death-explosion-fire: true
+    death-explosion-block-damage: true
+    death-boss-bar-radius: 50
   world-mgmt:
     enabled: true
