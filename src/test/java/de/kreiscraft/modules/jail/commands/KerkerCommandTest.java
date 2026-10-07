@@ -2,21 +2,22 @@ package de.kreiscraft.modules.jail.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.modules.jail.JailConfig;
 import de.kreiscraft.modules.jail.JailEntry;
 import de.kreiscraft.modules.jail.JailService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,12 +26,14 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.plugin.PluginMock;
 
-class UnjailCommandTest {
+/** Tests the {@code /kerker} alias — identical behavior and permission to {@code /jail}. */
+class KerkerCommandTest {
 
     private ServerMock server;
     private PluginMock plugin;
     private JailService service;
     private MessageService messages;
+    private AtomicReference<JailConfig> configRef;
     private World world;
 
     @BeforeEach
@@ -40,6 +43,8 @@ class UnjailCommandTest {
         world = server.addSimpleWorld("world");
         service = mock(JailService.class);
         messages = mock(MessageService.class);
+        configRef = new AtomicReference<>(
+                new JailConfig(new Location(world, 126, 91, 92), List.of("msg")));
     }
 
     @AfterEach
@@ -48,58 +53,38 @@ class UnjailCommandTest {
     }
 
     private LiteralCommandNode<CommandSourceStack> buildNode() {
-        return UnjailCommand.build(service, messages);
+        return JailCommand.buildWithName("kerker", service, messages, configRef);
     }
 
     @Test
-    void build_commandNameIsUnjail() {
-        assertThat(buildNode().getName()).isEqualTo("unjail");
+    void build_commandNameIsKerker() {
+        assertThat(buildNode().getName()).isEqualTo("kerker");
     }
 
     @Test
-    void requires_withoutPermission_returnsFalse() {
-        LiteralCommandNode<CommandSourceStack> node = buildNode();
+    void requires_samePermissionAsJail_withoutPermission_returnsFalse() {
         PlayerMock player = server.addPlayer("Alice");
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
-        assertThat(node.getRequirement().test(src)).isFalse();
+        assertThat(buildNode().getRequirement().test(src)).isFalse();
     }
 
     @Test
-    void requires_withPermission_returnsTrue() {
-        LiteralCommandNode<CommandSourceStack> node = buildNode();
+    void requires_samePermissionAsJail_withPermission_returnsTrue() {
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.jail.use", true);
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(player);
-        assertThat(node.getRequirement().test(src)).isTrue();
+        assertThat(buildNode().getRequirement().test(src)).isTrue();
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    void execute_targetNotOnline_sendsNotFoundMessage() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node = buildNode();
-        PlayerMock sender = server.addPlayer("Admin");
-
-        CommandSourceStack src = mock(CommandSourceStack.class);
-        when(src.getSender()).thenReturn(sender);
-        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
-        when(ctx.getSource()).thenReturn(src);
-        when(ctx.getArgument("target", String.class)).thenReturn("NoSuchPlayer");
-
-        node.getChild("target").getCommand().run(ctx);
-
-        verify(messages).send(sender, "jail.target-not-found", "player", "NoSuchPlayer");
-        verify(service, never()).release(org.mockito.ArgumentMatchers.any());
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    void execute_targetNotJailed_sendsNotJailedMessage() throws Exception {
+    void execute_unjailedTarget_jailsAndSendsJailedMessage() throws Exception {
         LiteralCommandNode<CommandSourceStack> node = buildNode();
         PlayerMock admin = server.addPlayer("Admin");
         PlayerMock target = server.addPlayer("Target");
-        when(service.release(target.getUniqueId())).thenReturn(Optional.empty());
+        when(service.isJailed(target.getUniqueId())).thenReturn(false);
 
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(admin);
@@ -109,17 +94,19 @@ class UnjailCommandTest {
 
         node.getChild("target").getCommand().run(ctx);
 
-        verify(messages).send(admin, "jail.not-jailed", "player", "Target");
+        verify(service).jail(org.mockito.ArgumentMatchers.eq(target.getUniqueId()),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(""));
+        verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "");
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    void execute_releasesAndSendsReleasedMessage() throws Exception {
+    void execute_jailedTarget_releasesAndSendsReleasedMessage() throws Exception {
         LiteralCommandNode<CommandSourceStack> node = buildNode();
         PlayerMock admin = server.addPlayer("Admin");
         PlayerMock target = server.addPlayer("Target");
-        Location restoreLocation = new Location(world, 10, 64, 10);
-        JailEntry entry = new JailEntry(restoreLocation, "griefing", Instant.now());
+        JailEntry entry = new JailEntry(new Location(world, 5, 64, 5), "", Instant.now());
+        when(service.isJailed(target.getUniqueId())).thenReturn(true);
         when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
 
         CommandSourceStack src = mock(CommandSourceStack.class);
@@ -130,30 +117,8 @@ class UnjailCommandTest {
 
         node.getChild("target").getCommand().run(ctx);
 
+        verify(service).release(target.getUniqueId());
         verify(messages).send(admin, "jail.released", "player", "Target");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    void execute_teleportsPlayerToRestoreLocation() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node = buildNode();
-        PlayerMock admin = server.addPlayer("Admin");
-        PlayerMock target = server.addPlayer("Target");
-        Location restoreLocation = new Location(world, 10, 64, 10);
-        JailEntry entry = new JailEntry(restoreLocation, "", Instant.now());
-        when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
-
-        CommandSourceStack src = mock(CommandSourceStack.class);
-        when(src.getSender()).thenReturn(admin);
-        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
-        when(ctx.getSource()).thenReturn(src);
-        when(ctx.getArgument("target", String.class)).thenReturn("Target");
-
-        node.getChild("target").getCommand().run(ctx);
-
-        assertThat(target.getLocation().getBlockX()).isEqualTo(10);
-        assertThat(target.getLocation().getBlockY()).isEqualTo(64);
-        assertThat(target.getLocation().getBlockZ()).isEqualTo(10);
     }
 
     @Test

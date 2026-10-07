@@ -10,13 +10,15 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.jail.JailConfig;
+import de.kreiscraft.modules.jail.JailEntry;
 import de.kreiscraft.modules.jail.JailService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,10 +56,20 @@ class JailCommandTest {
         return JailCommand.build(service, messages, configRef);
     }
 
+    // ── build ────────────────────────────────────────────────────────────────
+
     @Test
     void build_commandNameIsJail() {
         assertThat(buildNode().getName()).isEqualTo("jail");
     }
+
+    @Test
+    void build_hasTargetChildArgument() {
+        assertThat(buildNode().getChildren()).isNotEmpty();
+        assertThat(buildNode().getChild("target")).isNotNull();
+    }
+
+    // ── permission guard ─────────────────────────────────────────────────────
 
     @Test
     void requires_withoutPermission_returnsFalse() {
@@ -77,6 +89,8 @@ class JailCommandTest {
         when(src.getSender()).thenReturn(player);
         assertThat(node.getRequirement().test(src)).isTrue();
     }
+
+    // ── jail direction ───────────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")
     @Test
@@ -120,26 +134,7 @@ class JailCommandTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    void execute_targetAlreadyJailed_sendsAlreadyJailedMessage() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node = buildNode();
-        PlayerMock admin = server.addPlayer("Admin");
-        PlayerMock target = server.addPlayer("Target");
-        when(service.isJailed(target.getUniqueId())).thenReturn(true);
-
-        CommandSourceStack src = mock(CommandSourceStack.class);
-        when(src.getSender()).thenReturn(admin);
-        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
-        when(ctx.getSource()).thenReturn(src);
-        when(ctx.getArgument("target", String.class)).thenReturn("Target");
-
-        node.getChild("target").getCommand().run(ctx);
-
-        verify(messages).send(admin, "jail.already-jailed", "player", "Target");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    void execute_jailsTargetAndSendsMessage() throws Exception {
+    void execute_unjailedTarget_jailsAndSendsJailedMessage() throws Exception {
         LiteralCommandNode<CommandSourceStack> node = buildNode();
         PlayerMock admin = server.addPlayer("Admin");
         PlayerMock target = server.addPlayer("Target");
@@ -180,9 +175,74 @@ class JailCommandTest {
         verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "griefing");
     }
 
+    // ── release direction ────────────────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
     @Test
-    void build_hasTargetChildArgument() {
-        assertThat(buildNode().getChildren()).isNotEmpty();
-        assertThat(buildNode().getChild("target")).isNotNull();
+    void execute_jailedTarget_releasesAndSendsReleasedMessage() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        Location restoreLocation = new Location(world, 10, 64, 10);
+        JailEntry entry = new JailEntry(restoreLocation, "griefing", Instant.now());
+        when(service.isJailed(target.getUniqueId())).thenReturn(true);
+        when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+
+        node.getChild("target").getCommand().run(ctx);
+
+        verify(service).release(target.getUniqueId());
+        verify(messages).send(admin, "jail.released", "player", "Target");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_jailedTarget_teleportsToRestoreLocation() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        Location restoreLocation = new Location(world, 10, 64, 10);
+        JailEntry entry = new JailEntry(restoreLocation, "", Instant.now());
+        when(service.isJailed(target.getUniqueId())).thenReturn(true);
+        when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+
+        node.getChild("target").getCommand().run(ctx);
+
+        assertThat(target.getLocation().getBlockX()).isEqualTo(10);
+        assertThat(target.getLocation().getBlockY()).isEqualTo(64);
+        assertThat(target.getLocation().getBlockZ()).isEqualTo(10);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_jailedTarget_doesNotCallJail() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        JailEntry entry = new JailEntry(null, "", Instant.now());
+        when(service.isJailed(target.getUniqueId())).thenReturn(true);
+        when(service.release(target.getUniqueId())).thenReturn(Optional.of(entry));
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+
+        node.getChild("target").getCommand().run(ctx);
+
+        verify(service, never()).jail(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 }
