@@ -60,6 +60,24 @@ Enabling any of these activates its existing implementation; no additional confi
 
 ---
 
+## Server Configuration Editing
+
+Operator-owned values are changed through one validated boundary, `ConfigService.edit(ConfigEdit)`.
+The proposed value is applied to a detached copy of the live configuration and validated there;
+nothing changes unless the complete candidate is valid and durably written.
+
+- A rejected value or a failed write leaves both the running configuration and `config.yml`
+  untouched.
+- A successful edit preserves existing comments and unrelated keys, writes a flushed temporary
+  file, and replaces `config.yml` using an atomic move where the filesystem supports it.
+- Every editable field declares its value type, validator, GUI exposure, and reload lifecycle.
+  Module `enabled` flags are **restart-only**: `/kreiscraft reload` does not start or stop modules.
+
+The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
+Fields that are not declared there remain YAML-only.
+
+---
+
 ## Per-Module Configuration
 
 Each module's config is deserialized via Configurate's `@ConfigSerializable` object mapping. Field names follow camelCase → kebab-case conversion automatically (e.g., `tagDuration` → `tag-duration`). Fields annotated with `@Setting("explicit-key")` use the given key verbatim.

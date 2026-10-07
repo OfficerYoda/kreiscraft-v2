@@ -56,7 +56,8 @@ public final class JailModule implements Module {
 
         // Commands — /jail and /kerker are identical toggles
         ctx.commands().register(JailCommand.build(service, ctx.messages(), configRef), "Jail or release a player");
-        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages(), configRef), "Jail or release a player (alias)");
+        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages(), configRef),
+                "Jail or release a player (alias)");
     }
 
     @Override
