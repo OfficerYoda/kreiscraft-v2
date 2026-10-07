@@ -329,12 +329,12 @@ migrated; the new config values start from defaults.
   lifecycle metadata, documentation, and tests.
 
 **Applied keys:** The operator-owned values live at `modules.spawn.location`,
-`modules.spawn.teleport-range`, `modules.update-mode.active` and
-`modules.start-sequence.has-started`. Their write metadata is declared in `ServerConfigSchema`
-and commands persist them through `ConfigService.applyEdit`, which rejects or fails without
-touching the live tree or the file. The retired `data/spawn.yml`, `data/update-mode.yml` and
-`data/start-sequence.yml` files are no longer read or written, so no migration occurs and config
-reloads cannot touch the remaining Activity Data.
+`modules.update-mode.active` and `modules.start-sequence.has-started`. Their write metadata is
+declared in `ServerConfigSchema` and commands persist them through `ConfigService.applyEdit`, which
+rejects or fails without touching the live tree or the file. The single Spawn Radius is module
+configuration (`modules.spawn.spawn-radius`), not operator-owned state. The retired `data/spawn.yml`,
+`data/update-mode.yml` and `data/start-sequence.yml` files are no longer read or written, so no
+migration occurs and config reloads cannot touch the remaining Activity Data.
 
 ---
 
