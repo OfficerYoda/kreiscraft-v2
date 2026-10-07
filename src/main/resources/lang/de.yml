@@ -11,9 +11,7 @@ server-config:
     hot-reload: "<green>Wird bei <white>/kreiscraft reload</white> übernommen."
     restart-required: "<red>Erfordert einen Server-Neustart."
 admin:
-  gamemode-set: "<prefix> <green>Spielmodus für <player></green> auf <mode></green>."
   item-given: "<prefix> <green><count>x <item></green>."
-  weather-set: "<prefix> <green>Wetter: <weather></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gray><player></gray> IP: <ip>"
   uuid: "<prefix> <gray><player></gray> UUID: <uuid>"
@@ -169,7 +167,6 @@ wither:
 world-mgmt:
   teleported: "<prefix> <green>Nach <world></green>."
   unknown-world: "<prefix> <red>Welt <world></red> existiert nicht."
-  spawn-set: "<prefix> <green>Weltspawn gesetzt."
   portal-converted: "<prefix> <gray>Portal-Koordinaten: X <x> Z <z></gray>"
   portal-not-overworld: "<prefix> <red>Du befindest dich nicht in der Overworld."
   portal-not-nether: "<prefix> <red>Du befindest dich nicht im Nether."
