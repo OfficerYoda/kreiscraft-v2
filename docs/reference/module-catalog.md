@@ -10,7 +10,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
-| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, gm, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode and vanilla-gamemode forwarding, item spawning, player info, TPS, weather). |
+| `admin` | `de.kreiscraft.modules.admin` | stable | none | gm, item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (vanilla-gamemode forwarding, item spawning, player info, TPS). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
@@ -33,7 +33,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
 | `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, independently configurable spawn, half-health, and death explosions, and minion spawning. |
-| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, setworldspawn, portal | Commands for teleporting between worlds, setting world spawns, and computing Nether/Overworld portal coordinates. |
+| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, portal | Commands for teleporting between worlds and computing Nether/Overworld portal coordinates. |
 
 ### Default-off modules
 
@@ -67,7 +67,7 @@ For config keys and defaults, see [Configuration](/reference/configuration/).
 
 ### Description
 
-Provides a collection of general-purpose admin utility commands: gamemode changes, item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, weather control, sudo, and Kreiscraft help links.
+Provides a collection of general-purpose admin utility commands: vanilla-gamemode forwarding, item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links.
 
 ---
 
@@ -429,4 +429,4 @@ Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour
 
 ### Description
 
-Provides three world-management commands: teleport to any loaded world's spawn, set the spawn point of the current world, and compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8).
+Provides two world-management commands: teleport to any loaded world's spawn and compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8).
