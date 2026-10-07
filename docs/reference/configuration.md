@@ -30,7 +30,6 @@ Located at the top-level `core:` block. These keys are read directly from the ra
 | `core.language` | String | `de` | Server language: selects the fallback language tree from `plugins/Kreiscraft/lang/<language>.yml` and is used for console output. Bundled options: `de`, `en`. A player's persisted language in `data/settings.yml` takes precedence for output addressed to them. |
 | `core.timezone` | String | `Europe/Berlin` | Canonical IANA timezone ID passed to `ZoneId.of()`. Used for every absolute timestamp and time-based placeholder across the plugin. |
 | `core.auto-save-interval` | Duration | `5m` | How often the auto-save task calls `flushIfDirty()` on every registered `DataFile`. Parsed by `Durations.parse`. |
-| `core.debug` | boolean | `false` | Present in the bundled config; reserved for future verbose-logging toggles. Not currently wired to any runtime behaviour. |
 
 ---
 
@@ -46,14 +45,13 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following five are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following four are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
 | `effects` | Cosmetic player particle trails; opt in per server. |
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `glow` | Cosmetic player glow effect; opt in per server. |
-| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
 Enabling any of these activates its existing implementation; no additional configuration is required.
@@ -189,14 +187,6 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 ---
 
-### `plugin-hider`
-
-| Key (relative to `modules.plugin-hider`) | Type | Default | Description |
-|---|---|---|---|
-| `default-allowed-commands` | List\<String\> | `[help]` | Commands visible to non-operator players when plugin list is hidden. |
-
----
-
 ### `positions`
 
 | Key (relative to `modules.positions`) | Type | Default | Description |
@@ -242,7 +232,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | `target-border-size` | double | `30000000.0` | World border diameter after the single expansion (blocks). |
 | `border-duration` | Duration | `30000s` (30,000 s) | Duration of the one continuous border expansion, configured in seconds. |
 
-Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border duration is configured in seconds but represented internally as a `Duration`; it is converted to ticks only at the Bukkit `WorldBorder` boundary (20 ticks = 1 second). The `trigger` call issues exactly one `WorldBorder.changeSize(target-border-size, border-duration-in-ticks)` — no second phase, final snap, phase timestamp, or remaining-duration state is owned by the plugin. Paper persists the in-progress transition across a graceful restart and resumes it, which was verified on Paper 26.2 build 132; abrupt crashes and cross-version migration are not guaranteed. Presentation also mirrors RusticPrism: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
+Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 second), `s`, `m`, `h`, and `d`. The border duration is configured in seconds but represented internally as a `Duration`; it is converted to ticks only at the Bukkit `WorldBorder` boundary (20 ticks = 1 second). The `trigger` call issues exactly one `WorldBorder.changeSize(target-border-size, border-duration-in-ticks)` — no second phase, final snap, phase timestamp, or remaining-duration state is owned by the plugin. Paper persists the in-progress transition across a graceful restart and resumes it, which was verified on Paper 26.2 build 132; abrupt crashes and cross-version migration are not guaranteed. Presentation: the countdown title stays for 2 seconds and plays an experience-orb pickup sound, and the start title carries a subtitle and plays a goat-horn sound for 4 seconds.
 
 ---
 
@@ -254,7 +244,7 @@ Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 seco
 | `header` | String | Legacy Kreiscraft banner + `Playtime: %playtime%` | MiniMessage string rendered as the tab-list header. Supports placeholders. Hot-reloaded. |
 | `footer` | String | Legacy Kreiscraft banner with `Uhrzeit: %system_time%`, `Ping: %ping%` and `Tps: %tps%` | Template rendered as the tab-list footer. Supports `%tps%`, `%ping%`, `%system_time%` and other `PlaceholderResolver` tokens. Hot-reloaded. |
 
-The shipped `header` and `footer` defaults reproduce the original RusticPrism presentation: a
+The shipped `header` and `footer` defaults reproduce the classic Kreiscraft tab-list presentation: a
 struck-through Kreiscraft banner with the player's playtime in the header, and the current time,
 ping, TPS and a second banner in the footer. The templates are re-read on `/kreiscraft reload`;
 only `update-interval` needs a restart because the shared repeating task is not rescheduled.

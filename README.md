@@ -1,10 +1,10 @@
 # Kreiscraft
 
-A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 24 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
+A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 23 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
 
 ## Highlights
 
-- **Runtime module system.** 24 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
+- **Runtime module system.** 23 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
 - **Modern Paper APIs.** Brigadier commands via `LifecycleEvents.COMMANDS`, Adventure + MiniMessage everywhere, no legacy `CommandExecutor` / `§`-code strings.
 - **Clean lifecycle.** Every module registers through a `ModuleContext` dependency bag; teardown is tracked so `disable()` cleans up listeners, commands, scheduled tasks, and GUIs.
 - **Config vs. state.** Admin-managed settings live in `config.yml`; runtime state lives in dirty-tracked `DataFile<T>` YAMLs under `data/` with periodic auto-save.
@@ -43,7 +43,7 @@ src/main/java/de/kreiscraft/
 │                                scheduler, events, commands, services
 ├── platform/                    Paper-specific adapters
 ├── shared/                      cross-module services (ChatBridge, GUI, user, whitelist)
-└── modules/                     the 24 feature modules
+└── modules/                     the 23 feature modules
 ```
 
 - `src/main/resources/config.yml` — default config template
@@ -54,7 +54,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-24 opt-in modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `effects`, `firework`, `glow`, `plugin-hider` and `positions` ship **disabled by default** and must be opted in explicitly. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+23 opt-in modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `effects`, `firework`, `glow` and `positions` ship **disabled by default** and must be opted in explicitly. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
 
 | Module ID | Summary |
 |---|---|
@@ -70,7 +70,6 @@ src/main/java/de/kreiscraft/
 | `glow` | `/glow` — toggle a player's glowing outline |
 | `invsee` | `/invsee` and `/enderchest` (`/ec`) — inspect online and offline players' inventories |
 | `jail` | `/jail` and `/kerker` — teleport-based jail toggle with configurable location and blocked commands |
-| `plugin-hider` | Hides non-allowlisted commands from tab-completion to obscure the full plugin list |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |

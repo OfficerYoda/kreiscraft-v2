@@ -50,7 +50,7 @@ class YamlConfigServiceTest {
      * opt-in via {@code modules.<id>.enabled: true}; see the Module Catalog for the rationale.
      */
     private static final List<String> DEFAULT_DISABLED = List.of(
-            "effects", "firework", "glow", "plugin-hider", "positions");
+            "effects", "firework", "glow", "positions");
 
     @Test
     void everyModuleSection_hasEnabledKey(@TempDir Path tmp) throws IOException {

@@ -16,7 +16,6 @@ import de.kreiscraft.modules.firework.FireworkModule;
 import de.kreiscraft.modules.glow.GlowModule;
 import de.kreiscraft.modules.invsee.InvseeModule;
 import de.kreiscraft.modules.jail.JailModule;
-import de.kreiscraft.modules.pluginhider.PluginHiderModule;
 import de.kreiscraft.modules.positions.PositionsModule;
 import de.kreiscraft.modules.reboot.RebootModule;
 import de.kreiscraft.modules.settingsgui.SettingsGuiModule;
@@ -36,7 +35,7 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 class KreiscraftBootstrapTest {
 
     /** Mirror of KreiscraftBootstrap.start() — sole source of truth for the registered set. */
-    private static final int MODULE_COUNT = 24;
+    private static final int MODULE_COUNT = 23;
 
     private static List<Module> allModules() {
         return List.of(
@@ -52,7 +51,6 @@ class KreiscraftBootstrapTest {
                 new GlowModule(),
                 new InvseeModule(),
                 new JailModule(),
-                new PluginHiderModule(),
                 new PositionsModule(),
                 new RebootModule(),
                 new SettingsGuiModule(),

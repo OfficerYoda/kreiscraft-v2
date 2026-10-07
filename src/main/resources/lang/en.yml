@@ -80,14 +80,6 @@ jail:
   target-has-bypass: "<prefix> <red><player></red> has the bypass permission."
   command-blocked: "<prefix> <red>This command is not allowed in jail."
   target-not-found: "<prefix> <red>Player <player> is not online."
-plugin-hider:
-  added: "<prefix> <green><command></green> added to the allowlist."
-  removed: "<prefix> <green><command></green> removed from the allowlist."
-  already-present: "<prefix> <yellow><command></yellow> is already allowed."
-  not-present: "<prefix> <yellow><command></yellow> was not on the allowlist."
-  list-header: "<prefix> <gray>Allowed commands:"
-  list-entry: "<gray>- <command></gray>"
-  list-empty: "<prefix> <yellow>(none)"
 positions:
   set: "<prefix> <green>Position <name></green> saved."
   removed: "<prefix> <green>Position <name></green> deleted."

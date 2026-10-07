@@ -1,13 +1,12 @@
 # Kreiscraft configuration.
 # See docs/configuration.md for a full reference of every module and key.
 #
-# Most modules ship enabled. Effects, Firework, Glow, Plugin Hider and Positions ship
+# Most modules ship enabled. Effects, Firework, Glow and Positions ship
 # disabled by default; set `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
   auto-save-interval: 5m
-  debug: false
 
 modules:
   admin:
@@ -71,18 +70,6 @@ modules:
     enabled: true
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, r]
-  plugin-hider:
-    enabled: false
-    default-allowed-commands:
-      - help
-      - spawn
-      - msg
-      - tell
-      - w
-      - r
-      - tps
-      - ping
-      - status
   positions:
     enabled: false
     gui-rows: 6

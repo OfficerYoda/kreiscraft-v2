@@ -35,9 +35,6 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
-| `/pluginhider add <command>` | — | `plugin-hider` | Add a command to the tab-completion allowlist. | `kreiscraft.pluginhider.admin` | op |
-| `/pluginhider remove <command>` | — | `plugin-hider` | Remove a command from the allowlist. | `kreiscraft.pluginhider.admin` | op |
-| `/pluginhider list` | — | `plugin-hider` | List all allowed commands. | `kreiscraft.pluginhider.admin` | op |
 | `/pos` | — | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |
 | `/pos set <name>` | — | `positions` | Save current location as a named position. | `kreiscraft.positions.use` | true |
 | `/pos get <name>` | — | `positions` | Print coordinates for a named position. | `kreiscraft.positions.use` | true |
@@ -121,11 +118,6 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 - `kreiscraft.jail.use` — **(op)** — Jail or release players.
 - `kreiscraft.jail.bypass` — **(op)** — Cannot be jailed.
-
-### `plugin-hider` module
-
-- `kreiscraft.pluginhider.admin` — **(op)** — Manage the plugin-hider allowlist.
-- `kreiscraft.pluginhider.bypass` — **(op)** — See all commands regardless of the allowlist.
 
 ### `positions` module
 
