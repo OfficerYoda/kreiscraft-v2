@@ -1,67 +1,64 @@
 package de.kreiscraft.modules.settingsgui;
 
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class DefaultSettingsService implements SettingsService {
+/**
+ * GUI-facing client over the always-available {@link PlayerPreferencesService}.
+ *
+ * <p>The settings GUI owns no persistence of its own: every read and write is delegated to the
+ * shared preferences boundary, so preferences persist whether or not this module is enabled. The
+ * per-player click debounce is transient GUI state and is intentionally kept here rather than in the
+ * persisted preference snapshot.
+ */
+public final class DefaultSettingsService {
 
     private static final Duration CLICK_DEBOUNCE = Duration.ofSeconds(1);
 
-    private final SettingsData data;
+    /** Fallback shown in the GUI when a player has no stored combat-display preference. */
+    private static final CombatDisplay DISPLAY_FALLBACK = CombatDisplay.ACTIONBAR;
 
-    public DefaultSettingsService(SettingsData data) {
-        this.data = data;
+    private final PlayerPreferencesService preferences;
+    private final Map<UUID, Instant> lastClickAt = new ConcurrentHashMap<>();
+
+    public DefaultSettingsService(PlayerPreferencesService preferences) {
+        this.preferences = preferences;
     }
 
-    private Settings settingsFor(UUID playerId) {
-        Map<UUID, Settings> map = data.get();
-        if (map == null) {
-            return Settings.defaults();
-        }
-        return map.getOrDefault(playerId, Settings.defaults());
-    }
-
-    @Override
     public boolean isClickThroughEnabled(UUID playerId) {
-        return settingsFor(playerId).clickThrough();
+        return preferences.clickThrough(playerId, true);
     }
 
-    @Override
     public void setClickThroughEnabled(UUID playerId, boolean enabled) {
-        Settings current = settingsFor(playerId);
-        Settings updated = new Settings(enabled, current.combatDisplay(), current.lastClickAt());
-        data.update(m -> m.put(playerId, updated));
+        preferences.setClickThrough(playerId, enabled);
     }
 
-    @Override
     public CombatDisplay getCombatDisplay(UUID playerId) {
-        return settingsFor(playerId).combatDisplay();
+        return preferences.combatDisplay(playerId, DISPLAY_FALLBACK);
     }
 
-    @Override
     public void setCombatDisplay(UUID playerId, CombatDisplay display) {
-        Settings current = settingsFor(playerId);
-        Settings updated = new Settings(current.clickThrough(), display, current.lastClickAt());
-        data.update(m -> m.put(playerId, updated));
+        preferences.setCombatDisplay(playerId, display);
     }
 
     /**
      * Toggles click-through for the given player, subject to a 1-second per-player debounce.
-     * Debounce timestamp is stored in the {@link Settings#lastClickAt()} field (in-memory only).
      *
-     * @return {@code true} if the toggle was applied; {@code false} if rejected by debounce
+     * @return {@code true} if the toggle was applied; {@code false} if rejected by the debounce
      */
     public boolean toggleClickThrough(UUID playerId) {
-        Settings current = settingsFor(playerId);
         Instant now = Instant.now();
-        if (current.lastClickAt() != null
-                && Duration.between(current.lastClickAt(), now).compareTo(CLICK_DEBOUNCE) < 0) {
+        Instant last = lastClickAt.get(playerId);
+        if (last != null && Duration.between(last, now).compareTo(CLICK_DEBOUNCE) < 0) {
             return false;
         }
-        Settings updated = new Settings(!current.clickThrough(), current.combatDisplay(), now);
-        data.update(m -> m.put(playerId, updated));
+        preferences.setClickThrough(playerId, !isClickThroughEnabled(playerId));
+        lastClickAt.put(playerId, now);
         return true;
     }
 }
