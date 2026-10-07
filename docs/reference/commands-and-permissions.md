@@ -54,7 +54,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
 | `/start reset` | — | `start-sequence` | Reset the started flag so the sequence can run again. | `kreiscraft.startsequence.admin` | op |
-| `/status prefix <text>` | — | `status` | Set your own chat/tablist prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
+| `/status prefix <text>` | — | `status` | Set your own chat/overhead/tab-list prefix (≤32 visible chars). | `kreiscraft.status.set.self` | true |
 | `/status suffix <text>` | — | `status` | Set your own suffix. | `kreiscraft.status.set.self` | true |
 | `/updatemode on` | — | `update-mode` | Activate maintenance mode and disconnect all non-bypassed players. | `kreiscraft.updatemode.admin` | op |
 | `/updatemode off` | — | `update-mode` | Deactivate maintenance mode. | `kreiscraft.updatemode.admin` | op |

@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
 import org.junit.jupiter.api.AfterEach;
@@ -146,6 +148,37 @@ class ChatFormatListenerTest {
         assertThat(plain).contains("[/Owner]");
         assertThat(plain).contains("Dave");
         assertThat(plain).contains("sup");
+    }
+
+    @Test
+    void onChat_nameIsColouredWithExactStatusColour() {
+        PlayerMock player = server.addPlayer("Heidi");
+        when(statusService.get(player.getUniqueId()))
+                .thenReturn(new Status("[Owner]", "[/Owner]", 0xFF4400));
+        AsyncChatEvent event = mockEvent(player, "colour me");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        TextComponent name = findText(captured.getFirst().rendered(), "Heidi");
+        assertThat(name).isNotNull();
+        assertThat(name.style().color()).isEqualTo(TextColor.color(0xFF4400));
+    }
+
+    private static TextComponent findText(Component component, String content) {
+        if (component instanceof TextComponent text && text.content().equals(content)) {
+            return text;
+        }
+        for (Component child : component.children()) {
+            TextComponent found = findText(child, content);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     @Test
