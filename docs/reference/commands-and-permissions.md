@@ -59,8 +59,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/updatemode status` | — | `update-mode` | Show whether maintenance mode is active. | `kreiscraft.updatemode.admin` | op |
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
 | `/setworldspawn` | `sws` | `world-mgmt` | Set the current world's spawn to your location. | `kreiscraft.worldmgmt.setworldspawn` | op |
-| `/portal nether [x z]` | — | `world-mgmt` | Compute and teleport to Nether coords (÷8) for given/current position. | `kreiscraft.worldmgmt.portal` | true |
-| `/portal overworld [x z]` | — | `world-mgmt` | Compute and teleport to Overworld coords (×8) for given/current position. | `kreiscraft.worldmgmt.portal` | true |
+| `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
+| `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
