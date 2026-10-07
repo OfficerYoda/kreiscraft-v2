@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -21,6 +22,7 @@ public final class SpawnMobCommand {
                                 && src.getSender()
                                         .hasPermission("kreiscraft.admin.spawnmob"))
                 .then(Commands.argument("entityType", StringArgumentType.word())
+                        .suggests(SuggestionProviders.entityTypes("kreiscraft.admin.spawnmob"))
                         .executes(ctx -> {
                             Player player = (Player) ctx.getSource().getSender();
                             String typeName = StringArgumentType.getString(ctx, "entityType");

@@ -6,8 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.modules.admin.CapturingMessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,5 +68,22 @@ class UuidCommandTest {
         node.getCommand().run(ctx);
 
         assertThat(messages.sentKeys).containsExactly("admin.uuid");
+    }
+
+    @Test
+    void playerArgument_suggestsOnlineAndKnownOfflineProfiles() {
+        LiteralCommandNode<CommandSourceStack> node = UuidCommand.build(messages, server);
+        PlayerMock admin = server.addPlayer("Admin");
+        server.addPlayer("Alice");
+        PlayerMock historical = server.addPlayer("Carol");
+        historical.disconnect();
+        admin.addAttachment(plugin, "kreiscraft.admin.uuid", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("player"), src, "");
+
+        assertThat(suggestions).contains("Admin", "Alice", "Carol");
     }
 }
