@@ -9,14 +9,11 @@ import static org.mockito.Mockito.when;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.jail.JailConfig;
 import de.kreiscraft.modules.jail.JailEntry;
 import de.kreiscraft.modules.jail.JailService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.junit.jupiter.api.AfterEach;
@@ -33,7 +30,6 @@ class JailCommandTest {
     private PluginMock plugin;
     private JailService service;
     private MessageService messages;
-    private AtomicReference<JailConfig> configRef;
     private World world;
 
     @BeforeEach
@@ -43,8 +39,6 @@ class JailCommandTest {
         world = server.addSimpleWorld("world");
         service = mock(JailService.class);
         messages = mock(MessageService.class);
-        configRef = new AtomicReference<>(
-                new JailConfig(new Location(world, 126, 91, 92), List.of("msg")));
     }
 
     @AfterEach
@@ -53,7 +47,7 @@ class JailCommandTest {
     }
 
     private LiteralCommandNode<CommandSourceStack> buildNode() {
-        return JailCommand.build(service, messages, configRef);
+        return JailCommand.build(service, messages);
     }
 
     // ── build ────────────────────────────────────────────────────────────────
@@ -176,6 +170,51 @@ class JailCommandTest {
         verify(service).jail(org.mockito.ArgumentMatchers.eq(target.getUniqueId()),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(""));
         verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "");
+        verify(messages).send(target, "jail.jailed-target", "reason", "");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_unjailedTarget_teleportsTargetToJailLocation() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        when(service.isJailed(target.getUniqueId())).thenReturn(false);
+        Location jailLocation = new Location(world, 126, 91, 92);
+        when(service.jailLocation()).thenReturn(Optional.of(jailLocation));
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+
+        node.getChild("target").getCommand().run(ctx);
+
+        assertThat(target.getLocation().getBlockX()).isEqualTo(126);
+        assertThat(target.getLocation().getBlockY()).isEqualTo(91);
+        assertThat(target.getLocation().getBlockZ()).isEqualTo(92);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void execute_unjailedTarget_sendsReasonToTargetDirectly() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        PlayerMock target = server.addPlayer("Target");
+        when(service.isJailed(target.getUniqueId())).thenReturn(false);
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(src);
+        when(ctx.getArgument("target", String.class)).thenReturn("Target");
+        when(ctx.getArgument("reason", String.class)).thenReturn("griefing");
+
+        node.getChild("target").getChild("reason").getCommand().run(ctx);
+
+        // The target, not the sender, receives the localized reason-bearing message.
+        verify(messages).send(target, "jail.jailed-target", "reason", "griefing");
     }
 
     @SuppressWarnings("unchecked")
@@ -198,6 +237,7 @@ class JailCommandTest {
         verify(service).jail(org.mockito.ArgumentMatchers.eq(target.getUniqueId()),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("griefing"));
         verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "griefing");
+        verify(messages).send(target, "jail.jailed-target", "reason", "griefing");
     }
 
     // ── release direction ────────────────────────────────────────────────────

@@ -49,6 +49,9 @@ permissions:
   kreiscraft.jail.bypass:
     description: Cannot be jailed
     default: op
+  kreiscraft.jail.set:
+    description: Set the jail location to your current position
+    default: op
   kreiscraft.pluginhider.admin:
     description: Manage the plugin-hider allowlist
     default: op

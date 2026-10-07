@@ -5,6 +5,7 @@ import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.jail.commands.JailCommand;
+import de.kreiscraft.modules.jail.commands.SetJailCommand;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -44,20 +45,23 @@ public final class JailModule implements Module {
         }
         ctx.services().get(ConfigService.class).register(data);
 
-        // Service
-        this.service = new DefaultJailService(data);
+        // Service — jail entries are Activity Data; the jail location is operator-owned Server
+        // Configuration read/written through ConfigService.
+        this.service = new DefaultJailService(data, ctx.services().get(ConfigService.class));
         ctx.services().publish(JailService.class, service);
 
-        // Live config reference for listener and commands
+        // Live config reference for the listener's blocked-commands enforcement
         this.configRef = new AtomicReference<>(config);
 
         // Listener
         ctx.events().register(new JailListener(service, configRef, ctx.messages()));
 
-        // Commands — /jail and /kerker are identical toggles
-        ctx.commands().register(JailCommand.build(service, ctx.messages(), configRef), "Jail or release a player");
-        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages(), configRef),
+        // Commands — /jail and /kerker are identical toggles; /setjail stores the jail location
+        ctx.commands().register(JailCommand.build(service, ctx.messages()), "Jail or release a player");
+        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages()),
                 "Jail or release a player (alias)");
+        ctx.commands().register(SetJailCommand.build(service, ctx.messages()),
+                "Set the jail location to your current position");
     }
 
     @Override

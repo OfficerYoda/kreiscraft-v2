@@ -49,10 +49,12 @@ class JailListenerTest {
 
         JailData data = new JailData(tmp);
         data.load();
-        service = new DefaultJailService(data);
+        service = new DefaultJailService(
+                data, new de.kreiscraft.core.config.YamlConfigService(tmp, getClass().getClassLoader()));
+        service.setJailLocation(jailLocation);
         messages = mock(MessageService.class);
 
-        configRef = new AtomicReference<>(new JailConfig(jailLocation, List.of("msg", "tell")));
+        configRef = new AtomicReference<>(new JailConfig(List.of("msg", "tell")));
 
         server.getPluginManager()
                 .registerEvents(new JailListener(service, configRef, messages), plugin);
@@ -104,7 +106,7 @@ class JailListenerTest {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
         // Put jail in blocked list to confirm the override works
-        configRef.set(new JailConfig(jailLocation, List.of("jail", "msg")));
+        configRef.set(new JailConfig(List.of("jail", "msg")));
 
         PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/jail Alice");
         server.getPluginManager().callEvent(event);
@@ -116,7 +118,7 @@ class JailListenerTest {
     void onCommand_jailedPlayer_kerkerCommand_alwaysAllowed() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
-        configRef.set(new JailConfig(jailLocation, List.of("kerker", "msg")));
+        configRef.set(new JailConfig(List.of("kerker", "msg")));
 
         PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/kerker Alice");
         server.getPluginManager().callEvent(event);
@@ -128,7 +130,7 @@ class JailListenerTest {
     void onCommand_jailedPlayer_kreiscrafthelpCommand_alwaysAllowed() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
-        configRef.set(new JailConfig(jailLocation, List.of("kreiscrafthelp", "msg")));
+        configRef.set(new JailConfig(List.of("kreiscrafthelp", "msg")));
 
         PlayerCommandPreprocessEvent event = new PlayerCommandPreprocessEvent(player, "/kreiscrafthelp");
         server.getPluginManager().callEvent(event);
@@ -140,7 +142,7 @@ class JailListenerTest {
     void onCommand_namespacedBlockedCommand_stripsNamespace() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
-        configRef.set(new JailConfig(jailLocation, List.of("msg")));
+        configRef.set(new JailConfig(List.of("msg")));
 
         PlayerCommandPreprocessEvent event =
                 new PlayerCommandPreprocessEvent(player, "/bukkit:msg Bob hi");
@@ -209,13 +211,13 @@ class JailListenerTest {
     }
 
     @Test
-    void onJoin_configReload_usesUpdatedJailLocation() {
+    void onJoin_usesUpdatedJailLocationFromServerConfiguration() {
         PlayerMock player = server.addPlayer("Alice");
         service.jail(player.getUniqueId(), player.getLocation(), "test");
 
-        // Update jail location via config reload
+        // Update the operator-owned jail location in Server Configuration
         Location newJailLocation = new Location(world, 200, 70, 200);
-        configRef.set(new JailConfig(newJailLocation, List.of("msg")));
+        service.setJailLocation(newJailLocation);
 
         server.getPluginManager().callEvent(new PlayerJoinEvent(player, Component.empty()));
 

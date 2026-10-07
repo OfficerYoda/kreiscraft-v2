@@ -3,6 +3,7 @@ package de.kreiscraft.modules.jail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import de.kreiscraft.core.config.YamlConfigService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -13,10 +14,14 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DefaultJailServiceTest {
 
-    private DefaultJailService service(@TempDir Path tmp) throws IOException {
+    private static YamlConfigService config(Path tmp) throws IOException {
+        return new YamlConfigService(tmp, DefaultJailServiceTest.class.getClassLoader());
+    }
+
+    private DefaultJailService service(Path tmp) throws IOException {
         JailData data = new JailData(tmp);
         data.load();
-        return new DefaultJailService(data);
+        return new DefaultJailService(data, config(tmp));
     }
 
     @Test
@@ -110,13 +115,13 @@ class DefaultJailServiceTest {
         UUID uuid = UUID.randomUUID();
         JailData data = new JailData(tmp);
         data.load();
-        new DefaultJailService(data).jail(uuid, null, "griefing");
+        new DefaultJailService(data, config(tmp)).jail(uuid, null, "griefing");
         data.flushIfDirty();
 
         // Reconstruct from disk — simulates a server restart
         JailData reloadedData = new JailData(tmp);
         reloadedData.load();
-        DefaultJailService reloaded = new DefaultJailService(reloadedData);
+        DefaultJailService reloaded = new DefaultJailService(reloadedData, config(tmp));
         assertThat(reloaded.isJailed(uuid)).isTrue();
         assertThat(reloaded.allJailed().get(uuid).reason()).isEqualTo("griefing");
     }
@@ -127,13 +132,13 @@ class DefaultJailServiceTest {
         UUID uuid = UUID.randomUUID();
         JailData data = new JailData(tmp);
         data.load();
-        DefaultJailService svc = new DefaultJailService(data);
+        DefaultJailService svc = new DefaultJailService(data, config(tmp));
         svc.jail(uuid, null, "");
         svc.release(uuid);
         data.flushIfDirty();
 
         JailData reloadedData = new JailData(tmp);
         reloadedData.load();
-        assertThat(new DefaultJailService(reloadedData).isJailed(uuid)).isFalse();
+        assertThat(new DefaultJailService(reloadedData, config(tmp)).isJailed(uuid)).isFalse();
     }
 }

@@ -30,4 +30,18 @@ public interface JailService {
 
     /** Returns an unmodifiable view of all currently jailed players. */
     Map<UUID, JailEntry> allJailed();
+
+    /**
+     * The operator-owned jail location from Server Configuration, or empty when none has been set.
+     *
+     * <p>Read live on every call so a successful {@code /setjail} write or a {@code /kreiscraft
+     * reload} is observed immediately.
+     */
+    Optional<Location> jailLocation();
+
+    /**
+     * Persists {@code location} as the operator-owned jail location through validated Server
+     * Configuration.
+     */
+    void setJailLocation(Location location);
 }

@@ -71,6 +71,8 @@ invsee:
   read-error: "<prefix> <red>Fehler beim Lesen der Offline-Daten."
 jail:
   jailed: "<prefix> <yellow><player></yellow> wurde eingesperrt: <reason>"
+  jailed-target: "<prefix> <red>Du wurdest eingesperrt.</red> <gray>Grund: <blue><reason></blue></gray>"
+  set: "<prefix> <green>Gefängnisposition auf deine aktuelle Position gesetzt."
   released: "<prefix> <green><player></green> wurde freigelassen."
   already-jailed: "<prefix> <red><player></red> ist bereits eingesperrt."
   not-jailed: "<prefix> <red><player></red> ist nicht eingesperrt."

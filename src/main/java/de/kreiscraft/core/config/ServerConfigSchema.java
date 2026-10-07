@@ -71,6 +71,16 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.HOT_RELOAD);
     }
 
+    /** Operator-owned jail {@link org.bukkit.Location}; written by {@code /setjail}. */
+    public static ConfigField jailLocation() {
+        return new ConfigField(
+                List.of("modules", "jail", "location"),
+                ConfigFieldType.LOCATION,
+                ConfigValidators.alwaysValid(),
+                false,
+                ConfigLifecycle.HOT_RELOAD);
+    }
+
     /** Operator-owned {@code /spawn} teleport range, in blocks. */
     public static ConfigField spawnTeleportRange() {
         return new ConfigField(

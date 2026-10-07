@@ -69,6 +69,7 @@ modules:
     enabled: true
   jail:
     enabled: true
+    # Operator-owned state (ADR-10): written by /setjail. `blocked-commands` remains module config.
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, r]
   plugin-hider:
