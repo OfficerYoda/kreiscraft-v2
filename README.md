@@ -72,7 +72,7 @@ src/main/java/de/kreiscraft/
 | `jail` | `/jail` and `/kerker` — teleport-based jail toggle with configurable location and blocked commands |
 | `plugin-hider` | Hides non-allowlisted commands from tab-completion to obscure the full plugin list |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
-| `reboot` | `/reboot` — countdown with title + chat broadcasts and configurable intervals |
+| `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
 | `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
 | `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |

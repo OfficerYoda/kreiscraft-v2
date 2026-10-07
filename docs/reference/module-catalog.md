@@ -24,7 +24,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
 | `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
-| `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
+| `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Per-player settings GUI (clickthrough toggle, combat display mode selection). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
@@ -277,7 +277,7 @@ Allows each player to save named waypoints at their current location and retriev
 
 ### Description
 
-Schedules a server restart with a countdown. At seconds listed in `title-seconds` a title is shown to all players; at seconds listed in `chat-seconds` a chat message is broadcast. When the countdown reaches zero the server is stopped via `PaperPlatform`.
+Schedules a server restart with a countdown. At seconds listed in `title-seconds` a title (with the reason as subtitle) is shown to all players; at seconds listed in `chat-seconds` a chat message is broadcast. When the countdown reaches zero, all players are kicked with a message containing the reason, initiator, and website, and the server is stopped via `PaperPlatform`. The command is registered as `/reboot` with alias `/restart`.
 
 ### Services published
 

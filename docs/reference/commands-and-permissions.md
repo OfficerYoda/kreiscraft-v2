@@ -43,9 +43,9 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/pos get <name>` | — | `positions` | Print coordinates for a named position. | `kreiscraft.positions.use` | true |
 | `/pos delete <name>` | — | `positions` | Delete a named position. | `kreiscraft.positions.use` | true |
 | `/pos list` | — | `positions` | List all saved positions with coordinates. | `kreiscraft.positions.use` | true |
-| `/reboot` | — | `reboot` | Start a restart countdown with the default duration. | `kreiscraft.reboot.admin` | op |
-| `/reboot <seconds> [reason]` | — | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
-| `/reboot cancel` | — | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
+| `/reboot` | `restart` | `reboot` | Start a restart countdown with the default duration. | `kreiscraft.reboot.admin` | op |
+| `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
+| `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
 | `/spawn` | — | `spawn` | Teleport to the server spawn (within `teleport-range` blocks). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
