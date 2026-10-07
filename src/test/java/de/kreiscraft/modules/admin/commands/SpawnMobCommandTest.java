@@ -6,8 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.bukkit.entity.EntityType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,5 +81,19 @@ class SpawnMobCommandTest {
         int entityCountAfter =
                 player.getWorld().getEntitiesByClass(org.bukkit.entity.Zombie.class).size();
         assertThat(entityCountAfter).isEqualTo(entityCountBefore + 2);
+    }
+
+    @Test
+    void entityTypeArgument_suggestsSpawnableTypes() {
+        LiteralCommandNode<CommandSourceStack> node = SpawnMobCommand.build(messages);
+        PlayerMock player = server.addPlayer("Alice");
+        player.addAttachment(plugin, "kreiscraft.admin.spawnmob", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(player);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("entityType"), src, "zomb");
+
+        assertThat(suggestions).contains("zombie");
     }
 }

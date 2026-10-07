@@ -63,6 +63,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments complete online plus known-offline names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. A provider emits nothing to a sender who lacks the command's permission.
+
 ---
 
 ## Part 2: Permissions Tree

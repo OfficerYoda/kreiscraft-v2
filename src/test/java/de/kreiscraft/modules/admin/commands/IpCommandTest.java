@@ -6,8 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.modules.admin.CapturingMessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,5 +68,20 @@ class IpCommandTest {
         node.getCommand().run(ctx);
 
         assertThat(messages.sentKeys).containsExactly("admin.ip");
+    }
+
+    @Test
+    void playerArgument_suggestsOnlinePlayers() {
+        LiteralCommandNode<CommandSourceStack> node = IpCommand.build(messages, server);
+        PlayerMock admin = server.addPlayer("Admin");
+        server.addPlayer("Alice");
+        admin.addAttachment(plugin, "kreiscraft.admin.ip", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("player"), src, "");
+
+        assertThat(suggestions).containsExactly("Admin", "Alice");
     }
 }

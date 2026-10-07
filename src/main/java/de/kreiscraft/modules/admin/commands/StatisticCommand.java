@@ -3,6 +3,7 @@ package de.kreiscraft.modules.admin.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -20,6 +21,9 @@ public final class StatisticCommand {
         return Commands.literal("statistic")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.admin.statistic"))
                 .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(
+                                SuggestionProviders.onlinePlayers(
+                                        server, "kreiscraft.admin.statistic"))
                         .then(Commands.argument("stat", StringArgumentType.word())
                                 .executes(ctx -> {
                                     CommandSender sender = ctx.getSource().getSender();

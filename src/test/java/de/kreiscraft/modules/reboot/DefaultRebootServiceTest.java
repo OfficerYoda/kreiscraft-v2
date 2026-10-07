@@ -150,7 +150,8 @@ class DefaultRebootServiceTest {
         scheduler.advance(Duration.ofSeconds(1));
 
         // 10 is in titleSeconds; subtitle should be rendered with the reason
-        verify(messages).render(eq("reboot.countdown-subtitle"), eq("reason"), eq("maintenance"), eq("seconds"), eq("10"));
+        verify(messages).render(eq("reboot.countdown-subtitle"), eq("reason"), eq("maintenance"), eq("seconds"),
+                eq("10"));
     }
 
     @Test

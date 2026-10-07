@@ -5,9 +5,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.effects.EffectsService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 
@@ -52,5 +54,20 @@ class EffectsCommandTest {
                 EffectsCommand.build(mock(EffectsService.class), mock(MessageService.class));
 
         assertThat(node.getChildren()).isNotEmpty();
+    }
+
+    @Test
+    void particleArgument_suggestsParticleNames() {
+        LiteralCommandNode<CommandSourceStack> node =
+                EffectsCommand.build(mock(EffectsService.class), mock(MessageService.class));
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        Player player = mock(Player.class);
+        when(src.getSender()).thenReturn(player);
+        when(player.hasPermission("kreiscraft.effects.use")).thenReturn(true);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("particle"), src, "flam");
+
+        assertThat(suggestions).contains("flame");
     }
 }

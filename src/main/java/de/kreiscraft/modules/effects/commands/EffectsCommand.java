@@ -3,6 +3,7 @@ package de.kreiscraft.modules.effects.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.effects.EffectsService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -35,6 +36,7 @@ public final class EffectsCommand {
                         })
                 .then(
                         Commands.argument("particle", StringArgumentType.word())
+                                .suggests(SuggestionProviders.particles("kreiscraft.effects.use"))
                                 .executes(
                                         ctx -> {
                                             Player player = (Player) ctx.getSource().getSender();
