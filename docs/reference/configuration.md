@@ -168,6 +168,8 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 `location` is required — the module will fail to enable if it is absent from the config file.
 
+`/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed for jailed players regardless of `blocked-commands`.
+
 ---
 
 ### `plugin-hider`

@@ -21,7 +21,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
-| `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, unjail | Teleports players to a configured jail location and restricts a configurable set of commands while jailed. |
+| `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
 | `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
@@ -229,7 +229,7 @@ Opens a GUI showing another player's inventory or ender chest. Players with `kre
 
 ### Description
 
-Teleports a player to the configured jail `location` and records an entry in `data/jail.yml`. While jailed, a configurable set of commands is blocked. On unjail the player is teleported back to their original location. Players with `kreiscraft.jail.bypass` cannot be jailed.
+`/jail` and its alias `/kerker` are identical toggles: they jail an unjailed player (teleporting them to the configured jail `location` and recording an entry in `data/jail.yml`) or release an already-jailed player (teleporting them back to their original location). While jailed, a configurable set of commands is blocked; `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed. Players with `kreiscraft.jail.bypass` cannot be jailed, but the bypass permission does not prevent releasing an already-jailed player.
 
 ### Services published
 

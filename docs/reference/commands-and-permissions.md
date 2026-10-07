@@ -34,8 +34,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.view` | op |
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.view` | op |
-| `/jail <target> [reason...]` | — | `jail` | Teleport a player to the jail location. | `kreiscraft.jail.use` | op |
-| `/unjail <target>` | — | `jail` | Release a jailed player back to their original location. | `kreiscraft.jail.use` | op |
+| `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/pluginhider add <command>` | — | `plugin-hider` | Add a command to the tab-completion allowlist. | `kreiscraft.pluginhider.admin` | op |
 | `/pluginhider remove <command>` | — | `plugin-hider` | Remove a command from the allowlist. | `kreiscraft.pluginhider.admin` | op |
 | `/pluginhider list` | — | `plugin-hider` | List all allowed commands. | `kreiscraft.pluginhider.admin` | op |
@@ -122,7 +121,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `jail` module
 
-- `kreiscraft.jail.use` — **(op)** — Jail and unjail players.
+- `kreiscraft.jail.use` — **(op)** — Jail or release players.
 - `kreiscraft.jail.bypass` — **(op)** — Cannot be jailed.
 
 ### `plugin-hider` module
