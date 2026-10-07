@@ -31,6 +31,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
@@ -53,9 +54,11 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
  * <code>/updatemode an|aus</code> sub-commands.
  *
  * <p>Two seams are used: the module command-registration boundary (observed with a capturing
- * {@link CapturingCommandRegistrar}) and a text scan of production sources, resources,
- * documentation, and the README. The scan deliberately omits the test tree, where this class
- * necessarily names the removed surfaces; removed test files are asserted absent by path instead.
+ * {@link CapturingCommandRegistrar}) and a text scan of repository-tracked production sources,
+ * resources, documentation, and the README. The scan deliberately omits the test tree, where this
+ * class necessarily names the removed surfaces; removed test files are asserted absent by path
+ * instead. Only tracked content is scanned so that untracked or git-ignored local files cannot make
+ * the assertion non-hermetic.
  */
 class RemovedCommandSurfacesTest {
 
@@ -75,6 +78,10 @@ class RemovedCommandSurfacesTest {
                     "admin.gamemode-set",
                     "admin.weather-set",
                     "world-mgmt.spawn-set");
+
+    /** Repository paths scanned for lingering references. */
+    private static final List<Path> SCAN_ROOTS =
+            List.of(Path.of("src/main"), Path.of("docs"), Path.of("README.md"));
 
     private ServerMock server;
     private PluginMock plugin;
@@ -164,18 +171,13 @@ class RemovedCommandSurfacesTest {
     // --- repository-wide text seam ----------------------------------------------------------------
 
     @Test
-    void shippedSourcesAndDocs_haveNoReferencesToRemovedSurfaces() throws IOException {
+    void shippedSourcesAndDocs_haveNoReferencesToRemovedSurfaces() throws Exception {
         List<String> violations = new ArrayList<>();
 
-        for (Path root : List.of(Path.of("src/main"), Path.of("docs"), Path.of("README.md"))) {
-            if (!Files.exists(root)) {
-                continue;
-            }
-            try (Stream<Path> walk = Files.walk(root)) {
-                walk.filter(Files::isRegularFile)
-                        .filter(RemovedCommandSurfacesTest::isScannable)
-                        .sorted()
-                        .forEach(path -> collectViolations(path, violations));
+        for (String tracked : trackedFilesUnder(SCAN_ROOTS)) {
+            Path path = Path.of(tracked);
+            if (isScannable(path) && Files.isRegularFile(path)) {
+                collectViolations(path, violations);
             }
         }
 
@@ -254,6 +256,57 @@ class RemovedCommandSurfacesTest {
                                 registrar,
                                 mock(EventBus.class)));
         return registrar;
+    }
+
+    /**
+     * Lists the repository-tracked files under the given roots. The scan deliberately observes only
+     * content that is part of the repository: untracked or git-ignored local files (such as a
+     * developer's private planning notes) must never influence the assertion, or the build would be
+     * non-hermetic. Falls back to a plain filesystem walk when the working directory is not a Git
+     * checkout, so tracking information is unavailable.
+     */
+    private static List<String> trackedFilesUnder(List<Path> roots) throws Exception {
+        if (!Files.isDirectory(Path.of(".git"))) {
+            return filesystemFilesUnder(roots);
+        }
+
+        List<String> command = new ArrayList<>(List.of("git", "ls-files", "-z", "--"));
+        roots.stream().map(Path::toString).forEach(command::add);
+        Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        String output;
+        try (var in = process.getInputStream()) {
+            output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        if (!process.waitFor(60, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            throw new IllegalStateException("git ls-files timed out");
+        }
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException("git ls-files failed: " + output);
+        }
+        List<String> tracked = new ArrayList<>();
+        for (String entry : output.split("\0")) {
+            if (!entry.isBlank()) {
+                tracked.add(entry);
+            }
+        }
+        return tracked;
+    }
+
+    private static List<String> filesystemFilesUnder(List<Path> roots) throws IOException {
+        List<String> files = new ArrayList<>();
+        for (Path root : roots) {
+            if (!Files.exists(root)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(root)) {
+                walk.filter(Files::isRegularFile)
+                        .sorted()
+                        .map(Path::toString)
+                        .forEach(files::add);
+            }
+        }
+        return files;
     }
 
     private static boolean isScannable(Path path) {
