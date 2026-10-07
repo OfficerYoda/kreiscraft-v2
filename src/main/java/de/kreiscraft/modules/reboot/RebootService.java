@@ -8,7 +8,7 @@ public interface RebootService {
 
     Duration remaining();
 
-    void start(Duration countdown, String reason);
+    void start(Duration countdown, String reason, String initiator);
 
     void cancel();
 }

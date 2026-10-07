@@ -93,10 +93,20 @@ reboot:
   started: "<prefix> <yellow>Neustart in <seconds></yellow>s — <reason>"
   cancelled: "<prefix> <green>Neustart abgebrochen."
   not-running: "<prefix> <red>Kein Neustart läuft."
-  countdown-title: "<red>Neustart in <seconds></red>"
+  countdown-title: "<red>Neustart in <seconds> Sekunden</red>"
+  countdown-subtitle: "<gray>Grund: <blue><reason></blue></gray>"
   countdown-chat: "<prefix> <red>Neustart in <seconds></red> Sekunden."
   seed-blocked: "<prefix> <red>/seed ist deaktiviert."
-  kick-message: "<red>Server startet neu</red>"
+  kick-message: |-
+    <gray>===================================
+    <blue>Neustart
+
+    <gray>Grund: <blue><reason>
+    <gray>Neugestartet von: <blue><initiator>
+    <gray>Website: <blue><website>
+
+    <blue>Neustart
+    <gray>==================================="
 settings-gui:
   gui-title: "<gray>Einstellungen"
   click-through-on: "<green>Click-Through: An"

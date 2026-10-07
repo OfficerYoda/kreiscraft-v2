@@ -35,7 +35,8 @@ public final class RebootModule implements Module {
         ctx.events().register(new RebootListener(ctx.messages()));
         ctx.commands().register(
                 RebootCommand.build(service, ctx.messages(), config),
-                "Trigger or cancel a server restart");
+                "Trigger or cancel a server restart",
+                "restart");
     }
 
     @Override

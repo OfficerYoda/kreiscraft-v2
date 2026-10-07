@@ -13,11 +13,11 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +50,7 @@ class DefaultRebootServiceTest {
                 Duration.ofSeconds(60), List.of(500, 60, 30, 10), List.of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
         when(platform.server()).thenReturn(server);
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
+        when(messages.render(any(), any(Object[].class))).thenReturn(Component.empty());
         service = new DefaultRebootService(scheduler, messages, platform, config);
     }
 
@@ -60,39 +61,39 @@ class DefaultRebootServiceTest {
 
     @Test
     void start_setsRunningAndBroadcasts() {
-        service.start(Duration.ofSeconds(10), "test");
+        service.start(Duration.ofSeconds(10), "test", "alice");
         assertThat(service.isRunning()).isTrue();
         verify(messages).broadcast(eq("reboot.started"), eq("seconds"), eq("10"), eq("reason"), eq("test"));
     }
 
     @Test
     void start_andAdvance5s_remaining5s() {
-        service.start(Duration.ofSeconds(10), "test");
+        service.start(Duration.ofSeconds(10), "test", "alice");
         scheduler.advance(Duration.ofSeconds(5));
         assertThat(service.remaining()).isEqualTo(Duration.ofSeconds(5));
     }
 
     @Test
     void start_whenAlreadyRunning_withLargerValue_doesNotReplace() {
-        service.start(Duration.ofSeconds(30), "first");
+        service.start(Duration.ofSeconds(30), "first", "alice");
         scheduler.advance(Duration.ofSeconds(5));
         long remainingBefore = service.remaining().getSeconds();
-        service.start(Duration.ofSeconds(60), "second");
+        service.start(Duration.ofSeconds(60), "second", "bob");
         assertThat(service.remaining().getSeconds()).isEqualTo(remainingBefore);
     }
 
     @Test
     void start_whenAlreadyRunning_withSmallerValue_shortensCountdown() {
-        service.start(Duration.ofSeconds(30), "first");
+        service.start(Duration.ofSeconds(30), "first", "alice");
         scheduler.advance(Duration.ofSeconds(5)); // remaining ~25
-        service.start(Duration.ofSeconds(10), "shorter");
+        service.start(Duration.ofSeconds(10), "shorter", "alice");
         assertThat(service.remaining()).isEqualTo(Duration.ofSeconds(10));
         assertThat(service.isRunning()).isTrue();
     }
 
     @Test
     void cancel_whenRunning_stopsAndBroadcasts() {
-        service.start(Duration.ofSeconds(60), "test");
+        service.start(Duration.ofSeconds(60), "test", "alice");
         service.cancel();
         assertThat(service.isRunning()).isFalse();
         verify(messages).broadcast("reboot.cancelled");
@@ -106,56 +107,65 @@ class DefaultRebootServiceTest {
     }
 
     @Test
-    void tick_atChatSecond_broadcastsCountdownChat() {
-        // Start at 9: after 1 tick remaining=8, which is in chatSeconds but NOT in titleSeconds
-        service.start(Duration.ofSeconds(9), "test");
+    void tick_announcesStartingSecondBeforeDecrementing() {
+        // Start at 9: the first tick should announce "9" (before decrement), not "8"
+        service.start(Duration.ofSeconds(9), "test", "alice");
         scheduler.advance(Duration.ofSeconds(1));
-        verify(messages).broadcast(eq("reboot.countdown-chat"), eq("seconds"), eq("8"));
+        verify(messages).broadcast(eq("reboot.countdown-chat"), eq("seconds"), eq("9"));
     }
 
     @Test
-    void tick_atZero_kicksAllWithLangKeyAndShutsDown() {
+    void tick_atZero_kicksAllWithRestartCauseAndShutsDown() {
         Player player = mock(Player.class);
         Component kickComponent = Component.text("Server restarting");
-        // Stub render to return a distinct component so we can assert it was used for kick
-        when(messages.render("reboot.kick-message")).thenReturn(kickComponent);
+        doReturn(kickComponent).when(messages).render(eq("reboot.kick-message"), any(Object[].class));
         doReturn(List.of(player)).when(server).getOnlinePlayers();
 
-        service.start(Duration.ofSeconds(1), "test");
+        service.start(Duration.ofSeconds(1), "test", "alice");
         scheduler.advance(Duration.ofSeconds(1));
 
         assertThat(service.isRunning()).isFalse();
-        // Verify kick used the component rendered from the lang key, not a hard-coded string
-        verify(player).kick(kickComponent);
+        verify(player).kick(kickComponent, PlayerKickEvent.Cause.RESTART_COMMAND);
         verify(server).shutdown();
     }
 
     @Test
-    void tick_atZero_rendersKickMessageFromLangKey() {
-        when(messages.render("reboot.kick-message")).thenReturn(Component.empty());
+    void tick_atZero_rendersKickMessageWithReasonInitiatorWebsite() {
+        doReturn(Component.empty()).when(messages).render(eq("reboot.kick-message"), any(Object[].class));
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of());
 
-        service.start(Duration.ofSeconds(1), "test");
+        service.start(Duration.ofSeconds(1), "planned", "alice");
         scheduler.advance(Duration.ofSeconds(1));
 
-        // Verify the lang key is used, not a hard-coded string
-        verify(messages).render("reboot.kick-message");
+        verify(messages).render(
+                eq("reboot.kick-message"),
+                eq("reason"), eq("planned"),
+                eq("initiator"), eq("alice"),
+                eq("website"), eq("kreiscraft.de"));
+    }
+
+    @Test
+    void tick_atTitleSecond_showsTitleWithReasonSubtitle() {
+        service.start(Duration.ofSeconds(10), "maintenance", "alice");
+        scheduler.advance(Duration.ofSeconds(1));
+
+        // 10 is in titleSeconds; subtitle should be rendered with the reason
+        verify(messages).render(eq("reboot.countdown-subtitle"), eq("reason"), eq("maintenance"), eq("seconds"), eq("10"));
     }
 
     @Test
     void cancel_stopsCountdown() {
-        service.start(Duration.ofSeconds(30), "test");
+        service.start(Duration.ofSeconds(30), "test", "alice");
         scheduler.advance(Duration.ofSeconds(5));
         service.cancel();
         scheduler.advance(Duration.ofSeconds(10));
-        // After cancel, isRunning is false and remaining is reset
         assertThat(service.isRunning()).isFalse();
         assertThat(service.remaining().getSeconds()).isEqualTo(0L);
     }
 
     @Test
     void shutdown_stopsRunningTask() {
-        service.start(Duration.ofSeconds(60), "test");
+        service.start(Duration.ofSeconds(60), "test", "alice");
         assertThat(service.isRunning()).isTrue();
         service.shutdown();
         assertThat(service.isRunning()).isFalse();
