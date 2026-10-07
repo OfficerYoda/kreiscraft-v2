@@ -80,12 +80,38 @@ class ServerConfigControlsTest {
 
     @Test
     void enum_cyclesDeclarationOrder() {
-        ConfigField display = ServerConfigSchema.representativeFields().stream()
-                .filter(f -> f.path().toString().contains("default-display"))
-                .findFirst()
-                .orElseThrow();
+        ConfigField display =
+                ServerConfigSchema.editableFields().stream()
+                        .filter(f -> f.path().toString().contains("default-display"))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(display.options()).containsExactly("CHAT", "ACTIONBAR", "TITLE");
         assertThat(ServerConfigControls.next(display, "ACTIONBAR", sensor)).isEqualTo("TITLE");
         assertThat(ServerConfigControls.previous(display, "ACTIONBAR", sensor)).isEqualTo("CHAT");
+    }
+
+    @Test
+    void duration_usesTheFieldsOwnOptionsWhenDeclared() {
+        ConfigField border =
+                ServerConfigSchema.editableFields().stream()
+                        .filter(f -> f.path().toString().contains("border-duration"))
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(border.options()).containsExactly("600s", "3600s", "30000s");
+        assertThat(ServerConfigControls.next(border, "600s", sensor)).isEqualTo("3600s");
+    }
+
+    @Test
+    void particleEnum_cyclesTheCuratedOptions() {
+        ConfigField particle =
+                ServerConfigSchema.editableFields().stream()
+                        .filter(f -> f.path().toString().contains("default-particle"))
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(particle.options()).startsWith("HAPPY_VILLAGER");
+        assertThat(ServerConfigControls.next(particle, "HAPPY_VILLAGER", sensor)).isEqualTo("FLAME");
     }
 
     @Test

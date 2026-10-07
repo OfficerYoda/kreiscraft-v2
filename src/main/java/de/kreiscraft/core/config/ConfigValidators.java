@@ -1,9 +1,11 @@
 package de.kreiscraft.core.config;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 /**
@@ -76,28 +78,49 @@ public final class ConfigValidators {
 
     /** Requires a name matching one of the constants of {@code type}, ignoring case. */
     public static <E extends Enum<E>> ConfigValidator enumValue(Class<E> type) {
-        return value -> {
-            String name = value.getString();
-            if (name != null) {
-                for (E constant : type.getEnumConstants()) {
-                    if (constant.name().equalsIgnoreCase(name)) {
-                        return Optional.empty();
+        List<String> names = Arrays.stream(type.getEnumConstants()).map(Enum::name).toList();
+        return new ChoiceValidator() {
+            @Override
+            public List<String> options() {
+                return names;
+            }
+
+            @Override
+            public Optional<String> validate(
+                    org.spongepowered.configurate.ConfigurationNode value) {
+                String name = value.getString();
+                if (name != null) {
+                    for (String option : names) {
+                        if (option.equalsIgnoreCase(name)) {
+                            return Optional.empty();
+                        }
                     }
                 }
+                return Optional.of("must be one of " + names);
             }
-            return Optional.of("must be one of " + Arrays.toString(type.getEnumConstants()));
         };
     }
 
     /** Requires a string value matching one of {@code allowed}, ignoring case. */
     public static ConfigValidator oneOf(String... allowed) {
         List<String> values = List.of(allowed);
-        return value -> {
-            String name = value.getString();
-            if (name != null && values.stream().anyMatch(option -> option.equalsIgnoreCase(name))) {
-                return Optional.empty();
+        return new ChoiceValidator() {
+            @Override
+            public List<String> options() {
+                return values;
             }
-            return Optional.of("must be one of " + values);
+
+            @Override
+            public Optional<String> validate(
+                    org.spongepowered.configurate.ConfigurationNode value) {
+                String name = value.getString();
+                if (name != null
+                        && values.stream()
+                                .anyMatch(option -> option.equalsIgnoreCase(name))) {
+                    return Optional.empty();
+                }
+                return Optional.of("must be one of " + values);
+            }
         };
     }
 
@@ -108,6 +131,38 @@ public final class ConfigValidators {
             return text != null && !text.isBlank()
                     ? Optional.empty()
                     : Optional.of("must not be empty");
+        };
+    }
+
+    /** Requires a string that parses as an absolute or relative {@link URI}. */
+    public static ConfigValidator uri() {
+        return value -> {
+            String text = value.getString();
+            if (text == null || text.isBlank()) {
+                return Optional.of("must be a URL");
+            }
+            try {
+                URI.create(text.trim());
+                return Optional.empty();
+            } catch (IllegalArgumentException e) {
+                return Optional.of("must be a URL");
+            }
+        };
+    }
+
+    /** Requires a string that MiniMessage can parse without throwing. */
+    public static ConfigValidator miniMessage() {
+        return value -> {
+            String text = value.getString();
+            if (text == null) {
+                return Optional.of("must not be empty");
+            }
+            try {
+                MiniMessage.miniMessage().deserialize(text);
+                return Optional.empty();
+            } catch (RuntimeException e) {
+                return Optional.of("must be valid MiniMessage");
+            }
         };
     }
 

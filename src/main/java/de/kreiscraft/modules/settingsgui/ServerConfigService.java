@@ -13,7 +13,7 @@ import de.kreiscraft.core.config.ServerConfigSchema;
  */
 public interface ServerConfigService {
 
-    /** The declared fields, including the representative safe set the GUI enumerates. */
+    /** The declared fields, including the safe set the GUI enumerates. */
     ServerConfigSchema schema();
 
     /**

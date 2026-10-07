@@ -86,6 +86,26 @@ class ConfigValidatorsTest {
     }
 
     @Test
+    void choiceValidators_exposeTheirOptionsForTheGui() {
+        assertThat(((ChoiceValidator) ConfigValidators.enumValue(Level.class)).options())
+                .containsExactly("LOW", "HIGH");
+        assertThat(((ChoiceValidator) ConfigValidators.oneOf("de", "en")).options())
+                .containsExactly("de", "en");
+    }
+
+    @Test
+    void uri_acceptsUrlsAndRejectsBlanks() {
+        assertThat(ConfigValidators.uri().validate(node("https://kreiscraft.de"))).isEmpty();
+        assertThat(ConfigValidators.uri().validate(node("   "))).isPresent();
+    }
+
+    @Test
+    void miniMessage_acceptsTagsAndRejectsMissingValue() {
+        assertThat(ConfigValidators.miniMessage().validate(node("<gray>Hello</gray>"))).isEmpty();
+        assertThat(ConfigValidators.miniMessage().validate(node(null))).isPresent();
+    }
+
+    @Test
     void nonEmptyString_rejectsBlank() {
         assertThat(ConfigValidators.nonEmptyString().validate(node("text"))).isEmpty();
         assertThat(ConfigValidators.nonEmptyString().validate(node("  "))).isPresent();
