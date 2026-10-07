@@ -19,6 +19,8 @@ import de.kreiscraft.modules.updatemode.UpdateModeService;
 import de.kreiscraft.modules.updatemode.commands.UpdateModeCommand;
 import de.kreiscraft.modules.worldmgmt.WorldMgmtModule;
 import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.shared.gui.GuiRegistry;
 import de.kreiscraft.testsupport.CapturingCommandRegistrar;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.io.IOException;
@@ -228,6 +230,7 @@ class RemovedCommandSurfacesTest {
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));
+        services.publish(Gui.class, new Gui(new GuiRegistry()));
         new AdminModule()
                 .enable(
                         new ModuleContext(
