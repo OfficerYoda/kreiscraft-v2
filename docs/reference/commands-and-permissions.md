@@ -26,7 +26,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
 | `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player. | `kreiscraft.anticheat.view` | op |
-| `/bedrocklist add <name>` | — | `bedrock` | Add a known Bedrock player to the whitelist. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist add <name>` | — | `bedrock` | Register a Pending Bedrock Authorization by name for pre-login access. | `kreiscraft.bedrock.admin` | op |
+| `/bedrocklist remove <name>` | — | `bedrock` | Explicitly remove a Bedrock authorization and revoke a bound whitelist entry. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
 | `/combat <target> <seconds>` | — | `combat` | Manually tag a player as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |

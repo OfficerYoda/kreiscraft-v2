@@ -129,7 +129,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.bedrock`) | Type | Default | Description |
 |---|---|---|---|
-| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). |
+| `prefix` | String | `.` | Name prefix that identifies Bedrock players (Geyser convention). It is applied when normalizing names, so `/bedrocklist add <name>` registration and login matching agree on the same canonical identity. |
 
 ---
 

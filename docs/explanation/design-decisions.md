@@ -412,3 +412,35 @@ flags are always restart-only.
 - Comments on unrelated keys survive, and an inline comment on the edited value is carried across.
 - New GUI fields must be declared in `ServerConfigSchema`; the edit boundary itself only needs a
   `ConfigField`.
+
+---
+
+## ADR-13: Pending Bedrock Authorization Binds Once
+
+**Status:** Accepted
+
+**Context:**
+Bedrock players connect with a configured name prefix (default `.`) and a synthetic UUID that the
+Mojang profile service cannot resolve. An administrator may need to admit a Bedrock player before
+that player has ever connected, but a name is not an identity: the same name could later present a
+different UUID. Treating a pre-approved name as permanently interchangeable would let an identity
+silently take over another player's authorization.
+
+**Decision:**
+Model pre-login access as a Pending Bedrock Authorization. `/bedrocklist add <name>` stores an
+unbound authorization in `data/bedrock-authorizations.yml`, keyed by the normalized name
+(configured prefix plus lower-cased name body). On pre-login, the first matching login binds the
+authorization permanently to the observed UUID and whitelists that identity. A bound authorization
+is never rebound to a different UUID; replacing it requires `/bedrocklist remove <name>` and
+re-registration, which starts from a fresh unbound state. Authorization records are Activity Data,
+not operator-owned Server Configuration, so ordinary config reloads cannot overwrite them.
+
+**Consequences:**
+- Registration and login matching share one normalization step, so the configured prefix and case
+  cannot disagree between the two paths.
+- A rebound attempt leaves the original binding intact and is logged; it does not admit the new
+  UUID.
+- Removal revokes the bound whitelist entry, so the explicit lifecycle cannot leave a stale
+  identity whitelisted.
+- The lifecycle is covered by removal/re-registration tests rather than by an implicit
+  overwrite.

@@ -265,8 +265,9 @@ between them. It costs a small amount of indirection but preserves full opt-in i
 `config.yml` is the writable Server Configuration file. It holds admin-managed settings and the
 operator-owned choices that in-game commands write, such as the spawn location, the update-mode
 flag, and start-sequence completion (see ADR-10). Player and gameplay **Activity Data** — jail
-entries and restore locations, saved positions, Bedrock identities, statuses, anti-cheat logs, and
-player settings — changes during normal server operation and is persisted separately.
+entries and restore locations, saved positions, Bedrock identities and pre-login authorizations,
+statuses, anti-cheat logs, and player settings — changes during normal server operation and is
+persisted separately.
 
 `DataFile<T>` is an abstract base class for YAML-backed Activity Data:
 

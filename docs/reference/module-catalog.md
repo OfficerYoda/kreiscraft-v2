@@ -111,11 +111,17 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect and records
+their name and UUID in `data/bedrock-players.yml`. Administrators pre-authorize a Bedrock name with
+`/bedrocklist add <name>`, which creates a Pending Bedrock Authorization in
+`data/bedrock-authorizations.yml`: the first matching login binds it to the observed UUID and
+whitelists that identity, and a bound authorization never silently rebinds. Replacing a bound
+identity requires `/bedrocklist remove <name>` followed by re-registration. `/bedrocklist list`
+lists the known players in deterministic order.
 
 ### Services published
 
-- `BedrockService` — query the set of known Bedrock player records.
+- `BedrockService` — query known Bedrock player records and Pending Bedrock Authorizations.
 
 ---
 
