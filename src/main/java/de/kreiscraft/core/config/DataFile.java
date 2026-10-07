@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.ConfigurationOptions;
+import org.spongepowered.configurate.loader.ParsingException;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
@@ -38,11 +39,21 @@ public abstract class DataFile<T> {
                 this.state = load(loader.load());
             } catch (SerializationException e) {
                 throw new IOException("failed to load " + relativePath, e);
+            } catch (ParsingException e) {
+                this.state = onUnreadable(e);
             }
         } else {
             this.state = empty();
         }
         this.dirty = false;
+    }
+
+    /**
+     * Called when an existing file cannot be parsed. The default rethrows so genuine corruption is
+     * surfaced; a subclass may instead return a safe fallback state.
+     */
+    protected T onUnreadable(IOException failure) throws IOException {
+        throw failure;
     }
 
     public final T get() {

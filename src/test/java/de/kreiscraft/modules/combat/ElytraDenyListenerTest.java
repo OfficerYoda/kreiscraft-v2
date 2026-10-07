@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
+import de.kreiscraft.shared.preferences.CombatDisplay;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.Arrays;

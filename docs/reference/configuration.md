@@ -17,7 +17,7 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist. The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
 
-Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`.
+Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, effects, and glow preferences persist even when the settings GUI or the consuming module is disabled.
 
 ---
 
@@ -290,11 +290,16 @@ only `update-interval` needs a restart because the shared repeating task is not 
 | `armor` | double | `8.0` | Armor attribute value. |
 | `half-health-threshold` | double | `300.0` | Health value at which the half-health phase triggers. |
 | `minion-count` | int | `4` | Number of minions spawned at the half-health phase. |
+| `spawn-explosion-power` | double | `20.0` | Explosion power replacing the Wither's vanilla post-charge spawn blast. |
+| `spawn-explosion-fire` | boolean | `true` | Whether the spawn explosion sets fire to nearby blocks. |
+| `spawn-explosion-block-damage` | boolean | `true` | Whether the spawn explosion breaks blocks. |
 | `half-health-explosion-power` | double | `4.0` | Explosion power at the half-health trigger. |
 | `half-health-explosion-fire` | boolean | `true` | Whether the half-health explosion sets fire to nearby blocks. |
 | `half-health-explosion-block-damage` | boolean | `true` | Whether the half-health explosion breaks blocks. |
-| `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
 | `death-explosion-power` | double | `20.0` | Explosion power at death. |
+| `death-explosion-fire` | boolean | `true` | Whether the death explosion sets fire to nearby blocks. |
+| `death-explosion-block-damage` | boolean | `true` | Whether the death explosion breaks blocks. |
+| `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
 
 ---
 

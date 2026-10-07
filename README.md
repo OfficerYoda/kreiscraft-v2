@@ -63,8 +63,8 @@ src/main/java/de/kreiscraft/
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
 | `bedrock` | Bedrock player tracking, `/bedrocklist` command, and Java-only whitelist enforcement |
 | `chat-format` | Custom in-game chat formatting via MiniMessage; bridges messages to the shared `ChatBridge` |
-| `clickthrough` | Per-player toggle to open containers and Ender Chests through wall signs and filled item frames; integrates with `settings-gui` |
-| `combat` | Combat tag and elytra-block during combat, with per-player toggle via `settings-gui` |
+| `clickthrough` | Per-player toggle to open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences |
+| `combat` | Combat tag and elytra-block during combat, with a per-player display preference (module default when unset) |
 | `effects` | `/effects` — player-toggled particle trails |
 | `firework` | Custom firework rocket crafting recipe with configurable custom model data |
 | `glow` | `/glow` — toggle a player's glowing outline |
@@ -73,7 +73,7 @@ src/main/java/de/kreiscraft/
 | `plugin-hider` | Hides non-allowlisted commands from tab-completion to obscure the full plugin list |
 | `positions` | Named waypoint system with InvUI GUI; `/pos` with persistent per-player storage |
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
-| `settings-gui` | Per-player settings GUI opened with `/settings`; publishes `SettingsService` for other modules |
+| `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |
 | `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
 | `spawn` | `/setspawn`, `/spawn`, glide zone, swap-hand boost, launch pad |
 | `start-sequence` | Season-start animation: countdown titles + world-border expansion phases; `/start` command |

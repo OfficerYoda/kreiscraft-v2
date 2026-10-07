@@ -9,9 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
-import de.kreiscraft.modules.settingsgui.SettingsService;
 import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.List;
@@ -34,7 +34,7 @@ class DefaultCombatServiceTest {
     @Mock
     private MessageService messages;
     @Mock
-    private SettingsService settingsService;
+    private PlayerPreferencesService preferences;
     @Mock
     private PaperPlatform platform;
     @Mock
@@ -53,8 +53,8 @@ class DefaultCombatServiceTest {
         when(platform.server()).thenReturn(server);
         when(server.getPluginManager()).thenReturn(pluginManager);
         when(server.getOnlinePlayers()).thenReturn(List.of());
-        when(settingsService.getCombatDisplay(any())).thenReturn(CombatDisplay.ACTIONBAR);
-        service = new DefaultCombatService(scheduler, messages, settingsService, platform, config);
+        when(preferences.combatDisplay(any(), any())).thenReturn(CombatDisplay.ACTIONBAR);
+        service = new DefaultCombatService(scheduler, messages, preferences, platform, config);
     }
 
     // --- isInCombat ---

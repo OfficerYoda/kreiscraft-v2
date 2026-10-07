@@ -24,7 +24,8 @@ make changes confidently.
 
 Modules are cohesive but not isolated. They can collaborate through declared dependencies, shared
 services, and events. For example, `chat-format` depends on `status`, while `combat` and
-`clickthrough` depend on `settings-gui`.
+`clickthrough` consume the shared, always-available `PlayerPreferencesService` instead of depending
+on the settings GUI.
 
 ---
 
@@ -57,8 +58,11 @@ classes have knowledge of any specific feature; they are the engine, not the gam
 
 **Shared layer** (`shared/`)  
 Houses services that cut across modules but are not part of the core engine: `ChatBridge`,
-`UserService`/`UserListener`, `GuiRegistry`/`Gui`, and `WhitelistService`. They are constructed
-in the composition root and published to `ServiceRegistry` so any module can consume them.
+`UserService`/`UserListener`, `GuiRegistry`/`Gui`, `WhitelistService`, and the always-available
+`PlayerPreferencesService`/`PlayerPreferencesData`. They are constructed in the composition root and
+published to `ServiceRegistry` so any module can consume them. `PlayerPreferencesService` is
+published by the root rather than by a module so preferences stay available even when every
+preference-editing module is disabled.
 
 **Feature layer** (`modules/`)  
 Contains 24 feature modules, one package per feature. Each module keeps its feature-specific code
@@ -82,7 +86,7 @@ instantiated and every dependency is wired. The full wiring sequence in `start()
 3. Build `BukkitScheduler`, `EventBus`, `PaperCommandRegistrar`, `ServiceRegistry`.
 4. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`) to the registry.
 5. Construct platform-layer objects and publish them.
-6. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
+6. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, `PlayerPreferencesService`, etc.) and publish them.
 7. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
 8. Start `AutoSaveTask`.
 9. Register the `/kreiscraft reload` command.
@@ -373,9 +377,11 @@ Module dependency graph example (subset):
                                           WebSocket
                                             clients
 
-  settings-gui ◄── combat
-```
+  PlayerPreferencesService ◄── combat
+                          ◄── clickthrough
+                          ◄── settings-gui (GUI client)
 
 `status` must be enabled before `chat-format` starts (declared via `dependsOn`). `api` and
 `chat-format` share `ChatBridge` without any declared dependency on each other — the pub/sub bus
-is the only connection.
+is the only connection. `PlayerPreferencesService` is published by the composition root, so
+`combat`, `clickthrough`, and `settings-gui` consume it without depending on one another.
