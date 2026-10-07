@@ -162,6 +162,37 @@ Try running `/greet Steve` as a non-op account. The command should not appear in
 
 ---
 
+## 6. Add tab-completion with shared providers
+
+Commands must not scan online players or the entity/particle registries themselves. Attach a
+shared provider from `de.kreiscraft.core.command.SuggestionProviders` to the argument node and
+pass the same permission node that `.requires(...)` uses:
+
+```java
+import de.kreiscraft.core.command.SuggestionProviders;
+
+.then(Commands.argument("player", StringArgumentType.word())
+        .suggests(SuggestionProviders.onlinePlayers(server, "kreiscraft.greet.use"))
+        .executes(ctx -> { ... }))
+```
+
+The four providers are:
+
+| Provider | Suggests |
+| --- | --- |
+| `onlinePlayers(server, permission)` | Currently-online player names. |
+| `onlineAndKnownOfflineProfiles(server, permission)` | Online names plus known-offline profiles (`hasPlayedBefore()`). |
+| `entityTypes(permission)` | Spawnable `EntityType` names. |
+| `particles(permission)` | `Particle` names. |
+
+Each provider filters candidates case-insensitively against what the player has typed, returns
+nothing when the sender lacks the permission, and emits results in a deterministic order. Use
+`onlinePlayers` for commands that only act on online players (they look the target up with
+`server.getPlayer`), and `onlineAndKnownOfflineProfiles` for commands that resolve a profile with
+`server.getOfflinePlayer`.
+
+---
+
 ## How the pieces connect
 
 ```
@@ -180,5 +211,5 @@ The pattern — static `build()` factory taking only the dependencies it needs, 
 ## Going further
 
 - Add a second literal subcommand (e.g. `/greet reload`) by chaining another `.then(Commands.literal("reload").executes(...))` off the root node.
-- Use `EntitySelectorArgumentType.players()` instead of `StringArgumentType.word()` to get proper player tab-completion from Paper's built-in argument types.
+- Use `EntitySelectorArgumentType.players()` instead of `StringArgumentType.word()` when you want Paper's built-in multi-player selector syntax, or attach `SuggestionProviders.onlinePlayers(...)` when you need a plain name argument with completion.
 - Check how `PingCommand` in `modules/admin/commands/` handles the optional-vs-required argument pattern if you need `/greet` to greet the sender themselves and `/greet <player>` to target someone else.

@@ -3,6 +3,7 @@ package de.kreiscraft.modules.admin.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -29,6 +30,9 @@ public final class SkullCommand {
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(
+                                SuggestionProviders.onlineAndKnownOfflineProfiles(
+                                        server, "kreiscraft.admin.skull"))
                         .executes(ctx -> {
                             Player executor = (Player) ctx.getSource().getSender();
                             String targetName = StringArgumentType.getString(ctx, "player");

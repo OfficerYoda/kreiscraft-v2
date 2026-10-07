@@ -326,3 +326,42 @@ migrated; the new config values start from defaults.
 - Activity data remains protected from ordinary config reloads.
 - The admin GUI is a supported configuration surface, so every exposed field needs validation,
   lifecycle metadata, documentation, and tests.
+
+---
+
+## ADR-11: Shared Command Suggestion Providers
+
+**Status:** Accepted
+
+**Context:**
+Several commands accept the same kinds of argument values: a player name, an entity type, or a
+particle name. Before this decision, each command would have had to enumerate players or scan the
+entity/particle registries itself, producing near-identical loops in many command classes and
+allowing the candidates (and their filtering) to drift between commands. Player lookups also have
+two distinct scopes — online only, and online plus known-offline profiles — that commands must pick
+deliberately.
+
+**Decision:**
+Centralise Brigadier completions in `de.kreiscraft.core.command.SuggestionProviders`. Each factory
+returns a `SuggestionProvider<CommandSourceStack>` for one candidate family:
+
+- `onlinePlayers(server, permission)` — every currently-online player name.
+- `onlineAndKnownOfflineProfiles(server, permission)` — online names plus offline profiles that
+  have played before and still resolve to a name.
+- `entityTypes(permission)` — every spawnable `EntityType`, by lowercase enum name.
+- `particles(permission)` — every `Particle`, by lowercase enum name.
+
+Commands attach a provider with `.suggests(...)` on the argument node and pass the same permission
+node their `.requires(...)` predicate uses. Suggestions are filtered case-insensitively against the
+partially typed input and emitted in deterministic order.
+
+**Consequences:**
+- Commands no longer duplicate profile or registry scans; adding a command that takes a player,
+  entity, or particle argument reuses an existing provider.
+- A provider emits nothing when the sender lacks its permission, so completions cannot leak a
+  candidate that the command would refuse to execute.
+- The offline scope is explicit in the provider name and mirrors the command's visibility rule
+  (`hasPlayedBefore()`): historical profiles are suggested only by commands that can act on them.
+- Registry-backed providers track the server's own `EntityType`/`Particle` enums, so new types are
+  suggested automatically after a Minecraft upgrade; test assertions target representative,
+  stable members rather than the exact full list.

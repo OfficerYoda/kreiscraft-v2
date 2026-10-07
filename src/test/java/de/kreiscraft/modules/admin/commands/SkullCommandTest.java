@@ -6,8 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import java.util.List;
 import org.bukkit.Material;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,5 +74,22 @@ class SkullCommandTest {
         node.getCommand().run(ctx);
 
         assertThat(player.getInventory().contains(Material.PLAYER_HEAD)).isTrue();
+    }
+
+    @Test
+    void playerArgument_suggestsOnlineAndKnownOfflineProfiles() {
+        LiteralCommandNode<CommandSourceStack> node = SkullCommand.build(messages, server);
+        PlayerMock admin = server.addPlayer("Admin");
+        server.addPlayer("Alice");
+        PlayerMock historical = server.addPlayer("Carol");
+        historical.disconnect();
+        admin.addAttachment(plugin, "kreiscraft.admin.skull", true);
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("player"), src, "");
+
+        assertThat(suggestions).contains("Admin", "Alice", "Carol");
     }
 }
