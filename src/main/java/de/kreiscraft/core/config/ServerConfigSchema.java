@@ -162,6 +162,9 @@ public final class ServerConfigSchema {
                 true,
                 ConfigLifecycle.HOT_RELOAD,
                 PARTICLE_OPTIONS));
+        fields.add(duration(
+                path("modules", "effects", "schedule"),
+                List.of("1t", "5t", "10t", "20t", "1s")));
         fields.add(field(
                 path("modules", "effects", "count"),
                 ConfigFieldType.INTEGER,

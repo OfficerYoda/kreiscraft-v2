@@ -86,6 +86,7 @@ class ServerConfigSchemaTest {
                         List.of("modules", "chat-format", "format"),
                         List.of("modules", "combat", "tag-duration"),
                         List.of("modules", "effects", "default-particle"),
+                        List.of("modules", "effects", "schedule"),
                         List.of("modules", "effects", "offset-y"),
                         List.of("modules", "effects", "force"),
                         List.of("modules", "firework", "custom-model-data"),

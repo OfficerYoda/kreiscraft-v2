@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -26,8 +27,10 @@ public final class StatusListener implements PriorityListener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onJoin(PlayerJoinEvent event) {
         Player joiner = event.getPlayer();
-        // The joiner's fresh scoreboard needs every online player's representation.
+        // The joiner's fresh scoreboard needs every online player's representation, and every
+        // online player's identity is refreshed so a later join cannot leave a stale name.
         for (Player subject : server.getOnlinePlayers()) {
+            applyIdentity(subject);
             applyStatusToScoreboard(subject, joiner.getScoreboard());
         }
         // Every existing scoreboard needs the joining player's representation.
@@ -42,9 +45,26 @@ public final class StatusListener implements PriorityListener {
         if (player == null) {
             return;
         }
+        applyIdentity(player);
         for (Player viewer : server.getOnlinePlayers()) {
             applyStatusToScoreboard(player, viewer.getScoreboard());
         }
+    }
+
+    /**
+     * Applies the status prefix, coloured name, and suffix to the surfaces that are global to the
+     * player rather than per-viewer: the Bukkit display name and the tab-list (player list) name.
+     * The scoreboard team contributes the prefix and suffix in the in-game list, so the list name
+     * carries only the exact status colour to avoid duplicating them.
+     */
+    private void applyIdentity(Player player) {
+        Status status = service.get(player.getUniqueId());
+        TextColor color = TextColor.color(status.color() & 0x00FFFFFF);
+        Component coloredName = Component.text(player.getName()).color(color);
+        player.displayName(
+                miniMessage.deserialize(status.prefix()).append(coloredName).append(
+                        miniMessage.deserialize(status.suffix())));
+        player.playerListName(coloredName);
     }
 
     private void applyStatusToScoreboard(Player subject, Scoreboard scoreboard) {

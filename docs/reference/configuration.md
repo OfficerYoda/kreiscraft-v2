@@ -212,11 +212,18 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 | Key (relative to `modules.effects`) | Type | Default | Description |
 |---|---|---|---|
 | `default-particle` | Particle | `HAPPY_VILLAGER` | Bukkit `Particle` enum name used for particle effects. |
+| `schedule` | Duration | `5t` (5 ticks) | How often each enabled player's particle trail is emitted. Hot-reloaded: the running task is rescheduled. |
 | `count` | int | `25` | Number of particles to spawn. |
 | `offset-x` | double | `0.9` | Particle spread on the X axis. |
 | `offset-y` | double | `0.9` | Particle spread on the Y axis. |
 | `offset-z` | double | `0.9` | Particle spread on the Z axis. |
 | `force` | boolean | `true` | When `true`, particles are sent even to players beyond the normal view distance. |
+
+Emission is scheduled on the server tick clock and is independent of player movement. Enabled state
+and the chosen particle are player preferences stored in `data/settings.yml`; a player who has never
+chosen defaults to enabled (while the module is enabled) with `default-particle`. `/effects` reports
+the effective state, particle, and usage without mutating anything; `/effects toggle` flips and
+persists the state, and `/effects <particle>` sets and persists the particle.
 
 ---
 
@@ -415,6 +422,7 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 
 - Most core settings and most per-module keys
 - Every field the Server Configuration GUI marks hot-reloadable
+- `modules.effects.schedule` — the particle-emission task is cancelled and rescheduled with the new period.
 
 **What requires a server restart:**
 

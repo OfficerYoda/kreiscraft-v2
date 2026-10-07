@@ -9,7 +9,9 @@ import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusListener;
 import de.kreiscraft.modules.status.StatusService;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.scoreboard.Team;
 import org.junit.jupiter.api.AfterEach;
@@ -72,5 +74,24 @@ class TablistStatusCoexistenceTest {
         assertThat(team.prefix()).isEqualTo(MM.deserialize(status.prefix()));
         assertThat(team.suffix()).isEqualTo(MM.deserialize(status.suffix()));
         assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
+    }
+
+    @Test
+    void tablistJoinRefresh_doesNotDisturbStatusIdentity() {
+        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        when(statusService.get(any(UUID.class))).thenReturn(status);
+
+        TablistUpdater updater = new TablistUpdater(server, resolver, "header", "footer");
+        server.getPluginManager().registerEvents(new StatusListener(statusService, server), plugin);
+        server.getPluginManager().registerEvents(new TablistListener(updater), plugin);
+
+        PlayerMock alice = server.addPlayer("Alice");
+
+        assertThat(alice.displayName())
+                .isEqualTo(Component.text("Admin", NamedTextColor.GOLD)
+                        .append(Component.text("Alice").color(TextColor.color(GOLD)))
+                        .append(Component.text(" [A]")));
+        assertThat(alice.playerListName())
+                .isEqualTo(Component.text("Alice").color(TextColor.color(GOLD)));
     }
 }
