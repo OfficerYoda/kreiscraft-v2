@@ -541,6 +541,45 @@ codec behind the store and publishes only the interface to the service registry.
 - The file protocol — missing files, reading without writing, and decode failures — is tested
   against real temporary files with a substitute codec; the NMS decode is a documented seam.
 - The module never imports NMS and remains fully testable under MockBukkit.
-- Offline writes for a later change extend the same boundary (staging and commit) without leaking
-  NMS into gameplay code or the commands.
+- Offline writes extend the same boundary (ADR-17) without leaking NMS into gameplay code or the
+  commands.
+
+---
+
+## ADR-17: Two-Phase Commits for Offline Player-Data Edits
+
+**Status:** Accepted
+
+**Context:**
+`/invsee` and `/enderchest` present an offline target's inventory and Ender Chest as an editable
+snapshot. Committing those edits must never lose the player's unrelated data, must not race a
+concurrent login, and must be recoverable if a write fails. The server may also be writing the same
+`<uuid>.dat` when the player joins, so a naive in-place write is unsafe.
+
+**Decision:**
+Offline edits are opened as an `OfflinePlayerEditSession` (via `OfflinePlayerDataEditor`) that holds
+the decoded `OfflinePlayerSnapshot`, the raw source bytes, and a SHA-256 digest of the source as
+opened. Committing is a two-phase protocol:
+
+1. **Stage** — the edited inventory and Ender Chest items are converted to compressed NBT by the
+   version-specific `PlayerDataCodec.encode`, which deep-copies the complete source document and
+   replaces only `Inventory` and `EnderItems`. The result is written, flushed, and read back through
+   the codec before the source is touched.
+2. **Commit** — in one server-main-thread turn the session re-checks that the target is still offline
+   and that the source digest still matches, creates a byte-for-byte backup, then performs an atomic
+   `Files.move(..., ATOMIC_MOVE, REPLACE_EXISTING)`. A non-atomic fallback is refused.
+
+The GUI is backed by a detached InvUI `VirtualInventory` (indexed by Bukkit slot), so edits are made
+against the snapshot, never the source. Aborts are reported to the viewer: a login collision offers a
+clickable reopen of the live inventory, a stale source aborts without overwriting the newer data, and
+a write failure reports that the source was left unchanged.
+
+**Consequences:**
+- Unrelated root tags and item component metadata survive because `encode` copies the whole source
+  document; only the two editable lists are replaced.
+- The offline/digest check and the atomic replace run in one main-thread turn, so a join event cannot
+  interleave between them.
+- The file protocol — staging, read-back verification, backup, abort on login/stale source, and
+  atomic replace — is tested against real temporary files with a substitute codec; the NMS
+  encode/decode remains a documented seam (ADR-16).
 

@@ -99,6 +99,40 @@ class OfflinePlayerDataStoreTest {
                 .hasMessage("corrupt");
     }
 
+    // -----------------------------------------------------------------------
+    // openForEdit
+    // -----------------------------------------------------------------------
+
+    @Test
+    void openForEdit_missingFile_returnsEmptyAndDoesNotDecode() throws IOException {
+        RecordingCodec codec = new RecordingCodec();
+        OfflinePlayerDataStore store = new OfflinePlayerDataStore(playerDataDir, codec);
+
+        assertThat(store.openForEdit(UUID.randomUUID())).isEmpty();
+        assertThat(codec.calls).isZero();
+    }
+
+    @Test
+    void openForEdit_existingFile_returnsSessionWithDecodedSnapshotAndDigest() throws IOException {
+        UUID playerId = UUID.randomUUID();
+        byte[] raw = {1, 2, 3, 4};
+        Files.write(playerDataDir.resolve(playerId + ".dat"), raw);
+        RecordingCodec codec = new RecordingCodec();
+        OfflinePlayerSnapshot decoded =
+                new OfflinePlayerSnapshot(
+                        List.of(new SlottedItem(9, new ItemStack(Material.DIRT))), List.of());
+        codec.result = decoded;
+        OfflinePlayerDataStore store = new OfflinePlayerDataStore(playerDataDir, codec);
+
+        OfflinePlayerEditSession session = store.openForEdit(playerId).orElseThrow();
+
+        assertThat(codec.lastBytes).isEqualTo(raw);
+        assertThat(session.snapshot()).isSameAs(decoded);
+        assertThat(session.sourceDigest())
+                .isEqualTo(OfflinePlayerEditSession.sha256(raw));
+        assertThat(session.source()).isEqualTo(playerDataDir.resolve(playerId + ".dat"));
+    }
+
     private static final class RecordingCodec implements PlayerDataCodec {
 
         private int calls;
@@ -114,6 +148,12 @@ class OfflinePlayerDataStoreTest {
                 throw failure;
             }
             return result;
+        }
+
+        @Override
+        public byte[] encode(
+                byte[] sourceNbtBytes, List<SlottedItem> inventory, List<SlottedItem> enderItems) {
+            throw new UnsupportedOperationException("read-only codec");
         }
     }
 }

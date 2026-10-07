@@ -5,18 +5,21 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionProviders;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.invsee.InvseeGui;
-import de.kreiscraft.platform.OfflinePlayerData;
-import de.kreiscraft.platform.OfflinePlayerSnapshot;
+import de.kreiscraft.platform.OfflinePlayerDataEditor;
+import de.kreiscraft.platform.OfflinePlayerEditSession;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.io.IOException;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import xyz.xenondevs.invui.inventory.VirtualInventory;
 
 /**
  * {@code /enderchest <player>} (aliases: {@code ec}, {@code echest}) — shows the target's ender
@@ -24,8 +27,8 @@ import org.bukkit.entity.Player;
  *
  * <p>Viewing and editing share the single {@code kreiscraft.invsee.use} permission: a viewer who
  * passes the command's authorization may modify the target's live ender chest directly. Offline
- * targets are shown as a read-only snapshot of their {@code EnderItems} read through {@link
- * OfflinePlayerData}.
+ * targets are opened as an editable snapshot of their {@code EnderItems} through {@link
+ * OfflinePlayerDataEditor} and committed through the two-phase offline-write boundary.
  *
  * <p>The target argument completes online players plus every known-offline profile through the
  * shared {@link SuggestionProviders#onlineAndKnownOfflineProfiles} provider.
@@ -36,7 +39,11 @@ public final class EnderChestCommand {
     private EnderChestCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
-            Gui gui, MessageService messages, OfflinePlayerData offlineData, Server server) {
+            Gui gui,
+            MessageService messages,
+            OfflinePlayerDataEditor offlineEditor,
+            Scheduler scheduler,
+            Server server) {
         return Commands.literal("enderchest")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.invsee.use"))
                 .then(
@@ -59,7 +66,13 @@ public final class EnderChestCommand {
                                                 openEnderChest(viewer, target, gui, messages);
                                             } else {
                                                 lookupAndOpenOfflineEnderChest(
-                                                        viewer, name, gui, messages, offlineData);
+                                                        viewer,
+                                                        name,
+                                                        gui,
+                                                        messages,
+                                                        offlineEditor,
+                                                        scheduler,
+                                                        server);
                                             }
                                             return Command.SINGLE_SUCCESS;
                                         }))
@@ -81,13 +94,16 @@ public final class EnderChestCommand {
             String name,
             Gui gui,
             MessageService messages,
-            OfflinePlayerData offlineData) {
+            OfflinePlayerDataEditor offlineEditor,
+            Scheduler scheduler,
+            Server server) {
         OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
-        openOfflineEnderChest(viewer, offline, name, gui, messages, offlineData);
+        openOfflineEnderChest(
+                viewer, offline, name, gui, messages, offlineEditor, scheduler, server);
     }
 
     /**
-     * Opens the read-only offline Ender Chest snapshot.
+     * Opens the editable offline Ender Chest snapshot.
      *
      * <p>Package-private so tests can inject a pre-built {@link OfflinePlayer} mock directly
      * without triggering {@code Bukkit.getOfflinePlayer} (which hits NMS state in tests).
@@ -98,24 +114,64 @@ public final class EnderChestCommand {
             String displayName,
             Gui gui,
             MessageService messages,
-            OfflinePlayerData offlineData) {
+            OfflinePlayerDataEditor offlineEditor,
+            Scheduler scheduler,
+            Server server) {
         if (!offline.hasPlayedBefore()) {
             messages.send(viewer, "invsee.target-not-found", "player", displayName);
             return;
         }
-        OfflinePlayerSnapshot snapshot;
+        OfflinePlayerEditSession session;
         try {
-            snapshot = offlineData.read(offline.getUniqueId());
+            session = offlineEditor.openForEdit(offline.getUniqueId()).orElse(null);
         } catch (IOException e) {
             messages.send(viewer, "invsee.read-error");
             return;
         }
-        if (snapshot.enderItems().isEmpty()) {
+        if (session == null) {
             messages.send(viewer, "invsee.offline-empty-ec", "player", displayName);
             return;
         }
-        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineEnderChest(snapshot);
+        VirtualInventory contents = InvseeGui.offlineEnderChestContents(session.snapshot());
+        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineEnderChest(contents);
         Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", displayName);
-        gui.open(viewer, invuiGui, title);
+        gui.open(
+                viewer,
+                invuiGui,
+                title,
+                reason -> commitOfflineEnderChest(
+                        viewer,
+                        offline.getUniqueId(),
+                        displayName,
+                        contents,
+                        session,
+                        messages,
+                        scheduler,
+                        server));
+    }
+
+    /**
+     * Stages the edited Ender Chest (preserving the untouched inventory) and commits it in one
+     * server-main-thread turn.
+     */
+    static void commitOfflineEnderChest(
+            Player viewer,
+            UUID targetId,
+            String displayName,
+            VirtualInventory contents,
+            OfflinePlayerEditSession session,
+            MessageService messages,
+            Scheduler scheduler,
+            Server server) {
+        OfflineCommitCoordinator.commit(
+                viewer,
+                targetId,
+                displayName,
+                session,
+                session.snapshot().inventory(),
+                InvseeGui.toSlottedItems(contents),
+                messages,
+                scheduler,
+                server);
     }
 }
