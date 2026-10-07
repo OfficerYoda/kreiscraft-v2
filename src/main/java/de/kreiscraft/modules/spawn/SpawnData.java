@@ -13,16 +13,38 @@ import org.spongepowered.configurate.serialize.SerializationException;
  */
 public final class SpawnData extends DataFile<SpawnData.SpawnState> {
 
-    /** Mutable state held in memory and flushed to disk by {@link #flushIfDirty()}. */
+    /**
+     * Mutable state held in memory and flushed to disk by {@link #flushIfDirty()}.
+     *
+     * <p>Fields are private to prevent direct writes that would bypass
+     * {@link DataFile#update(java.util.function.Consumer)} and its dirty-flag tracking. Mutate
+     * only inside an {@code update()} lambda; read via the getters.
+     */
     public static final class SpawnState {
 
-        Location location;
-        int teleportRange; // 0 = not persisted; fall back to module-config default
+        private Location location;
+        private int teleportRange; // 0 = not persisted; fall back to module-config default
 
         SpawnState() {}
 
         SpawnState(Location location, int teleportRange) {
             this.location = location;
+            this.teleportRange = teleportRange;
+        }
+
+        public Location getLocation() {
+            return location;
+        }
+
+        public int getTeleportRange() {
+            return teleportRange;
+        }
+
+        void setLocation(Location location) {
+            this.location = location;
+        }
+
+        void setTeleportRange(int teleportRange) {
             this.teleportRange = teleportRange;
         }
     }
@@ -36,19 +58,19 @@ public final class SpawnData extends DataFile<SpawnData.SpawnState> {
         SpawnState state = new SpawnState();
         ConfigurationNode locNode = node.node("location");
         if (!locNode.virtual() && !locNode.isNull()) {
-            state.location = locNode.get(Location.class);
+            state.setLocation(locNode.get(Location.class));
         }
-        state.teleportRange = node.node("teleport-range").getInt(0);
+        state.setTeleportRange(node.node("teleport-range").getInt(0));
         return state;
     }
 
     @Override
     protected void save(SpawnState state, ConfigurationNode node) throws SerializationException {
-        if (state.location != null) {
-            node.node("location").set(Location.class, state.location);
+        if (state.getLocation() != null) {
+            node.node("location").set(Location.class, state.getLocation());
         }
-        if (state.teleportRange > 0) {
-            node.node("teleport-range").set(state.teleportRange);
+        if (state.getTeleportRange() > 0) {
+            node.node("teleport-range").set(state.getTeleportRange());
         }
     }
 

@@ -107,16 +107,15 @@ class DefaultSpawnServiceTest {
     void setSpawn_persistsToData() {
         Location loc = new Location(world, 5, 100, 5);
         service.setSpawn(loc);
-        // data.get() returns SpawnState — access location field directly
-        assertThat(data.get().location).isEqualTo(loc);
+        assertThat(data.get().getLocation()).isEqualTo(loc);
     }
 
     @Test
     void setSpawn_withRadius_persistsRange() {
         Location loc = new Location(world, 0, 64, 0);
         service.setSpawn(loc, 75);
-        assertThat(data.get().teleportRange).isEqualTo(75);
-        assertThat(data.get().location).isEqualTo(loc);
+        assertThat(data.get().getTeleportRange()).isEqualTo(75);
+        assertThat(data.get().getLocation()).isEqualTo(loc);
     }
 
     @Test

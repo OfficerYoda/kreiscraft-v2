@@ -84,21 +84,21 @@ public final class GlideListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleFlight(PlayerToggleFlightEvent event) {
         Player player = event.getPlayer();
-        SpawnConfig.GlideConfig cfg = configSupply.get().glide();
-        if (!isEligibleForGlide(player, cfg)) {
+        SpawnConfig cfg = configSupply.get();
+        if (!isEligibleForGlide(player, cfg.glide())) {
             return;
         }
         event.setCancelled(true);
         UUID id = player.getUniqueId();
         flying.add(id);
         // Mark boost-eligible: glide started inside the spawn zone.
-        if (configSupply.get().glideBoost().enabled()) {
+        if (cfg.glideBoost().enabled()) {
             boostEligible.add(id);
         }
         player.setGliding(true);
         // Apply initial launch boost (legacy: direction × multiplyValue).
-        if (cfg.multiplyValue() > 0) {
-            player.setVelocity(player.getLocation().getDirection().multiply(cfg.multiplyValue()));
+        if (cfg.glide().multiplyValue() > 0) {
+            player.setVelocity(player.getLocation().getDirection().multiply(cfg.glide().multiplyValue()));
         }
     }
 
@@ -118,7 +118,7 @@ public final class GlideListener implements PriorityListener {
     }
 
     /** Clears boost eligibility and flying state when a glide ends naturally. */
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityToggleGlide(EntityToggleGlideEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
@@ -129,9 +129,9 @@ public final class GlideListener implements PriorityListener {
     }
 
     /**
-     * Applies the sneak boost when the player presses sneak while gliding and is boost-eligible.
-     * The boost is directional (facing direction × configured strength) and is rate-limited by
-     * {@link SpawnConfig.GlideBoostConfig#cooldownSeconds()}.
+     * Applies the sneak boost when the player presses sneak while gliding, is boost-eligible,
+     * and has left the spawn zone. The boost is directional (facing direction × configured
+     * strength) and is rate-limited by {@link SpawnConfig.GlideBoostConfig#cooldownSeconds()}.
      */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleSneak(PlayerToggleSneakEvent event) {
@@ -142,12 +142,17 @@ public final class GlideListener implements PriorityListener {
         if (!player.isGliding()) {
             return;
         }
-        SpawnConfig.GlideBoostConfig boostCfg = configSupply.get().glideBoost();
+        SpawnConfig cfg = configSupply.get();
+        SpawnConfig.GlideBoostConfig boostCfg = cfg.glideBoost();
         if (!boostCfg.enabled()) {
             return;
         }
         UUID id = player.getUniqueId();
         if (!boostEligible.contains(id)) {
+            return;
+        }
+        // Boost applies only after the player has left the spawn zone (AC4).
+        if (isEligibleForGlide(player, cfg.glide())) {
             return;
         }
         long now = System.currentTimeMillis();

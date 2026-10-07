@@ -6,6 +6,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.spawn.SpawnService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -49,9 +50,11 @@ public final class SpawnCommand {
             messages.send(player, "spawn.out-of-range");
             return Command.SINGLE_SUCCESS;
         }
+        // Capture departure point before teleporting — particles appear where the player was.
+        Location from = player.getLocation();
         player.teleport(spawn.get());
         messages.send(player, "spawn.teleported");
-        player.spawnParticle(Particle.CRIT, player.getLocation(), 30);
+        player.spawnParticle(Particle.CRIT, from, 30);
         return Command.SINGLE_SUCCESS;
     }
 }
