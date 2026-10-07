@@ -76,6 +76,24 @@ nothing changes unless the complete candidate is valid and durably written.
 The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
 Fields that are not declared there remain YAML-only.
 
+### Server Configuration GUI
+
+Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
+root or with `/settings admin`. The initial representative set of safe editable fields is declared by
+`ServerConfigSchema.representativeFields()` and covers every supported control type: boolean
+(`modules.combat.disable-elytra`), whole number (`modules.effects.count`), decimal number
+(`modules.effects.offset-x`), duration (`modules.combat.tag-duration`), enum
+(`modules.combat.default-display`), location (`modules.spawn.location`), text
+(`modules.chat-format.format`), and text list (`modules.combat.excluded-worlds`). All module
+`enabled` flags are also exposed and are restart-only.
+
+Each accepted edit is written immediately through the validated boundary, so closing the GUI never
+discards work. Closing reports the changes made in that session: hot-reloadable edits offer a
+clickable `/kreiscraft reload` action, and restart-only edits warn that a server restart is required.
+Module lifecycle changes are never reported as hot-applied. Credentials (`modules.api.admin-api-key`),
+network settings (`modules.api.host`, `modules.api.port`), and the tab-list header/footer stay
+YAML-only.
+
 ---
 
 ## Per-Module Configuration

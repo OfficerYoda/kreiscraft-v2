@@ -99,4 +99,19 @@ class SettingsGuiLocaleTest {
         assertThat(plain(messages.renderFor(bob, Page.EFFECTS.titleKey())))
                 .contains("Effekt-Einstellungen");
     }
+
+    @Test
+    void serverConfigurationPrompts_areLocalisedPerRecipient() {
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+
+        assertThat(plain(messages.renderFor(alice, "server-config.title")))
+                .contains("Server Configuration");
+        assertThat(plain(messages.renderFor(bob, "server-config.title")))
+                .contains("Server-Konfiguration");
+        assertThat(plain(messages.renderFor(alice, "server-config.close.restart-required", "count", 1)))
+                .containsIgnoringCase("restart");
+        assertThat(plain(messages.renderFor(bob, "server-config.close.restart-required", "count", 1)))
+                .containsIgnoringCase("Neustart");
+    }
 }

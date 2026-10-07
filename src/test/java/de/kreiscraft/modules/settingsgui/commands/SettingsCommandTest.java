@@ -2,7 +2,6 @@ package de.kreiscraft.modules.settingsgui.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,13 +9,11 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.core.module.ModuleEnablement;
-import de.kreiscraft.modules.settingsgui.SettingsService;
-import de.kreiscraft.shared.gui.Gui;
+import de.kreiscraft.modules.settingsgui.SettingsGui.Page;
+import de.kreiscraft.modules.settingsgui.SettingsNavigator;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SettingsCommandTest {
 
     @Mock
-    private SettingsService service;
-    @Mock
-    private ModuleEnablement modules;
-    @Mock
-    private MessageService messages;
-    @Mock
-    private Gui gui;
+    private SettingsNavigator navigator;
 
     private ServerMock server;
     private PluginMock plugin;
@@ -58,53 +49,52 @@ class SettingsCommandTest {
 
     @Test
     void build_commandNamedSettings() {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
         assertThat(node.getName()).isEqualTo("settings");
     }
 
     @Test
-    void build_commandHasExecutor() {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
-        assertThat(node.getCommand()).isNotNull();
-    }
-
-    @Test
-    void permission_denied_whenPlayerLacksPermission() {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
+    void rootRequirement_requiresUsePermission() {
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
 
         PlayerMock player = server.addPlayer("Alice");
-        player.addAttachment(plugin, "kreiscraft.settingsgui.use", false);
-
-        CommandSourceStack src = mock(CommandSourceStack.class);
-        when(src.getSender()).thenReturn(player);
-
-        assertThat(node.getRequirement().test(src)).isFalse();
-    }
-
-    @Test
-    void permission_granted_whenPlayerHasPermission() {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
-
-        PlayerMock player = server.addPlayer("Bob");
         player.addAttachment(plugin, "kreiscraft.settingsgui.use", true);
+        CommandSourceStack allowed = mock(CommandSourceStack.class);
+        when(allowed.getSender()).thenReturn(player);
 
-        CommandSourceStack src = mock(CommandSourceStack.class);
-        when(src.getSender()).thenReturn(player);
+        PlayerMock denied = server.addPlayer("Bob");
+        denied.addAttachment(plugin, "kreiscraft.settingsgui.use", false);
+        CommandSourceStack blocked = mock(CommandSourceStack.class);
+        when(blocked.getSender()).thenReturn(denied);
 
-        assertThat(node.getRequirement().test(src)).isTrue();
+        assertThat(node.getRequirement().test(allowed)).isTrue();
+        assertThat(node.getRequirement().test(blocked)).isFalse();
     }
 
     @Test
-    void execute_player_opensRootGuiWithRenderedTitle() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
+    void adminRequirement_requiresAdminPermission() {
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
+        CommandNode<CommandSourceStack> admin = node.getChild("admin");
+        assertThat(admin).isNotNull();
+
+        PlayerMock adminPlayer = server.addPlayer("Admin");
+        adminPlayer.addAttachment(plugin, "kreiscraft.settingsgui.admin", true);
+        CommandSourceStack allowed = mock(CommandSourceStack.class);
+        when(allowed.getSender()).thenReturn(adminPlayer);
+
+        PlayerMock regular = server.addPlayer("Regular");
+        regular.addAttachment(plugin, "kreiscraft.settingsgui.admin", false);
+        CommandSourceStack blocked = mock(CommandSourceStack.class);
+        when(blocked.getSender()).thenReturn(regular);
+
+        assertThat(admin.getRequirement().test(allowed)).isTrue();
+        assertThat(admin.getRequirement().test(blocked)).isFalse();
+    }
+
+    @Test
+    void execute_player_opensRootGui() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
         PlayerMock player = server.addPlayer("Carol");
-        Component title = Component.text("Settings");
-        when(messages.renderFor(player, "settings-gui.gui-title")).thenReturn(title);
 
         CommandSourceStack source = mock(CommandSourceStack.class);
         when(source.getSender()).thenReturn(player);
@@ -114,14 +104,29 @@ class SettingsCommandTest {
         int result = node.getCommand().run(ctx);
 
         assertThat(result).isEqualTo(Command.SINGLE_SUCCESS);
-        verify(gui)
-                .open(eq(player), any(xyz.xenondevs.invui.gui.Gui.class), eq(title));
+        verify(navigator).open(player, Page.ROOT);
+    }
+
+    @Test
+    void execute_admin_opensServerConfiguration() throws Exception {
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
+        CommandNode<CommandSourceStack> admin = node.getChild("admin");
+        PlayerMock player = server.addPlayer("Admin");
+
+        CommandSourceStack source = mock(CommandSourceStack.class);
+        when(source.getSender()).thenReturn(player);
+        CommandContext<CommandSourceStack> ctx = mock(CommandContext.class);
+        when(ctx.getSource()).thenReturn(source);
+
+        int result = admin.getCommand().run(ctx);
+
+        assertThat(result).isEqualTo(Command.SINGLE_SUCCESS);
+        verify(navigator).openAdmin(player);
     }
 
     @Test
     void execute_nonPlayer_returnsSuccessWithoutOpening() throws Exception {
-        LiteralCommandNode<CommandSourceStack> node =
-                SettingsCommand.build(service, modules, messages, gui);
+        LiteralCommandNode<CommandSourceStack> node = SettingsCommand.build(navigator);
         CommandSender consoleSender = mock(CommandSender.class);
 
         CommandSourceStack source = mock(CommandSourceStack.class);
@@ -132,6 +137,6 @@ class SettingsCommandTest {
         int result = node.getCommand().run(ctx);
 
         assertThat(result).isEqualTo(Command.SINGLE_SUCCESS);
-        verify(gui, never()).open(any(), any(xyz.xenondevs.invui.gui.Gui.class), any());
+        verify(navigator, never()).open(any(), any());
     }
 }

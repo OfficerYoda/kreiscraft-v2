@@ -41,6 +41,7 @@ public final class SettingsGuiModule implements Module {
         PlayerPreferencesService preferences = ctx.services().get(PlayerPreferencesService.class);
         Gui gui = ctx.services().get(Gui.class);
         ModuleEnablement modules = ctx.services().get(ModuleEnablement.class);
+        ConfigService configService = ctx.services().get(ConfigService.class);
 
         // The GUI only ever reads and mutates preferences through the shared boundary. The language
         // and particle fallbacks mirror what the owning features would use so the GUI shows a
@@ -50,10 +51,18 @@ public final class SettingsGuiModule implements Module {
         SettingsService settings =
                 new DefaultSettingsService(preferences, defaultLanguage, defaultParticle);
 
+        // Server Configuration reads and writes go through the validated ConfigService boundary, so
+        // every edit is atomic and rejected values never reach memory or disk.
+        ServerConfigService serverConfig = new DefaultServerConfigService(configService);
+        ServerConfigNavigator navigator =
+                new ServerConfigNavigator(
+                        settings, modules, serverConfig, ctx.messages(), gui, ctx.scheduler());
+
         ctx.commands()
                 .register(
-                        SettingsCommand.build(settings, modules, ctx.messages(), gui),
+                        SettingsCommand.build(navigator),
                         "Open the per-player settings GUI");
+        ctx.events().register(navigator);
     }
 
     @Override
