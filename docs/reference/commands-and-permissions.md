@@ -12,6 +12,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 |---------|---------|--------|-------------|-----------|---------|
 | `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
 | `/kreiscraftgamemode <mode> [player]` | `kreiscraftgm`, `kcgamemode`, `kcgm` | `admin` | Set a player's gamemode (`survival`/`creative`/`adventure`/`spectator` or `0`–`3`). | `kreiscraft.admin.gamemode` | op |
+| `/gm <gamemode> [<target>]` | — | `admin` | Forward to the vanilla `/gamemode` command, inheriting its syntax, suggestions, and authorization. | `minecraft.command.gamemode` (vanilla) | op |
 | `/item <material> [count]` | `i` | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
@@ -19,7 +20,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 50). | `kreiscraft.admin.spawnmob` | op |
 | `/ip [player]` | — | `admin` | Show a player's IP address. | `kreiscraft.admin.ip` | op |
 | `/uuid [player]` | — | `admin` | Show a player's UUID. | `kreiscraft.admin.uuid` | op |
-| `/lastonline <player>` | — | `admin` | Show when a player was last online. | `kreiscraft.admin.lastonline` | op |
+| `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
 | `/ping [player]` | — | `admin` | Show a player's ping in milliseconds. | `kreiscraft.admin.ping` | true |
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
@@ -64,7 +65,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`) complete online plus known-offline names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 

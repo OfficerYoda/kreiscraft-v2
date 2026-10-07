@@ -357,6 +357,8 @@ returns a `SuggestionProvider<CommandSourceStack>` for one candidate family:
 - `onlinePlayers(server, permission)` — every currently-online player name.
 - `onlineAndKnownOfflineProfiles(server, permission)` — online names plus offline profiles that
   have played before and still resolve to a name.
+- `allAndOnlinePlayers(server, permission)` — the literal `all` alongside every online player name,
+  for broadcast-style targets such as `/sudo`.
 - `entityTypes(permission)` — every spawnable `EntityType`, by lowercase enum name.
 - `particles(permission)` — every `Particle`, by lowercase enum name.
 
@@ -444,3 +446,42 @@ not operator-owned Server Configuration, so ordinary config reloads cannot overw
   identity whitelisted.
 - The lifecycle is covered by removal/re-registration tests rather than by an implicit
   overwrite.
+
+---
+
+## ADR-14: Forwarding Aliases via Brigadier Redirect
+
+**Status:** Accepted
+
+**Context:**
+Administrative commands should match the syntax and authorization players already know from
+vanilla Minecraft. Re-implementing a command such as `/gamemode` — its argument types, its
+selector support, its completions, and its op-level requirement — invites drift from vanilla
+behaviour and duplicates parsing logic. `/gm` is wanted purely as an alias for the existing
+`minecraft:gamemode` command.
+
+**Decision:**
+Add `CommandRegistrar.registerRedirect(alias, target, description, aliases...)`. Registration is
+deferred to the `LifecycleEvents.COMMANDS` phase, where `Commands#getDispatcher()` exposes the live
+server tree together with the command nodes vanilla already registered. The registrar resolves the
+`target` label to its node and builds the alias with `RedirectCommand.build(alias, target)`:
+
+```java
+Commands.literal(alias).requires(target.getRequirement()).redirect(target).build();
+```
+
+The alias copies the target's own requirement predicate and adds a Brigadier redirect into the
+target subtree, so a `/gm` invocation parses and executes exactly as `minecraft:gamemode` would.
+If the target is absent the registrar logs a warning and skips the alias rather than registering a
+broken command.
+
+**Consequences:**
+- `/gm` inherits vanilla syntax, selector handling, completions, and authorization with no
+  duplicated logic; a future vanilla change flows through automatically.
+- The requirement is reused from the target because redirects do not re-apply the target root's own
+  predicate, so the alias cannot accidentally loosen authorization.
+- Forwarding is generic: any future alias can point at any command already in the dispatcher.
+- Tests exercise the redirect seam directly with a synthetic dispatcher — the target subtree runs
+  through the alias when authorized and is rejected when the requirement fails — so the behaviour
+  is verifiable under MockBukkit without a real vanilla command tree.
+
