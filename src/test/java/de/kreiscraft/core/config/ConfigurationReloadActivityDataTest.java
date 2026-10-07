@@ -127,6 +127,6 @@ class ConfigurationReloadActivityDataTest {
         assertThat(DataFile.class)
                 .isAssignableFrom(de.kreiscraft.modules.positions.PositionsData.class);
         assertThat(DataFile.class)
-                .isAssignableFrom(de.kreiscraft.modules.settingsgui.SettingsData.class);
+                .isAssignableFrom(de.kreiscraft.shared.preferences.PlayerPreferencesData.class);
     }
 }
