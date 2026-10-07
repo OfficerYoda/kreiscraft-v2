@@ -54,6 +54,7 @@ modules:
   effects:
     enabled: false
     default-particle: HAPPY_VILLAGER
+    schedule: 5t
     count: 25
     offset-x: 0.9
     offset-y: 0.9

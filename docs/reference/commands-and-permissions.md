@@ -29,8 +29,9 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/bedrocklist remove <name>` | — | `bedrock` | Explicitly remove a Bedrock authorization and revoke a bound whitelist entry. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
 | `/combat <target> <seconds>` | — | `combat` | Manually tag every player matched by the selector as in combat for the given duration (1–100 s). | `kreiscraft.combat.admin` | op |
-| `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
-| `/effects <particle>` | — | `effects` | Set your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
+| `/effects` | — | `effects` | Report your particle-trail state, particle, and usage without changing anything. | `kreiscraft.effects.use` | true |
+| `/effects toggle` | — | `effects` | Toggle your particle trail on/off and persist the change. | `kreiscraft.effects.use` | true |
+| `/effects <particle>` | — | `effects` | Set and persist your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
 | `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
@@ -64,7 +65,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names and marks the player's effective particle with a tooltip. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 
