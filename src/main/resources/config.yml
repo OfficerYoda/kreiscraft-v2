@@ -43,7 +43,7 @@ modules:
     enabled: true
     event-priority: LOWEST
     allow-mini-message-in-body: false
-    format: "<team-prefix><name-colored><team-suffix><gray>: <reset><body>"
+    format: "<team-prefix> <name-colored> <team-suffix><gray> » <reset><body>"
   clickthrough:
     enabled: true
   combat:
@@ -71,7 +71,7 @@ modules:
   jail:
     enabled: true
     location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
-    blocked-commands: [msg, tell, w, pay, r]
+    blocked-commands: [msg, tell, w, r]
   plugin-hider:
     enabled: false
     default-allowed-commands:
@@ -104,7 +104,8 @@ modules:
       enabled: true
       multiply-value: 3
       spawn-radius: 30
-      launch-location: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
+      launch-location:
+        { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
     swap-hand-boost:
       enabled: false
       vector-multiplier: 3.0
@@ -132,8 +133,13 @@ modules:
   tablist:
     enabled: true
     update-interval: 20t
-    header: "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime: <blue>%playtime%\n"
-    footer: "\n<gray>Uhrzeit: <blue>%system_time%\n\n<gray>Ping: <blue>%ping%   <gray>Tps: <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
+    header:
+      "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime:
+      <blue>%playtime%\n"
+    footer:
+      "\n<gray>Uhrzeit: <blue>%system_time%\n\n<gray>Ping:
+      <blue>%ping%   <gray>Tps:
+      <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
     bypass-permission: kreiscraft.updatemode.bypass
