@@ -13,7 +13,7 @@ import xyz.xenondevs.invui.item.Item;
 /**
  * Factory for InvUI {@link Gui} instances used by the invsee and enderchest commands.
  *
- * <p>Slot mapping for the 5-row player-inventory view (GUI slots 0-44):
+ * <p>Slot mapping for the 5-row editable player-inventory view (GUI slots 0-44):
  *
  * <ul>
  *   <li>Rows 1–3 (GUI 0–26): main inventory (Bukkit slots 9–35)
@@ -41,20 +41,6 @@ public final class InvseeGui {
 
     /** GUI size for the 3-row ender-chest view. */
     static final int ENDER_CHEST_GUI_SIZE = 27;
-
-    // -----------------------------------------------------------------------
-    // Read-only: online player — 5-row view
-    // -----------------------------------------------------------------------
-
-    /**
-     * Builds a read-only 5-row GUI showing the full player inventory.
-     *
-     * @param allContents {@code PlayerInventory.getContents()} — length ≥ 41
-     */
-    public static Gui buildReadOnly(ItemStack[] allContents) {
-        ItemStack[] guiItems = mapPlayerInvToGuiSlots(allContents);
-        return buildGuiFromItems(guiItems, 9, 5);
-    }
 
     // -----------------------------------------------------------------------
     // Editable: online player — 5-row view (all 41 slots)
@@ -120,14 +106,8 @@ public final class InvseeGui {
     }
 
     // -----------------------------------------------------------------------
-    // Ender chest — 3-row views
+    // Ender chest — editable 3-row view
     // -----------------------------------------------------------------------
-
-    /** Builds a read-only 3-row GUI for the player's ender chest. */
-    public static Gui buildEnderChestReadOnly(Inventory enderChest) {
-        ItemStack[] contents = enderChest.getContents();
-        return buildGuiFromItems(contents, 9, 3);
-    }
 
     /**
      * Builds an editable 3-row GUI backed by the player's live ender-chest inventory. Changes in
@@ -137,38 +117,6 @@ public final class InvseeGui {
         ReferencingInventory ref = ReferencingInventory.fromStorageContents(enderChest);
         Gui gui = Gui.empty(9, 3);
         gui.fillRectangle(0, 0, 9, ref, false);
-        return gui;
-    }
-
-    // -----------------------------------------------------------------------
-    // Package-private helpers (exposed for unit tests)
-    // -----------------------------------------------------------------------
-
-    /**
-     * Maps a Bukkit {@code PlayerInventory.getContents()} array (length ≥ 41) to a 45-element GUI
-     * slot array.
-     *
-     * <p>See class-level Javadoc for the mapping table.
-     */
-    static ItemStack[] mapPlayerInvToGuiSlots(ItemStack[] contents) {
-        ItemStack[] gui = new ItemStack[PLAYER_GUI_SIZE];
-        // main inventory (Bukkit 9-35 → GUI 0-26)
-        for (int i = 0; i < 27 && (i + 9) < contents.length; i++) {
-            gui[i] = contents[i + 9];
-        }
-        // armor (Bukkit 36-39 → GUI 27-30)
-        for (int i = 0; i < 4 && (36 + i) < contents.length; i++) {
-            gui[27 + i] = contents[36 + i];
-        }
-        // offhand (Bukkit 40 → GUI 31)
-        if (40 < contents.length) {
-            gui[31] = contents[40];
-        }
-        // GUI 32-35: intentionally left null (filler)
-        // hotbar (Bukkit 0-8 → GUI 36-44)
-        for (int i = 0; i < 9 && i < contents.length; i++) {
-            gui[36 + i] = contents[i];
-        }
         return gui;
     }
 
