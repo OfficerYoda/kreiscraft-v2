@@ -99,7 +99,10 @@ modules:
     enabled: true
   spawn:
     enabled: true
+    # Operator-owned state (ADR-10). `teleport-range` is written by /setspawn <radius>;
+    # `location` is written by /setspawn and stays absent until a spawn has been set.
     teleport-range: 100
+    # location: { world: world, x: 0.5, y: 64, z: 0.5, yaw: 0, pitch: 0 }
     glide:
       enabled: true
       multiply-value: 3
@@ -119,6 +122,9 @@ modules:
       velocity: { x: 0.0, y: 5.0, z: 0.0 }
   start-sequence:
     enabled: true
+    # Operator-owned state (ADR-10): true once the season start sequence has run. Reset with
+    # `/start reset`; never migrated from the retired data/start-sequence.yml.
+    has-started: false
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
@@ -142,6 +148,8 @@ modules:
       <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
+    # Operator-owned state (ADR-10): maintenance mode active/inactive. Written by /updatemode.
+    active: false
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []
   wither:

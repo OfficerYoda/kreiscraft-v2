@@ -221,7 +221,8 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.spawn`) | Type | Default | Description |
 |---|---|---|---|
-| `teleport-range` | int | `100` | Maximum radius (blocks) for a random teleport near spawn. |
+| `teleport-range` | int | `100` | Maximum radius (blocks) from spawn for `/spawn`. Operator-owned; written by `/setspawn <radius>`. |
+| `location` | Location | *(optional)* | Operator-owned server spawn point, written by `/setspawn`. Absent until a spawn has been set; `/spawn` reports that no spawn is set. Not migrated from the retired `data/spawn.yml`. |
 | `glide.enabled` | boolean | `true` | Whether elytra glide is active in the spawn area. |
 | `glide.multiply-value` | int | `3` | Velocity multiplier at glide start. Currently stored but not applied at runtime. |
 | `glide.spawn-radius` | int | `30` | Block radius around spawn within which glide is active. |
@@ -238,6 +239,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.start-sequence`) | Type | Default | Description |
 |---|---|---|---|
+| `has-started` | boolean | `false` | Operator-owned completion flag. `true` once the sequence has run; cleared by `/start reset`. Not migrated from the retired `data/start-sequence.yml`. |
 | `countdown` | Duration | `10s` | Initial countdown value. The sequence displays `countdown - 1` … `1`, one number per second, then the start title. |
 | `initial-border-size` | double | `50.0` | World border diameter at game start (blocks). |
 | `target-border-size` | double | `30000000.0` | World border diameter at full expansion. |
@@ -271,6 +273,7 @@ only `update-interval` needs a restart because the shared repeating task is not 
 
 | Key (relative to `modules.update-mode`) | Type | Default | Description |
 |---|---|---|---|
+| `active` | boolean | `false` | Operator-owned maintenance state. Written by `/updatemode on`/`off`; read live on login and status checks. Not migrated from the retired `data/update-mode.yml`. |
 | `bypass-permission` | String | `kreiscraft.updatemode.bypass` | Permission node that allows a player to stay online when update mode is activated and to join while it is active. |
 | `bypass-names` | List\<String\> | `[]` | Exact player names that bypass update mode regardless of permission. |
 

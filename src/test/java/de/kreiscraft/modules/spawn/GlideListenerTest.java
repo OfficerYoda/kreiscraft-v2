@@ -2,6 +2,7 @@ package de.kreiscraft.modules.spawn;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import de.kreiscraft.core.config.YamlConfigService;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -54,10 +55,10 @@ class GlideListenerTest {
         plugin = MockBukkit.createMockPlugin();
         world = server.addSimpleWorld("world");
 
-        SpawnData data = new SpawnData(tmp);
-        data.load();
+        YamlConfigService configService =
+                new YamlConfigService(tmp, getClass().getClassLoader());
         config = makeConfig(30, 3);
-        service = new DefaultSpawnService(data, config);
+        service = new DefaultSpawnService(configService, config);
 
         // Set spawn at origin in the world
         service.setSpawn(new Location(world, 0, 64, 0));
