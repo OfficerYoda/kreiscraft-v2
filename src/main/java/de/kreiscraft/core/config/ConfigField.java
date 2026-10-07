@@ -23,7 +23,8 @@ public record ConfigField(
         ConfigFieldType type,
         ConfigValidator validator,
         boolean guiExposed,
-        ConfigLifecycle lifecycle) {
+        ConfigLifecycle lifecycle,
+        List<String> options) {
 
     public ConfigField {
         Objects.requireNonNull(path, "path");
@@ -34,6 +35,22 @@ public record ConfigField(
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(validator, "validator");
         Objects.requireNonNull(lifecycle, "lifecycle");
+        Objects.requireNonNull(options, "options");
+        options = List.copyOf(options);
+    }
+
+    /**
+     * Creates a field whose presentation options are derived from its validator. A {@link
+     * ChoiceValidator} contributes its allowed values; any other validator contributes none and the
+     * GUI falls back to a type default.
+     */
+    public ConfigField(
+            List<Object> path,
+            ConfigFieldType type,
+            ConfigValidator validator,
+            boolean guiExposed,
+            ConfigLifecycle lifecycle) {
+        this(path, type, validator, guiExposed, lifecycle, optionsOf(validator));
     }
 
     /** Creates a field that accepts any value. */
@@ -43,6 +60,10 @@ public record ConfigField(
             boolean guiExposed,
             ConfigLifecycle lifecycle) {
         this(path, type, ConfigValidators.alwaysValid(), guiExposed, lifecycle);
+    }
+
+    private static List<String> optionsOf(ConfigValidator validator) {
+        return validator instanceof ChoiceValidator choice ? choice.options() : List.of();
     }
 
     /** The path as a varargs array, suitable for {@code ConfigurationNode.node(Object...)}. */

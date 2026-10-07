@@ -77,20 +77,54 @@ Fields that are not declared there remain YAML-only.
 ### Server Configuration GUI
 
 Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
-root or with `/settings admin`. The initial representative set of safe editable fields is declared by
-`ServerConfigSchema.representativeFields()` and covers every supported control type: boolean
-(`modules.combat.disable-elytra`), whole number (`modules.effects.count`), decimal number
-(`modules.effects.offset-x`), duration (`modules.combat.tag-duration`), enum
-(`modules.combat.default-display`), location (`modules.spawn.location`), text
-(`modules.chat-format.format`), and text list (`modules.combat.excluded-worlds`). All module
-`enabled` flags are also exposed and are restart-only.
+root or with `/settings admin`. `ServerConfigSchema.editableFields()` declares the complete safe,
+GUI-exposed field set; the GUI groups it by the owning unit and picks a control from each field's
+value type:
+
+- Boolean — a toggle that flips on click.
+- Whole number — a stepper, bounded by the field's validator.
+- Decimal number — a stepper, bounded by the field's validator.
+- Duration — a cycled set of durations chosen for the field's scale (for example combat tag
+  durations versus the start-sequence border duration).
+- Enum — a cycled set of the field's allowed values.
+- Material — a cycled set of Bukkit material names (supported for any material-typed field).
+- Location — set to the editing administrator's current position.
+- Text and text list — entered in chat; the entered value is validated before it is written.
+
+Every module `enabled` flag is also exposed and is **restart-only**.
 
 Each accepted edit is written immediately through the validated boundary, so closing the GUI never
 discards work. Closing reports the changes made in that session: hot-reloadable edits offer a
 clickable `/kreiscraft reload` action, and restart-only edits warn that a server restart is required.
-Module lifecycle changes are never reported as hot-applied. Credentials (`modules.api.admin-api-key`),
-network settings (`modules.api.host`, `modules.api.port`), and the tab-list header/footer stay
-YAML-only.
+Module lifecycle changes are never reported as hot-applied.
+
+#### Lifecycle classification
+
+A field is hot-reloadable only when the owning module re-reads the value on `/kreiscraft reload`.
+Everything read once at enable time is marked **restart-only** so the close prompt never promises a
+live apply.
+
+| Restart-only field | Why |
+|---|---|
+| every `modules.*.enabled` | Modules are started or skipped only at plugin start. |
+| `core.language` | The message service captures the server language when it is constructed; `reload` only re-reads the language files. |
+| `modules.firework.custom-model-data`, `modules.firework.namespace-key` | Read when the firework recipe is registered; the module has no reload hook. |
+| `modules.tablist.update-interval` | The shared repeating task is not rescheduled on reload. |
+
+#### Kept YAML-only
+
+Credentials, networking and low-level infrastructure, the tab-list header/footer, and
+operator-owned runtime state written by commands stay out of the GUI:
+
+| YAML-only value | Reason |
+|---|---|
+| `modules.api.admin-api-key` | Credential. |
+| `modules.api.host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` | Networking / infrastructure. |
+| `modules.anti-cheat.channel` | Plugin-messaging channel (networking). |
+| `modules.tablist.header`, `modules.tablist.footer` | Tab-list header/footer. |
+| `modules.chat-format.event-priority` | Listener priority is bound at registration and is not applied on reload. |
+| `core.timezone`, `core.auto-save-interval` | Low-level infrastructure / timezone and persistence settings. |
+| `modules.update-mode.active`, `modules.start-sequence.has-started` | Operator-owned state written by commands whose side effects the GUI must not bypass. |
 
 ---
 
@@ -375,12 +409,14 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 
 **What is reloaded without restart:**
 
-- All core settings (`core.*`)
-- Most per-module keys
+- Most core settings and most per-module keys
+- Every field the Server Configuration GUI marks hot-reloadable
 - `modules.effects.schedule` — the particle-emission task is cancelled and rescheduled with the new period.
 
 **What requires a server restart:**
 
+- `core.language` — the message service captures the server language when it is constructed; `reload` only re-reads the language trees, so a new server language needs a restart. A player's persisted language still takes precedence for output addressed to them.
 - `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart.
 - Adding or removing modules — the `enabled` flag is only evaluated at plugin startup.
+- `modules.firework.custom-model-data`, `modules.firework.namespace-key` — read when the firework recipe is registered.
 - `modules.tablist.update-interval` — the shared repeating task is not rescheduled on reload; header/footer templates still hot-reload.

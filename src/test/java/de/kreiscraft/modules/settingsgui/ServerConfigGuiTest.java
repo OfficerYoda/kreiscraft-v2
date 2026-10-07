@@ -104,8 +104,8 @@ class ServerConfigGuiTest {
 
     @Test
     void hiddenFields_areNeverExposed() {
-        List<String> exposedPaths =
-                editor.schema().guiExposed().stream().map(field -> field.path().toString()).toList();
+        List<List<Object>> exposedPaths =
+                editor.schema().guiExposed().stream().map(ConfigField::path).toList();
 
         assertThat(exposedPaths)
                 .as("credentials, network settings, and tab-list header/footer stay YAML-only")
@@ -113,10 +113,43 @@ class ServerConfigGuiTest {
                         path -> path.contains("admin-api-key")
                                 || path.contains("host")
                                 || path.contains("port")
+                                || path.contains("cors-origins")
+                                || path.contains("session-cookie")
+                                || path.contains("channel")
                                 || path.contains("header")
-                                || path.contains("footer"));
+                                || path.contains("footer")
+                                || path.contains("timezone")
+                                || path.contains("debug")
+                                || path.contains("active")
+                                || path.contains("has-started"));
         assertThat(ServerConfigGui.categories(editor.schema()))
-                .doesNotContain("api", "tablist");
+                .as("the HTTP API stays entirely YAML-only")
+                .doesNotContain("api");
+    }
+
+    @Test
+    void root_listsTheCompleteCategorySet() {
+        List<String> categories = ServerConfigGui.categories(editor.schema());
+
+        assertThat(categories)
+                .contains(
+                        "core",
+                        "modules",
+                        "admin",
+                        "anti-cheat",
+                        "bedrock",
+                        "chat-format",
+                        "combat",
+                        "effects",
+                        "firework",
+                        "jail",
+                        "positions",
+                        "reboot",
+                        "spawn",
+                        "start-sequence",
+                        "tablist",
+                        "update-mode",
+                        "wither");
     }
 
     // ------------------------------------------------------------------
@@ -186,6 +219,38 @@ class ServerConfigGuiTest {
         assertThat(stored).isInstanceOf(Location.class);
         assertThat(((Location) stored).getBlockX()).isEqualTo(5);
         assertThat(((Location) stored).getBlockZ()).isEqualTo(9);
+    }
+
+    @Test
+    void particleEnumField_clickCyclesAndPersists() {
+        ConfigField particle = field("effects", "default-particle");
+        Gui gui = category("effects");
+
+        click(gui, slotOf("effects", particle));
+
+        assertThat(editor.current(particle)).isEqualTo("FLAME");
+    }
+
+    @Test
+    void witherBooleanField_clickTogglesAndPersists() {
+        ConfigField fire = field("wither", "spawn-explosion-fire");
+        Gui gui = category("wither");
+
+        click(gui, slotOf("wither", fire));
+
+        assertThat(editor.current(fire)).isEqualTo(false);
+    }
+
+    @Test
+    void restartOnlyDurationField_recordsRestartSession() {
+        ConfigField interval = field("tablist", "update-interval");
+        Gui gui = category("tablist");
+
+        click(gui, slotOf("tablist", interval));
+
+        assertThat(editor.current(interval)).isEqualTo("1s");
+        assertThat(session.restartCount()).isEqualTo(1);
+        assertThat(session.hotReloadCount()).isZero();
     }
 
     @Test

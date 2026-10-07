@@ -1,8 +1,6 @@
 package de.kreiscraft.modules.settingsgui;
 
 import de.kreiscraft.core.config.ConfigField;
-import de.kreiscraft.shared.preferences.CombatDisplay;
-import java.util.Arrays;
 import java.util.List;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -11,16 +9,17 @@ import org.bukkit.entity.Player;
  * Deterministic value transforms for the Server Configuration GUI's typed controls.
  *
  * <p>Each supported {@link de.kreiscraft.core.config.ConfigFieldType} maps to one interaction:
- * booleans toggle, numbers step, durations/enums/materials cycle a bounded option set, and a
- * location is set to the editing player's current position. Text and text lists are not transformed
- * here; they are entered through the chat-input flow so free-form values stay editable.
+ * booleans toggle, numbers step, durations/enums/materials cycle a bounded option set that the
+ * field declares, and a location is set to the editing player's current position. Text and text
+ * lists are not transformed here; they are entered through the chat-input flow so free-form values
+ * stay editable.
  */
 public final class ServerConfigControls {
 
-    /** Bounded duration choices offered by the duration control. */
+    /** Fallback duration choices for a duration field that declares no options of its own. */
     static final List<String> DURATION_OPTIONS = List.of("1s", "3s", "5s", "10s", "30s", "1m");
 
-    /** Bounded material choices offered by the material control. */
+    /** Fallback material choices for a material field that declares no options of its own. */
     static final List<String> MATERIAL_OPTIONS = List.of(
             Material.STONE.name(),
             Material.DIRT.name(),
@@ -55,23 +54,17 @@ public final class ServerConfigControls {
             case BOOLEAN -> !asBoolean(current);
             case INTEGER -> asInt(current) + direction;
             case DOUBLE -> round1(asDouble(current) + 0.1 * direction);
-            case DURATION -> cycle(DURATION_OPTIONS, current, direction);
-            case ENUM -> cycle(combatDisplayOptions(field), current, direction);
-            case MATERIAL -> cycle(MATERIAL_OPTIONS, current, direction);
+            case DURATION -> cycle(optionsOr(field, DURATION_OPTIONS), current, direction);
+            case ENUM -> cycle(field.options(), current, direction);
+            case MATERIAL -> cycle(optionsOr(field, MATERIAL_OPTIONS), current, direction);
             case LOCATION -> player.getLocation();
             case STRING, STRING_LIST -> null;
         };
     }
 
-    /** The enum options for an enum-typed field, in declaration order. */
-    static List<String> combatDisplayOptions(ConfigField field) {
-        if (field.path().size() == 3
-                && "modules".equals(String.valueOf(field.path().get(0)))
-                && "combat".equals(String.valueOf(field.path().get(1)))
-                && "default-display".equals(String.valueOf(field.path().get(2)))) {
-            return Arrays.stream(CombatDisplay.values()).map(Enum::name).toList();
-        }
-        return List.of();
+    /** The field's declared options, or a type default when the field declares none. */
+    static List<String> optionsOr(ConfigField field, List<String> fallback) {
+        return field.options().isEmpty() ? fallback : field.options();
     }
 
     static String cycle(List<String> options, Object current, int direction) {
