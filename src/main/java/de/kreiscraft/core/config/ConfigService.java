@@ -18,4 +18,21 @@ public interface ConfigService {
 
     /** Unmodifiable live view of every DataFile registered so far. */
     List<DataFile<?>> registeredDataFiles();
+
+    /**
+     * The declared set of editable Server Configuration fields.
+     *
+     * <p>Every declared field reports its value type, validation, GUI exposure and reload/restart
+     * lifecycle. Module enable flags are always restart-only.
+     */
+    ServerConfigSchema configSchema();
+
+    /**
+     * Validates and atomically persists an edit to one declared field.
+     *
+     * <p>The value is applied to a detached copy of the live configuration and validated there.
+     * Nothing is changed unless the complete candidate is valid and has been durably written; see
+     * {@link ConfigEditResult} for the possible outcomes.
+     */
+    ConfigEditResult edit(ConfigEdit edit);
 }

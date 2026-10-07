@@ -26,6 +26,7 @@ dependencies {
     paperweight.paperDevBundle(libs.versions.paper.get())
 
     implementation(libs.configurate.yaml)
+    implementation(libs.snakeyaml)
     implementation(libs.jackson.databind)
     implementation(libs.slf4j.simple)
     implementation(libs.invui)

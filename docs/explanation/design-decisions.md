@@ -365,3 +365,41 @@ partially typed input and emitted in deterministic order.
 - Registry-backed providers track the server's own `EntityType`/`Particle` enums, so new types are
   suggested automatically after a Minecraft upgrade; test assertions target representative,
   stable members rather than the exact full list.
+
+---
+
+## ADR-12: Validated Atomic Server Configuration Edits
+
+**Status:** Accepted
+
+**Context:**
+ADR-10 makes `config.yml` writable through an admin GUI and through commands such as `/setspawn`.
+Rewriting the file in place risks a half-written file if the process is interrupted, and
+Configurate's YAML backend drops comments and reformats unrelated keys whenever it serializes a
+tree. An invalid value must never mutate either the live configuration or the durable file.
+
+**Decision:**
+`ConfigService` exposes one validated edit boundary, `edit(ConfigEdit)`. Each edit:
+
+1. applies the proposed value to a detached candidate tree (`root().copy()`);
+2. validates the candidate value with the field's `ConfigValidator`;
+3. renders the candidate and writes it to a flushed temporary file in the same directory;
+4. replaces `config.yml` with an atomic move where the filesystem supports it, falling back to a
+   plain replace otherwise;
+5. swaps the live tree to the candidate only after the write succeeds.
+
+Rejected values and I/O failures return a `ConfigEditResult` and leave both the live tree and the
+file untouched. Because Configurate's YAML backend does not carry comments, the candidate is
+rendered through SnakeYAML with comment processing enabled, and comment metadata is copied from
+the file being replaced onto the matching nodes of the candidate; this preserves the file header
+and comments on unrelated keys. Every editable field declares a `ConfigFieldType`, a
+`ConfigValidator`, GUI exposure, and a `ConfigLifecycle` (hot-reload or restart). Module `enabled`
+flags are always restart-only.
+
+**Consequences:**
+- On a filesystem with atomic renames the durable file can never be observed half-written.
+- A rejected or failed edit is a no-op, so the GUI can report the reason and retry safely.
+- Every edit rewrites the whole file; edits are operator-driven and infrequent, so this is cheap.
+- Comments on unrelated keys survive, and an inline comment on the edited value is carried across.
+- New GUI fields must be declared in `ServerConfigSchema`; the edit boundary itself only needs a
+  `ConfigField`.
