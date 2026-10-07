@@ -5,6 +5,7 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.glow.commands.GlowCommand;
 import de.kreiscraft.platform.PaperPlatform;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.util.List;
 import org.spongepowered.configurate.ConfigurationNode;
 
@@ -30,10 +31,15 @@ public final class GlowModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
-        this.service = new DefaultGlowService(platform.server());
+        PlayerPreferencesService preferences =
+                ctx.services().get(PlayerPreferencesService.class);
+        this.service = new DefaultGlowService(platform.server(), preferences);
         ctx.services().publish(GlowService.class, service);
         ctx.events().register(new GlowListener(service));
-        ctx.commands().register(GlowCommand.build(service, ctx.messages()), "Toggle your glow effect");
+        ctx.commands()
+                .register(
+                        GlowCommand.build(service, ctx.messages(), platform.server()),
+                        "Toggle your glow effect");
     }
 
     @Override

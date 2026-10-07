@@ -96,6 +96,10 @@ effects:
 glow:
   enabled: "<prefix> <green>Glow aktiviert."
   disabled: "<prefix> <yellow>Glow deaktiviert."
+  other-enabled: "<prefix> <green>Glow für <player> aktiviert."
+  other-disabled: "<prefix> <yellow>Glow für <player> deaktiviert."
+  target-enabled: "<prefix> <green><player> hat deinen Glow aktiviert."
+  target-disabled: "<prefix> <yellow><player> hat deinen Glow deaktiviert."
 invsee:
   gui-title-inv: "<gray>Inventar von <player>"
   gui-title-ec: "<gray>Enderchest von <player>"

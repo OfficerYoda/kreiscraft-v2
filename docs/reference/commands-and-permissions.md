@@ -32,6 +32,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/effects` | — | `effects` | Toggle your particle trail on/off. | `kreiscraft.effects.use` | true |
 | `/effects <particle>` | — | `effects` | Set your particle type by Bukkit `Particle` name. | `kreiscraft.effects.use` | true |
 | `/glow` | — | `glow` | Toggle the Glowing effect on yourself. | `kreiscraft.glow.use` | true |
+| `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory. | `kreiscraft.invsee.use` | op |
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest (online only). | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player, or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
@@ -63,7 +64,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 
@@ -113,6 +114,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `glow` module
 
 - `kreiscraft.glow.use` — **(true)** — Toggle glow effect.
+- `kreiscraft.glow.other` — **(op)** — Toggle glow effect for another player.
 
 ### `invsee` module
 
