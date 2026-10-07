@@ -47,7 +47,7 @@ class BedrockListenerTest {
     }
 
     @Test
-    void preLogin_withBedrockPrefix_callsSeen() throws Exception {
+    void preLogin_withBedrockPrefix_callsHandleLogin() throws Exception {
         UUID uuid = UUID.randomUUID();
         when(service.isBedrock(".steve")).thenReturn(true);
 
@@ -56,17 +56,17 @@ class BedrockListenerTest {
                 ".steve", InetAddress.getLoopbackAddress(), uuid));
 
         // MockScheduler.runOnMain() executes the runnable synchronously on the firing thread
-        verify(service).seen(".steve", uuid);
+        verify(service).handleLogin(".steve", uuid);
     }
 
     @Test
-    void preLogin_withoutBedrockPrefix_doesNotCallSeen() throws Exception {
+    void preLogin_withoutBedrockPrefix_doesNotHandleLogin() throws Exception {
         UUID uuid = UUID.randomUUID();
         when(service.isBedrock("Alice")).thenReturn(false);
 
         fireAsync(new AsyncPlayerPreLoginEvent(
                 "Alice", InetAddress.getLoopbackAddress(), uuid));
 
-        verify(service, never()).seen(any(), any());
+        verify(service, never()).handleLogin(any(), any());
     }
 }
