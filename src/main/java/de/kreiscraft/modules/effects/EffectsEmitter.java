@@ -2,7 +2,9 @@ package de.kreiscraft.modules.effects;
 
 import de.kreiscraft.core.scheduler.Scheduler;
 import java.time.Duration;
+import java.util.Optional;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
@@ -55,13 +57,17 @@ public final class EffectsEmitter {
             if (!service.isEnabled(player.getUniqueId())) {
                 continue;
             }
+            Optional<Particle> particle = service.selectedParticle(player.getUniqueId());
+            if (particle.isEmpty()) {
+                continue;
+            }
             Location location = player.getLocation();
             // Use the 9-arg Paper overload so the operator-configured `force` flag (send particle
             // to players regardless of their particle settings) is honoured. `extra` (speed) is 0.0
             // and data is null — correct for data-less particles.
             player.getWorld()
                     .<Void>spawnParticle(
-                            service.getParticle(player.getUniqueId()),
+                            particle.get(),
                             location,
                             cfg.count(),
                             cfg.offsetX(),

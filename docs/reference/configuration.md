@@ -45,13 +45,11 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following four are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following two are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
-| `effects` | Cosmetic player particle trails; opt in per server. |
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
-| `glow` | Cosmetic player glow effect; opt in per server. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
 Enabling any of these activates its existing implementation; no additional configuration is required.
@@ -208,7 +206,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 | Key (relative to `modules.effects`) | Type | Default | Description |
 |---|---|---|---|
-| `default-particle` | Particle | `HAPPY_VILLAGER` | Bukkit `Particle` enum name used for particle effects. |
+| `default-particle` | Particle | `HAPPY_VILLAGER` | Display fallback before a player selects a particle; not emitted automatically. |
 | `schedule` | Duration | `5t` (5 ticks) | How often each enabled player's particle trail is emitted. Hot-reloaded: the running task is rescheduled. |
 | `count` | int | `25` | Number of particles to spawn. |
 | `offset-x` | double | `0.9` | Particle spread on the X axis. |
@@ -218,9 +216,9 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 Emission is scheduled on the server tick clock and is independent of player movement. Enabled state
 and the chosen particle are player preferences stored in `data/settings.yml`; a player who has never
-chosen defaults to enabled (while the module is enabled) with `default-particle`. `/effects` reports
-the effective state, particle, and usage without mutating anything; `/effects toggle` flips and
-persists the state, and `/effects <particle>` sets and persists the particle.
+chosen a particle emits nothing. `/effects` reports the effective state, display particle, and usage
+without mutating anything; `/effects toggle` flips and persists the state, and `/effects <particle>`
+sets and persists the particle while enabling effects immediately.
 
 ---
 

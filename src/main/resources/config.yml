@@ -1,8 +1,8 @@
 # Kreiscraft configuration.
 # See docs/configuration.md for a full reference of every module and key.
 #
-# Most modules ship enabled. Effects, Firework, Glow and Positions ship
-# disabled by default; set `enabled: true` below to opt in. See the Module Catalog for details.
+# Most modules ship enabled. Firework and Positions ship disabled by default; set
+# `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
@@ -51,7 +51,7 @@ modules:
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: false
+    enabled: true
     default-particle: HAPPY_VILLAGER
     schedule: 5t
     count: 25
@@ -64,7 +64,7 @@ modules:
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
   glow:
-    enabled: false
+    enabled: true
   invsee:
     enabled: true
   jail:

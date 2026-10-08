@@ -12,8 +12,8 @@ import org.spongepowered.configurate.ConfigurationNode;
 public final class EffectsModule implements Module {
 
     /**
-     * Module default applied when a player has no stored effects preference. Effects are opt-out
-     * once the module is enabled, so a brand-new player gets the trail.
+     * Module default applied when a player has no stored enabled preference. A brand-new player
+     * still emits nothing until selecting a particle.
      */
     static final boolean EFFECTS_DEFAULT_ENABLED = true;
 

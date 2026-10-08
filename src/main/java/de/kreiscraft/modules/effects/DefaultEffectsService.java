@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.effects;
 
 import de.kreiscraft.shared.preferences.PlayerPreferencesService;
+import java.util.Optional;
 import java.util.UUID;
 import org.bukkit.Particle;
 
@@ -9,9 +10,8 @@ import org.bukkit.Particle;
  *
  * <p>Enabled state and particle choice live in the always-available {@link
  * PlayerPreferencesService}, so they survive reconnects and remain available regardless of whether
- * the Player Settings GUI or any other module is enabled. A player who has never chosen keeps the
- * module default passed at construction time (enabled when the module is enabled) and the
- * configured default particle; these are never written until the player makes an explicit choice.
+ * the Player Settings GUI or any other module is enabled. The configured default particle is only
+ * a display fallback: emission remains neutral until the player explicitly selects a particle.
  */
 public final class DefaultEffectsService implements EffectsService {
 
@@ -45,8 +45,14 @@ public final class DefaultEffectsService implements EffectsService {
     }
 
     @Override
+    public Optional<Particle> selectedParticle(UUID playerId) {
+        return preferences.preferences(playerId).effectsParticle();
+    }
+
+    @Override
     public void setParticle(UUID playerId, Particle particle) {
         preferences.setEffectsParticle(playerId, particle);
+        preferences.setEffectsEnabled(playerId, true);
     }
 
     /** Returns the active configuration. Used by the emitter to read count / offset values. */
