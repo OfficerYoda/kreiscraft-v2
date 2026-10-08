@@ -99,6 +99,7 @@ public final class DefaultSettingsService implements SettingsService {
     @Override
     public void setEffectsParticle(UUID playerId, Particle particle) {
         preferences.setEffectsParticle(playerId, particle);
+        preferences.setEffectsEnabled(playerId, true);
     }
 
     @Override

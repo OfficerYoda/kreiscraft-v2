@@ -54,7 +54,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-23 opt-in modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `effects`, `firework`, `glow` and `positions` ship **disabled by default** and must be opted in explicitly. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+23 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; only `firework` and `positions` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
 
 | Module ID | Summary |
 |---|---|

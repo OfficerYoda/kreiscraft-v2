@@ -38,6 +38,7 @@ public interface SettingsService {
     /** The player's effective particle, defaulting to the module default when absent. */
     Particle effectsParticle(UUID playerId);
 
+    /** Selects a particle and enables effects immediately. */
     void setEffectsParticle(UUID playerId, Particle particle);
 
     /** The player's effective glow state, defaulting to the module default when absent. */

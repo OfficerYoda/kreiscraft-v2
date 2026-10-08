@@ -36,7 +36,7 @@ modules:
     enabled: true
     event-priority: LOWEST
     allow-mini-message-in-body: false
-    format: "<team-prefix> <name-colored> <team-suffix><gray> » <reset><body>"
+    format: "<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>"
   clickthrough:
     enabled: true
   combat:
@@ -46,7 +46,7 @@ modules:
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: false
+    enabled: true
     default-particle: HAPPY_VILLAGER
     schedule: 5t
     count: 25
@@ -59,7 +59,7 @@ modules:
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
   glow:
-    enabled: false
+    enabled: true
   invsee:
     enabled: true
   jail:

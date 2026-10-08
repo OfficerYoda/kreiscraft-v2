@@ -136,7 +136,7 @@ public final class SettingsGui {
             boolean serverConfig) {
         Gui gui = Gui.empty(9, 3);
         if (SettingsControl.LANGUAGE.isAvailable(modules)) {
-            gui.setItem(SLOT_LANGUAGE, languageItem(settings, messages));
+            gui.setItem(SLOT_LANGUAGE, languageItem(settings, messages, navigator));
         }
         if (serverConfig) {
             gui.setItem(SLOT_SERVER_CONFIG, serverConfigItem(messages, navigator));
@@ -170,7 +170,8 @@ public final class SettingsGui {
     // Item factories
     // ------------------------------------------------------------------
 
-    private static AbstractItem languageItem(SettingsService settings, MessageService messages) {
+    private static AbstractItem languageItem(
+            SettingsService settings, MessageService messages, Navigator navigator) {
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
@@ -186,7 +187,7 @@ public final class SettingsGui {
             @Override
             public void handleClick(ClickType clickType, Player player, Click click) {
                 settings.setLanguage(player.getUniqueId(), nextLanguage(settings.language(player.getUniqueId())));
-                notifyWindows();
+                navigator.open(player, Page.ROOT);
             }
         };
     }
