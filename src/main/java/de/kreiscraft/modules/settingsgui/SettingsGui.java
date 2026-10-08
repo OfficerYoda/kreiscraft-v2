@@ -9,6 +9,7 @@ import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -73,21 +74,6 @@ public final class SettingsGui {
     static final int SLOT_EFFECTS_PARTICLE = 15;
     static final int SLOT_BACK = 22;
 
-    /** Ordered particle choices cycled by the effects-particle control. */
-    static final List<Particle> PARTICLE_OPTIONS = List.of(
-            Particle.HAPPY_VILLAGER,
-            Particle.FLAME,
-            Particle.SOUL_FIRE_FLAME,
-            Particle.END_ROD,
-            Particle.HEART,
-            Particle.CRIT,
-            Particle.ENCHANT,
-            Particle.CLOUD,
-            Particle.NOTE,
-            Particle.LAVA,
-            Particle.ELECTRIC_SPARK,
-            Particle.TOTEM_OF_UNDYING);
-
     private SettingsGui() {}
 
     /** A page of the Player Settings menu. */
@@ -110,6 +96,11 @@ public final class SettingsGui {
     @FunctionalInterface
     public interface Navigator {
         void open(Player player, Page page);
+
+        default void pickParticle(
+                Player player, Consumer<Particle> selection, Runnable cancellation) {
+            ParticlePicker.open(player, selection, cancellation);
+        }
     }
 
     /** Builds the root settings page for {@code player}. */
@@ -161,7 +152,7 @@ public final class SettingsGui {
             SettingsService settings, MessageService messages, Navigator navigator) {
         Gui gui = Gui.empty(9, 3);
         gui.setItem(SLOT_EFFECTS_ENABLED, effectsEnabledItem(settings, messages));
-        gui.setItem(SLOT_EFFECTS_PARTICLE, effectsParticleItem(settings, messages));
+        gui.setItem(SLOT_EFFECTS_PARTICLE, effectsParticleItem(settings, messages, navigator));
         gui.setItem(SLOT_BACK, backItem(messages, navigator));
         return gui;
     }
@@ -320,7 +311,7 @@ public final class SettingsGui {
     }
 
     private static AbstractItem effectsParticleItem(
-            SettingsService settings, MessageService messages) {
+            SettingsService settings, MessageService messages, Navigator navigator) {
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
@@ -335,9 +326,13 @@ public final class SettingsGui {
 
             @Override
             public void handleClick(ClickType clickType, Player player, Click click) {
-                UUID id = player.getUniqueId();
-                settings.setEffectsParticle(id, nextParticle(settings.effectsParticle(id)));
-                notifyWindows();
+                navigator.pickParticle(
+                        player,
+                        particle -> {
+                            settings.setEffectsParticle(player.getUniqueId(), particle);
+                            navigator.open(player, Page.EFFECTS);
+                        },
+                        () -> navigator.open(player, Page.EFFECTS));
             }
         };
     }
@@ -369,14 +364,6 @@ public final class SettingsGui {
     static CombatDisplay nextDisplay(CombatDisplay current) {
         CombatDisplay[] values = CombatDisplay.values();
         return values[(current.ordinal() + 1) % values.length];
-    }
-
-    static Particle nextParticle(Particle current) {
-        int index = PARTICLE_OPTIONS.indexOf(current);
-        if (index < 0) {
-            return PARTICLE_OPTIONS.get(0);
-        }
-        return PARTICLE_OPTIONS.get((index + 1) % PARTICLE_OPTIONS.size());
     }
 
     private static String languageNameKey(PlayerLanguage language) {

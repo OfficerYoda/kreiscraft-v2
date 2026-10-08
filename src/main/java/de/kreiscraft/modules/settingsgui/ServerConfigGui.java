@@ -6,11 +6,13 @@ import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
@@ -56,6 +58,12 @@ public final class ServerConfigGui {
 
         /** Closes the GUI and asks the player to type a free-form value in chat. */
         void requestTextInput(Player player, ConfigField field, ServerConfigPage page);
+
+        /** Opens the shared searchable particle picker. */
+        default void pickParticle(
+                Player player, Consumer<Particle> selection, Runnable cancellation) {
+            ParticlePicker.open(player, selection, cancellation);
+        }
     }
 
     private ServerConfigGui() {}
@@ -180,6 +188,22 @@ public final class ServerConfigGui {
 
             @Override
             public void handleClick(ClickType clickType, Player player, Click click) {
+                if (isParticle(field)) {
+                    navigator.pickParticle(
+                            player,
+                            particle -> {
+                                applyResult(
+                                        messages,
+                                        session,
+                                        player,
+                                        field,
+                                        editor.edit(field, particle.name()));
+                                navigator.openServerConfig(player, ServerConfigPage.of(category));
+                            },
+                            () -> navigator.openServerConfig(
+                                    player, ServerConfigPage.of(category)));
+                    return;
+                }
                 if (ServerConfigControls.isTextEntry(field)) {
                     navigator.requestTextInput(player, field, ServerConfigPage.of(category));
                     return;
@@ -193,6 +217,10 @@ public final class ServerConfigGui {
                 notifyWindows();
             }
         };
+    }
+
+    private static boolean isParticle(ConfigField field) {
+        return field.path().equals(List.of("modules", "effects", "default-particle"));
     }
 
     private static void applyResult(

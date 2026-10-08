@@ -37,7 +37,7 @@ For each control, make one change and confirm the displayed value updates immedi
 - **Decimal number** — step `effects → Effect offset X` up and down.
 - **Duration** — cycle `combat → Combat tag duration` and `start-sequence → Border duration`; each
   offers durations scaled to that field.
-- **Enum** — cycle `combat → Combat display` and `effects → Default particle`.
+- **Enum** — cycle `combat → Combat display`; search and select `effects → Default particle`.
 - **Location** — stand somewhere distinctive and click `spawn → Spawn location` or `jail → Jail
   location`; the stored position matches where you stood.
 - **Text** — click `chat-format → Chat format`, type a MiniMessage format in chat, and confirm it is
