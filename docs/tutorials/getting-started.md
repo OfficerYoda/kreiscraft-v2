@@ -77,10 +77,10 @@ On first run you will see Paper bootstrap output followed by plugin startup. Loo
 If you have configured the language to `en` (in `config.yml` → `core.language: en`) it reads:
 
 ```
-[Kreiscraft] [INFO] 18 modules enabled, 4 disabled, 0 failed.
+[Kreiscraft] [INFO] 21 modules enabled, 2 disabled, 0 failed.
 ```
 
-The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. The bundled `config.yml` ships 18 modules enabled; `effects`, `firework`, `glow` and `positions` are disabled by default and only start when explicitly opted in, so a clean run reports 18 enabled and 4 disabled.
+The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. The bundled `config.yml` ships 21 modules enabled; only `firework` and `positions` are disabled by default, so a clean run reports 21 enabled and 2 disabled.
 
 If any module fails to start, the log also prints a `SEVERE` line with the module id and exception before the summary. Check that line first when troubleshooting.
 

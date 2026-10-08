@@ -58,23 +58,22 @@ class EffectsEmitterTest {
     }
 
     @Test
-    void emit_whenEnabled_spawnsParticleOnScheduleWithoutMovement() {
+    void emit_withoutSelectedParticle_emitsNothing() {
         EffectsEmitter emitter = emitter(config(Particle.HAPPY_VILLAGER, true));
 
-        // Advancing the scheduler clock alone drives emission; no movement event is involved.
         scheduler.advance(Duration.ZERO);
 
-        verify(world)
+        verify(world, never())
                 .<Void>spawnParticle(
-                        eq(Particle.HAPPY_VILLAGER),
+                        any(Particle.class),
                         any(Location.class),
-                        eq(25),
-                        eq(0.9),
-                        eq(0.9),
-                        eq(0.9),
-                        eq(0.0),
-                        isNull(),
-                        eq(true));
+                        anyInt(),
+                        anyDouble(),
+                        anyDouble(),
+                        anyDouble(),
+                        anyDouble(),
+                        any(),
+                        org.mockito.ArgumentMatchers.anyBoolean());
         emitter.disable();
     }
 
@@ -122,6 +121,7 @@ class EffectsEmitterTest {
 
     @Test
     void emit_passesForceFromConfig() {
+        preferences.setEffectsParticle(playerId, Particle.HAPPY_VILLAGER);
         EffectsEmitter emitter = emitter(config(Particle.HAPPY_VILLAGER, false));
 
         scheduler.advance(Duration.ZERO);
@@ -142,6 +142,7 @@ class EffectsEmitterTest {
 
     @Test
     void reschedule_replacesRunningPeriod() {
+        preferences.setEffectsParticle(playerId, Particle.HAPPY_VILLAGER);
         EffectsEmitter emitter = emitter(config(Particle.HAPPY_VILLAGER, true));
 
         scheduler.advance(Duration.ZERO); // one emission at t=0

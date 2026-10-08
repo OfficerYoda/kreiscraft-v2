@@ -76,6 +76,11 @@ class DefaultEffectsServiceTest {
     }
 
     @Test
+    void selectedParticle_whenNoState_isEmpty() {
+        assertThat(service().selectedParticle(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
     void setParticle_overridesAndPersists() {
         UUID id = UUID.randomUUID();
         service().setParticle(id, Particle.FLAME);
@@ -83,17 +88,19 @@ class DefaultEffectsServiceTest {
         assertThat(service().getParticle(id)).isEqualTo(Particle.FLAME);
         assertThat(new DefaultEffectsService(preferences, config, true).getParticle(id))
                 .isEqualTo(Particle.FLAME);
+        assertThat(new DefaultEffectsService(preferences, config, true).selectedParticle(id))
+                .contains(Particle.FLAME);
     }
 
     @Test
-    void setParticle_doesNotToggleEnabled() {
+    void setParticle_enablesEffectsImmediately() {
         UUID id = UUID.randomUUID();
         DefaultEffectsService svc =
                 new DefaultEffectsService(preferences, config, false);
 
         svc.setParticle(id, Particle.FLAME);
 
-        assertThat(svc.isEnabled(id)).isFalse();
+        assertThat(svc.isEnabled(id)).isTrue();
     }
 
     @Test
@@ -105,7 +112,7 @@ class DefaultEffectsServiceTest {
 
         DefaultEffectsService afterReconnect = service();
 
-        assertThat(afterReconnect.isEnabled(id)).isFalse();
+        assertThat(afterReconnect.isEnabled(id)).isTrue();
         assertThat(afterReconnect.getParticle(id)).isEqualTo(Particle.HEART);
     }
 

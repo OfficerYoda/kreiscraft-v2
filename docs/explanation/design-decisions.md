@@ -272,7 +272,7 @@ consumer, enabling `api` to clean up during `disable()` without affecting any ot
 
 ## ADR-9: Four Modules Ship Disabled by Default
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0001
 
 **Context:**  
 `ModuleRegistry` treats a module as active only when `modules.<id>.enabled: true` is present in

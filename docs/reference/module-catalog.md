@@ -36,17 +36,15 @@ Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and event
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Four ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Two ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
 |-----------|--------------------------|
-| `effects` | Player-facing particle trails are cosmetic; operators opt in per server. |
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
-| `glow` | Player-facing glow effect is cosmetic; operators opt in per server. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
-All four implementations are fully functional; enabling the flag is sufficient to activate them.
+Both implementations are fully functional; enabling the flag is sufficient to activate them.
 
 ---
 
@@ -173,17 +171,17 @@ Tags players in combat when they deal or receive damage, keeping them tagged for
 
 **Package:** `de.kreiscraft.modules.effects`
 **Depends on:** none
-**Default enabled:** false — opt in with `modules.effects.enabled: true`
+**Default enabled:** true
 
 ### Description
 
-Spawns a configurable particle effect around a player on a configurable tick schedule (default `5t`) while they have effects enabled; emission is independent of movement. Players can report their state and particle with bare `/effects`, toggle it with `/effects toggle`, and choose the particle type with `/effects <particle>`. A new player defaults to enabled once the module is enabled, and the enabled state and particle are stored as player preferences in `data/settings.yml`, so they survive reconnects. The particle argument's completion marks the player's effective particle.
+Spawns a configurable particle effect around a player on a configurable tick schedule (default `5t`) while they have effects enabled and have selected a particle; emission is independent of movement. A new player emits nothing until choosing a particle with `/effects <particle>`, which enables the trail immediately. Enabled state and particle are stored as player preferences in `data/settings.yml`, so existing choices survive reconnects.
 
 ### Configuration
 
 | Key (relative to `modules.effects`) | Type | Default | Description |
 |---|---|---|---|
-| `default-particle` | Particle | `HAPPY_VILLAGER` | Particle used until the player chooses one. |
+| `default-particle` | Particle | `HAPPY_VILLAGER` | Particle shown by controls until the player chooses one; it is not emitted automatically. |
 | `schedule` | Duration | `5t` | Emission period; hot-reloaded. |
 | `count` / `offset-x` / `offset-y` / `offset-z` / `force` | — | — | Emission shape and visibility, as in the Configuration reference. |
 
@@ -209,7 +207,7 @@ Registers a Bukkit shaped crafting recipe that yields a firework rocket with the
 
 **Package:** `de.kreiscraft.modules.glow`
 **Depends on:** none
-**Default enabled:** false — opt in with `modules.glow.enabled: true`
+**Default enabled:** true
 
 ### Description
 
