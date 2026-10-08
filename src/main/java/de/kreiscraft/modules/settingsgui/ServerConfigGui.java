@@ -4,12 +4,14 @@ import de.kreiscraft.core.config.ConfigEditResult;
 import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -188,18 +190,7 @@ public final class ServerConfigGui {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
                 Object current = editor.current(field);
-                Material icon =
-                        isModuleEnabled(field)
-                                ? (Boolean.TRUE.equals(current)
-                                        ? Material.LIME_STAINED_GLASS_PANE
-                                        : Material.RED_STAINED_GLASS_PANE)
-                                : material(field, current);
-                ItemStack stack = named(icon, name(field, current, messages, viewer));
-                if (isModuleEnabled(field)) {
-                    stack.editMeta(meta -> meta.lore(List.of(
-                            messages.renderFor(viewer, "server-config.lifecycle.restart-required"))));
-                }
-                return new ItemWrapper(stack);
+                return new ItemWrapper(fieldStack(field, current, messages, viewer));
             }
 
             @Override
@@ -338,9 +329,10 @@ public final class ServerConfigGui {
                     viewer,
                     "server-config.field.module-enabled",
                     "module",
-                    humanize(String.valueOf(field.path().get(1))));
+                    humanize(String.valueOf(field.path().get(1))))
+                    .colorIfAbsent(NamedTextColor.GRAY);
         }
-        return messages.renderFor(viewer, fieldKey(field));
+        return messages.renderFor(viewer, fieldKey(field)).colorIfAbsent(NamedTextColor.GRAY);
     }
 
     /** The current value rendered for display. */
@@ -348,15 +340,20 @@ public final class ServerConfigGui {
     static Component value(
             ConfigField field, Object current, MessageService messages, Player viewer) {
         if (current == null) {
-            return messages.renderFor(viewer, "server-config.value-none");
+            return messages.renderFor(viewer, "server-config.value-none")
+                    .colorIfAbsent(NamedTextColor.DARK_GRAY);
         }
         return switch (field.type()) {
             case BOOLEAN -> messages.renderFor(
                     viewer,
-                    ((Boolean) current) ? "server-config.value-on" : "server-config.value-off");
-            case LOCATION -> Component.text(formatLocation((Location) current));
-            case STRING_LIST -> Component.text(String.join(", ", (List<String>) current));
-            default -> Component.text(String.valueOf(current));
+                    ((Boolean) current)
+                            ? "server-config.value-on"
+                            : "server-config.value-off")
+                    .colorIfAbsent(Boolean.TRUE.equals(current) ? NamedTextColor.GREEN : NamedTextColor.RED);
+            case LOCATION -> Component.text(formatLocation((Location) current), NamedTextColor.AQUA);
+            case STRING_LIST ->
+                Component.text(String.join(", ", (List<String>) current), NamedTextColor.AQUA);
+            default -> Component.text(String.valueOf(current), NamedTextColor.AQUA);
         };
     }
 
@@ -365,6 +362,31 @@ public final class ServerConfigGui {
         return label(field, messages, viewer)
                 .append(Component.text(": ").color(NamedTextColor.GRAY))
                 .append(value(field, current, messages, viewer));
+    }
+
+    private static ItemStack fieldStack(
+            ConfigField field, Object current, MessageService messages, Player viewer) {
+        Component displayName = name(field, current, messages, viewer);
+        ItemStack stack;
+        if (field.path().equals(List.of("core", "language"))) {
+            PlayerLanguage language = PlayerLanguage.fromCode(String.valueOf(current))
+                    .orElse(PlayerLanguage.DE);
+            stack = SettingsGui.flagHead(language, displayName);
+        } else if (isModuleEnabled(field)) {
+            stack = named(
+                    Boolean.TRUE.equals(current)
+                            ? Material.LIME_STAINED_GLASS_PANE
+                            : Material.RED_STAINED_GLASS_PANE,
+                    displayName);
+        } else {
+            stack = named(material(field, current), displayName);
+        }
+        Component lifecycle = messages.renderFor(viewer, field.lifecycle().messageKey())
+                .colorIfAbsent(
+                        field.hotReloadable() ? NamedTextColor.GREEN : NamedTextColor.RED)
+                .decoration(TextDecoration.ITALIC, false);
+        stack.editMeta(meta -> meta.lore(List.of(lifecycle)));
+        return stack;
     }
 
     /** The icon material for a field, reflecting its type and boolean state. */
@@ -412,7 +434,7 @@ public final class ServerConfigGui {
 
     private static ItemStack named(Material material, Component displayName) {
         ItemStack stack = new ItemStack(material);
-        stack.editMeta(meta -> meta.displayName(displayName));
+        stack.editMeta(meta -> meta.displayName(displayName.decoration(TextDecoration.ITALIC, false)));
         return stack;
     }
 }
