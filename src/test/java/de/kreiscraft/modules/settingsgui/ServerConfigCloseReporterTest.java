@@ -23,9 +23,8 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
 /**
- * Verifies the close-time prompts use the shipped language content: a hot-reload edit offers the
- * applicable clickable reload action, and a restart-only edit (including every module enable flag)
- * warns about a restart and never claims a live application.
+ * Verifies the close-time messages use the shipped language content after automatic reload and for
+ * restart-only edits (including every module enable flag).
  */
 class ServerConfigCloseReporterTest {
 
@@ -60,15 +59,15 @@ class ServerConfigCloseReporterTest {
     }
 
     @Test
-    void hotReloadEdit_offersClickableReloadAction() {
+    void hotReloadEdit_confirmsAutomaticApplicationWithoutAction() {
         ServerConfigSession session = new ServerConfigSession();
         session.recordApplied(hotReloadField());
 
-        ServerConfigCloseReporter.report(messages, player, session);
+        ServerConfigCloseReporter.report(messages, player, session, true);
 
         Component received = player.nextComponentMessage();
         assertThat(received).isNotNull();
-        assertThat(miniMessage(received)).contains("run_command").contains("/kc reload");
+        assertThat(miniMessage(received)).containsIgnoringCase("automatically").doesNotContain("run_command");
         assertThat(player.nextComponentMessage())
                 .as("no restart warning for a hot-reload-only session")
                 .isNull();
@@ -79,7 +78,7 @@ class ServerConfigCloseReporterTest {
         ServerConfigSession session = new ServerConfigSession();
         session.recordApplied(ServerConfigSchema.moduleEnabled("combat"));
 
-        ServerConfigCloseReporter.report(messages, player, session);
+        ServerConfigCloseReporter.report(messages, player, session, false);
 
         Component received = player.nextComponentMessage();
         assertThat(received).isNotNull();
@@ -97,7 +96,7 @@ class ServerConfigCloseReporterTest {
         session.recordApplied(hotReloadField());
         session.recordApplied(ServerConfigSchema.moduleEnabled("combat"));
 
-        ServerConfigCloseReporter.report(messages, player, session);
+        ServerConfigCloseReporter.report(messages, player, session, true);
 
         assertThat(player.nextComponentMessage()).isNotNull();
         assertThat(player.nextComponentMessage()).isNotNull();
@@ -105,7 +104,7 @@ class ServerConfigCloseReporterTest {
 
     @Test
     void emptySession_sendsNothing() {
-        ServerConfigCloseReporter.report(messages, player, new ServerConfigSession());
+        ServerConfigCloseReporter.report(messages, player, new ServerConfigSession(), false);
 
         assertThat(player.nextComponentMessage()).isNull();
     }

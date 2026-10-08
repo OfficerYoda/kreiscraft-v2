@@ -17,9 +17,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -48,6 +50,7 @@ public final class ServerConfigNavigator
     private final MessageService messages;
     private final Gui gui;
     private final Scheduler scheduler;
+    private final Predicate<CommandSender> reload;
 
     private final Map<UUID, ServerConfigSession> sessions = new HashMap<>();
     private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
@@ -60,13 +63,15 @@ public final class ServerConfigNavigator
             ServerConfigService editor,
             MessageService messages,
             Gui gui,
-            Scheduler scheduler) {
+            Scheduler scheduler,
+            Predicate<CommandSender> reload) {
         this.settings = settings;
         this.modules = modules;
         this.editor = editor;
         this.messages = messages;
         this.gui = gui;
         this.scheduler = scheduler;
+        this.reload = reload;
     }
 
     @Override
@@ -143,15 +148,20 @@ public final class ServerConfigNavigator
         }
         ServerConfigSession session = sessions.remove(id);
         if (session != null && player.isOnline()) {
-            ServerConfigCloseReporter.report(messages, player, session);
+            report(player, session);
         }
     }
 
     private void reportAndClear(Player player) {
         ServerConfigSession session = sessions.remove(player.getUniqueId());
         if (session != null && player.isOnline()) {
-            ServerConfigCloseReporter.report(messages, player, session);
+            report(player, session);
         }
+    }
+
+    private void report(Player player, ServerConfigSession session) {
+        boolean hotReloadApplied = session.hasHotReload() && reload.test(player);
+        ServerConfigCloseReporter.report(messages, player, session, hotReloadApplied);
     }
 
     // ------------------------------------------------------------------
