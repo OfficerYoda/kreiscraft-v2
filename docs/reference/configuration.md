@@ -76,8 +76,10 @@ Fields that are not declared there remain YAML-only.
 
 Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
 root or with `/settings admin`. `ServerConfigSchema.editableFields()` declares the complete safe,
-GUI-exposed field set; the GUI groups it by the owning unit and picks a control from each field's
-value type:
+GUI-exposed field set. Every configured module has a section with a representative icon. Settings
+are arranged one related group per row; the module enable toggle is a glass pane in the far-left
+slot of the bottom row and explains that the change requires a restart. The GUI picks a control from
+each field's value type:
 
 - Boolean — a toggle that flips on click.
 - Whole number — a stepper, bounded by the field's validator.
