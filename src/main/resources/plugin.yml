@@ -17,9 +17,6 @@ permissions:
   kreiscraft.admin.statistic: { description: See a player's statistic, default: op }
   kreiscraft.admin.sudo: { description: Force a player to run chat/command, default: op }
   kreiscraft.admin.help: { description: Open Kreiscraft help links, default: true }
-  kreiscraft.admin.style-preview:
-    description: Temporarily preview Command Message Style candidates for human approval
-    default: op
   kreiscraft.anticheat.view:
     description: View hack logs
     default: op

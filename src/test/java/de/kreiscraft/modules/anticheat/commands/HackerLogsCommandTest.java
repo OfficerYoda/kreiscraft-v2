@@ -226,11 +226,13 @@ class HackerLogsCommandTest {
 
         assertThat(alice.nextMessage())
                 .as("Alice stored English")
-                .contains("Entries for Bob")
+                .contains("Entries for")
+                .contains("Bob")
                 .contains("cheats");
         assertThat(carol.nextMessage())
                 .as("Carol stored no preference and must receive the server language")
-                .contains("Einträge für Bob")
+                .contains("Einträge für")
+                .contains("Bob")
                 .contains("Cheats");
     }
 

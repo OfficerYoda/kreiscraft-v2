@@ -20,8 +20,6 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
 | `/ping [player]` | — | `admin` | Show a player's ping in milliseconds. | `kreiscraft.admin.ping` | true |
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
-| `/commandstylepreview` | — | `admin` | **Temporary:** open the approved Variant A comparison board: four simultaneous inventory cards for Classic, Signal, Ember, and Requested Hybrid. Cards cover ordinary text, player names, reasons, values, success, warnings, errors, and inventory titles. | `kreiscraft.admin.style-preview` | op |
-| `/commandstylepreview title <classic\|signal\|ember\|hybrid>` | — | `admin` | **Temporary:** open a non-selecting, title-focused page whose actual inventory title is `Inventory of Steve` rendered in that palette's ordinary/player colors. Use each argument to compare title contexts; no choice is saved or applied. | `kreiscraft.admin.style-preview` | op |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
@@ -90,7 +88,6 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 - `kreiscraft.admin.statistic` — **(op)** — See a player's statistic.
 - `kreiscraft.admin.sudo` — **(op)** — Force a player to run chat/command.
 - `kreiscraft.admin.help` — **(true)** — Open Kreiscraft help links.
-- `kreiscraft.admin.style-preview` — **(op)** — **Temporary:** preview Command Message Style candidates for the human approval checkpoint. Remove this permission, command, messages, and tests after the human selection in #60 is rolled out.
 
 ### `anti-cheat` module
 

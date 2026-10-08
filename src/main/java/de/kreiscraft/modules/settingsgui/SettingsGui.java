@@ -1,17 +1,22 @@
 package de.kreiscraft.modules.settingsgui;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.shared.preferences.CombatDisplay;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import xyz.xenondevs.invui.Click;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.item.AbstractItem;
@@ -30,17 +35,30 @@ import xyz.xenondevs.invui.item.ItemWrapper;
  *
  * <pre>
  * Root page (3 rows)                 Effects page (3 rows)
- * slot  4  Language                  slot 11  Effects on/off
+ * slot  8  Server Config             slot 11  Effects on/off
  * slot 10  Click-Through             slot 15  Particle
  * slot 12  Combat display            slot 22  Back
  * slot 14  Effects (opens page)
  * slot 16  Glow
+ * slot 26  Language (bottom-right, flag head)
  * </pre>
  */
 public final class SettingsGui {
 
+    // German flag head texture (minecraft-heads.com ID 522, texture only, no ad metadata)
+    static final String TEXTURE_DE =
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1"
+                    + "cmUvNWU3ODk5YjQ4MDY4NTg2OTdlMjgzZjA4NGQ5MTczZmU0ODc4ODY0NTM3NzQ2MjZiMjRiZDhjZmVjYzc3"
+                    + "YjNmIn19fQ==";
+
+    // UK flag head texture (minecraft-heads.com ID 23237, texture only, no ad metadata)
+    static final String TEXTURE_EN =
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1"
+                    + "cmUvODc5ZDk5ZDljNDY0NzRlMjcxM2E3ZTg0YTk1ZTRjZTdlOGZmOGVhNGQxNjQ0MTNhNTkyZTQ0MzVkMmM2"
+                    + "ZjlkYyJ9fX0=";
+
     // ---- Root-page slots (package-private for tests) ----
-    static final int SLOT_LANGUAGE = 4;
+    static final int SLOT_LANGUAGE = 26;
     static final int SLOT_SERVER_CONFIG = 8;
     static final int SLOT_CLICK_THROUGH = 10;
     static final int SLOT_COMBAT_DISPLAY = 12;
@@ -162,7 +180,7 @@ public final class SettingsGui {
                         "settings-gui.language",
                         "language",
                         messages.renderFor(viewer, languageNameKey(language)));
-                return new ItemWrapper(named(Material.BOOK, name));
+                return new ItemWrapper(flagHead(language, name));
             }
 
             @Override
@@ -171,6 +189,20 @@ public final class SettingsGui {
                 notifyWindows();
             }
         };
+    }
+
+    /** Creates a textured player-head for the given language using the approved flag textures. */
+    private static ItemStack flagHead(PlayerLanguage language, Component displayName) {
+        String texture = language == PlayerLanguage.DE ? TEXTURE_DE : TEXTURE_EN;
+        ItemStack stack = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) stack.getItemMeta();
+        PlayerProfile profile = Bukkit.createProfile(
+                UUID.nameUUIDFromBytes(texture.getBytes(StandardCharsets.UTF_8)));
+        profile.setProperty(new ProfileProperty("textures", texture));
+        meta.setPlayerProfile(profile);
+        meta.displayName(displayName);
+        stack.setItemMeta(meta);
+        return stack;
     }
 
     private static AbstractItem serverConfigItem(MessageService messages, Navigator navigator) {
