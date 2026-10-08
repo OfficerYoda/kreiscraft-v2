@@ -56,6 +56,9 @@ public final class ServerConfigGui {
 
         /** Closes the GUI and asks the player to type a free-form value in chat. */
         void requestTextInput(Player player, ConfigField field, ServerConfigPage page);
+
+        /** Opens the anvil editor for a list-valued field. */
+        void openListEditor(Player player, ConfigField field, ServerConfigPage page);
     }
 
     private ServerConfigGui() {}
@@ -180,6 +183,10 @@ public final class ServerConfigGui {
 
             @Override
             public void handleClick(ClickType clickType, Player player, Click click) {
+                if (field.type() == de.kreiscraft.core.config.ConfigFieldType.STRING_LIST) {
+                    navigator.openListEditor(player, field, ServerConfigPage.of(category));
+                    return;
+                }
                 if (ServerConfigControls.isTextEntry(field)) {
                     navigator.requestTextInput(player, field, ServerConfigPage.of(category));
                     return;

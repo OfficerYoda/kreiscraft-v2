@@ -2,7 +2,6 @@ package de.kreiscraft.modules.settingsgui;
 
 import de.kreiscraft.core.config.ConfigEditResult;
 import de.kreiscraft.core.config.ConfigField;
-import de.kreiscraft.core.config.ConfigFieldType;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.scheduler.Scheduler;
@@ -17,12 +16,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.time.Duration;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
+import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.ItemStack;
+import xyz.xenondevs.invui.Click;
+import xyz.xenondevs.invui.item.AbstractItem;
+import xyz.xenondevs.invui.item.ItemProvider;
+import xyz.xenondevs.invui.item.Item;
+import xyz.xenondevs.invui.item.ItemWrapper;
 
 /**
  * Opens every Player Settings and Server Configuration page and owns their sessions.
@@ -33,9 +40,9 @@ import org.bukkit.event.Listener;
  * {@link ServerConfigCloseReporter} tells the operator which changes need a reload and which need a
  * restart.
  *
- * <p>Free-form text and text lists are entered through chat: clicking such a field closes the GUI
- * and prompts for a value, which is applied on the next chat message. All GUI work is scheduled on
- * the main thread because the chat event is asynchronous.
+ * <p>Free-form strings are entered through chat. String lists use an anvil editor whose lower
+ * inventory shows removable values. All chat-triggered GUI work is scheduled on the main thread
+ * because the chat event is asynchronous.
  */
 public final class ServerConfigNavigator
         implements SettingsNavigator, ServerConfigGui.Navigator, Listener {
@@ -175,7 +182,141 @@ public final class ServerConfigNavigator
                 "field",
                 fieldName,
                 "kind",
-                field.type() == ConfigFieldType.STRING_LIST ? "list" : "text");
+                "text");
+    }
+
+    @Override
+    public void openListEditor(Player player, ConfigField field, ServerConfigPage page) {
+        String[] draft = {""};
+        xyz.xenondevs.invui.gui.Gui upper = xyz.xenondevs.invui.gui.Gui.empty(3, 1);
+        upper.setItem(0, Item.simple(named(Material.PAPER, Component.text(" "), List.of())));
+        upper.setItem(2, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                return new ItemWrapper(named(Material.LIME_DYE, Component.text("Add"), List.of()));
+            }
+
+            @Override
+            public void handleClick(
+                    org.bukkit.event.inventory.ClickType clickType, Player viewer, Click click) {
+                addListValue(viewer, field, page, draft[0]);
+            }
+        });
+        xyz.xenondevs.invui.gui.Gui lower = xyz.xenondevs.invui.gui.Gui.empty(9, 4);
+        List<String> values = listValue(field);
+        for (int slot = 0; slot < Math.min(lower.getSize(), values.size()); slot++) {
+            String value = values.get(slot);
+            lower.setItem(slot, listEntry(player, field, page, value));
+        }
+        openAnvilWindow(
+                player,
+                upper,
+                lower,
+                ServerConfigGui.label(field, messages, player),
+                text -> draft[0] = text,
+                () -> openServerConfig(player, page));
+    }
+
+    private AbstractItem listEntry(
+            Player player, ConfigField field, ServerConfigPage page, String value) {
+        return new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                return new ItemWrapper(named(
+                        Material.PAPER,
+                        Component.text(value),
+                        List.of(Component.text("Right click to delete"))));
+            }
+
+            @Override
+            public void handleClick(
+                    org.bukkit.event.inventory.ClickType clickType, Player viewer, Click click) {
+                if (!clickType.isRightClick()) {
+                    return;
+                }
+                List<String> updated = new ArrayList<>(listValue(field));
+                updated.remove(value);
+                applyListEdit(player, field, page, updated);
+            }
+        };
+    }
+
+    private void addListValue(
+            Player player, ConfigField field, ServerConfigPage page, String input) {
+        String value = input.trim();
+        if (value.isEmpty()) {
+            messages.send(player, "server-config.list.blank");
+            return;
+        }
+        List<String> updated = new ArrayList<>(listValue(field));
+        if (updated.contains(value)) {
+            messages.send(player, "server-config.list.duplicate", "value", value);
+            return;
+        }
+        updated.add(value);
+        applyListEdit(player, field, page, updated);
+    }
+
+    private void applyListEdit(
+            Player player, ConfigField field, ServerConfigPage page, List<String> updated) {
+        ConfigEditResult result = editor.edit(field, updated);
+        if (result instanceof ConfigEditResult.Applied) {
+            ServerConfigSession session = sessions.get(player.getUniqueId());
+            if (session != null) {
+                session.recordApplied(field);
+            }
+            openListEditor(player, field, page);
+        } else if (result instanceof ConfigEditResult.Rejected rejected) {
+            messages.send(player, "server-config.edit-rejected", "reason", rejected.reason());
+        } else if (result instanceof ConfigEditResult.Failed) {
+            messages.send(player, "server-config.edit-failed");
+        }
+    }
+
+    private List<String> listValue(ConfigField field) {
+        Object current = editor.current(field);
+        if (!(current instanceof List<?> values)) {
+            return List.of();
+        }
+        return values.stream().map(String::valueOf).toList();
+    }
+
+    private static ItemStack named(Material material, Component name, List<Component> lore) {
+        ItemStack stack = new ItemStack(material);
+        stack.editMeta(meta -> {
+            meta.displayName(name);
+            meta.lore(lore);
+        });
+        return stack;
+    }
+
+    private void openAnvilWindow(
+            Player player,
+            xyz.xenondevs.invui.gui.Gui upper,
+            xyz.xenondevs.invui.gui.Gui lower,
+            Component title,
+            java.util.function.Consumer<String> onRename,
+            Runnable onClose) {
+        UUID id = player.getUniqueId();
+        suppressReport.add(id);
+        try {
+            GuiRegistry.Handle handle = gui.openAnvil(
+                    player,
+                    upper,
+                    lower,
+                    title,
+                    onRename,
+                    reason -> {
+                        windows.remove(id);
+                        if (!suppressReport.contains(id)) {
+                            // InvUI rejects opening another window from inside a close callback.
+                            scheduler.runLater(Duration.ZERO, onClose);
+                        }
+                    });
+            windows.put(id, handle);
+        } finally {
+            suppressReport.remove(id);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -204,9 +345,7 @@ public final class ServerConfigNavigator
             openServerConfig(player, input.page());
             return;
         }
-        Object value =
-                input.field().type() == ConfigFieldType.STRING_LIST ? parseList(text) : text;
-        ConfigEditResult result = editor.edit(input.field(), value);
+        ConfigEditResult result = editor.edit(input.field(), text);
         ServerConfigSession session = sessions.get(player.getUniqueId());
         if (result instanceof ConfigEditResult.Applied && session != null) {
             session.recordApplied(input.field());
@@ -216,17 +355,6 @@ public final class ServerConfigNavigator
             messages.send(player, "server-config.edit-failed");
         }
         openServerConfig(player, input.page());
-    }
-
-    static List<String> parseList(String text) {
-        List<String> values = new ArrayList<>();
-        for (String part : text.split(",")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                values.add(trimmed);
-            }
-        }
-        return values;
     }
 
     private record PendingInput(ConfigField field, ServerConfigPage page) {

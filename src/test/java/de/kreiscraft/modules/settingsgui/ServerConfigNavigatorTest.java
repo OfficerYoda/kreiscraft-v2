@@ -17,13 +17,16 @@ import de.kreiscraft.testsupport.MockScheduler;
 import de.kreiscraft.testsupport.RecordingMessageService;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Particle;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +53,14 @@ class ServerConfigNavigatorTest {
     private DefaultServerConfigService editor;
     private RecordingMessageService messages;
     private ServerConfigNavigator navigator;
+    private MockScheduler scheduler;
 
     private xyz.xenondevs.invui.gui.Gui lastGui;
     private Component lastTitle;
     private Consumer<InventoryCloseEvent.Reason> lastClose;
+    private Consumer<String> lastRename;
+    private xyz.xenondevs.invui.gui.Gui lastAnvilUpper;
+    private xyz.xenondevs.invui.gui.Gui lastAnvilLower;
 
     @BeforeEach
     void setUp(@TempDir Path tmp) throws IOException {
@@ -67,9 +74,9 @@ class ServerConfigNavigatorTest {
         SettingsService settings =
                 new DefaultSettingsService(
                         new InMemoryPlayerPreferencesService(), PlayerLanguage.DE, Particle.FLAME);
+        scheduler = new MockScheduler();
         navigator =
-                new ServerConfigNavigator(
-                        settings, id -> true, editor, messages, gui, new MockScheduler());
+                new ServerConfigNavigator(settings, id -> true, editor, messages, gui, scheduler);
         server.getPluginManager().registerEvents(navigator, plugin);
     }
 
@@ -203,7 +210,7 @@ class ServerConfigNavigatorTest {
     }
 
     // ------------------------------------------------------------------
-    // Chat-based text entry
+    // Text entry
     // ------------------------------------------------------------------
 
     @Test
@@ -240,6 +247,102 @@ class ServerConfigNavigatorTest {
         assertThat(messages.sentKeys).contains("server-config.input.cancelled");
     }
 
+    @Test
+    void listField_opensAnvilInsteadOfRequestingChatInput() {
+        navigator.openAdmin(player);
+        captureLastWindow();
+        openCategory("combat");
+
+        clickField("combat", field("combat", "excluded-worlds"));
+        captureLastAnvil();
+
+        assertThat(lastAnvilUpper.getSize()).isEqualTo(3);
+        assertThat(lastAnvilLower.getSize()).isEqualTo(36);
+        assertThat(messages.sentKeys).doesNotContain("server-config.input.prompt");
+    }
+
+    @Test
+    void anvilOutput_addsTrimmedValuesRepeatedlyAndStaysOpen() {
+        ConfigField field = openListEditor();
+
+        lastRename.accept("  world  ");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        captureLastAnvil();
+        lastRename.accept("world_nether");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        captureLastAnvil();
+
+        assertThat(currentList(field)).endsWith("world", "world_nether");
+    }
+
+    @Test
+    void blankAndDuplicateSubmissionsLeaveListUnchangedAndExplainWhy() {
+        ConfigField field = openListEditor();
+        List<String> before = currentList(field);
+
+        lastRename.accept("   ");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        assertThat(currentList(field)).isEqualTo(before);
+        assertThat(messages.sentKeys).contains("server-config.list.blank");
+
+        lastRename.accept("world");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        captureLastAnvil();
+        lastRename.accept(" world ");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+
+        assertThat(currentList(field)).endsWith("world");
+        assertThat(messages.sentKeys).contains("server-config.list.duplicate");
+    }
+
+    @Test
+    void existingValuesArePaperItemsAndRightClickDeletesOne() {
+        ConfigField field = field("combat", "excluded-worlds");
+        editor.edit(field, List.of("world", "world_nether"));
+        openListEditor();
+
+        ItemStack first = lastAnvilLower.getItem(0).getItemProvider(player).get();
+        assertThat(first.getType()).isEqualTo(org.bukkit.Material.PAPER);
+        assertThat(plain(first.getItemMeta().displayName())).isEqualTo("world");
+        assertThat(first.getItemMeta().lore()).singleElement().satisfies(
+                line -> assertThat(plain(line)).isEqualTo("Right click to delete"));
+
+        lastAnvilLower.handleClick(0, new Click(player, ClickType.RIGHT));
+        captureLastAnvil();
+
+        assertThat(currentList(field)).containsExactly("world_nether");
+    }
+
+    @Test
+    void editorDisplaysOnlyTheThirtySixEntriesThatFit() {
+        ConfigField field = field("combat", "excluded-worlds");
+        List<String> values = IntStream.range(0, 40).mapToObj(i -> "world-" + i).toList();
+        editor.edit(field, values);
+
+        openListEditor();
+
+        assertThat(IntStream.range(0, 36)
+                .filter(slot -> lastAnvilLower.getItem(slot) != null)
+                .count())
+                .isEqualTo(36);
+        assertThat(lastAnvilLower.getSize()).isEqualTo(36);
+    }
+
+    @Test
+    void closingEditorReturnsToCategoryWithoutLosingSuccessfulEdits() {
+        ConfigField field = openListEditor();
+        lastRename.accept("world");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        captureLastAnvil();
+
+        lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
+        scheduler.advance(Duration.ZERO);
+        captureLastWindow();
+
+        assertThat(currentList(field)).contains("world");
+        assertThat(lastGui.getItem(ServerConfigGui.entrySlot(0))).isNotNull();
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -267,6 +370,21 @@ class ServerConfigNavigatorTest {
         lastGui.handleClick(ServerConfigGui.entrySlot(index), new Click(player, ClickType.LEFT));
     }
 
+    private ConfigField openListEditor() {
+        navigator.openAdmin(player);
+        captureLastWindow();
+        openCategory("combat");
+        ConfigField field = field("combat", "excluded-worlds");
+        clickField("combat", field);
+        captureLastAnvil();
+        return field;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> currentList(ConfigField field) {
+        return (List<String>) editor.current(field);
+    }
+
     private void captureLastWindow() {
         ArgumentCaptor<xyz.xenondevs.invui.gui.Gui> guiCaptor =
                 ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
@@ -278,6 +396,32 @@ class ServerConfigNavigatorTest {
                 .open(any(), guiCaptor.capture(), titleCaptor.capture(), closeCaptor.capture());
         lastGui = guiCaptor.getValue();
         lastTitle = titleCaptor.getValue();
+        lastClose = closeCaptor.getValue();
+        clearInvocations(gui);
+    }
+
+    private void captureLastAnvil() {
+        ArgumentCaptor<xyz.xenondevs.invui.gui.Gui> upperCaptor =
+                ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
+        ArgumentCaptor<xyz.xenondevs.invui.gui.Gui> lowerCaptor =
+                ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Consumer<String>> renameCaptor =
+                ArgumentCaptor.forClass((Class) Consumer.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Consumer<InventoryCloseEvent.Reason>> closeCaptor =
+                ArgumentCaptor.forClass((Class) Consumer.class);
+        verify(gui, atLeast(1))
+                .openAnvil(
+                        any(),
+                        upperCaptor.capture(),
+                        lowerCaptor.capture(),
+                        any(),
+                        renameCaptor.capture(),
+                        closeCaptor.capture());
+        lastAnvilUpper = upperCaptor.getValue();
+        lastAnvilLower = lowerCaptor.getValue();
+        lastRename = renameCaptor.getValue();
         lastClose = closeCaptor.getValue();
         clearInvocations(gui);
     }
