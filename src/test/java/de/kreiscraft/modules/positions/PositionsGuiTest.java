@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -14,16 +15,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.plugin.PluginMock;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
+import xyz.xenondevs.invui.Click;
 import xyz.xenondevs.invui.gui.Gui;
 
 class PositionsGuiTest {
 
     private ServerMock server;
+    private PluginMock plugin;
+    private PlayerMock player;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
         server.addSimpleWorld("world");
+        plugin = MockBukkit.createMockPlugin();
+        player = server.addPlayer("Alice");
     }
 
     @AfterEach
@@ -126,5 +135,46 @@ class PositionsGuiTest {
 
         assertThat(gui.getWidth()).isEqualTo(9);
         assertThat(gui.getHeight()).isEqualTo(4);
+    }
+
+    @Test
+    void click_withoutTeleportPermission_doesNotTeleport() {
+        AtomicInteger teleports = new AtomicInteger();
+        Gui gui = guiWithOnePosition(teleports);
+
+        gui.handleClick(10, new Click(player, org.bukkit.event.inventory.ClickType.LEFT));
+
+        assertThat(teleports).hasValue(0);
+    }
+
+    @Test
+    void click_withTeleportPermission_teleportsWhenEnabled() {
+        player.addAttachment(plugin, "kreiscraft.positions.teleport", true);
+        AtomicInteger teleports = new AtomicInteger();
+        Gui gui = guiWithOnePosition(teleports);
+
+        gui.handleClick(10, new Click(player, org.bukkit.event.inventory.ClickType.LEFT));
+
+        assertThat(teleports).hasValue(1);
+    }
+
+    @Test
+    void teleportPermission_defaultsToOperators() throws Exception {
+        var pluginConfig = YamlConfigurationLoader.builder()
+                .url(getClass().getClassLoader().getResource("plugin.yml"))
+                .build()
+                .load();
+
+        assertThat(pluginConfig.node("permissions", "kreiscraft.positions.teleport", "default")
+                .getString())
+                .isEqualTo("op");
+    }
+
+    private Gui guiWithOnePosition(AtomicInteger teleports) {
+        Location location = new Location(server.getWorld("world"), 10, 64, 10);
+        return PositionsGui.build(
+                Map.of("home", new PositionEntry(location)),
+                new PositionsConfig(6, true),
+                (clickedPlayer, entry) -> teleports.incrementAndGet());
     }
 }
