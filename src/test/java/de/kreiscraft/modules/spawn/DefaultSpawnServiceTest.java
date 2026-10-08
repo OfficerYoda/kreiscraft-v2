@@ -55,7 +55,7 @@ class DefaultSpawnServiceTest {
 
     @Test
     void freshService_readsNoRetiredDataFile() {
-        // ADR-10: no migration from data/spawn.yml. A fresh service starts with nothing set even
+        // There is no migration from data/spawn.yml. A fresh service starts with nothing set even
         // when an old data file happens to exist.
         assertThat(service.spawnLocation()).isEmpty();
         assertThat(Files.exists(tmp.resolve("data/spawn.yml"))).isFalse();

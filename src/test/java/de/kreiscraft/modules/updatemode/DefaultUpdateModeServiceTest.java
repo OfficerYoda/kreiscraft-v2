@@ -79,7 +79,7 @@ class DefaultUpdateModeServiceTest {
         assertThat(service.isActive()).isTrue();
         ConfigurationNode onDisk = load(tmp.resolve("config.yml"));
         assertThat(onDisk.node("modules", "update-mode", "active").getBoolean()).isTrue();
-        // ADR-10: operator-owned state is not written to the retired data file.
+        // Operator-owned state is not written to the retired data file.
         assertThat(Files.exists(tmp.resolve("data/update-mode.yml"))).isFalse();
     }
 

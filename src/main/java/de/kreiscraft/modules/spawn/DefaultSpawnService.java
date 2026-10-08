@@ -11,10 +11,10 @@ import org.spongepowered.configurate.serialize.SerializationException;
 /**
  * Default implementation of {@link SpawnService}.
  *
- * <p>Per ADR-10 the spawn location is operator-owned Server Configuration, so it is read from and
- * written to {@code config.yml} through {@link ConfigService}. The location is read live on every
- * call rather than cached, so a successful command edit and a {@code /kreiscraft reload} are
- * observed immediately.
+ * <p>The spawn location is operator-owned Server Configuration, so it is read from and written to
+ * {@code config.yml} through {@link ConfigService}. The location is read live on every call rather
+ * than cached, so a successful command edit and a {@code /kreiscraft reload} are observed
+ * immediately.
  *
  * <p>The single Spawn Radius lives in the spawn module configuration; both the Spawn Access Zone
  * (XZ) and the Glide Zone (3D) are measured against it.

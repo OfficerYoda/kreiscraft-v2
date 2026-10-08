@@ -412,7 +412,7 @@ public final class ServerConfigSchema {
 
     // ── operator-owned state ────────────────────────────────────────────────
     //
-    // ADR-10 puts spawn location, jail location, update-mode state and start-sequence completion in
+    // Spawn location, jail location, update-mode state and start-sequence completion belong in
     // Server Configuration. The fields below are the write metadata for those values; commands such
     // as /setspawn, /setjail and /updatemode go through ConfigService.applyEdit so an invalid value
     // or an I/O failure cannot leave the running server and config.yml disagreeing. spawn.location

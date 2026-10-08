@@ -21,6 +21,14 @@ class YamlConfigServiceTest {
     }
 
     @Test
+    void bundledConfig_isCommentFree(@TempDir Path tmp) throws IOException {
+        new YamlConfigService(tmp, getClass().getClassLoader());
+
+        assertThat(Files.readString(tmp.resolve("config.yml")))
+                .doesNotContainPattern("(?m)(?:^|\\s)#");
+    }
+
+    @Test
     void reload_picksUpChangesOnDisk(@TempDir Path tmp) throws IOException {
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
         Files.writeString(tmp.resolve("config.yml"),

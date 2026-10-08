@@ -10,9 +10,9 @@ import org.bukkit.entity.Player;
 /**
  * Default {@link UpdateModeService}.
  *
- * <p>Per ADR-10 the active/inactive maintenance state is operator-owned Server Configuration, so
- * it lives in {@code modules.update-mode.active} inside {@code config.yml} and is read live. A
- * {@code /kreiscraft reload} therefore observes the persisted value without any extra state.
+ * <p>The active/inactive maintenance state is operator-owned Server Configuration, so it lives in
+ * {@code modules.update-mode.active} inside {@code config.yml} and is read live. A {@code
+ * /kreiscraft reload} therefore observes the persisted value without any extra state.
  */
 public final class DefaultUpdateModeService implements UpdateModeService {
 
