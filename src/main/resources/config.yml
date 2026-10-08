@@ -85,13 +85,9 @@ modules:
     glide:
       enabled: true
       multiply-value: 3
-    swap-hand-boost:
-      enabled: false
-      vector-multiplier: 3.0
     glide-boost:
       enabled: true
       boost-strength: 2.0
-      cooldown-seconds: 5
   start-sequence:
     enabled: true
     has-started: false

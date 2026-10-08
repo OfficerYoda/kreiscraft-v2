@@ -276,11 +276,8 @@ jail location is set.
 | `spawn-radius` | int | `50` | The single Spawn Radius (blocks) that bounds both spawn access and glide eligibility. `/spawn` measures horizontal (XZ) distance (the Spawn Access Zone); glide initiation measures full 3D distance (the Glide Zone). |
 | `glide.enabled` | boolean | `true` | Whether elytra glide is active around spawn. |
 | `glide.multiply-value` | int | `3` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
-| `swap-hand-boost.enabled` | boolean | `false` | Whether the offhand-swap velocity boost is active while gliding. |
-| `swap-hand-boost.vector-multiplier` | double | `3.0` | Multiplier applied to the player's facing unit vector on offhand swap while gliding. |
-| `glide-boost.enabled` | boolean | `true` | Whether the sneak-triggered boost is active for glides that started inside the Glide Zone. |
-| `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector on the sneak boost. |
-| `glide-boost.cooldown-seconds` | int | `5` | Per-player cooldown between sneak boosts, in seconds. |
+| `glide-boost.enabled` | boolean | `true` | Whether glides started inside the Glide Zone receive one sneak-triggered boost opportunity. |
+| `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector when that opportunity is consumed, inside or outside the Glide Zone. |
 
 ---
 

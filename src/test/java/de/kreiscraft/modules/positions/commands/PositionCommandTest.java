@@ -111,7 +111,12 @@ class PositionCommandTest {
 
         buildDispatcher().execute("pos set home", sourceFor(player));
 
-        verify(service).set(eq(player.getUniqueId()), eq("home"), any(Location.class));
+        verify(service).set(
+                eq(player.getUniqueId()),
+                eq("home"),
+                any(Location.class),
+                eq(player.getUniqueId()),
+                eq("Alice"));
         verify(messages).send(player, "positions.set", "name", "home");
     }
 

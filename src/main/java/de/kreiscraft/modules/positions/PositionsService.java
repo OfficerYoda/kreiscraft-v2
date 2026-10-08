@@ -26,6 +26,11 @@ public interface PositionsService {
      */
     void set(UUID uuid, String name, Location location);
 
+    /** Creates or overwrites a position and records the saving player's identity. */
+    default void set(UUID uuid, String name, Location location, UUID savedBy, String savedByName) {
+        set(uuid, name, location);
+    }
+
     /**
      * Removes the named position for the given player. Does nothing if it
      * doesn't exist.

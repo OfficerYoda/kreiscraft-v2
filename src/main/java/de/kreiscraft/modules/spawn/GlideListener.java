@@ -4,9 +4,7 @@ import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -32,7 +30,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
  *
  * <p><b>Persistent glide boost:</b> when a player starts gliding inside the Glide Zone they become
  * boost-eligible for that glide. While still gliding (even after leaving the zone), pressing sneak
- * applies a configurable directional velocity boost with a per-player cooldown. Eligibility is
+ * applies one configurable directional velocity boost. Eligibility is consumed by that boost and
  * cleared when the glide ends, the player quits, or the module is disabled.
  *
  * <p>Config is read fresh on every event via a {@link Supplier} so that {@code onConfigReload} in
@@ -57,9 +55,6 @@ public final class GlideListener implements PriorityListener {
      * receive a sneak-triggered boost until the glide ends or they disconnect.
      */
     private final Set<UUID> boostEligible = new HashSet<>();
-
-    /** Per-player timestamp of the most recent boost, used to enforce the cooldown. */
-    private final Map<UUID, Long> lastBoostTimes = new HashMap<>();
 
     public GlideListener(SpawnService service, MessageService messages,
             Supplier<SpawnConfig> configSupply, Scheduler scheduler, Server server) {
@@ -148,8 +143,7 @@ public final class GlideListener implements PriorityListener {
 
     /**
      * Applies the sneak boost when the player presses sneak while gliding, is boost-eligible,
-     * and has left the Glide Zone. The boost is directional (facing direction × configured
-     * strength) and is rate-limited by {@link SpawnConfig.GlideBoostConfig#cooldownSeconds()}.
+     * The boost is directional (facing direction × configured strength) and consumes eligibility.
      */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleSneak(PlayerToggleSneakEvent event) {
@@ -166,20 +160,9 @@ public final class GlideListener implements PriorityListener {
             return;
         }
         UUID id = player.getUniqueId();
-        if (!boostEligible.contains(id)) {
+        if (!boostEligible.remove(id)) {
             return;
         }
-        // Boost applies only after the player has left the Glide Zone.
-        if (service.isInGlideZone(player)) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        long cooldownMs = (long) boostCfg.cooldownSeconds() * 1000L;
-        Long last = lastBoostTimes.get(id);
-        if (last != null && now - last < cooldownMs) {
-            return;
-        }
-        lastBoostTimes.put(id, now);
         player.setVelocity(player.getLocation().getDirection().multiply(boostCfg.boostStrength()));
     }
 
@@ -194,7 +177,6 @@ public final class GlideListener implements PriorityListener {
     private void clearPlayerState(UUID id) {
         flying.remove(id);
         boostEligible.remove(id);
-        lastBoostTimes.remove(id);
     }
 
     /** Cancels the background task and clears all state. Called from {@link SpawnModule#disable()}. */
@@ -202,7 +184,6 @@ public final class GlideListener implements PriorityListener {
         task.cancel();
         flying.clear();
         boostEligible.clear();
-        lastBoostTimes.clear();
     }
 
     /** Exposed for tests — returns whether the player is currently tracked as gliding. */
