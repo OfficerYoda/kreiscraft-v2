@@ -8,7 +8,7 @@ core:
   player-only: "<prefix> <red>Dieser Befehl kann nur von Spielern verwendet werden."
 server-config:
   lifecycle:
-    hot-reload: "<green>Wird bei <white>/kreiscraft reload</white> übernommen."
+    hot-reload: "<green>Wird beim Schließen dieses Editors automatisch übernommen."
     restart-required: "<red>Erfordert einen Server-Neustart."
   entry: "<gold>Server-Konfiguration <dark_gray>(nur Admins)"
   title: "<gray>Server-Konfiguration"
@@ -64,11 +64,8 @@ server-config:
     spawn-spawn-radius: "Spawn-Radius"
     spawn-glide-enabled: "Gleiten aktiviert"
     spawn-glide-multiply-value: "Gleit-Multiplikator"
-    spawn-swap-hand-boost-enabled: "Handwechsel-Boost aktiviert"
-    spawn-swap-hand-boost-vector-multiplier: "Handwechsel-Boost-Multiplikator"
     spawn-glide-boost-enabled: "Gleit-Boost aktiviert"
     spawn-glide-boost-boost-strength: "Gleit-Boost-Stärke"
-    spawn-glide-boost-cooldown-seconds: "Gleit-Boost-Abklingzeit"
     start-sequence-countdown: "Start-Countdown"
     start-sequence-initial-border-size: "Anfängliche Weltgrenze"
     start-sequence-target-border-size: "Ziel-Weltgrenze"
@@ -103,7 +100,7 @@ server-config:
     blank: "<prefix> <red>Gib einen nicht leeren Wert ein."
     duplicate: "<prefix> <red><value> ist bereits vorhanden."
   close:
-    hot-reload: "<prefix> <yellow><count> Änderung(en) werden bei <click:run_command:'/kc reload'><green><underlined>[Jetzt neu laden]</underlined></green></click> übernommen."
+    hot-reload: "<prefix> <green><count> Änderung(en) automatisch übernommen."
     restart-required: "<prefix> <red><count> Änderung(en) (inkl. Modul-Aktivierung) erfordern einen Server-Neustart; sie werden niemals live übernommen."
 admin:
   item-given: "<prefix> <green><count>x <item></green>."
@@ -196,6 +193,12 @@ positions:
   removed: "<prefix> <green>Position <name></green> gelöscht."
   not-found: "<prefix> <red>Position <name></red> unbekannt."
   gui-title: "<gray>Deine Positionen"
+  gui-item-title: "<gold><name></gold>"
+  gui-location: "<gray>Ort: <aqua><location></aqua></gray>"
+  gui-saver: "<gray>Gespeichert von: <gold><player></gold></gray>"
+  gui-saved-at: "<gray>Gespeichert am: <aqua><time></aqua></gray>"
+  gui-legacy: "Unbekannt (Altbestand)"
+  gui-teleport-hint: "<green>Zum Teleportieren klicken</green>"
   list-header: "<prefix> <gray>Deine Positionen (<count>):"
   list-entry: "<gray>- <name> (<world> <x> <y> <z>)"
   teleported: "<prefix> <green>Zu <name></green> teleportiert."

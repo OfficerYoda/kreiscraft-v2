@@ -103,18 +103,6 @@ class ServerConfigControlsTest {
     }
 
     @Test
-    void particleEnum_cyclesTheCuratedOptions() {
-        ConfigField particle =
-                ServerConfigSchema.editableFields().stream()
-                        .filter(f -> f.path().toString().contains("default-particle"))
-                        .findFirst()
-                        .orElseThrow();
-
-        assertThat(particle.options()).startsWith("HAPPY_VILLAGER");
-        assertThat(ServerConfigControls.next(particle, "HAPPY_VILLAGER", sensor)).isEqualTo("FLAME");
-    }
-
-    @Test
     void material_cyclesBoundedOptions() {
         ConfigField material = field(ConfigFieldType.MATERIAL);
         assertThat(ServerConfigControls.next(material, "STONE", sensor)).isEqualTo("DIRT");

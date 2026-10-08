@@ -7,9 +7,8 @@ import org.bukkit.entity.Player;
  * Reports a closing Server Configuration session to the operator.
  *
  * <p>Only the lifecycle categories the session actually changed are reported: a hot-reloadable edit
- * gets the applicable clickable reload action, and a restart-only edit (which always includes every
- * module enable flag) gets a restart warning. A module lifecycle change is therefore never
- * described as hot-applied.
+ * gets an application confirmation after the automatic reload, and a restart-only edit (which
+ * always includes every module enable flag) gets a restart warning.
  */
 public final class ServerConfigCloseReporter {
 
@@ -17,11 +16,14 @@ public final class ServerConfigCloseReporter {
 
     /** Sends the applicable close-time prompts for {@code session}, if any. */
     public static void report(
-            MessageService messages, Player player, ServerConfigSession session) {
+            MessageService messages,
+            Player player,
+            ServerConfigSession session,
+            boolean hotReloadApplied) {
         if (session.isEmpty()) {
             return;
         }
-        if (session.hasHotReload()) {
+        if (hotReloadApplied) {
             messages.send(player, "server-config.close.hot-reload", "count", session.hotReloadCount());
         }
         if (session.hasRestartRequired()) {

@@ -40,21 +40,6 @@ public final class ServerConfigSchema {
         return new ServerConfigSchema(fields);
     }
 
-    /** Curated particle names cycled by the effects particle control. */
-    private static final List<String> PARTICLE_OPTIONS = List.of(
-            "HAPPY_VILLAGER",
-            "FLAME",
-            "SOUL_FIRE_FLAME",
-            "END_ROD",
-            "HEART",
-            "CRIT",
-            "ENCHANT",
-            "CLOUD",
-            "NOTE",
-            "LAVA",
-            "ELECTRIC_SPARK",
-            "TOTEM_OF_UNDYING");
-
     /**
      * The complete safe, GUI-editable field set.
      *
@@ -160,8 +145,7 @@ public final class ServerConfigSchema {
                 ConfigFieldType.ENUM,
                 ConfigValidators.enumValue(Particle.class),
                 true,
-                ConfigLifecycle.HOT_RELOAD,
-                PARTICLE_OPTIONS));
+                ConfigLifecycle.HOT_RELOAD));
         fields.add(duration(
                 path("modules", "effects", "schedule"),
                 List.of("1t", "5t", "10t", "20t", "1s")));
@@ -247,16 +231,6 @@ public final class ServerConfigSchema {
                 ConfigValidators.integerRange(1, 100),
                 ConfigLifecycle.HOT_RELOAD));
         fields.add(field(
-                path("modules", "spawn", "swap-hand-boost", "enabled"),
-                ConfigFieldType.BOOLEAN,
-                ConfigValidators.booleanValue(),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
-                path("modules", "spawn", "swap-hand-boost", "vector-multiplier"),
-                ConfigFieldType.DOUBLE,
-                ConfigValidators.decimalRange(0.1, 100.0),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
                 path("modules", "spawn", "glide-boost", "enabled"),
                 ConfigFieldType.BOOLEAN,
                 ConfigValidators.booleanValue(),
@@ -265,11 +239,6 @@ public final class ServerConfigSchema {
                 path("modules", "spawn", "glide-boost", "boost-strength"),
                 ConfigFieldType.DOUBLE,
                 ConfigValidators.decimalRange(0.1, 100.0),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
-                path("modules", "spawn", "glide-boost", "cooldown-seconds"),
-                ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, 3_600),
                 ConfigLifecycle.HOT_RELOAD));
 
         // ── start-sequence ──────────────────────────────────────────────────

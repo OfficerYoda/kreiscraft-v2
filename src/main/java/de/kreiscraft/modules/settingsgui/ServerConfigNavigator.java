@@ -8,6 +8,7 @@ import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,9 +17,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.time.Duration;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Particle;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
@@ -55,11 +59,13 @@ public final class ServerConfigNavigator
     private final MessageService messages;
     private final Gui gui;
     private final Scheduler scheduler;
+    private final Predicate<CommandSender> reload;
 
     private final Map<UUID, ServerConfigSession> sessions = new HashMap<>();
     private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
     private final Map<UUID, GuiRegistry.Handle> windows = new HashMap<>();
     private final Set<UUID> suppressReport = new HashSet<>();
+    private final Set<UUID> particlePickers = new HashSet<>();
 
     public ServerConfigNavigator(
             SettingsService settings,
@@ -67,13 +73,15 @@ public final class ServerConfigNavigator
             ServerConfigService editor,
             MessageService messages,
             Gui gui,
-            Scheduler scheduler) {
+            Scheduler scheduler,
+            Predicate<CommandSender> reload) {
         this.settings = settings;
         this.modules = modules;
         this.editor = editor;
         this.messages = messages;
         this.gui = gui;
         this.scheduler = scheduler;
+        this.reload = reload;
     }
 
     @Override
@@ -96,6 +104,23 @@ public final class ServerConfigNavigator
                     SettingsGui.buildEffects(settings, messages, this),
                     messages.renderFor(player, page.titleKey()));
         }
+    }
+
+    @Override
+    public void pickParticle(
+            Player player, Consumer<Particle> selection, Runnable cancellation) {
+        UUID id = player.getUniqueId();
+        particlePickers.add(id);
+        ParticlePicker.open(
+                player,
+                particle -> scheduler.runLater(Duration.ZERO, () -> {
+                    particlePickers.remove(id);
+                    selection.accept(particle);
+                }),
+                () -> scheduler.runLater(Duration.ZERO, () -> {
+                    particlePickers.remove(id);
+                    cancellation.run();
+                }));
     }
 
     @Override
@@ -145,20 +170,27 @@ public final class ServerConfigNavigator
     private void onClose(Player player) {
         UUID id = player.getUniqueId();
         windows.remove(id);
-        if (suppressReport.contains(id) || pendingInputs.containsKey(id)) {
+        if (suppressReport.contains(id)
+                || pendingInputs.containsKey(id)
+                || particlePickers.contains(id)) {
             return;
         }
         ServerConfigSession session = sessions.remove(id);
         if (session != null && player.isOnline()) {
-            ServerConfigCloseReporter.report(messages, player, session);
+            report(player, session);
         }
     }
 
     private void reportAndClear(Player player) {
         ServerConfigSession session = sessions.remove(player.getUniqueId());
         if (session != null && player.isOnline()) {
-            ServerConfigCloseReporter.report(messages, player, session);
+            report(player, session);
         }
+    }
+
+    private void report(Player player, ServerConfigSession session) {
+        boolean hotReloadApplied = session.hasHotReload() && reload.test(player);
+        ServerConfigCloseReporter.report(messages, player, session, hotReloadApplied);
     }
 
     // ------------------------------------------------------------------
