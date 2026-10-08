@@ -50,6 +50,13 @@ class GlideListenerTest {
         return makeConfigWithBoost(spawnRadius, multiplyValue, false, 2.0);
     }
 
+    private SpawnConfig makeDisabledConfig(int spawnRadius, int multiplyValue) {
+        return new SpawnConfig(
+                spawnRadius,
+                new SpawnConfig.GlideConfig(false, multiplyValue),
+                new SpawnConfig.GlideBoostConfig(false, 2.0));
+    }
+
     private SpawnConfig makeConfigWithBoost(int spawnRadius, int multiplyValue,
             boolean boostEnabled, double boostStrength) {
         return new SpawnConfig(
@@ -310,6 +317,41 @@ class GlideListenerTest {
 
         scheduler.advance(Duration.ofMillis(150));
         assertThat(player.getAllowFlight()).isTrue(); // now inside reloaded radius
+    }
+
+    @Test
+    void configReload_enablesGliding() {
+        PlayerMock player = server.addPlayer("reload-enable");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        config = makeDisabledConfig(30, 3);
+        service.updateConfig(config);
+
+        scheduler.advance(Duration.ofMillis(150));
+        assertThat(player.getAllowFlight()).isFalse();
+
+        config = makeConfig(30, 3);
+        service.updateConfig(config);
+        listener.reload();
+
+        assertThat(player.getAllowFlight()).isTrue();
+    }
+
+    @Test
+    void configReload_disablesGlidingAndClearsManagedState() {
+        PlayerMock player = server.addPlayer("reload-disable");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        player.setAllowFlight(true);
+        server.getPluginManager().callEvent(new PlayerToggleFlightEvent(player, true));
+        assertThat(listener.isFlying(player.getUniqueId())).isTrue();
+
+        config = makeDisabledConfig(30, 3);
+        service.updateConfig(config);
+        listener.reload();
+
+        assertThat(player.getAllowFlight()).isFalse();
+        assertThat(listener.isFlying(player.getUniqueId())).isFalse();
     }
 
     // ── glide boost eligibility ──────────────────────────────────────────────

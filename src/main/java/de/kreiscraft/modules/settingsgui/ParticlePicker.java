@@ -23,6 +23,7 @@ final class ParticlePicker {
     static List<Particle> particles(String search) {
         String query = search.toUpperCase(Locale.ROOT);
         return Arrays.stream(Particle.values())
+                .filter(particle -> particle.getDataType() == Void.class)
                 .filter(particle -> particle.name().contains(query))
                 .toList();
     }

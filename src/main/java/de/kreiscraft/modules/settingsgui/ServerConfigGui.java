@@ -93,11 +93,7 @@ public final class ServerConfigGui {
 
     /** The category a field belongs to. Module enablement stays with its owning module. */
     static String categoryOf(ConfigField field) {
-        List<Object> path = field.path();
-        if (path.size() >= 2 && "modules".equals(String.valueOf(path.get(0)))) {
-            return String.valueOf(path.get(1));
-        }
-        return String.valueOf(path.get(0));
+        return field.category();
     }
 
     /** The GUI-exposed fields in one category, in stable order. */
@@ -242,7 +238,7 @@ public final class ServerConfigGui {
     }
 
     private static boolean isParticle(ConfigField field) {
-        return field.path().equals(List.of("modules", "effects", "default-particle"));
+        return field.path().equals(ServerConfigSchema.EFFECTS_DEFAULT_PARTICLE_PATH);
     }
 
     private static void applyResult(
@@ -294,10 +290,7 @@ public final class ServerConfigGui {
     }
 
     private static boolean isModuleEnabled(ConfigField field) {
-        List<Object> path = field.path();
-        return path.size() == 3
-                && "modules".equals(String.valueOf(path.get(0)))
-                && "enabled".equals(String.valueOf(path.get(2)));
+        return field.moduleEnabled();
     }
 
     private static Map<String, List<ConfigField>> fieldGroups(

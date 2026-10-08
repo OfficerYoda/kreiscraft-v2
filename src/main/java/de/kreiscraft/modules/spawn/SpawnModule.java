@@ -45,12 +45,10 @@ public final class SpawnModule implements Module {
         ctx.services().publish(SpawnService.class, service);
 
         // ── listeners (config supplied via lambda so reloads propagate) ─────
-        if (config.glide().enabled()) {
-            this.glideListener = new GlideListener(
-                    service, ctx.messages(), () -> this.config, ctx.scheduler(),
-                    ctx.plugin().getServer());
-            ctx.events().register(glideListener);
-        }
+        this.glideListener = new GlideListener(
+                service, ctx.messages(), () -> this.config, ctx.scheduler(),
+                ctx.plugin().getServer());
+        ctx.events().register(glideListener);
 
         // ── commands ────────────────────────────────────────────────────────
         ctx.commands().register(SpawnCommand.build(service, ctx.messages()),
@@ -79,6 +77,8 @@ public final class SpawnModule implements Module {
         if (service != null) {
             service.updateConfig(config);
         }
-        // Listener instances read config.get() on every event — no further update needed.
+        if (glideListener != null) {
+            glideListener.reload();
+        }
     }
 }

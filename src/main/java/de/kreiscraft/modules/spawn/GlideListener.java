@@ -68,24 +68,33 @@ public final class GlideListener implements PriorityListener {
     // ── repeating task ───────────────────────────────────────────────────────
 
     private void updateFlightPermissions() {
+        boolean enabled = configSupply.get().glide().enabled();
         for (Player player : server.getOnlinePlayers()) {
             if (player.getGameMode() != GameMode.SURVIVAL) {
                 // Creative/adventure players manage their own flight state.
                 continue;
             }
-            if (service.isInGlideZone(player)) {
+            if (enabled && service.isInGlideZone(player)) {
                 player.setAllowFlight(true);
             } else {
                 player.setAllowFlight(false);
-                flying.remove(player.getUniqueId());
+                clearPlayerState(player.getUniqueId());
             }
         }
+    }
+
+    /** Applies a reloaded glide enablement value immediately. */
+    public void reload() {
+        updateFlightPermissions();
     }
 
     // ── event handlers ───────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleFlight(PlayerToggleFlightEvent event) {
+        if (!configSupply.get().glide().enabled()) {
+            return;
+        }
         Player player = event.getPlayer();
         if (player.getGameMode() != GameMode.SURVIVAL) {
             return;
@@ -117,6 +126,9 @@ public final class GlideListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onEntityDamage(EntityDamageEvent event) {
+        if (!configSupply.get().glide().enabled()) {
+            return;
+        }
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -147,6 +159,9 @@ public final class GlideListener implements PriorityListener {
      */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleSneak(PlayerToggleSneakEvent event) {
+        if (!configSupply.get().glide().enabled()) {
+            return;
+        }
         if (!event.isSneaking()) {
             return;
         }
