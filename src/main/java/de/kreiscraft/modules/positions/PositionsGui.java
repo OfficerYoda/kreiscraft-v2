@@ -168,7 +168,8 @@ public final class PositionsGui {
             @Override
             public void handleClick(
                     ClickType clickType, Player player, Click click) {
-                if (teleportOnClick) {
+                if (teleportOnClick
+                        && player.hasPermission("kreiscraft.positions.teleport")) {
                     onTeleport.accept(player, entry);
                 }
             }

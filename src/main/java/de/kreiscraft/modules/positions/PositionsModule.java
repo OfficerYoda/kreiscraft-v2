@@ -47,7 +47,8 @@ public final class PositionsModule implements Module {
         Gui gui = ctx.services().get(Gui.class);
         ctx.commands().register(
                 PositionCommand.build(service, ctx.messages(), gui, () -> this.config),
-                "Manage personal named waypoints");
+                "Manage personal named waypoints",
+                "pos");
     }
 
     @Override

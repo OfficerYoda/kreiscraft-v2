@@ -257,7 +257,7 @@ Opens a GUI showing another player's inventory or ender chest. The single `kreis
 
 ### Description
 
-Allows each player to save named waypoints at their current location and retrieve or teleport to them. A GUI browser displays all saved positions; clicking a position can optionally teleport the player. Positions are persisted per-player in `data/positions.yml`.
+Allows each player to save named waypoints with `/positions` (`/pos`) and inspect them in a GUI. Clicking a position can optionally teleport players with `kreiscraft.positions.teleport`. Positions are persisted per-player in `data/positions.yml`.
 
 ### Services published
 

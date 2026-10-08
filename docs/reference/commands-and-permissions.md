@@ -37,11 +37,11 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest; offline targets open as an editable snapshot. | `kreiscraft.invsee.use` | op |
 | `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player (sending them a localized message with a distinctly styled reason), or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/setjail` | — | `jail` | Store your current location as the operator-owned jail location in Server Configuration. | `kreiscraft.jail.set` | op |
-| `/pos` | — | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |
-| `/pos set <name>` | — | `positions` | Save current location as a named position. | `kreiscraft.positions.use` | true |
-| `/pos get <name>` | — | `positions` | Print coordinates for a named position. | `kreiscraft.positions.use` | true |
-| `/pos delete <name>` | — | `positions` | Delete a named position. | `kreiscraft.positions.use` | true |
-| `/pos list` | — | `positions` | List all saved positions with coordinates. | `kreiscraft.positions.use` | true |
+| `/positions` | `pos` | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |
+| `/positions set <name>` | `pos` | `positions` | Save current location as a named position. | `kreiscraft.positions.use` | true |
+| `/positions get <name>` | `pos` | `positions` | Print coordinates for a named position. | `kreiscraft.positions.use` | true |
+| `/positions delete <name>` | `pos` | `positions` | Delete a named position. | `kreiscraft.positions.use` | true |
+| `/positions list` | `pos` | `positions` | List all saved positions with coordinates. | `kreiscraft.positions.use` | true |
 | `/reboot` | `restart` | `reboot` | Start a restart countdown with the default duration. | `kreiscraft.reboot.admin` | op |
 | `/reboot <seconds> [reason]` | `restart` | `reboot` | Start a countdown with a custom duration and optional reason. | `kreiscraft.reboot.admin` | op |
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
@@ -126,7 +126,8 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 ### `positions` module
 
-- `kreiscraft.positions.use` — **(true)** — Save/teleport to personal positions.
+- `kreiscraft.positions.use` — **(true)** — Save and inspect personal positions.
+- `kreiscraft.positions.teleport` — **(op)** — Teleport by clicking a position in the GUI.
 
 ### `reboot` module
 
