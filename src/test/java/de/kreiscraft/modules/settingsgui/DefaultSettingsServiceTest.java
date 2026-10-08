@@ -91,13 +91,13 @@ class DefaultSettingsServiceTest {
     }
 
     @Test
-    void setEffectsParticle_persistsAndEnablesEffects() {
+    void setEffectsParticle_persistsWithoutEnablingEffects() {
         DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setEffectsEnabled(alice, false);
         svc.setEffectsParticle(alice, Particle.HEART);
         assertThat(svc.effectsParticle(alice)).isEqualTo(Particle.HEART);
-        assertThat(svc.effectsEnabled(alice)).isTrue();
+        assertThat(svc.effectsEnabled(alice)).isFalse();
     }
 
     @Test

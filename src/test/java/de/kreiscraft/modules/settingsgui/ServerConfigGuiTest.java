@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -22,6 +23,7 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
@@ -298,13 +300,28 @@ class ServerConfigGuiTest {
     }
 
     @Test
-    void particleEnumField_clickCyclesAndPersists() {
+    void particleEnumField_selectionPersistsThroughEditFlow() {
         ConfigField particle = field("effects", "default-particle");
         Gui gui = category("effects");
 
         click(gui, slotOf("effects", particle));
+        assertThat(editor.current(particle)).isEqualTo("HAPPY_VILLAGER");
 
-        assertThat(editor.current(particle)).isEqualTo("FLAME");
+        navigator.select(Particle.HEART);
+
+        assertThat(editor.current(particle)).isEqualTo("HEART");
+        assertThat(session.hotReloadCount()).isEqualTo(1);
+    }
+
+    @Test
+    void particleEnumField_cancellationLeavesValueUnchanged() {
+        ConfigField particle = field("effects", "default-particle");
+        Gui gui = category("effects");
+
+        click(gui, slotOf("effects", particle));
+        navigator.cancel();
+
+        assertThat(editor.current(particle)).isEqualTo("HAPPY_VILLAGER");
     }
 
     @Test
@@ -492,6 +509,8 @@ class ServerConfigGuiTest {
     private static final class NavigatorRecorder implements ServerConfigGui.Navigator {
         private final List<ServerConfigPage> serverConfigPages = new ArrayList<>();
         private final List<ServerConfigPage> textInputs = new ArrayList<>();
+        private Consumer<Particle> particleSelection;
+        private Runnable particleCancellation;
         private boolean openedSettingsRoot;
 
         @Override
@@ -507,6 +526,21 @@ class ServerConfigGuiTest {
         @Override
         public void requestTextInput(Player player, ConfigField field, ServerConfigPage page) {
             textInputs.add(page);
+        }
+
+        @Override
+        public void pickParticle(
+                Player player, Consumer<Particle> selection, Runnable cancellation) {
+            particleSelection = selection;
+            particleCancellation = cancellation;
+        }
+
+        private void select(Particle particle) {
+            particleSelection.accept(particle);
+        }
+
+        private void cancel() {
+            particleCancellation.run();
         }
     }
 
