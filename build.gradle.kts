@@ -1,4 +1,64 @@
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.util.zip.ZipFile
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath("org.ow2.asm:asm:9.9.1") }
+}
+
+private fun rewriteInvuiMirrorCalls(bytecode: ByteArray): Pair<ByteArray, Int> {
+    val craftItemStackOwner = "org/bukkit/craftbukkit/inventory/CraftItemStack"
+    val argument = "Lnet/minecraft/world/item/ItemStack;"
+    val oldDescriptor = "($argument)Lorg/bukkit/inventory/ItemStack;"
+    val newDescriptor = "($argument)L$craftItemStackOwner;"
+    val reader = ClassReader(bytecode)
+    val writer = ClassWriter(0)
+    var rewrites = 0
+    reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
+        override fun visitMethod(
+            access: Int,
+            name: String?,
+            descriptor: String?,
+            signature: String?,
+            exceptions: Array<out String>?
+        ): MethodVisitor {
+            val visitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+            return object : MethodVisitor(Opcodes.ASM9, visitor) {
+                override fun visitMethodInsn(
+                    opcode: Int,
+                    owner: String,
+                    name: String,
+                    descriptor: String,
+                    isInterface: Boolean
+                ) {
+                    if (owner == craftItemStackOwner
+                        && name == "asBukkitMirror"
+                        && descriptor == oldDescriptor
+                    ) {
+                        rewrites++
+                        super.visitMethodInsn(
+                            opcode,
+                            owner,
+                            "asCraftMirror",
+                            newDescriptor,
+                            isInterface
+                        )
+                    } else {
+                        super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
+                    }
+                }
+            }
+        }
+    }, 0)
+    return writer.toByteArray() to rewrites
+}
 
 plugins {
     java
@@ -63,6 +123,24 @@ tasks.shadowJar {
     relocate("org.spongepowered.configurate", "$relocateBase.configurate")
     relocate("xyz.xenondevs.invui", "$relocateBase.invui")
     relocate("org.slf4j", "$relocateBase.slf4j")
+
+    doLast {
+        // ponytail: patch InvUI 2.5.1 in place until upstream targets Paper 26.2.
+        var rewrites = 0
+        FileSystems.newFileSystem(archiveFile.get().asFile.toPath()).use { zip ->
+            Files.walk(zip.getPath("/de/kreiscraft/libs/invui")).use { paths ->
+                paths.filter { Files.isRegularFile(it) && it.toString().endsWith(".class") }
+                    .forEach { path ->
+                        val (bytecode, count) = rewriteInvuiMirrorCalls(Files.readAllBytes(path))
+                        if (count > 0) {
+                            Files.write(path, bytecode, StandardOpenOption.TRUNCATE_EXISTING)
+                            rewrites += count
+                        }
+                    }
+            }
+        }
+        check(rewrites == 5) { "Expected to rewrite 5 InvUI CraftItemStack calls, rewrote $rewrites" }
+    }
 }
 
 tasks.processResources {
@@ -85,6 +163,17 @@ val verifyInvuiCompatibility = tasks.register("verifyInvuiCompatibility") {
         ZipFile(jar).use { zip ->
             check(zip.getEntry("xyz/xenondevs/inventoryaccess/InventoryAccess.class") == null) {
                 "The shaded JAR contains legacy InventoryAccess classes that are incompatible with Paper 26.x"
+            }
+            val invuiClasses = zip.entries().asSequence()
+                .filter { !it.isDirectory && it.name.startsWith("de/kreiscraft/libs/invui/") }
+                .filter { it.name.endsWith(".class") }
+                .toList()
+            check(invuiClasses.isNotEmpty()) { "The shaded JAR does not contain relocated InvUI classes" }
+            check(invuiClasses.none { entry ->
+                zip.getInputStream(entry).readBytes().toString(Charsets.ISO_8859_1)
+                    .contains("asBukkitMirror")
+            }) {
+                "The shaded InvUI classes link the removed CraftItemStack.asBukkitMirror method"
             }
         }
     }
