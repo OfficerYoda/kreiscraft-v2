@@ -10,8 +10,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * glide initiation uses it as the three-dimensional radius of the Glide Zone.
  */
 @ConfigSerializable
-public record SpawnConfig(int spawnRadius, GlideConfig glide, SwapHandBoostConfig swapHandBoost,
-        GlideBoostConfig glideBoost) {
+public record SpawnConfig(int spawnRadius, GlideConfig glide, GlideBoostConfig glideBoost) {
 
     /** Default Spawn Radius in blocks, used when {@code spawn-radius} is absent or non-positive. */
     public static final int DEFAULT_SPAWN_RADIUS = 50;
@@ -24,11 +23,8 @@ public record SpawnConfig(int spawnRadius, GlideConfig glide, SwapHandBoostConfi
         if (glide == null) {
             glide = new GlideConfig(true, 3);
         }
-        if (swapHandBoost == null) {
-            swapHandBoost = new SwapHandBoostConfig(false, 3.0);
-        }
         if (glideBoost == null) {
-            glideBoost = new GlideBoostConfig(false, 2.0, 5);
+            glideBoost = new GlideBoostConfig(false, 2.0);
         }
     }
 
@@ -58,35 +54,20 @@ public record SpawnConfig(int spawnRadius, GlideConfig glide, SwapHandBoostConfi
         }
     }
 
-    /** Configuration for the offhand-swap velocity boost while gliding. */
-    @ConfigSerializable
-    public record SwapHandBoostConfig(boolean enabled, double vectorMultiplier) {
-
-        public SwapHandBoostConfig {
-            // 0.0 means "missing from config" — apply the safe default multiplier.
-            if (vectorMultiplier == 0.0) {
-                vectorMultiplier = 3.0;
-            }
-        }
-    }
-
     /**
      * Configuration for the persistent glide boost triggered by sneaking.
      *
      * <p>Players that START gliding inside the Glide Zone become boost-eligible for the
      * duration of that glide. While still gliding (even outside the zone), pressing sneak
-     * applies a directional velocity boost — subject to the configured cooldown.
+     * applies one directional velocity boost.
      */
     @ConfigSerializable
-    public record GlideBoostConfig(boolean enabled, double boostStrength, int cooldownSeconds) {
+    public record GlideBoostConfig(boolean enabled, double boostStrength) {
 
         public GlideBoostConfig {
-            // 0.0 / 0 mean "missing from config" — apply safe defaults.
+            // 0.0 means "missing from config" — apply the safe default.
             if (boostStrength == 0.0) {
                 boostStrength = 2.0;
-            }
-            if (cooldownSeconds == 0) {
-                cooldownSeconds = 5;
             }
         }
     }

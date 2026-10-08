@@ -15,12 +15,19 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,6 +77,10 @@ class ServerConfigGuiTest {
 
     private ConfigField field(String module, String key) {
         return editor.schema().find(List.of("modules", module, key)).orElseThrow();
+    }
+
+    private ConfigField coreField(String key) {
+        return editor.schema().find(List.of("core", key)).orElseThrow();
     }
 
     private Gui category(String name) {
@@ -283,6 +294,48 @@ class ServerConfigGuiTest {
     }
 
     @Test
+    void fieldNames_useDescriptorAndValueColorRoles() {
+        ConfigField count = field("effects", "count");
+        ConfigField enabled = field("combat", "disable-elytra");
+
+        assertThat(textRunColors(stackAt(category("effects"), slotOf("effects", count))))
+                .containsExactly(NamedTextColor.GRAY, NamedTextColor.AQUA);
+        assertThat(textRunColors(stackAt(category("combat"), slotOf("combat", enabled))))
+                .containsExactly(NamedTextColor.GRAY, NamedTextColor.GREEN);
+    }
+
+    @Test
+    void fieldLore_usesLifecycleStateColor() {
+        ConfigField hotReload = field("effects", "count");
+        ConfigField restart = field("tablist", "update-interval");
+
+        assertThat(loreColor(stackAt(category("effects"), slotOf("effects", hotReload))))
+                .isEqualTo(NamedTextColor.GREEN);
+        assertThat(loreColor(stackAt(category("tablist"), slotOf("tablist", restart))))
+                .isEqualTo(NamedTextColor.RED);
+    }
+
+    @Test
+    void coreLanguage_usesGermanAndUkHeadsAndKeepsRestartLifecycle() {
+        ConfigField language = coreField("language");
+        Gui gui = category("core");
+        int slot = slotOf("core", language);
+
+        ItemStack german = stackAt(gui, slot);
+        assertThat(german.getType()).isEqualTo(Material.PLAYER_HEAD);
+        assertThat(texture(german)).isEqualTo(SettingsGui.TEXTURE_DE);
+
+        click(gui, slot);
+
+        ItemStack english = stackAt(gui, slot);
+        assertThat(editor.current(language)).isEqualTo("en");
+        assertThat(english.getType()).isEqualTo(Material.PLAYER_HEAD);
+        assertThat(texture(english)).isEqualTo(SettingsGui.TEXTURE_EN);
+        assertThat(session.restartCount()).isEqualTo(1);
+        assertThat(session.hotReloadCount()).isZero();
+    }
+
+    @Test
     void rejectedEdit_reportsReasonAndRecordsNothing() {
         ConfigField field =
                 new ConfigField(
@@ -345,6 +398,43 @@ class ServerConfigGuiTest {
         click(gui, ServerConfigGui.SLOT_BACK);
 
         assertThat(navigator.openedSettingsRoot).isTrue();
+    }
+
+    private static List<TextColor> textRunColors(ItemStack stack) {
+        List<TextColor> colors = new ArrayList<>();
+        collectTextRunColors(stack.getItemMeta().displayName(), Style.empty(), colors);
+        return colors;
+    }
+
+    private static void collectTextRunColors(
+            Component component, Style inherited, List<TextColor> colors) {
+        Style effective = component.style().merge(inherited, Style.Merge.Strategy.IF_ABSENT_ON_TARGET);
+        if (component instanceof TextComponent text && !text.content().isEmpty()) {
+            TextColor color = effective.color();
+            if (colors.isEmpty() || !colors.getLast().equals(color)) {
+                colors.add(color);
+            }
+        }
+        for (Component child : component.children()) {
+            collectTextRunColors(child, effective, colors);
+        }
+    }
+
+    private static TextColor loreColor(ItemStack stack) {
+        List<Component> lore = stack.getItemMeta().lore();
+        assertThat(lore).isNotNull().hasSize(1);
+        List<TextColor> colors = new ArrayList<>();
+        collectTextRunColors(lore.getFirst(), Style.empty(), colors);
+        return colors.getFirst();
+    }
+
+    private static String texture(ItemStack stack) {
+        SkullMeta meta = (SkullMeta) stack.getItemMeta();
+        return meta.getPlayerProfile().getProperties().stream()
+                .filter(property -> property.getName().equals("textures"))
+                .findFirst()
+                .orElseThrow()
+                .getValue();
     }
 
     // ------------------------------------------------------------------

@@ -38,11 +38,8 @@ class SpawnConfigTest {
         node.node("spawn-radius").set(75);
         node.node("glide", "enabled").set(true);
         node.node("glide", "multiply-value").set(5);
-        node.node("swap-hand-boost", "enabled").set(true);
-        node.node("swap-hand-boost", "vector-multiplier").set(2.5);
         node.node("glide-boost", "enabled").set(true);
         node.node("glide-boost", "boost-strength").set(3.0);
-        node.node("glide-boost", "cooldown-seconds").set(10);
 
         SpawnConfig cfg = node.get(SpawnConfig.class);
 
@@ -50,11 +47,8 @@ class SpawnConfigTest {
         assertThat(cfg.spawnRadius()).isEqualTo(75);
         assertThat(cfg.glide().enabled()).isTrue();
         assertThat(cfg.glide().multiplyValue()).isEqualTo(5);
-        assertThat(cfg.swapHandBoost().enabled()).isTrue();
-        assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(2.5);
         assertThat(cfg.glideBoost().enabled()).isTrue();
         assertThat(cfg.glideBoost().boostStrength()).isEqualTo(3.0);
-        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(10);
     }
 
     @Test
@@ -71,17 +65,14 @@ class SpawnConfigTest {
         // initialises it to false (the zero value). The production config.yml always
         // provides an explicit 'enabled: true', so we only assert the numeric defaults here.
         assertThat(cfg.glide().multiplyValue()).isEqualTo(3); // default: 0 → 3
-        assertThat(cfg.swapHandBoost().enabled()).isFalse(); // boolean zero = false
-        assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(3.0); // default: 0 → 3.0
         assertThat(cfg.glideBoost().enabled()).isFalse(); // boolean zero = false
         assertThat(cfg.glideBoost().boostStrength()).isEqualTo(2.0); // default: 0 → 2.0
-        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(5); // default: 0 → 5
     }
 
     @Test
     void spawnRadius_defaultsToFifty_whenAbsentOrNonPositive() {
-        assertThat(new SpawnConfig(0, null, null, null).spawnRadius()).isEqualTo(50);
-        assertThat(new SpawnConfig(-1, null, null, null).spawnRadius()).isEqualTo(50);
-        assertThat(new SpawnConfig(120, null, null, null).spawnRadius()).isEqualTo(120);
+        assertThat(new SpawnConfig(0, null, null).spawnRadius()).isEqualTo(50);
+        assertThat(new SpawnConfig(-1, null, null).spawnRadius()).isEqualTo(50);
+        assertThat(new SpawnConfig(120, null, null).spawnRadius()).isEqualTo(120);
     }
 }

@@ -16,9 +16,14 @@ import java.time.Duration;
 import net.kyori.adventure.text.Component;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,16 +47,15 @@ class GlideListenerTest {
     private SpawnConfig config;
 
     private SpawnConfig makeConfig(int spawnRadius, int multiplyValue) {
-        return makeConfigWithBoost(spawnRadius, multiplyValue, false, 2.0, 5);
+        return makeConfigWithBoost(spawnRadius, multiplyValue, false, 2.0);
     }
 
     private SpawnConfig makeConfigWithBoost(int spawnRadius, int multiplyValue,
-            boolean boostEnabled, double boostStrength, int cooldownSeconds) {
+            boolean boostEnabled, double boostStrength) {
         return new SpawnConfig(
                 spawnRadius,
                 new SpawnConfig.GlideConfig(true, multiplyValue),
-                new SpawnConfig.SwapHandBoostConfig(false, 3.0),
-                new SpawnConfig.GlideBoostConfig(boostEnabled, boostStrength, cooldownSeconds));
+                new SpawnConfig.GlideBoostConfig(boostEnabled, boostStrength));
     }
 
     @BeforeEach
@@ -312,7 +316,7 @@ class GlideListenerTest {
 
     @Test
     void glideStart_inGlideZone_withBoostEnabled_marksBoostEligible() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("lily");
         player.setGameMode(GameMode.SURVIVAL);
@@ -328,7 +332,7 @@ class GlideListenerTest {
 
     @Test
     void glideStart_outsideGlideZone_doesNotMarkBoostEligible() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("mike");
         player.setGameMode(GameMode.SURVIVAL);
@@ -341,8 +345,24 @@ class GlideListenerTest {
     }
 
     @Test
+    void swappingHands_neverAppliesGlideBoost() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
+        service.updateConfig(config);
+        PlayerMock player = server.addPlayer("swapless");
+        player.setGliding(true);
+        player.setVelocity(new org.bukkit.util.Vector());
+
+        PlayerSwapHandItemsEvent event = new PlayerSwapHandItemsEvent(
+                player, new ItemStack(Material.STONE), new ItemStack(Material.DIRT));
+        server.getPluginManager().callEvent(event);
+
+        assertThat(event.isCancelled()).isFalse();
+        assertThat(player.getVelocity().length()).isZero();
+    }
+
+    @Test
     void sneak_whileEligibleGliding_appliesBoost() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 1);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("nina");
         player.setGameMode(GameMode.SURVIVAL);
@@ -359,8 +379,7 @@ class GlideListenerTest {
         player.setGliding(true);
 
         // Trigger sneak boost
-        org.bukkit.event.player.PlayerToggleSneakEvent sneak =
-                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        PlayerToggleSneakEvent sneak = new PlayerToggleSneakEvent(player, true);
         server.getPluginManager().callEvent(sneak);
 
         assertThat(player.getVelocity().length()).isGreaterThan(0.0);
@@ -368,15 +387,14 @@ class GlideListenerTest {
 
     @Test
     void sneak_whenNotEligible_doesNotBoost() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("otto");
         player.setGliding(true);
         // player is NOT in boostEligible (did not start glide through the listener)
 
         player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
-        org.bukkit.event.player.PlayerToggleSneakEvent sneak =
-                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        PlayerToggleSneakEvent sneak = new PlayerToggleSneakEvent(player, true);
         server.getPluginManager().callEvent(sneak);
 
         assertThat(player.getVelocity().length()).isEqualTo(0.0);
@@ -384,7 +402,7 @@ class GlideListenerTest {
 
     @Test
     void glideEnd_clearsBoostEligibility() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("penny");
         player.setGameMode(GameMode.SURVIVAL);
@@ -396,8 +414,7 @@ class GlideListenerTest {
         assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
 
         // Glide ends
-        org.bukkit.event.entity.EntityToggleGlideEvent endGlide =
-                new org.bukkit.event.entity.EntityToggleGlideEvent(player, false);
+        EntityToggleGlideEvent endGlide = new EntityToggleGlideEvent(player, false);
         server.getPluginManager().callEvent(endGlide);
 
         assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
@@ -406,7 +423,7 @@ class GlideListenerTest {
 
     @Test
     void playerQuit_clearsBoostEligibility() {
-        config = makeConfigWithBoost(30, 3, true, 2.0, 5);
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("quinn");
         player.setGameMode(GameMode.SURVIVAL);
@@ -424,9 +441,39 @@ class GlideListenerTest {
     }
 
     @Test
-    void sneak_duringCooldown_doesNotBoost() {
-        // cooldown of 60 seconds — second sneak in the same session must be ignored
-        config = makeConfigWithBoost(30, 3, true, 2.0, 60);
+    void shutdown_clearsBoostEligibility() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
+        service.updateConfig(config);
+        PlayerMock player = server.addPlayer("shutdown");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+
+        server.getPluginManager().callEvent(new PlayerToggleFlightEvent(player, true));
+        listener.shutdown();
+
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
+    }
+
+    @Test
+    void newEligibleGlide_grantsOneNewOpportunity() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
+        service.updateConfig(config);
+        PlayerMock player = server.addPlayer("renewed");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+
+        server.getPluginManager().callEvent(new PlayerToggleFlightEvent(player, true));
+        player.setGliding(true);
+        server.getPluginManager().callEvent(new PlayerToggleSneakEvent(player, true));
+        server.getPluginManager().callEvent(new EntityToggleGlideEvent(player, false));
+        server.getPluginManager().callEvent(new PlayerToggleFlightEvent(player, true));
+
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+    }
+
+    @Test
+    void secondSneak_duringSameGlide_doesNotBoost() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("rose");
         player.setGameMode(GameMode.SURVIVAL);
@@ -436,31 +483,28 @@ class GlideListenerTest {
         PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
         server.getPluginManager().callEvent(toggle);
 
-        // Move outside zone and stay gliding so the zone-exit guard allows the boost
+        // Move outside zone and stay gliding.
         player.setLocation(new Location(world, 200, 64, 200, 0f, 0f));
         player.setGliding(true);
 
         // First sneak → boost applied
-        org.bukkit.event.player.PlayerToggleSneakEvent first =
-                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        PlayerToggleSneakEvent first = new PlayerToggleSneakEvent(player, true);
         server.getPluginManager().callEvent(first);
         double firstMag = player.getVelocity().length();
         assertThat(firstMag).isGreaterThan(0.0);
 
-        // Reset velocity and immediately sneak again (cooldown = 60s, not elapsed)
+        // Reset velocity and sneak again during the same glide.
         player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
-        org.bukkit.event.player.PlayerToggleSneakEvent second =
-                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        PlayerToggleSneakEvent second = new PlayerToggleSneakEvent(player, true);
         server.getPluginManager().callEvent(second);
 
-        // Velocity must still be zero — cooldown blocked the second boost
+        // Velocity must still be zero — the one opportunity was consumed.
         assertThat(player.getVelocity().length()).isEqualTo(0.0);
     }
 
     @Test
-    void sneak_whileStillInGlideZone_doesNotBoost() {
-        // Boost only applies AFTER leaving the zone, not while still inside.
-        config = makeConfigWithBoost(30, 3, true, 2.0, 1);
+    void sneak_whileStillInGlideZone_appliesBoostAndConsumesOpportunity() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("sam");
         player.setGameMode(GameMode.SURVIVAL);
@@ -470,20 +514,20 @@ class GlideListenerTest {
         PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
         server.getPluginManager().callEvent(toggle);
         player.setGliding(true);
-        // Player stays inside the zone — zone-exit guard must block the boost.
+        // Player stays inside the zone.
         player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
 
-        org.bukkit.event.player.PlayerToggleSneakEvent sneak =
-                new org.bukkit.event.player.PlayerToggleSneakEvent(player, true);
+        PlayerToggleSneakEvent sneak = new PlayerToggleSneakEvent(player, true);
         server.getPluginManager().callEvent(sneak);
 
-        assertThat(player.getVelocity().length()).isEqualTo(0.0);
+        assertThat(player.getVelocity().length()).isGreaterThan(0.0);
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
     }
 
     @Test
     void configReload_glideBoostEnabled_isHonored() {
         // Start with boost disabled
-        config = makeConfigWithBoost(30, 3, false, 2.0, 1);
+        config = makeConfigWithBoost(30, 3, false, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("tara");
         player.setGameMode(GameMode.SURVIVAL);
@@ -495,7 +539,7 @@ class GlideListenerTest {
         assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
 
         // Simulate config reload: enable boost with cooldown 1s
-        config = makeConfigWithBoost(30, 3, true, 3.0, 1);
+        config = makeConfigWithBoost(30, 3, true, 3.0);
         service.updateConfig(config);
 
         // New glide for a second player → should now be marked eligible

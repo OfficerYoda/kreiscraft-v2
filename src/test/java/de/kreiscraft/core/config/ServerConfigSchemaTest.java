@@ -96,7 +96,7 @@ class ServerConfigSchemaTest {
                         List.of("modules", "reboot", "default-countdown"),
                         List.of("modules", "spawn", "spawn-radius"),
                         List.of("modules", "spawn", "glide", "enabled"),
-                        List.of("modules", "spawn", "glide-boost", "cooldown-seconds"),
+                        List.of("modules", "spawn", "glide-boost", "boost-strength"),
                         List.of("modules", "start-sequence", "border-duration"),
                         List.of("modules", "tablist", "update-interval"),
                         List.of("modules", "update-mode", "bypass-names"),
