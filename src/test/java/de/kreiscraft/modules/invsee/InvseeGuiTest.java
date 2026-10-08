@@ -262,36 +262,42 @@ class InvseeGuiTest {
     }
 
     @Test
-    void buildEditable_helmetBoundAtGuiIndex30() {
-        // Helmet is Bukkit slot 39, which should map to GUI slot 30 (same as read-only).
-        player.getInventory().setHelmet(new ItemStack(Material.DIAMOND_HELMET));
-        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(player.getInventory());
-        xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(30);
-        assertThat(elem).isInstanceOf(SlotElement.InventoryLink.class);
-        SlotElement.InventoryLink invElem = (SlotElement.InventoryLink) elem;
-        // Slot 30 in the GUI is bound to Bukkit slot 39 (helmet)
-        assertThat(invElem.slot()).isEqualTo(39);
-    }
+    void liveAndOfflineInventoriesUseTheSameBukkitSlotLayout() {
+        VirtualInventory contents = InvseeGui.offlineInventoryContents(OfflinePlayerSnapshot.empty());
+        xyz.xenondevs.invui.gui.Gui live = InvseeGui.buildEditable(player.getInventory());
+        xyz.xenondevs.invui.gui.Gui offline = InvseeGui.buildOfflineInventory(contents);
+        Integer[] expectedBukkitSlots = {
+                39, 38, 37, 36, 40, null, null, null, null,
+                9, 10, 11, 12, 13, 14, 15, 16, 17,
+                18, 19, 20, 21, 22, 23, 24, 25, 26,
+                27, 28, 29, 30, 31, 32, 33, 34, 35,
+                0, 1, 2, 3, 4, 5, 6, 7, 8
+        };
 
-    @Test
-    void buildEditable_offhandBoundAtGuiIndex31() {
-        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(player.getInventory());
-        xyz.xenondevs.invui.gui.SlotElement elem = gui.getSlotElement(31);
-        assertThat(elem).isInstanceOf(SlotElement.InventoryLink.class);
-        SlotElement.InventoryLink invElem = (SlotElement.InventoryLink) elem;
-        // Offhand is Bukkit slot 40
-        assertThat(invElem.slot()).isEqualTo(40);
-    }
-
-    @Test
-    void buildEditable_fillerSlotsHaveNoInventoryBinding() {
-        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(player.getInventory());
-        // GUI slots 32-35 are filler — no InventoryLink
-        for (int i = 32; i <= 35; i++) {
-            assertThat(gui.getSlotElement(i))
-                    .as("GUI slot %d should be empty filler", i)
-                    .isNull();
+        for (int guiSlot = 0; guiSlot < expectedBukkitSlots.length; guiSlot++) {
+            Integer expectedBukkitSlot = expectedBukkitSlots[guiSlot];
+            if (expectedBukkitSlot == null) {
+                assertThat(stackAt(live, guiSlot).getType()).isEqualTo(Material.BARRIER);
+                assertThat(stackAt(offline, guiSlot).getType()).isEqualTo(Material.BARRIER);
+            } else {
+                assertThat(((SlotElement.InventoryLink) live.getSlotElement(guiSlot)).slot())
+                        .as("live GUI slot %d", guiSlot)
+                        .isEqualTo(expectedBukkitSlot);
+                assertThat(((SlotElement.InventoryLink) offline.getSlotElement(guiSlot)).slot())
+                        .as("offline GUI slot %d", guiSlot)
+                        .isEqualTo(expectedBukkitSlot);
+            }
         }
+    }
+
+    @Test
+    void buildEditable_writesChangesToLiveInventoryImmediately() {
+        xyz.xenondevs.invui.gui.Gui gui = InvseeGui.buildEditable(player.getInventory());
+        SlotElement.InventoryLink hotbarSlot = (SlotElement.InventoryLink) gui.getSlotElement(36);
+
+        hotbarSlot.inventory().setItem(null, hotbarSlot.slot(), new ItemStack(Material.DIAMOND));
+
+        assertThat(player.getInventory().getItem(0)).isEqualTo(new ItemStack(Material.DIAMOND));
     }
 
     private ItemStack stackAt(xyz.xenondevs.invui.gui.Gui gui, int slot) {
