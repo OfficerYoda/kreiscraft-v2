@@ -20,11 +20,11 @@ the server language). In each pass:
 ## Navigation
 
 1. From the Player Settings root, click the **Server Configuration** entry.
-2. Confirm the category list opens and that the categories `core`, `modules`, `admin`, `anti-cheat`,
-   `bedrock`, `chat-format`, `combat`, `effects`, `firework`, `jail`, `positions`,
-   `reboot`, `spawn`, `start-sequence`, `tablist`, `update-mode` and `wither` are present.
+2. Confirm the category list opens with one representative icon per configured module (including a
+   Wither skull for `wither`) and no separate generic `modules` category.
 3. Open several categories (including a nested one such as `spawn` and the large `wither` page) and
-   confirm the **Back** arrow returns to the category list.
+   confirm related settings occupy one row per group. In `wither`, spawn, half-health and death
+   settings must be on separate rows. Confirm the **Back** arrow returns to the category list.
 4. From the category list, use **Back** to return to Player Settings.
 5. Reopen the editor with `/settings admin` and confirm it opens directly on the category list.
 
@@ -52,7 +52,8 @@ example, attempt a text value that is not valid MiniMessage for `chat-format →
 
 Confirm the editor never shows a control for:
 
-- any `modules.api.*` value (host, port, CORS origins, session cookie, timeouts, admin API key),
+- any `modules.api.*` value except its `enabled` toggle (host, port, CORS origins, session cookie,
+  timeouts, admin API key),
 - the anti-cheat plugin-messaging channel,
 - the tab-list header or footer,
 - `core.timezone` or `core.auto-save-interval`,
@@ -65,8 +66,9 @@ The `tablist` category should only offer `Update interval`.
 1. Change a hot-reloadable field (for example `combat → Disable elytra in combat`), close the GUI,
    and confirm a message offers the clickable **Reload now** action. Click it and confirm the reload
    succeeds.
-2. Change a restart-only field (for example toggle a module `enabled` flag, or change
-   `tablist → Update interval`), close the GUI, and confirm the prompt states that a restart is
+2. Confirm each module section puts its `enabled` toggle in the far-left slot of the bottom row as a
+   glass pane whose lore says a restart is required. Toggle it, or change
+   `tablist → Update interval`, close the GUI, and confirm the prompt states that a restart is
    required and does **not** offer a live reload.
 3. Change both kinds in one session and confirm the close message reports both, with module
    enablement described only as restart-required.

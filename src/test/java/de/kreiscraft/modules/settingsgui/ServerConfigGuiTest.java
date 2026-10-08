@@ -69,10 +69,7 @@ class ServerConfigGuiTest {
     }
 
     private int slotOf(String category, ConfigField field) {
-        List<ConfigField> fields = ServerConfigGui.fieldsIn(editor.schema(), category);
-        int index = fields.indexOf(field);
-        assertThat(index).as("field is present in category " + category).isNotNegative();
-        return ServerConfigGui.entrySlot(index);
+        return ServerConfigGui.fieldSlot(editor.schema(), category, field);
     }
 
     private ConfigField field(String module, String key) {
@@ -108,7 +105,8 @@ class ServerConfigGuiTest {
         Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
 
         List<String> categories = ServerConfigGui.categories(editor.schema());
-        assertThat(categories).contains("modules", "combat", "effects", "spawn", "chat-format");
+        assertThat(categories).contains("combat", "effects", "spawn", "chat-format", "wither");
+        assertThat(categories).doesNotContain("modules");
         for (int index = 0; index < categories.size(); index++) {
             assertThat(gui.getItem(ServerConfigGui.entrySlot(index))).isNotNull();
         }
@@ -135,9 +133,9 @@ class ServerConfigGuiTest {
                                 || path.contains("debug")
                                 || path.contains("active")
                                 || path.contains("has-started"));
-        assertThat(ServerConfigGui.categories(editor.schema()))
-                .as("the HTTP API stays entirely YAML-only")
-                .doesNotContain("api");
+        assertThat(ServerConfigGui.fieldsIn(editor.schema(), "api"))
+                .as("the HTTP API section exposes only its module toggle")
+                .allMatch(field -> field.path().get(2).equals("enabled"));
     }
 
     @Test
@@ -147,22 +145,89 @@ class ServerConfigGuiTest {
         assertThat(categories)
                 .contains(
                         "core",
-                        "modules",
                         "admin",
+                        "api",
                         "anti-cheat",
                         "bedrock",
                         "chat-format",
+                        "clickthrough",
                         "combat",
                         "effects",
                         "firework",
+                        "glow",
+                        "invsee",
                         "jail",
                         "positions",
                         "reboot",
+                        "settings-gui",
+                        "sign-color",
                         "spawn",
                         "start-sequence",
+                        "status",
                         "tablist",
                         "update-mode",
-                        "wither");
+                        "wither",
+                        "world-mgmt");
+    }
+
+    @Test
+    void moduleEntries_useRepresentativeIcons() {
+        Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
+        List<String> categories = ServerConfigGui.categories(editor.schema());
+
+        assertThat(stackAt(gui, ServerConfigGui.entrySlot(categories.indexOf("wither"))).getType())
+                .isEqualTo(org.bukkit.Material.WITHER_SKELETON_SKULL);
+        for (int index = 0; index < categories.size(); index++) {
+            assertThat(stackAt(gui, ServerConfigGui.entrySlot(index)).getType())
+                    .isNotIn(org.bukkit.Material.CHEST, org.bukkit.Material.PAPER);
+        }
+    }
+
+    @Test
+    void everyModuleEnableToggle_isGlassPaneInFarLeftBottomSlotWithRestartLore() {
+        List<ConfigField> toggles = editor.schema().guiExposed().stream()
+                .filter(field -> field.path().size() == 3 && field.path().get(2).equals("enabled"))
+                .toList();
+
+        assertThat(toggles).isNotEmpty();
+        for (ConfigField toggleField : toggles) {
+            Gui gui = category(String.valueOf(toggleField.path().get(1)));
+            ItemStack toggle = stackAt(gui, ServerConfigGui.SLOT_MODULE_ENABLED);
+            assertThat(toggle.getType())
+                    .isIn(
+                            org.bukkit.Material.LIME_STAINED_GLASS_PANE,
+                            org.bukkit.Material.RED_STAINED_GLASS_PANE);
+            assertThat(toggle.getItemMeta().lore())
+                    .isNotEmpty()
+                    .allSatisfy(line -> assertThat(
+                            PlainTextComponentSerializer.plainText().serialize(line))
+                            .containsIgnoringCase("restart"));
+        }
+    }
+
+    @Test
+    void witherExplosionPhases_eachOccupyTheirOwnRow() {
+        ConfigField spawnPower = field("wither", "spawn-explosion-power");
+        ConfigField halfHealthPower = field("wither", "half-health-explosion-power");
+        ConfigField deathPower = field("wither", "death-explosion-power");
+        int spawn = slotOf("wither", spawnPower);
+        int spawnFire = slotOf("wither", field("wither", "spawn-explosion-fire"));
+        int halfHealth = slotOf("wither", halfHealthPower);
+        int death = slotOf("wither", deathPower);
+
+        assertThat(spawn / 9).isEqualTo(spawnFire / 9);
+        assertThat(List.of(spawn / 9, halfHealth / 9, death / 9)).doesNotHaveDuplicates();
+
+        Gui gui = category("wither");
+        double spawnBefore = (Double) editor.current(spawnPower);
+        double halfHealthBefore = (Double) editor.current(halfHealthPower);
+        double deathBefore = (Double) editor.current(deathPower);
+        click(gui, spawn);
+        click(gui, halfHealth);
+        click(gui, death);
+        assertThat(editor.current(spawnPower)).isEqualTo(spawnBefore + 0.1);
+        assertThat(editor.current(halfHealthPower)).isEqualTo(halfHealthBefore + 0.1);
+        assertThat(editor.current(deathPower)).isEqualTo(deathBefore + 0.1);
     }
 
     // ------------------------------------------------------------------
@@ -284,9 +349,9 @@ class ServerConfigGuiTest {
     @Test
     void moduleEnabledField_clickRecordsRestartOnlySession() {
         ConfigField enabled = field("combat", "enabled");
-        Gui gui = category("modules");
+        Gui gui = category("combat");
 
-        click(gui, slotOf("modules", enabled));
+        click(gui, ServerConfigGui.SLOT_MODULE_ENABLED);
 
         assertThat(editor.current(enabled)).isEqualTo(false);
         assertThat(session.restartCount()).isEqualTo(1);

@@ -194,10 +194,10 @@ class ServerConfigNavigatorTest {
     void moduleEnableEdit_thenClose_warnsRestartAndNeverReload() {
         navigator.openAdmin(player);
         captureLastWindow();
-        openCategory("modules");
+        openCategory("combat");
 
         ConfigField enabled = field("combat", "enabled");
-        clickField("modules", enabled);
+        clickField("combat", enabled);
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
         assertThat(reloads).hasValue(0);
@@ -226,8 +226,8 @@ class ServerConfigNavigatorTest {
         clickField("combat", field("combat", "disable-elytra"));
         navigator.openServerConfig(player, ServerConfigPage.root());
         captureLastWindow();
-        openCategory("modules");
-        clickField("modules", field("combat", "enabled"));
+        openCategory("combat");
+        clickField("combat", field("combat", "enabled"));
 
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
@@ -481,9 +481,9 @@ class ServerConfigNavigatorTest {
     }
 
     private void clickField(String category, ConfigField field) {
-        int index = ServerConfigGui.fieldsIn(editor.schema(), category).indexOf(field);
-        assertThat(index).isNotNegative();
-        lastGui.handleClick(ServerConfigGui.entrySlot(index), new Click(player, ClickType.LEFT));
+        lastGui.handleClick(
+                ServerConfigGui.fieldSlot(editor.schema(), category, field),
+                new Click(player, ClickType.LEFT));
     }
 
     private ConfigField openListEditor() {
