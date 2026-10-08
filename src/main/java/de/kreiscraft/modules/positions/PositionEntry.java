@@ -1,14 +1,17 @@
 package de.kreiscraft.modules.positions;
 
+import java.time.Instant;
+import java.util.UUID;
 import org.bukkit.Location;
-import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 /**
  * A single named waypoint belonging to one player. Stored in
- * {@code data/positions.yml} as a {@link ConfigSerializable} record so that
- * Configurate's ObjectMapper handles the round-trip via
- * {@link de.kreiscraft.core.config.serializers.LocationSerializer}.
+ * {@code data/positions.yml} with optional provenance for backward compatibility.
  */
-@ConfigSerializable
-public record PositionEntry(Location location) {
+public record PositionEntry(Location location, UUID savedBy, String savedByName, Instant savedAt) {
+
+    /** Creates a legacy entry without provenance. */
+    public PositionEntry(Location location) {
+        this(location, null, null, null);
+    }
 }

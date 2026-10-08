@@ -1,5 +1,6 @@
 package de.kreiscraft.modules.positions;
 
+import java.time.Clock;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,9 +11,15 @@ import org.bukkit.Location;
 public final class DefaultPositionsService implements PositionsService {
 
     private final PositionsData data;
+    private final Clock clock;
 
     public DefaultPositionsService(PositionsData data) {
+        this(data, Clock.systemUTC());
+    }
+
+    DefaultPositionsService(PositionsData data, Clock clock) {
         this.data = data;
+        this.clock = clock;
     }
 
     @Override
@@ -35,9 +42,14 @@ public final class DefaultPositionsService implements PositionsService {
 
     @Override
     public void set(UUID uuid, String name, Location location) {
+        set(uuid, name, location, uuid, null);
+    }
+
+    @Override
+    public void set(UUID uuid, String name, Location location, UUID savedBy, String savedByName) {
         data.update(
                 m -> m.computeIfAbsent(uuid, k -> new LinkedHashMap<>())
-                        .put(name, new PositionEntry(location)));
+                        .put(name, new PositionEntry(location, savedBy, savedByName, clock.instant())));
     }
 
     @Override
