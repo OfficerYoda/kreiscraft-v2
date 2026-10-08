@@ -218,8 +218,8 @@ class ServerConfigNavigatorTest {
         clickField("combat", field("combat", "disable-elytra"));
         navigator.openServerConfig(player, ServerConfigPage.root());
         captureLastWindow();
-        openCategory("modules");
-        clickField("modules", field("combat", "enabled"));
+        openCategory("combat");
+        clickField("combat", field("combat", "enabled"));
 
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
