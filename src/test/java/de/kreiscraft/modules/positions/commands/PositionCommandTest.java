@@ -18,6 +18,7 @@ import de.kreiscraft.modules.positions.PositionsConfig;
 import de.kreiscraft.modules.positions.PositionsService;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -72,8 +73,7 @@ class PositionCommandTest {
         LiteralCommandNode<CommandSourceStack> positions = PositionCommand.build(
                 service, messages, gui, PositionCommandTest::defaultConfig);
         dispatcher.getRoot().addChild(positions);
-        dispatcher.getRoot().addChild(PositionCommand.build(
-                "pos", service, messages, gui, PositionCommandTest::defaultConfig));
+        dispatcher.getRoot().addChild(Commands.literal("pos").redirect(positions).build());
         return dispatcher;
     }
 
@@ -233,7 +233,7 @@ class PositionCommandTest {
         when(service.forPlayer(player.getUniqueId())).thenReturn(Map.of());
         when(messages.renderFor(player, "positions.gui-title")).thenReturn(Component.text("Positions"));
 
-        buildDispatcher().execute("pos", sourceFor(player));
+        buildDispatcher().execute("positions", sourceFor(player));
 
         verify(gui).open(eq(player), any(xyz.xenondevs.invui.gui.Gui.class), any(Component.class));
     }

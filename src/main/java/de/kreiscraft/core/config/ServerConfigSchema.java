@@ -20,6 +20,10 @@ import org.spongepowered.configurate.ConfigurationNode;
  */
 public final class ServerConfigSchema {
 
+    /** Path of the effects particle field rendered with the particle picker. */
+    public static final List<Object> EFFECTS_DEFAULT_PARTICLE_PATH =
+            List.of("modules", "effects", "default-particle");
+
     private final List<ConfigField> fields;
 
     public ServerConfigSchema(List<ConfigField> fields) {
@@ -141,7 +145,7 @@ public final class ServerConfigSchema {
 
         // ── effects ─────────────────────────────────────────────────────────
         fields.add(new ConfigField(
-                path("modules", "effects", "default-particle"),
+                EFFECTS_DEFAULT_PARTICLE_PATH,
                 ConfigFieldType.ENUM,
                 ConfigValidators.enumValue(Particle.class),
                 true,

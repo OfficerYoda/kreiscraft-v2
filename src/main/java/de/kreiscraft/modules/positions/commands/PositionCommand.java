@@ -51,17 +51,7 @@ public final class PositionCommand {
             Gui gui,
             Supplier<PositionsConfig> configSupplier) {
 
-        return build("positions", service, messages, gui, configSupplier);
-    }
-
-    static LiteralCommandNode<CommandSourceStack> build(
-            String commandName,
-            PositionsService service,
-            MessageService messages,
-            Gui gui,
-            Supplier<PositionsConfig> configSupplier) {
-
-        return Commands.literal(commandName)
+        return Commands.literal("positions")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.positions.use"))
                 // /positions — opens GUI
                 .executes(

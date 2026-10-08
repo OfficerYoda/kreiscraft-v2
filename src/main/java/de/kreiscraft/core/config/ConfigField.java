@@ -71,6 +71,20 @@ public record ConfigField(
         return path.toArray();
     }
 
+    /** Owning GUI category: a module id for module fields, otherwise the root key. */
+    public String category() {
+        return path.size() >= 2 && "modules".equals(String.valueOf(path.get(0)))
+                ? String.valueOf(path.get(1))
+                : String.valueOf(path.get(0));
+    }
+
+    /** Whether this is a top-level module enablement field. */
+    public boolean moduleEnabled() {
+        return path.size() == 3
+                && "modules".equals(String.valueOf(path.get(0)))
+                && "enabled".equals(String.valueOf(path.get(2)));
+    }
+
     /** Whether {@code /kreiscraft reload} applies this field without a restart. */
     public boolean hotReloadable() {
         return lifecycle.hotReloadable();
