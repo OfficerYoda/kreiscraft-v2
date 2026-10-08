@@ -189,7 +189,7 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 |---|---|---|---|
 | `event-priority` | EventPriority | `LOWEST` | Bukkit `AsyncChatEvent` priority at which the formatter registers. Values: `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, `MONITOR`. |
 | `allow-mini-message-in-body` | boolean | `false` | Whether players can use MiniMessage tags in their message body. |
-| `format` | String | `<team-prefix> <name-colored> <team-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<team-prefix>`, `<name-colored>`, `<team-suffix>`, `<body>`. |
+| `format` | String | `<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, `<body>`. Present player prefixes include one trailing space; present suffixes include one leading space. Empty affixes add no whitespace. |
 
 ---
 

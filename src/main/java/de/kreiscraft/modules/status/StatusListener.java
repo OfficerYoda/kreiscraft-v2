@@ -4,7 +4,6 @@ import de.kreiscraft.core.event.PriorityListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,7 +16,6 @@ public final class StatusListener implements PriorityListener {
 
     private final StatusService service;
     private final Server server;
-    private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public StatusListener(StatusService service, Server server) {
         this.service = service;
@@ -62,8 +60,7 @@ public final class StatusListener implements PriorityListener {
         TextColor color = TextColor.color(status.color() & 0x00FFFFFF);
         Component coloredName = Component.text(player.getName()).color(color);
         player.displayName(
-                miniMessage.deserialize(status.prefix()).append(coloredName).append(
-                        miniMessage.deserialize(status.suffix())));
+                status.prefixComponent().append(coloredName).append(status.suffixComponent()));
         player.playerListName(coloredName);
     }
 
@@ -74,9 +71,10 @@ public final class StatusListener implements PriorityListener {
         if (team == null) {
             team = scoreboard.registerNewTeam(teamName);
         }
-        team.prefix(miniMessage.deserialize(status.prefix()));
-        team.suffix(miniMessage.deserialize(status.suffix()));
+        team.prefix(status.prefixComponent());
+        team.suffix(status.suffixComponent());
         team.color(NamedTextColor.nearestTo(TextColor.color(status.color() & 0x00FFFFFF)));
         team.addEntry(subject.getName());
     }
+
 }

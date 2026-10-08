@@ -11,7 +11,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -29,7 +29,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class StatusListenerTest {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
     /** Non-default color, distinct from {@link Status#defaults()} (gray). */
     private static final int GOLD = 0xFFAA00;
 
@@ -56,6 +55,10 @@ class StatusListenerTest {
         return "kc_" + player.getUniqueId().toString().substring(0, 8);
     }
 
+    private static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
     @Test
     void onJoin_appliesScoreboardTeam() {
         PlayerMock player = server.addPlayer("TestPlayer");
@@ -67,26 +70,34 @@ class StatusListenerTest {
     @Test
     void onJoin_appliesPrefixSuffixAndColor() {
         PlayerMock player = server.addPlayer("TestPlayer");
-        Status defaults = Status.defaults();
-
         Team team = player.getScoreboard().getTeam(teamName(player));
-        assertThat(team.prefix()).isEqualTo(MM.deserialize(defaults.prefix()));
-        assertThat(team.suffix()).isEqualTo(MM.deserialize(defaults.suffix()));
+        assertThat(plain(team.prefix())).isEqualTo("Player ");
+        assertThat(plain(team.suffix())).isEmpty();
         assertThat(team.color()).isEqualTo(NamedTextColor.GRAY);
     }
 
     @Test
     void onJoin_setsDisplayNameWithPrefixNameColourAndSuffix() {
         PlayerMock player = new PlayerMock(server, "Bob");
-        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        Status status = new Status("<gold>Admin </gold>", "<gray> [A]</gray>", GOLD);
         when(service.get(player.getUniqueId())).thenReturn(status);
 
         server.addPlayer(player);
 
-        Component expected = Component.text("Admin", NamedTextColor.GOLD)
-                .append(Component.text("Bob").color(TextColor.color(GOLD)))
-                .append(Component.text(" [A]"));
-        assertThat(player.displayName()).isEqualTo(expected);
+        assertThat(plain(player.displayName())).isEqualTo("Admin Bob [A]");
+    }
+
+    @Test
+    void onJoin_emptyAffixesAddNoWhitespace() {
+        PlayerMock player = new PlayerMock(server, "Bob");
+        when(service.get(player.getUniqueId())).thenReturn(new Status("", "", GOLD));
+
+        server.addPlayer(player);
+
+        assertThat(plain(player.displayName())).isEqualTo("Bob");
+        Team team = player.getScoreboard().getTeam(teamName(player));
+        assertThat(plain(team.prefix())).isEmpty();
+        assertThat(plain(team.suffix())).isEmpty();
     }
 
     @Test
@@ -113,10 +124,7 @@ class StatusListenerTest {
         // A later join must leave the already-online player's identity intact.
         server.addPlayer("Bob");
 
-        Component expected = Component.text("Alice", NamedTextColor.AQUA)
-                .append(Component.text("Alice").color(TextColor.color(0x5555FF)))
-                .append(Component.text(" [A]"));
-        assertThat(alice.displayName()).isEqualTo(expected);
+        assertThat(plain(alice.displayName())).isEqualTo("Alice Alice [A]");
         assertThat(alice.playerListName())
                 .isEqualTo(Component.text("Alice").color(TextColor.color(0x5555FF)));
     }
@@ -141,8 +149,8 @@ class StatusListenerTest {
         Team team = aliceScoreboard.getTeam(teamName(bob));
         assertThat(team).isNotNull();
         assertThat(team.hasEntry(bob.getName())).isTrue();
-        assertThat(team.prefix()).isEqualTo(MM.deserialize(bobStatus.prefix()));
-        assertThat(team.suffix()).isEqualTo(MM.deserialize(bobStatus.suffix()));
+        assertThat(plain(team.prefix())).isEqualTo("Bob ");
+        assertThat(plain(team.suffix())).isEqualTo(" [B]");
         assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
     }
 
@@ -163,8 +171,8 @@ class StatusListenerTest {
         Team team = bobScoreboard.getTeam(teamName(alice));
         assertThat(team).isNotNull();
         assertThat(team.hasEntry(alice.getName())).isTrue();
-        assertThat(team.prefix()).isEqualTo(MM.deserialize(aliceStatus.prefix()));
-        assertThat(team.suffix()).isEqualTo(MM.deserialize(aliceStatus.suffix()));
+        assertThat(plain(team.prefix())).isEqualTo("Alice ");
+        assertThat(plain(team.suffix())).isEqualTo(" [A]");
         assertThat(team.color()).isEqualTo(NamedTextColor.BLUE);
     }
 
@@ -182,8 +190,8 @@ class StatusListenerTest {
 
         Team team = player.getScoreboard().getTeam(teamName);
         assertThat(team).isNotNull();
-        assertThat(team.prefix()).isEqualTo(MM.deserialize(updated.prefix()));
-        assertThat(team.suffix()).isEqualTo(MM.deserialize(updated.suffix()));
+        assertThat(plain(team.prefix())).isEqualTo("Admin ");
+        assertThat(plain(team.suffix())).isEqualTo(" star");
         assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
     }
 
@@ -197,10 +205,7 @@ class StatusListenerTest {
         server.getPluginManager()
                 .callEvent(new StatusChangedEvent(player.getUniqueId(), Status.defaults(), updated));
 
-        Component expectedName = Component.text("Admin", NamedTextColor.RED)
-                .append(Component.text("OnlinePlayer").color(TextColor.color(GOLD)))
-                .append(Component.text(" [A]"));
-        assertThat(player.displayName()).isEqualTo(expectedName);
+        assertThat(plain(player.displayName())).isEqualTo("Admin OnlinePlayer [A]");
         assertThat(player.playerListName())
                 .isEqualTo(Component.text("OnlinePlayer").color(TextColor.color(GOLD)));
     }
@@ -225,8 +230,8 @@ class StatusListenerTest {
             Team team = scoreboard.getTeam(teamName(bob));
             assertThat(team).isNotNull();
             assertThat(team.hasEntry(bob.getName())).isTrue();
-            assertThat(team.prefix()).isEqualTo(MM.deserialize(updated.prefix()));
-            assertThat(team.suffix()).isEqualTo(MM.deserialize(updated.suffix()));
+            assertThat(plain(team.prefix())).isEqualTo("Admin ");
+            assertThat(plain(team.suffix())).isEqualTo(" [A]");
             assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
         }
     }
