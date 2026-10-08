@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
 import de.kreiscraft.core.config.ConfigField;
+import de.kreiscraft.core.config.ConfigEditResult;
+import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.config.YamlConfigService;
 import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.core.message.MessageService;
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Particle;
@@ -47,9 +51,10 @@ class ServerConfigNavigatorTest {
     private ServerMock server;
     private PluginMock plugin;
     private PlayerMock player;
-    private DefaultServerConfigService editor;
+    private ServerConfigService editor;
     private RecordingMessageService messages;
     private ServerConfigNavigator navigator;
+    private AtomicInteger reloads;
 
     private xyz.xenondevs.invui.gui.Gui lastGui;
     private Component lastTitle;
@@ -64,12 +69,22 @@ class ServerConfigNavigatorTest {
                 new DefaultServerConfigService(
                         new YamlConfigService(tmp, getClass().getClassLoader()));
         messages = new RecordingMessageService();
+        reloads = new AtomicInteger();
         SettingsService settings =
                 new DefaultSettingsService(
                         new InMemoryPlayerPreferencesService(), PlayerLanguage.DE, Particle.FLAME);
         navigator =
                 new ServerConfigNavigator(
-                        settings, id -> true, editor, messages, gui, new MockScheduler());
+                        settings,
+                        id -> true,
+                        editor,
+                        messages,
+                        gui,
+                        new MockScheduler(),
+                        sender -> {
+                            reloads.incrementAndGet();
+                            return true;
+                        });
         server.getPluginManager().registerEvents(navigator, plugin);
     }
 
@@ -115,7 +130,13 @@ class ServerConfigNavigatorTest {
                         .language()
                         .map(PlayerLanguage::code));
         navigator = new ServerConfigNavigator(
-                settings, id -> true, editor, localizedMessages, gui, new MockScheduler());
+                settings,
+                id -> true,
+                editor,
+                localizedMessages,
+                gui,
+                new MockScheduler(),
+                sender -> true);
 
         navigator.open(player, SettingsGui.Page.ROOT);
         captureLastWindow();
@@ -145,7 +166,7 @@ class ServerConfigNavigatorTest {
     // ------------------------------------------------------------------
 
     @Test
-    void hotReloadEdit_thenClose_reportsReloadPromptOnly() {
+    void hotReloadEdit_thenClose_reloadsAutomatically() {
         navigator.openAdmin(player);
         captureLastWindow();
         openCategory("combat");
@@ -154,6 +175,7 @@ class ServerConfigNavigatorTest {
         clickField("combat", disableElytra);
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
+        assertThat(reloads).hasValue(1);
         assertThat(messages.sentKeys).contains("server-config.close.hot-reload");
         assertThat(messages.sentKeys)
                 .as("a hot-reload-only session must not warn about a restart")
@@ -170,6 +192,7 @@ class ServerConfigNavigatorTest {
         clickField("modules", enabled);
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
+        assertThat(reloads).hasValue(0);
         assertThat(messages.sentKeys).contains("server-config.close.restart-required");
         assertThat(messages.sentKeys)
                 .as("module lifecycle changes are never described as hot-applied")
@@ -183,7 +206,98 @@ class ServerConfigNavigatorTest {
 
         lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
 
+        assertThat(reloads).hasValue(0);
         assertThat(messages.sentKeys).isEmpty();
+    }
+
+    @Test
+    void mixedSession_reloadsAndSeparatelyWarnsAboutRestart() {
+        navigator.openAdmin(player);
+        captureLastWindow();
+        openCategory("combat");
+        clickField("combat", field("combat", "disable-elytra"));
+        navigator.openServerConfig(player, ServerConfigPage.root());
+        captureLastWindow();
+        openCategory("modules");
+        clickField("modules", field("combat", "enabled"));
+
+        lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
+
+        assertThat(reloads).hasValue(1);
+        assertThat(messages.sentKeys)
+                .contains("server-config.close.hot-reload", "server-config.close.restart-required");
+    }
+
+    @Test
+    void pageNavigation_doesNotReloadBeforeGenuineClose() {
+        navigator.openAdmin(player);
+        captureLastWindow();
+        openCategory("combat");
+        clickField("combat", field("combat", "disable-elytra"));
+
+        Consumer<InventoryCloseEvent.Reason> navigationClose = lastClose;
+        doAnswer(invocation -> {
+            navigationClose.accept(InventoryCloseEvent.Reason.OPEN_NEW);
+            return null;
+        })
+                .when(gui)
+                .open(any(), any(), any(), any());
+        navigator.openServerConfig(player, ServerConfigPage.root());
+        captureLastWindow();
+
+        assertThat(reloads).hasValue(0);
+        assertThat(messages.sentKeys).isEmpty();
+
+        lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
+        assertThat(reloads).hasValue(1);
+    }
+
+    @Test
+    void rejectedAndFailedEdits_doNotReload() {
+        ConfigField field = field("combat", "disable-elytra");
+        ConfigEditResult[] result = {new ConfigEditResult.Rejected("no")};
+        ServerConfigService unsuccessfulEditor = new ServerConfigService() {
+            @Override
+            public ServerConfigSchema schema() {
+                return editor.schema();
+            }
+
+            @Override
+            public Object current(ConfigField requested) {
+                return editor.current(requested);
+            }
+
+            @Override
+            public ConfigEditResult edit(ConfigField requested, Object value) {
+                return result[0];
+            }
+        };
+        SettingsService settings = new DefaultSettingsService(
+                new InMemoryPlayerPreferencesService(), PlayerLanguage.DE, Particle.FLAME);
+        navigator = new ServerConfigNavigator(
+                settings,
+                id -> true,
+                unsuccessfulEditor,
+                messages,
+                gui,
+                new MockScheduler(),
+                sender -> {
+                    reloads.incrementAndGet();
+                    return true;
+                });
+
+        for (ConfigEditResult unsuccessful : List.of(
+                new ConfigEditResult.Rejected("no"),
+                new ConfigEditResult.Failed(new IOException("disk")))) {
+            result[0] = unsuccessful;
+            navigator.openAdmin(player);
+            captureLastWindow();
+            openCategory("combat");
+            clickField("combat", field);
+            lastClose.accept(InventoryCloseEvent.Reason.PLAYER);
+        }
+
+        assertThat(reloads).hasValue(0);
     }
 
     @Test
@@ -196,6 +310,7 @@ class ServerConfigNavigatorTest {
         navigator.openSettingsRoot(player);
         captureLastWindow();
 
+        assertThat(reloads).hasValue(1);
         assertThat(messages.sentKeys).contains("server-config.close.hot-reload");
         assertThat(lastGui.getItem(SettingsGui.SLOT_LANGUAGE))
                 .as("Player Settings root was reopened")

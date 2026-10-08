@@ -8,7 +8,7 @@ core:
   player-only: "<prefix> <red>This command can only be used by players."
 server-config:
   lifecycle:
-    hot-reload: "<green>Applied by <white>/kreiscraft reload</white>."
+    hot-reload: "<green>Applied automatically when this editor closes."
     restart-required: "<red>Requires a server restart."
   entry: "<gold>Server Configuration <dark_gray>(admins only)"
   title: "<gray>Server Configuration"
@@ -97,7 +97,7 @@ server-config:
     prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
     cancelled: "<prefix> <gray>Input cancelled."
   close:
-    hot-reload: "<prefix> <yellow><count> change(s) will apply on <click:run_command:'/kc reload'><green><underlined>[Reload now]</underlined></green></click>."
+    hot-reload: "<prefix> <green><count> change(s) applied automatically."
     restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."
 admin:
   item-given: "<prefix> <green><count>x <item></green>."

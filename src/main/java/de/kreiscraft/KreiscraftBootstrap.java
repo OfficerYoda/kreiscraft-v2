@@ -138,6 +138,8 @@ public final class KreiscraftBootstrap {
                 config.root(),
                 plugin.getLogger());
         services.publish(ModuleEnablement.class, modules);
+        ReloadService reload = new ReloadService(config, modules, messages);
+        services.publish(ReloadService.class, reload);
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.api.ApiModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
@@ -173,7 +175,7 @@ public final class KreiscraftBootstrap {
         this.autoSave = new AutoSaveTask(scheduler, autoSaveInterval, config::registeredDataFiles);
         autoSave.start();
 
-        commands.register(ReloadCommand.build(config, modules, messages),
+        commands.register(ReloadCommand.build(reload),
                 "Kreiscraft admin commands", "kc");
     }
 

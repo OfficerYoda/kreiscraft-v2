@@ -1,5 +1,6 @@
 package de.kreiscraft.modules.settingsgui;
 
+import de.kreiscraft.ReloadService;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
@@ -42,6 +43,7 @@ public final class SettingsGuiModule implements Module {
         Gui gui = ctx.services().get(Gui.class);
         ModuleEnablement modules = ctx.services().get(ModuleEnablement.class);
         ConfigService configService = ctx.services().get(ConfigService.class);
+        ReloadService reload = ctx.services().get(ReloadService.class);
 
         // The GUI only ever reads and mutates preferences through the shared boundary. The language
         // and particle fallbacks mirror what the owning features would use so the GUI shows a
@@ -56,7 +58,13 @@ public final class SettingsGuiModule implements Module {
         ServerConfigService serverConfig = new DefaultServerConfigService(configService);
         ServerConfigNavigator navigator =
                 new ServerConfigNavigator(
-                        settings, modules, serverConfig, ctx.messages(), gui, ctx.scheduler());
+                        settings,
+                        modules,
+                        serverConfig,
+                        ctx.messages(),
+                        gui,
+                        ctx.scheduler(),
+                        reload::reload);
 
         ctx.commands()
                 .register(
