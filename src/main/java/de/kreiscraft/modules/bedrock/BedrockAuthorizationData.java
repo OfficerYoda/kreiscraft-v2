@@ -19,6 +19,10 @@ import org.spongepowered.configurate.serialize.SerializationException;
  *   bound-uuid: "0f1e2d3c-..."
  *   registered-at: 2026-08-06T12:34:56Z
  * </pre>
+ *
+ * <p>If a {@code registered-at} value is absent (hand-edited or legacy file), the entry is
+ * assigned {@link java.time.Instant#EPOCH} so that repeated loads of the same file always produce
+ * identical state. The next flush writes the sentinel back, making the file self-healing.
  */
 public final class BedrockAuthorizationData
         extends DataFile<Map<String, PendingBedrockAuthorization>> {
@@ -38,7 +42,7 @@ public final class BedrockAuthorizationData
             String boundStr = child.node("bound-uuid").getString("");
             UUID boundUuid = boundStr.isEmpty() ? null : UUID.fromString(boundStr);
             String registeredStr = child.node("registered-at").getString("");
-            Instant registeredAt = registeredStr.isEmpty() ? Instant.now() : Instant.parse(registeredStr);
+            Instant registeredAt = registeredStr.isEmpty() ? Instant.EPOCH : Instant.parse(registeredStr);
             map.put(key, new PendingBedrockAuthorization(key, name, boundUuid, registeredAt));
         }
         return map;

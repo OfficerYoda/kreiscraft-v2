@@ -25,9 +25,9 @@ public final class CapturingCommandRegistrar implements CommandRegistrar {
 
     @Override
     public void register(
-            LiteralCommandNode<CommandSourceStack> node, String description, String... commandsAliases) {
+            LiteralCommandNode<CommandSourceStack> node, String description, String... aliases) {
         names.add(node.getName());
-        aliases.addAll(List.of(commandsAliases));
+        this.aliases.addAll(List.of(aliases));
     }
 
     /** Every primary command name registered, in registration order. */

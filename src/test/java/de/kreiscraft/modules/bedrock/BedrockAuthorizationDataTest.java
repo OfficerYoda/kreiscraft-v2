@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BedrockAuthorizationDataTest {
 
@@ -54,5 +56,40 @@ class BedrockAuthorizationDataTest {
         BedrockAuthorizationData reloaded = new BedrockAuthorizationData(tmp);
         reloaded.load();
         assertThat(reloaded.get().get(".steve").isBound()).isFalse();
+    }
+
+    @Test
+    void missingRegisteredAt_loadsAsDeterministicSentinel(@TempDir Path tmp) throws IOException {
+        // YAML written without a registered-at key — simulates hand-edited or legacy files.
+        Path dir = tmp.resolve("data");
+        Files.createDirectories(dir);
+        Files.writeString(
+                dir.resolve("bedrock-authorizations.yml"),
+                "\".steve\":\n  name: \".Steve\"\n");
+
+        BedrockAuthorizationData data = new BedrockAuthorizationData(tmp);
+        data.load();
+
+        assertThat(data.get().get(".steve").registeredAt())
+                .as("missing registered-at must resolve to Instant.EPOCH, not Instant.now()")
+                .isEqualTo(Instant.EPOCH);
+    }
+
+    @Test
+    void missingRegisteredAt_isIdempotentAcrossMultipleLoads(@TempDir Path tmp) throws IOException {
+        Path dir = tmp.resolve("data");
+        Files.createDirectories(dir);
+        Files.writeString(
+                dir.resolve("bedrock-authorizations.yml"),
+                "\".steve\":\n  name: \".Steve\"\n");
+
+        BedrockAuthorizationData first = new BedrockAuthorizationData(tmp);
+        first.load();
+
+        BedrockAuthorizationData second = new BedrockAuthorizationData(tmp);
+        second.load();
+
+        assertThat(first.get().get(".steve").registeredAt())
+                .isEqualTo(second.get().get(".steve").registeredAt());
     }
 }
