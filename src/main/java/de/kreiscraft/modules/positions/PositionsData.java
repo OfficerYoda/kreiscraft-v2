@@ -2,6 +2,7 @@ package de.kreiscraft.modules.positions;
 
 import de.kreiscraft.core.config.DataFile;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +17,10 @@ import org.spongepowered.configurate.serialize.SerializationException;
  * <pre>
  * &lt;uuid&gt;:
  *   &lt;name&gt;:
- *     location: { world: world, x: 0, y: 64, z: 0, yaw: 0, pitch: 0 }
+     *     location: { world: world, x: 0, y: 64, z: 0, yaw: 0, pitch: 0 }
+     *     saved-by: &lt;uuid&gt;
+     *     saved-by-name: Steve
+     *     saved-at: 1791460800000
  * </pre>
  */
 public final class PositionsData extends DataFile<Map<UUID, Map<String, PositionEntry>>> {
@@ -34,9 +38,15 @@ public final class PositionsData extends DataFile<Map<UUID, Map<String, Position
             Map<String, PositionEntry> positions = new LinkedHashMap<>();
             for (var nameEntry : uuidEntry.getValue().childrenMap().entrySet()) {
                 String name = String.valueOf(nameEntry.getKey());
-                PositionEntry entry = nameEntry.getValue().get(PositionEntry.class);
-                if (entry != null) {
-                    positions.put(name, entry);
+                ConfigurationNode entryNode = nameEntry.getValue();
+                var location = entryNode.node("location").get(org.bukkit.Location.class);
+                if (location != null) {
+                    String savedByValue = entryNode.node("saved-by").getString();
+                    UUID savedBy = savedByValue == null ? null : parseUuid(savedByValue);
+                    String savedByName = entryNode.node("saved-by-name").getString();
+                    Long savedAtValue = entryNode.node("saved-at").get(Long.class);
+                    Instant savedAt = savedAtValue == null ? null : Instant.ofEpochMilli(savedAtValue);
+                    positions.put(name, new PositionEntry(location, savedBy, savedByName, savedAt));
                 }
             }
             map.put(uuid, positions);
@@ -51,8 +61,19 @@ public final class PositionsData extends DataFile<Map<UUID, Map<String, Position
         node.set(null);
         for (var uuidEntry : state.entrySet()) {
             for (var nameEntry : uuidEntry.getValue().entrySet()) {
-                node.node(uuidEntry.getKey().toString(), nameEntry.getKey())
-                        .set(PositionEntry.class, nameEntry.getValue());
+                ConfigurationNode entryNode =
+                        node.node(uuidEntry.getKey().toString(), nameEntry.getKey());
+                PositionEntry entry = nameEntry.getValue();
+                entryNode.node("location").set(org.bukkit.Location.class, entry.location());
+                if (entry.savedBy() != null) {
+                    entryNode.node("saved-by").set(entry.savedBy().toString());
+                }
+                if (entry.savedByName() != null) {
+                    entryNode.node("saved-by-name").set(entry.savedByName());
+                }
+                if (entry.savedAt() != null) {
+                    entryNode.node("saved-at").set(entry.savedAt().toEpochMilli());
+                }
             }
         }
     }
@@ -60,5 +81,13 @@ public final class PositionsData extends DataFile<Map<UUID, Map<String, Position
     @Override
     protected Map<UUID, Map<String, PositionEntry>> empty() {
         return new LinkedHashMap<>();
+    }
+
+    private static UUID parseUuid(String value) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 }

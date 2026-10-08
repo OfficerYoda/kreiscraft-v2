@@ -1,10 +1,15 @@
 package de.kreiscraft.modules.positions;
 
+import de.kreiscraft.core.message.MessageService;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -47,6 +52,15 @@ public final class PositionsGui {
             Map<String, PositionEntry> positions,
             PositionsConfig config,
             BiConsumer<Player, PositionEntry> onTeleport) {
+        return build(positions, config, null, onTeleport);
+    }
+
+    /** Builds a localized GUI whose item lore includes position provenance. */
+    public static Gui build(
+            Map<String, PositionEntry> positions,
+            PositionsConfig config,
+            MessageService messages,
+            BiConsumer<Player, PositionEntry> onTeleport) {
 
         int rows = config.guiRows();
         if (rows < 2) {
@@ -81,7 +95,7 @@ public final class PositionsGui {
                 if (idx < entries.size()) {
                     Map.Entry<String, PositionEntry> e = entries.get(idx);
                     gui.setItem(slot, createPositionItem(e.getKey(), e.getValue(),
-                            config.teleportOnClick(), onTeleport));
+                            config.teleportOnClick(), messages, onTeleport));
                 }
             }
         }
@@ -107,6 +121,7 @@ public final class PositionsGui {
             String name,
             PositionEntry entry,
             boolean teleportOnClick,
+            MessageService messages,
             BiConsumer<Player, PositionEntry> onTeleport) {
 
         Material material = materialFor(entry.location());
@@ -121,13 +136,33 @@ public final class PositionsGui {
                         + (int) entry.location().getZ()
                 : "?";
 
-        ItemProvider provider = new ItemWrapper(createItemStack(
-                material, Component.text(name), List.of(Component.text(coordLine))));
-
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
-                return provider;
+                if (messages == null) {
+                    return new ItemWrapper(createItemStack(
+                            material, Component.text(name), List.of(Component.text(coordLine))));
+                }
+                String saver = entry.savedByName() == null
+                        ? plain(messages.renderFor(viewer, "positions.gui-legacy"))
+                        : entry.savedByName();
+                String savedAt = entry.savedAt() == null
+                        ? plain(messages.renderFor(viewer, "positions.gui-legacy"))
+                        : DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                                .withLocale(messages.localeFor(viewer))
+                                .withZone(ZoneId.of("Europe/Berlin"))
+                                .format(entry.savedAt());
+                List<Component> lore = new ArrayList<>();
+                lore.add(messages.renderFor(viewer, "positions.gui-location", "location", coordLine));
+                lore.add(messages.renderFor(viewer, "positions.gui-saver", "player", saver));
+                lore.add(messages.renderFor(viewer, "positions.gui-saved-at", "time", savedAt));
+                if (teleportOnClick) {
+                    lore.add(messages.renderFor(viewer, "positions.gui-teleport-hint"));
+                }
+                return new ItemWrapper(createItemStack(
+                        material,
+                        messages.renderFor(viewer, "positions.gui-item-title", "name", name),
+                        lore));
             }
 
             @Override
@@ -144,10 +179,17 @@ public final class PositionsGui {
             Material material, Component displayName, List<Component> lore) {
         ItemStack stack = new ItemStack(material);
         stack.editMeta(meta -> {
-            meta.displayName(displayName);
-            meta.lore(lore);
+            meta.displayName(displayName.decoration(TextDecoration.ITALIC, false));
+            meta.lore(lore.stream()
+                    .map(line -> line.decoration(TextDecoration.ITALIC, false))
+                    .toList());
         });
         return stack;
+    }
+
+    private static String plain(Component component) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(component);
     }
 
     /**
