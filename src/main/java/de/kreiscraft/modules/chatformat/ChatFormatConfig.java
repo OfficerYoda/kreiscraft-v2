@@ -6,7 +6,8 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 @ConfigSerializable
 public record ChatFormatConfig(EventPriority eventPriority, boolean allowMiniMessageInBody, String format) {
 
-    private static final String DEFAULT_FORMAT = "<team-prefix><name-colored><team-suffix><gray>: <reset><body>";
+    private static final String DEFAULT_FORMAT =
+            "<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>";
 
     /** Compact constructor: apply safe defaults for null fields. */
     public ChatFormatConfig {

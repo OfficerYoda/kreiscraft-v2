@@ -12,7 +12,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.scoreboard.Team;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class TablistStatusCoexistenceTest {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
     private static final int GOLD = 0xFFAA00;
 
     @Mock
@@ -71,8 +70,10 @@ class TablistStatusCoexistenceTest {
                 alice.getScoreboard().getTeam("kc_" + alice.getUniqueId().toString().substring(0, 8));
         assertThat(team).isNotNull();
         assertThat(team.hasEntry(alice.getName())).isTrue();
-        assertThat(team.prefix()).isEqualTo(MM.deserialize(status.prefix()));
-        assertThat(team.suffix()).isEqualTo(MM.deserialize(status.suffix()));
+        assertThat(PlainTextComponentSerializer.plainText().serialize(team.prefix()))
+                .isEqualTo("Admin ");
+        assertThat(PlainTextComponentSerializer.plainText().serialize(team.suffix()))
+                .isEqualTo(" star");
         assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
     }
 
@@ -87,10 +88,8 @@ class TablistStatusCoexistenceTest {
 
         PlayerMock alice = server.addPlayer("Alice");
 
-        assertThat(alice.displayName())
-                .isEqualTo(Component.text("Admin", NamedTextColor.GOLD)
-                        .append(Component.text("Alice").color(TextColor.color(GOLD)))
-                        .append(Component.text(" [A]")));
+        assertThat(PlainTextComponentSerializer.plainText().serialize(alice.displayName()))
+                .isEqualTo("Admin Alice [A]");
         assertThat(alice.playerListName())
                 .isEqualTo(Component.text("Alice").color(TextColor.color(GOLD)));
     }

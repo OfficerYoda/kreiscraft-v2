@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.chatformat;
 
 import de.kreiscraft.core.event.PriorityListener;
+import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusService;
 import de.kreiscraft.platform.PaperPlatform;
@@ -38,16 +39,19 @@ public final class ChatFormatListener implements PriorityListener {
     private final StatusService statusService;
     private final PaperPlatform platform;
     private final ChatBridge chatBridge;
+    private final MessageService messages;
 
     public ChatFormatListener(
             Supplier<ChatFormatConfig> configSupplier,
             StatusService statusService,
             PaperPlatform platform,
-            ChatBridge chatBridge) {
+            ChatBridge chatBridge,
+            MessageService messages) {
         this.configSupplier = configSupplier;
         this.statusService = statusService;
         this.platform = platform;
         this.chatBridge = chatBridge;
+        this.messages = messages;
     }
 
     /**
@@ -88,11 +92,11 @@ public final class ChatFormatListener implements PriorityListener {
         // Resolve custom MiniMessage tags from the format string.
         TagResolver resolver = TagResolver.builder()
                 .resolver(TagResolver.resolver(
-                        "team-prefix",
-                        Tag.selfClosingInserting(MINI_MESSAGE.deserialize(status.prefix()))))
+                        "player-prefix", Tag.selfClosingInserting(status.prefixComponent())))
                 .resolver(TagResolver.resolver(
-                        "team-suffix",
-                        Tag.selfClosingInserting(MINI_MESSAGE.deserialize(status.suffix()))))
+                        "player-suffix", Tag.selfClosingInserting(status.suffixComponent())))
+                .resolver(TagResolver.resolver(
+                        "kc-prefix", Tag.selfClosingInserting(messages.render("prefix"))))
                 .resolver(TagResolver.resolver(
                         "name-colored", Tag.selfClosingInserting(nameColored)))
                 .resolver(TagResolver.resolver("body", Tag.selfClosingInserting(bodyComponent)))
@@ -121,4 +125,5 @@ public final class ChatFormatListener implements PriorityListener {
         return message.equals(XAERO_WAYPOINT)
                 || message.startsWith(XAERO_WAYPOINT + XAERO_WAYPOINT_SEPARATOR);
     }
+
 }
