@@ -62,6 +62,8 @@ tasks.shadowJar {
     relocate("com.fasterxml.jackson", "$relocateBase.jackson")
     relocate("org.spongepowered.configurate", "$relocateBase.configurate")
     relocate("xyz.xenondevs.invui", "$relocateBase.invui")
+    // ponytail: InvUI 2.5.1 targets a transient Paper overload; remove when upstream targets 26.2.
+    relocate("net.minecraft.world.item.ItemInstance", "net.minecraft.world.item.ItemStack")
     relocate("org.slf4j", "$relocateBase.slf4j")
 }
 
@@ -85,6 +87,12 @@ val verifyInvuiCompatibility = tasks.register("verifyInvuiCompatibility") {
         ZipFile(jar).use { zip ->
             check(zip.getEntry("xyz/xenondevs/inventoryaccess/InventoryAccess.class") == null) {
                 "The shaded JAR contains legacy InventoryAccess classes that are incompatible with Paper 26.x"
+            }
+            val window = zip.getEntry("de/kreiscraft/libs/invui/window/AbstractWindow.class")
+                ?: error("The shaded JAR does not contain relocated InvUI classes")
+            val bytecode = zip.getInputStream(window).readBytes().toString(Charsets.ISO_8859_1)
+            check("net/minecraft/world/item/ItemInstance" !in bytecode) {
+                "The shaded InvUI window links CraftItemStack through the incompatible ItemInstance overload"
             }
         }
     }
