@@ -16,6 +16,12 @@ import java.util.UUID;
  * bound permanently to the first matching observed UUID by
  * {@link BedrockService#handleLogin(String, UUID)}. A bound authorization never silently rebinds;
  * replacing it requires explicit removal and re-registration.
+ *
+ * <p>{@code boundUuid} is {@code null} when unbound.  {@code Optional<UUID>} was considered but
+ * rejected: {@link #isBound()} already provides the named predicate, and changing to
+ * {@code Optional} would add verbosity at every persistence and service call-site
+ * ({@code .orElseThrow()} / {@code .orElse(null)}) without eliminating any real class of bug.
+ * The nullable field is fully encapsulated behind {@code isBound()} and {@code boundTo(UUID)}.
  */
 public record PendingBedrockAuthorization(
         String normalizedName, String name, UUID boundUuid, Instant registeredAt) {

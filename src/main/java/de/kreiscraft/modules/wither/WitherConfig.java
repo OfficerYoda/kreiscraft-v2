@@ -2,6 +2,16 @@ package de.kreiscraft.modules.wither;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
+/**
+ * Server Configuration for the Wither boss fight.
+ *
+ * <p>The three explosion groups (spawn, half-health, death) each carry power/fire/blockDamage.
+ * An {@code ExplosionConfig} value type would reduce the parameter count from 15 to 9 but would
+ * change the Configurate-serialized YAML layout from the flat keys that operators already know
+ * (e.g. {@code spawn-explosion-power}) to a nested map structure.  That is a breaking config-file
+ * migration for no behavioural gain, so the flat record is intentionally preserved.
+ * Revisit only if the config format is versioned and a migration path is provided.
+ */
 @ConfigSerializable
 public record WitherConfig(
         double maxHealth,
