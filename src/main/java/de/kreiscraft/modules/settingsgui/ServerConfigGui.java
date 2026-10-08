@@ -4,8 +4,9 @@ import de.kreiscraft.core.config.ConfigEditResult;
 import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -42,6 +43,9 @@ public final class ServerConfigGui {
     /** Slot that returns one level up. */
     static final int SLOT_BACK = 53;
 
+    /** Module enablement is always the far-left slot of the bottom row. */
+    static final int SLOT_MODULE_ENABLED = 45;
+
     /** First slot used for a category or field entry. */
     static final int FIRST_ENTRY_SLOT = 0;
 
@@ -74,14 +78,9 @@ public final class ServerConfigGui {
                 .toList();
     }
 
-    /** The category a field belongs to: modules for enable flags, otherwise the owning unit. */
+    /** The category a field belongs to. Module enablement stays with its owning module. */
     static String categoryOf(ConfigField field) {
         List<Object> path = field.path();
-        if (path.size() >= 3
-                && "modules".equals(String.valueOf(path.get(0)))
-                && "enabled".equals(String.valueOf(path.get(2)))) {
-            return "modules";
-        }
         if (path.size() >= 2 && "modules".equals(String.valueOf(path.get(0)))) {
             return String.valueOf(path.get(1));
         }
@@ -92,8 +91,23 @@ public final class ServerConfigGui {
     static List<ConfigField> fieldsIn(ServerConfigSchema schema, String category) {
         return schema.guiExposed().stream()
                 .filter(field -> categoryOf(field).equals(category))
-                .sorted(Comparator.comparing(ServerConfigGui::labelSlug))
                 .toList();
+    }
+
+    /** Stable slot for a field, with each related group occupying one row. */
+    static int fieldSlot(ServerConfigSchema schema, String category, ConfigField field) {
+        if (isModuleEnabled(field)) {
+            return SLOT_MODULE_ENABLED;
+        }
+        int row = 0;
+        for (List<ConfigField> group : fieldGroups(schema, category).values()) {
+            int column = group.indexOf(field);
+            if (column >= 0) {
+                return row * 9 + column;
+            }
+            row++;
+        }
+        throw new IllegalArgumentException("Field is not in category " + category);
     }
 
     /** Builds the category-list page. */
@@ -122,10 +136,10 @@ public final class ServerConfigGui {
             String category) {
         Gui gui = Gui.empty(9, 6);
         List<ConfigField> fields = fieldsIn(editor.schema(), category);
-        for (int index = 0; index < fields.size(); index++) {
-            ConfigField field = fields.get(index);
+        for (ConfigField field : fields) {
             gui.setItem(
-                    entrySlot(index), fieldItem(editor, messages, navigator, session, field, category));
+                    fieldSlot(editor.schema(), category, field),
+                    fieldItem(editor, messages, navigator, session, field, category));
         }
         gui.setItem(SLOT_BACK, backItem(messages, navigator, true));
         return gui;
@@ -153,7 +167,7 @@ public final class ServerConfigGui {
                 int count = fieldsIn(editor.schema(), category).size();
                 Component name = messages.renderFor(viewer, categoryKey(category))
                         .append(Component.text(" (" + count + ")").color(NamedTextColor.DARK_GRAY));
-                return new ItemWrapper(named(Material.CHEST, name));
+                return new ItemWrapper(named(categoryMaterial(category), name));
             }
 
             @Override
@@ -174,8 +188,18 @@ public final class ServerConfigGui {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
                 Object current = editor.current(field);
-                return new ItemWrapper(
-                        named(material(field, current), name(field, current, messages, viewer)));
+                Material icon =
+                        isModuleEnabled(field)
+                                ? (Boolean.TRUE.equals(current)
+                                        ? Material.LIME_STAINED_GLASS_PANE
+                                        : Material.RED_STAINED_GLASS_PANE)
+                                : material(field, current);
+                ItemStack stack = named(icon, name(field, current, messages, viewer));
+                if (isModuleEnabled(field)) {
+                    stack.editMeta(meta -> meta.lore(List.of(
+                            messages.renderFor(viewer, "server-config.lifecycle.restart-required"))));
+                }
+                return new ItemWrapper(stack);
             }
 
             @Override
@@ -241,6 +265,70 @@ public final class ServerConfigGui {
             return "module-enabled";
         }
         return path.stream().skip(1).map(String::valueOf).collect(Collectors.joining("-"));
+    }
+
+    private static boolean isModuleEnabled(ConfigField field) {
+        List<Object> path = field.path();
+        return path.size() == 3
+                && "modules".equals(String.valueOf(path.get(0)))
+                && "enabled".equals(String.valueOf(path.get(2)));
+    }
+
+    private static Map<String, List<ConfigField>> fieldGroups(
+            ServerConfigSchema schema, String category) {
+        Map<String, List<ConfigField>> groups = new LinkedHashMap<>();
+        for (ConfigField field : fieldsIn(schema, category)) {
+            if (!isModuleEnabled(field)) {
+                groups.computeIfAbsent(groupOf(field), ignored -> new java.util.ArrayList<>())
+                        .add(field);
+            }
+        }
+        return groups;
+    }
+
+    private static String groupOf(ConfigField field) {
+        String key = String.valueOf(field.path().get(field.path().size() - 1));
+        if (key.startsWith("spawn-explosion-")) {
+            return "spawn";
+        }
+        if (key.startsWith("half-health-explosion-")) {
+            return "half-health";
+        }
+        if (key.startsWith("death-explosion-")) {
+            return "death";
+        }
+        return field.path().size() > 3 ? String.valueOf(field.path().get(2)) : "general";
+    }
+
+    /** Representative icon for each module/core section. */
+    static Material categoryMaterial(String category) {
+        return switch (category) {
+            case "core" -> Material.COMMAND_BLOCK;
+            case "admin" -> Material.GOLD_BLOCK;
+            case "api" -> Material.REDSTONE_TORCH;
+            case "anti-cheat" -> Material.SHIELD;
+            case "bedrock" -> Material.BEDROCK;
+            case "chat-format" -> Material.WRITABLE_BOOK;
+            case "clickthrough" -> Material.ENDER_CHEST;
+            case "combat" -> Material.IRON_SWORD;
+            case "effects" -> Material.BLAZE_POWDER;
+            case "firework" -> Material.FIREWORK_ROCKET;
+            case "glow" -> Material.GLOW_INK_SAC;
+            case "invsee" -> Material.BARREL;
+            case "jail" -> Material.IRON_BARS;
+            case "positions" -> Material.COMPASS;
+            case "reboot" -> Material.CLOCK;
+            case "settings-gui" -> Material.NETHER_STAR;
+            case "sign-color" -> Material.OAK_SIGN;
+            case "spawn" -> Material.RECOVERY_COMPASS;
+            case "start-sequence" -> Material.DRAGON_EGG;
+            case "status" -> Material.NAME_TAG;
+            case "tablist" -> Material.PLAYER_HEAD;
+            case "update-mode" -> Material.REDSTONE_LAMP;
+            case "wither" -> Material.WITHER_SKELETON_SKULL;
+            case "world-mgmt" -> Material.GRASS_BLOCK;
+            default -> Material.PAPER;
+        };
     }
 
     /** The localized label for a field. */
