@@ -6,10 +6,9 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 /**
  * Configuration for the jail module.
  *
- * <p>The jail {@code location} is operator-owned Server Configuration (per ADR-10), written by
- * {@code /setjail} and read live through {@link JailService#jailLocation()}; it is therefore not a
- * module-config record component. {@code blockedCommands} defaults to the legacy hard-coded list
- * when absent.
+ * <p>The jail {@code location} is operator-owned Server Configuration, written by {@code /setjail}
+ * and read live through {@link JailService#jailLocation()}; it is therefore not a module-config
+ * record component. {@code blockedCommands} defaults to the legacy hard-coded list when absent.
  */
 @ConfigSerializable
 public record JailConfig(List<String> blockedCommands) {

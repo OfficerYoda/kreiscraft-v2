@@ -50,17 +50,15 @@ class YamlConfigServiceEditTest {
     }
 
     @Test
-    void appliedEdit_onBundledConfig_preservesHeaderAndUnrelatedValues(@TempDir Path tmp)
+    void appliedEdit_onBundledConfig_preservesUnrelatedValues(@TempDir Path tmp)
             throws IOException {
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
-        assertThat(Files.readString(tmp.resolve("config.yml")))
-                .contains("# Kreiscraft configuration.");
 
         ConfigEditResult result = cfg.edit(new ConfigEdit(combatEnabled(cfg), false));
 
         assertThat(result).isInstanceOf(ConfigEditResult.Applied.class);
         String after = Files.readString(tmp.resolve("config.yml"));
-        assertThat(after).contains("# Kreiscraft configuration.");
+        assertThat(after).doesNotContainPattern("(?m)(?:^|\\s)#");
         ConfigurationNode reloaded = load(tmp.resolve("config.yml"));
         assertThat(reloaded.node("modules", "combat", "enabled").getBoolean()).isFalse();
         assertThat(reloaded.node("core", "language").getString()).isEqualTo("de");

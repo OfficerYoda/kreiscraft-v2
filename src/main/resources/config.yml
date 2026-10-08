@@ -1,8 +1,3 @@
-# Kreiscraft configuration.
-# See docs/configuration.md for a full reference of every module and key.
-#
-# Most modules ship enabled. Firework and Positions ship disabled by default; set
-# `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
@@ -69,8 +64,7 @@ modules:
     enabled: true
   jail:
     enabled: true
-    # Operator-owned state (ADR-10): written by /setjail. `blocked-commands` remains module config.
-    location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
+    location: { world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, r]
   positions:
     enabled: false
@@ -87,10 +81,6 @@ modules:
     enabled: true
   spawn:
     enabled: true
-    # Operator-owned state (ADR-10). `location` is written by /setspawn and stays absent until a
-    # spawn has been set.
-    # location: { world: world, x: 0.5, y: 64, z: 0.5, yaw: 0, pitch: 0 }
-    # The single Spawn Radius bounds both spawn access (XZ) and glide eligibility (3D).
     spawn-radius: 50
     glide:
       enabled: true
@@ -104,15 +94,10 @@ modules:
       cooldown-seconds: 5
   start-sequence:
     enabled: true
-    # Operator-owned state (ADR-10): true once the season start sequence has run. Reset with
-    # `/start reset`; never migrated from the retired data/start-sequence.yml.
     has-started: false
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
-    # One continuous border expansion, configured in seconds. The plugin represents it internally
-    # as a Duration and converts it to ticks (20 ticks = 1 second) only at Bukkit's WorldBorder
-    # boundary, delegating the in-progress transition to Minecraft for graceful-restart persistence.
     border-duration: 30000s
   status:
     enabled: true
@@ -128,7 +113,6 @@ modules:
       <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
-    # Operator-owned state (ADR-10): maintenance mode active/inactive. Written by /updatemode.
     active: false
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []

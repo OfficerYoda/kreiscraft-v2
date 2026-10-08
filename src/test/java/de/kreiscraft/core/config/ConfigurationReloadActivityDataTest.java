@@ -13,9 +13,9 @@ import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 /**
- * ADR-10 boundary: operator-owned state moves to {@code config.yml}, while player and gameplay
- * records stay in {@code data/}. A {@code /kreiscraft reload} re-reads only {@code config.yml}, so
- * it must never re-read or overwrite Activity Data held in memory or on disk.
+ * Operator-owned state lives in {@code config.yml}, while player and gameplay records stay in
+ * {@code data/}. A {@code /kreiscraft reload} re-reads only {@code config.yml}, so it must never
+ * re-read or overwrite Activity Data held in memory or on disk.
  */
 class ConfigurationReloadActivityDataTest {
 

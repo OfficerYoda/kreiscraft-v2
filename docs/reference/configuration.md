@@ -235,7 +235,7 @@ sets and persists the particle while enabling effects immediately.
 
 | Key (relative to `modules.jail`) | Type | Default | Description |
 |---|---|---|---|
-| `location` | Location | `{ world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }` | Operator-owned teleport destination when jailing a player; written by `/setjail`. Format: `{ world: <name>, x: <n>, y: <n>, z: <n>, yaw: <n>, pitch: <n> }`. |
+| `location` | Location | `{ world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0 }` | Operator-owned teleport destination when jailing a player; written by `/setjail`. Format: `{ world: <name>, x: <n>, y: <n>, z: <n>, yaw: <n>, pitch: <n> }`. |
 | `blocked-commands` | List\<String\> | `[msg, tell, w, r]` | Command names (without `/`) that jailed players are not allowed to execute. |
 
 `location` is operator-owned Server Configuration (ADR-10), not module configuration: `/setjail`
@@ -369,7 +369,7 @@ Examples: `"5m"`, `"10s"`, `"1h"`, `"30d"`, `"500ms"`, `"20t"`
 A YAML map with keys `world`, `x`, `y`, `z`, `yaw`, `pitch`. Parsed by `LocationSerializer` via `Locations.fromMap()`.
 
 ```yaml
-location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
+location: { world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0 }
 ```
 
 ### `Vector`

@@ -18,9 +18,9 @@ import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 /**
- * The jail location is operator-owned Server Configuration (ADR-10): {@code /setjail} writes it
- * through the validated edit boundary into {@code config.yml}. Jail entries and restore locations
- * stay Activity Data in {@code data/jail.yml}.
+ * The jail location is operator-owned Server Configuration: {@code /setjail} writes it through the
+ * validated edit boundary into {@code config.yml}. Jail entries and restore locations stay
+ * Activity Data in {@code data/jail.yml}.
  */
 class JailLocationServerConfigTest {
 
@@ -50,7 +50,7 @@ class JailLocationServerConfigTest {
     @Test
     void bundledConfig_shipsAnOperatorOwnedJailLocation() {
         assertThat(service.jailLocation())
-                .contains(new Location(world, 126, 91, 92));
+                .contains(new Location(world, 0, 100, 0, 0, 0));
     }
 
     @Test
