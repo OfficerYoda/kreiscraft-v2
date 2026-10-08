@@ -78,6 +78,7 @@ public final class PositionCommand {
                                     PositionsGui.build(
                                             positions,
                                             cfg,
+                                            messages,
                                             (p, entry) -> p.teleport(entry.location()));
                             gui.open(
                                     player,
@@ -103,7 +104,9 @@ public final class PositionCommand {
                                                             service.set(
                                                                     player.getUniqueId(),
                                                                     name,
-                                                                    player.getLocation());
+                                                                    player.getLocation(),
+                                                                    player.getUniqueId(),
+                                                                    player.getName());
                                                             messages.send(
                                                                     sender,
                                                                     "positions.set",

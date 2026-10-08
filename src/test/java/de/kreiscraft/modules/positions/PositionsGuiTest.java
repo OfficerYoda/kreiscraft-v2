@@ -4,18 +4,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.message.ConfigurateMessageService;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
-import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.plugin.PluginMock;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import xyz.xenondevs.invui.Click;
@@ -176,5 +186,66 @@ class PositionsGuiTest {
                 Map.of("home", new PositionEntry(location)),
                 new PositionsConfig(6, true),
                 (clickedPlayer, entry) -> teleports.incrementAndGet());
+    }
+
+    @Test
+    void build_rendersColoredProvenanceAndActionLore(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService messages =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+        PlayerMock viewer = server.addPlayer("Viewer");
+        Location location = new Location(server.getWorld("world"), 1, 64, 2);
+        PositionEntry entry = new PositionEntry(
+                location, UUID.randomUUID(), "Alex", Instant.parse("2026-10-08T12:34:56Z"));
+
+        Gui gui = PositionsGui.build(
+                Map.of("home", entry), new PositionsConfig(6, true), messages, (p, e) -> {
+                });
+
+        var meta = gui.getItem(10).getItemProvider(viewer).get().getItemMeta();
+        assertThat(plain(meta.displayName())).isEqualTo("home");
+        assertThat(meta.displayName().color()).isEqualTo(NamedTextColor.GOLD);
+        List<Component> lore = meta.lore();
+        assertThat(lore).extracting(PositionsGuiTest::plain).satisfiesExactly(
+                line -> assertThat(line).isEqualTo("Location: world 1 64 2"),
+                line -> assertThat(line).isEqualTo("Saved by: Alex"),
+                line -> assertThat(line).startsWith("Saved at: Oct 8, 2026, 2:34:56"),
+                line -> assertThat(line).isEqualTo("Click to teleport"));
+        assertThat(colorOf(lore.get(0), "world 1 64 2")).isEqualTo(NamedTextColor.AQUA);
+        assertThat(colorOf(lore.get(1), "Alex")).isEqualTo(NamedTextColor.GOLD);
+        assertThat(colorOf(lore.get(2), "Oct 8, 2026, 2:34:56")).isEqualTo(NamedTextColor.AQUA);
+        assertThat(lore.get(3).color()).isEqualTo(NamedTextColor.GREEN);
+    }
+
+    @Test
+    void build_rendersLegacyFallback(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService messages =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+        PlayerMock viewer = server.addPlayer("Viewer");
+        PositionEntry entry = new PositionEntry(new Location(server.getWorld("world"), 1, 64, 2));
+
+        Gui gui = PositionsGui.build(
+                Map.of("legacy", entry), new PositionsConfig(6, false), messages, (p, e) -> {
+                });
+
+        List<Component> lore = gui.getItem(10).getItemProvider(viewer).get().getItemMeta().lore();
+        assertThat(lore).extracting(PositionsGuiTest::plain).containsExactly(
+                "Location: world 1 64 2", "Saved by: Unknown (legacy)", "Saved at: Unknown (legacy)");
+    }
+
+    private static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    private static NamedTextColor colorOf(Component component, String text) {
+        if (component instanceof net.kyori.adventure.text.TextComponent tc && tc.content().contains(text)) {
+            return (NamedTextColor) component.color();
+        }
+        for (Component child : component.children()) {
+            NamedTextColor found = colorOf(child, text);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 }
