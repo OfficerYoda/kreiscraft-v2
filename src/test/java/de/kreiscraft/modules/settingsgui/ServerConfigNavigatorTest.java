@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 
 import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.YamlConfigService;
+import de.kreiscraft.core.message.ConfigurateMessageService;
+import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
@@ -17,6 +19,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Particle;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -48,6 +52,7 @@ class ServerConfigNavigatorTest {
     private ServerConfigNavigator navigator;
 
     private xyz.xenondevs.invui.gui.Gui lastGui;
+    private Component lastTitle;
     private Consumer<InventoryCloseEvent.Reason> lastClose;
 
     @BeforeEach
@@ -92,6 +97,38 @@ class ServerConfigNavigatorTest {
         captureLastWindow();
 
         assertThat(lastGui.getItem(SettingsGui.SLOT_SERVER_CONFIG)).isNotNull();
+    }
+
+    @Test
+    void languageClick_reopensTitleAndAllItemsInTheSelectedLanguage(@TempDir Path tmp)
+            throws IOException {
+        InMemoryPlayerPreferencesService preferences = new InMemoryPlayerPreferencesService();
+        SettingsService settings =
+                new DefaultSettingsService(preferences, PlayerLanguage.DE, Particle.FLAME);
+        MessageService localizedMessages = new ConfigurateMessageService(
+                tmp,
+                getClass().getClassLoader(),
+                "de",
+                server,
+                recipient -> preferences
+                        .preferences(((PlayerMock) recipient).getUniqueId())
+                        .language()
+                        .map(PlayerLanguage::code));
+        navigator = new ServerConfigNavigator(
+                settings, id -> true, editor, localizedMessages, gui, new MockScheduler());
+
+        navigator.open(player, SettingsGui.Page.ROOT);
+        captureLastWindow();
+        lastGui.handleClick(
+                SettingsGui.SLOT_LANGUAGE, new Click(player, ClickType.LEFT));
+        captureLastWindow();
+
+        assertThat(plain(lastTitle)).isEqualTo("Settings");
+        assertThat(itemLabel(SettingsGui.SLOT_LANGUAGE)).isEqualTo("Language: English");
+        assertThat(itemLabel(SettingsGui.SLOT_CLICK_THROUGH)).isEqualTo("Click-Through: On");
+        assertThat(itemLabel(SettingsGui.SLOT_COMBAT_DISPLAY)).isEqualTo("Combat Display: Action Bar");
+        assertThat(itemLabel(SettingsGui.SLOT_EFFECTS)).isEqualTo("Effects (click to open)");
+        assertThat(itemLabel(SettingsGui.SLOT_GLOW)).isEqualTo("Glow: Off");
     }
 
     @Test
@@ -233,12 +270,23 @@ class ServerConfigNavigatorTest {
     private void captureLastWindow() {
         ArgumentCaptor<xyz.xenondevs.invui.gui.Gui> guiCaptor =
                 ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
+        ArgumentCaptor<Component> titleCaptor = ArgumentCaptor.forClass(Component.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Consumer<InventoryCloseEvent.Reason>> closeCaptor =
                 ArgumentCaptor.forClass((Class) Consumer.class);
-        verify(gui, atLeast(1)).open(any(), guiCaptor.capture(), any(), closeCaptor.capture());
+        verify(gui, atLeast(1))
+                .open(any(), guiCaptor.capture(), titleCaptor.capture(), closeCaptor.capture());
         lastGui = guiCaptor.getValue();
+        lastTitle = titleCaptor.getValue();
         lastClose = closeCaptor.getValue();
         clearInvocations(gui);
+    }
+
+    private String itemLabel(int slot) {
+        return plain(lastGui.getItem(slot).getItemProvider(player).get().getItemMeta().displayName());
+    }
+
+    private static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
     }
 }

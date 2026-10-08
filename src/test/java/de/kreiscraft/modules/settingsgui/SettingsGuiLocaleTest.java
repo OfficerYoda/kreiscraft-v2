@@ -9,8 +9,14 @@ import de.kreiscraft.shared.preferences.PlayerLanguage;
 import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
@@ -88,6 +94,24 @@ class SettingsGuiLocaleTest {
     }
 
     @Test
+    void combatDisplayValues_areVisuallyDistinctFromTheirLabelsInBothLanguages() {
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+
+        for (String key : List.of(
+                "settings-gui.combat-display-chat",
+                "settings-gui.combat-display-actionbar",
+                "settings-gui.combat-display-title")) {
+            assertThat(textRunColors(messages.renderFor(alice, key)))
+                    .as("English %s", key)
+                    .containsExactly(NamedTextColor.GRAY, NamedTextColor.AQUA);
+            assertThat(textRunColors(messages.renderFor(bob, key)))
+                    .as("German %s", key)
+                    .containsExactly(NamedTextColor.GRAY, NamedTextColor.AQUA);
+        }
+    }
+
+    @Test
     void pageTitles_areLocalisedPerRecipient() {
         PlayerMock alice = server.addPlayer("Alice");
         PlayerMock bob = server.addPlayer("Bob");
@@ -113,5 +137,25 @@ class SettingsGuiLocaleTest {
                 .containsIgnoringCase("restart");
         assertThat(plain(messages.renderFor(bob, "server-config.close.restart-required", "count", 1)))
                 .containsIgnoringCase("Neustart");
+    }
+
+    private static List<TextColor> textRunColors(Component root) {
+        List<TextColor> colors = new ArrayList<>();
+        collectTextRunColors(root, Style.empty(), colors);
+        return colors;
+    }
+
+    private static void collectTextRunColors(
+            Component component, Style inherited, List<TextColor> colors) {
+        Style effective = component.style().merge(inherited, Style.Merge.Strategy.IF_ABSENT_ON_TARGET);
+        if (component instanceof TextComponent text && !text.content().isEmpty()) {
+            TextColor color = effective.color();
+            if (colors.isEmpty() || !colors.getLast().equals(color)) {
+                colors.add(color);
+            }
+        }
+        for (Component child : component.children()) {
+            collectTextRunColors(child, effective, colors);
+        }
     }
 }

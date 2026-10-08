@@ -160,11 +160,12 @@ class SettingsGuiTest {
     }
 
     @Test
-    void language_click_persistsAndIsReflectedOnReopen() {
+    void language_click_persistsAndImmediatelyReopensInTheNewLanguage() {
         Gui first = root();
         click(first, SettingsGui.SLOT_LANGUAGE);
 
         assertThat(settings.language(playerId)).isEqualTo(PlayerLanguage.EN);
+        assertThat(navigator.pages).containsExactly(Page.ROOT);
 
         Gui reopened = root();
         ItemStack stack = stackAt(reopened, SettingsGui.SLOT_LANGUAGE);
