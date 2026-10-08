@@ -49,9 +49,8 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 /**
  * Repository-wide assertions for the superseded command surfaces removed by ticket #57.
  *
- * <p>The removed surfaces are: <code>/i</code> (item shorthand), the custom
- * <code>/kreiscraftgamemode</code> command and its <code>kreiscraftgm</code>/<code>kcgamemode</code>/<code>kcgm</code>
- * aliases (superseded by the <code>/gm</code> forwarding), <code>/kreiscraftweather</code>
+ * <p>The removed surfaces are: <code>/i</code> (item shorthand), the gamemode commands
+ * <code>/gm</code>/<code>/kreiscraftgamemode</code> and their aliases, <code>/kreiscraftweather</code>
  * (<code>kcweather</code>), <code>/setworldspawn</code> (<code>sws</code>), and the German
  * <code>/updatemode an|aus</code> sub-commands.
  *
@@ -102,10 +101,10 @@ class RemovedCommandSurfacesTest {
     // --- module registration seam -----------------------------------------------------------------
 
     @Test
-    void adminModule_noLongerRegistersCustomGamemodeCommandOrAliases() {
+    void adminModule_noLongerRegistersGamemodeCommandsOrAliases() {
         CapturingCommandRegistrar registrar = enableAdminModule();
 
-        assertThat(registrar.names()).doesNotContain("kreiscraftgamemode");
+        assertThat(registrar.names()).doesNotContain("gm", "kreiscraftgamemode");
         assertThat(registrar.aliases()).doesNotContain("kreiscraftgm", "kcgamemode", "kcgm");
     }
 
@@ -123,13 +122,6 @@ class RemovedCommandSurfacesTest {
 
         assertThat(registrar.names()).contains("item");
         assertThat(registrar.aliases()).doesNotContain("i");
-    }
-
-    @Test
-    void adminModule_stillForwardsGmToVanillaGamemode() {
-        CapturingCommandRegistrar registrar = enableAdminModule();
-
-        assertThat(registrar.redirects()).contains("gm");
     }
 
     @Test
@@ -210,11 +202,15 @@ class RemovedCommandSurfacesTest {
     void removedCommandClassesAndTestsNoLongerExist() {
         assertThat(Path.of("src/main/java/de/kreiscraft/modules/admin/commands/KreiscraftGamemodeCommand.java"))
                 .doesNotExist();
+        assertThat(Path.of("src/main/java/de/kreiscraft/modules/admin/commands/GamemodeCommand.java"))
+                .doesNotExist();
         assertThat(Path.of("src/main/java/de/kreiscraft/modules/admin/commands/WeatherCommand.java"))
                 .doesNotExist();
         assertThat(Path.of("src/main/java/de/kreiscraft/modules/worldmgmt/commands/SetWorldSpawnCommand.java"))
                 .doesNotExist();
         assertThat(Path.of("src/test/java/de/kreiscraft/modules/admin/commands/KreiscraftGamemodeCommandTest.java"))
+                .doesNotExist();
+        assertThat(Path.of("src/test/java/de/kreiscraft/modules/admin/commands/GamemodeCommandTest.java"))
                 .doesNotExist();
         assertThat(Path.of("src/test/java/de/kreiscraft/modules/admin/commands/WeatherCommandTest.java"))
                 .doesNotExist();

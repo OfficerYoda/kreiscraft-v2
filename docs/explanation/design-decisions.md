@@ -451,13 +451,13 @@ not operator-owned Server Configuration, so ordinary config reloads cannot overw
 
 ## ADR-14: Forwarding Aliases via Brigadier Redirect
 
-**Status:** Accepted
+**Status:** Superseded — `/gm` removed for Paper 26.2 compatibility
 
 **Context:**
 Administrative commands should match the syntax and authorization players already know from
 vanilla Minecraft. Re-implementing a command such as `/gamemode` — its argument types, its
 selector support, its completions, and its op-level requirement — invites drift from vanilla
-behaviour and duplicates parsing logic. `/gm` is wanted purely as an alias for the existing
+behaviour and duplicates parsing logic. `/gm` was wanted purely as an alias for the existing
 `minecraft:gamemode` command.
 
 **Decision:**
@@ -476,14 +476,17 @@ If the target is absent the registrar logs a warning and skips the alias rather 
 broken command.
 
 **Consequences:**
-- `/gm` inherits vanilla syntax, selector handling, completions, and authorization with no
-  duplicated logic; a future vanilla change flows through automatically.
-- The requirement is reused from the target because redirects do not re-apply the target root's own
-  predicate, so the alias cannot accidentally loosen authorization.
-- Forwarding is generic: any future alias can point at any command already in the dispatcher.
-- Tests exercise the redirect seam directly with a synthetic dispatcher — the target subtree runs
-  through the alias when authorized and is rejected when the requirement fails — so the behaviour
-  is verifiable under MockBukkit without a real vanilla command tree.
+- `/gm` inherited vanilla syntax, selector handling, completions, and authorization without
+  duplicated logic.
+- The requirement was reused from the target because redirects do not re-apply the target root's
+  own predicate.
+- Forwarding was generic: any alias could point at a command already in the dispatcher.
+
+**Supersession:**
+Paper 26.2 represents vanilla targets as opaque `ShadowBrigNode` instances. Bukkit help-map
+initialization traversed the redirect target and threw `UnsupportedOperationException`, crashing
+server startup. `/gm`, the generic redirect API, and their tests were therefore removed. Operators
+can use vanilla `/gamemode` directly.
 
 ---
 
@@ -582,4 +585,3 @@ a write failure reports that the source was left unchanged.
 - The file protocol — staging, read-back verification, backup, abort on login/stale source, and
   atomic replace — is tested against real temporary files with a substitute codec; the NMS
   encode/decode remains a documented seam (ADR-16).
-

@@ -53,9 +53,6 @@ public final class AdminModule implements Module {
         Gui gui = ctx.services().get(Gui.class);
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
-        ctx.commands()
-                .registerRedirect(
-                        "gm", "gamemode", "Alias for the vanilla /gamemode command");
         ctx.commands().register(ItemCommand.build(messages), "Spawn items");
         ctx.commands()
                 .register(SkullCommand.build(messages, server), "Get a player head", "kopf");

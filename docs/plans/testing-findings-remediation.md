@@ -131,8 +131,6 @@ suggest online names.
 - `/lastonline`: show localized absolute Berlin time plus a localized relative duration.
 - `/spawnmob`: suggest valid entity types.
 - `/effects`: suggest valid particle names.
-- `/gm`: replace the custom gamemode implementation with a thin forwarder to namespaced vanilla
-  `minecraft:gamemode`, preserving vanilla syntax and authorization.
 - Rename `KHelpCommand` and its test to `KcHelpCommand` without changing the public command names.
 - Add command-tree/suggestion tests in addition to executor tests so selector cardinality and
   completions cannot regress.
@@ -207,7 +205,7 @@ suggest online names.
 ## Stage 7 — Immediate removals and repository cleanup
 
 - Remove `/i`.
-- Remove custom gamemode variants after `/gm` forwarding is covered.
+- Remove custom gamemode commands and aliases.
 - Remove the custom weather, command-hiding, and world-spawn command surfaces, including modules/classes,
   permissions, messages, tests, configuration, bootstrap wiring, and documentation.
 - Remove German `/updatemode an|aus` subcommands.

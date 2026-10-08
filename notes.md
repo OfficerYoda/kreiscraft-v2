@@ -142,10 +142,6 @@ remove /i alias
 
 rename KHelp class to KcHelp
 
-## /kcgamemode
-
-remove and just make /gm alias for vanilla /gamemore
-
 ## /ping
 
 autocomplete players

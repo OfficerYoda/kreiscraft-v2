@@ -11,7 +11,6 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | Command | Aliases | Module | Description | Permission | Default |
 |---------|---------|--------|-------------|-----------|---------|
 | `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
-| `/gm <gamemode> [<target>]` | — | `admin` | Forward to the vanilla `/gamemode` command, inheriting its syntax, suggestions, and authorization. | `minecraft.command.gamemode` (vanilla) | op |
 | `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
@@ -65,7 +64,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
-> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names and marks the player's effective particle with a tooltip. `/gm` inherits the vanilla `/gamemode` argument completions because it forwards to that command. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
+> **Tab-completion.** Player, entity, and particle arguments complete through the shared `SuggestionProviders` in `core/command`. Online-only arguments complete online player names; profile arguments (`/invsee`, `/enderchest`, `/skull`, `/uuid`, `/lastonline`) complete online plus known-offline names; `/sudo` completes the literal `all` alongside online player names; `/spawnmob` completes spawnable entity types; `/effects` completes particle names and marks the player's effective particle with a tooltip. `/combat` completes online players, `/glow` completes online players for its other-player argument, while `/hackerlogs` completes online plus known-offline profiles. A provider emits nothing to a sender who lacks the command's permission.
 
 ---
 

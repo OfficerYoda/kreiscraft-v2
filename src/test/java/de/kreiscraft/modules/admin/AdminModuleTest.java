@@ -2,7 +2,6 @@ package de.kreiscraft.modules.admin;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -44,7 +43,7 @@ class AdminModuleTest {
     }
 
     @Test
-    void enable_registersGmRedirectAndTemporaryStylePreview() {
+    void enable_registersTemporaryStylePreview() {
         CommandRegistrar commands = mock(CommandRegistrar.class);
         ServiceRegistry services = new ServiceRegistry();
         services.publish(
@@ -62,8 +61,6 @@ class AdminModuleTest {
 
         new AdminModule().enable(ctx);
 
-        verify(commands)
-                .registerRedirect(eq("gm"), eq("gamemode"), anyString());
         verify(commands)
                 .register(
                         argThat(
