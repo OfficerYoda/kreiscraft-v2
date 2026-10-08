@@ -104,6 +104,9 @@ server-config:
   input:
     prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
     cancelled: "<prefix> <gray>Input cancelled."
+  list:
+    blank: "<prefix> <red>Enter a nonblank value."
+    duplicate: "<prefix> <red><value> already exists."
   close:
     hot-reload: "<prefix> <green><count> change(s) applied automatically."
     restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."

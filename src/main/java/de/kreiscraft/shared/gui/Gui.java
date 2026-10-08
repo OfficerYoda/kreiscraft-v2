@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import xyz.xenondevs.invui.window.Window;
+import xyz.xenondevs.invui.window.AnvilWindow;
 
 /**
  * Thin facade over InvUI. The plugin's only sanctioned way to open an inventory GUI — every module
@@ -62,6 +63,34 @@ public final class Gui {
                         .setTitle(title)
                         .build();
 
+        GuiRegistry.Handle handle = window::close;
+        registry.register(handle);
+        window.addCloseHandler(reason -> {
+            registry.unregister(handle);
+            onClose.accept(reason);
+        });
+        window.open();
+        return handle;
+    }
+
+    /** Opens a tracked anvil window with a custom lower inventory. */
+    public GuiRegistry.Handle openAnvil(
+            Player viewer,
+            xyz.xenondevs.invui.gui.Gui upper,
+            xyz.xenondevs.invui.gui.Gui lower,
+            Component title,
+            Consumer<String> onRename,
+            Consumer<InventoryCloseEvent.Reason> onClose) {
+        AnvilWindow window =
+                AnvilWindow.builder()
+                        .setViewer(viewer)
+                        .setUpperGui(upper)
+                        .setLowerGui(lower)
+                        .setTitle(title)
+                        .setTextFieldAlwaysEnabled(true)
+                        .setResultAlwaysValid(true)
+                        .addRenameHandler(onRename)
+                        .build();
         GuiRegistry.Handle handle = window::close;
         registry.register(handle);
         window.addCloseHandler(reason -> {

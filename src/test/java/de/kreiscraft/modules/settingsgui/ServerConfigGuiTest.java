@@ -437,6 +437,17 @@ class ServerConfigGuiTest {
     }
 
     @Test
+    void listField_clickRequestsAnvilEditor() {
+        ConfigField worlds = field("combat", "excluded-worlds");
+        Gui gui = category("combat");
+
+        click(gui, slotOf("combat", worlds));
+
+        assertThat(navigator.listEditors).containsExactly(ServerConfigPage.of("combat"));
+        assertThat(navigator.textInputs).isEmpty();
+    }
+
+    @Test
     void categoryEntry_opensCategoryPage() {
         Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
         List<String> categories = ServerConfigGui.categories(editor.schema());
@@ -509,6 +520,7 @@ class ServerConfigGuiTest {
     private static final class NavigatorRecorder implements ServerConfigGui.Navigator {
         private final List<ServerConfigPage> serverConfigPages = new ArrayList<>();
         private final List<ServerConfigPage> textInputs = new ArrayList<>();
+        private final List<ServerConfigPage> listEditors = new ArrayList<>();
         private Consumer<Particle> particleSelection;
         private Runnable particleCancellation;
         private boolean openedSettingsRoot;
@@ -526,6 +538,11 @@ class ServerConfigGuiTest {
         @Override
         public void requestTextInput(Player player, ConfigField field, ServerConfigPage page) {
             textInputs.add(page);
+        }
+
+        @Override
+        public void openListEditor(Player player, ConfigField field, ServerConfigPage page) {
+            listEditors.add(page);
         }
 
         @Override

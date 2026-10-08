@@ -127,7 +127,7 @@ class ServerConfigControlsTest {
     @Test
     void textEntry_typesAreRoutedToChat() {
         assertThat(ServerConfigControls.isTextEntry(field(ConfigFieldType.STRING))).isTrue();
-        assertThat(ServerConfigControls.isTextEntry(field(ConfigFieldType.STRING_LIST))).isTrue();
+        assertThat(ServerConfigControls.isTextEntry(field(ConfigFieldType.STRING_LIST))).isFalse();
         assertThat(ServerConfigControls.isTextEntry(field(ConfigFieldType.BOOLEAN))).isFalse();
         assertThat(ServerConfigControls.isTextEntry(field(ConfigFieldType.ENUM))).isFalse();
     }

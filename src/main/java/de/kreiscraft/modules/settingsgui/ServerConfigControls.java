@@ -11,8 +11,7 @@ import org.bukkit.entity.Player;
  * <p>Each supported {@link de.kreiscraft.core.config.ConfigFieldType} maps to one interaction:
  * booleans toggle, numbers step, durations/enums/materials cycle a bounded option set that the
  * field declares, and a location is set to the editing player's current position. Text and text
- * lists are not transformed here; they are entered through the chat-input flow so free-form values
- * stay editable.
+ * lists are not transformed here; strings use chat input and lists use the anvil editor.
  */
 public final class ServerConfigControls {
 
@@ -34,7 +33,7 @@ public final class ServerConfigControls {
     /** Whether the field's value is entered as free text through chat rather than cycled. */
     public static boolean isTextEntry(ConfigField field) {
         return switch (field.type()) {
-            case STRING, STRING_LIST -> true;
+            case STRING -> true;
             default -> false;
         };
     }
