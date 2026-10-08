@@ -17,16 +17,7 @@ import xyz.xenondevs.invui.item.Item;
 /**
  * Factory for InvUI {@link Gui} instances used by the invsee and enderchest commands.
  *
- * <p>Slot mapping for the 5-row editable player-inventory view (GUI slots 0-44):
- *
- * <ul>
- *   <li>Rows 1–3 (GUI 0–26): main inventory (Bukkit slots 9–35)
- *   <li>Row 4 (GUI 27–31): armor boots→helmet (Bukkit 36–39), offhand (Bukkit 40);
- *       GUI slots 32–35 are left empty (filler).
- *   <li>Row 5 (GUI 36–44): hotbar (Bukkit slots 0–8)
- * </ul>
- *
- * <p>Slot mapping for the editable 5-row offline snapshot (GUI slots 0–44):
+ * <p>Slot mapping for both 5-row player-inventory views (GUI slots 0-44):
  *
  * <ul>
  *   <li>Row 1 (GUI 0–4): helmet, chestplate, leggings, boots, offhand (Bukkit 39, 38, 37, 36, 40);
@@ -76,26 +67,9 @@ public final class InvseeGui {
      * the corresponding Bukkit player-inventory slot via {@link SlotElement.InventoryLink}.
      */
     public static Gui buildEditable(PlayerInventory inv) {
-        // fromContents wraps PlayerInventory.getContents() (≥41 slots in Paper).
-        // We bind exactly the 41 known player-inventory slots 0–40.
-        ReferencingInventory ref = ReferencingInventory.fromContents(inv);
-        Gui gui = Gui.empty(9, 5);
-        // Main inventory (Bukkit 9-35 → GUI 0-26)
-        for (int i = 0; i < 27; i++) {
-            gui.setSlotElement(i, new SlotElement.InventoryLink(ref, i + 9));
-        }
-        // Armor (Bukkit 36-39 → GUI 27-30)
-        for (int i = 0; i < 4; i++) {
-            gui.setSlotElement(27 + i, new SlotElement.InventoryLink(ref, 36 + i));
-        }
-        // Offhand (Bukkit 40 → GUI 31)
-        gui.setSlotElement(31, new SlotElement.InventoryLink(ref, 40));
-        // GUI 32-35: filler (intentionally left empty)
-        // Hotbar (Bukkit 0-8 → GUI 36-44)
-        for (int i = 0; i < 9; i++) {
-            gui.setSlotElement(36 + i, new SlotElement.InventoryLink(ref, i));
-        }
-        return gui;
+        // fromContents references PlayerInventory.getContents() (≥41 slots in Paper), so edits
+        // written through the shared layout reach the live player inventory immediately.
+        return buildPlayerInventoryGui(ReferencingInventory.fromContents(inv));
     }
 
     // -----------------------------------------------------------------------
@@ -122,6 +96,10 @@ public final class InvseeGui {
      * {@link #PLAYER_SLOTS} slots indexed by Bukkit slot.
      */
     public static Gui buildOfflineInventory(VirtualInventory contents) {
+        return buildPlayerInventoryGui(contents);
+    }
+
+    private static Gui buildPlayerInventoryGui(xyz.xenondevs.invui.inventory.Inventory contents) {
         Gui gui = Gui.empty(9, 5);
         // Top row: armor worn on the head first, then offhand (GUI 0-4).
         gui.setSlotElement(0, new SlotElement.InventoryLink(contents, 39)); // helmet
