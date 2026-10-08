@@ -175,8 +175,10 @@ class ServerConfigGuiTest {
 
         assertThat(stackAt(gui, ServerConfigGui.entrySlot(categories.indexOf("wither"))).getType())
                 .isEqualTo(org.bukkit.Material.WITHER_SKELETON_SKULL);
-        assertThat(stackAt(gui, ServerConfigGui.entrySlot(categories.indexOf("combat"))).getType())
-                .isNotEqualTo(org.bukkit.Material.CHEST);
+        for (int index = 0; index < categories.size(); index++) {
+            assertThat(stackAt(gui, ServerConfigGui.entrySlot(index)).getType())
+                    .isNotIn(org.bukkit.Material.CHEST, org.bukkit.Material.PAPER);
+        }
     }
 
     @Test
@@ -203,13 +205,27 @@ class ServerConfigGuiTest {
 
     @Test
     void witherExplosionPhases_eachOccupyTheirOwnRow() {
-        int spawn = slotOf("wither", field("wither", "spawn-explosion-power"));
+        ConfigField spawnPower = field("wither", "spawn-explosion-power");
+        ConfigField halfHealthPower = field("wither", "half-health-explosion-power");
+        ConfigField deathPower = field("wither", "death-explosion-power");
+        int spawn = slotOf("wither", spawnPower);
         int spawnFire = slotOf("wither", field("wither", "spawn-explosion-fire"));
-        int halfHealth = slotOf("wither", field("wither", "half-health-explosion-power"));
-        int death = slotOf("wither", field("wither", "death-explosion-power"));
+        int halfHealth = slotOf("wither", halfHealthPower);
+        int death = slotOf("wither", deathPower);
 
         assertThat(spawn / 9).isEqualTo(spawnFire / 9);
         assertThat(List.of(spawn / 9, halfHealth / 9, death / 9)).doesNotHaveDuplicates();
+
+        Gui gui = category("wither");
+        double spawnBefore = (Double) editor.current(spawnPower);
+        double halfHealthBefore = (Double) editor.current(halfHealthPower);
+        double deathBefore = (Double) editor.current(deathPower);
+        click(gui, spawn);
+        click(gui, halfHealth);
+        click(gui, death);
+        assertThat(editor.current(spawnPower)).isEqualTo(spawnBefore + 0.1);
+        assertThat(editor.current(halfHealthPower)).isEqualTo(halfHealthBefore + 0.1);
+        assertThat(editor.current(deathPower)).isEqualTo(deathBefore + 0.1);
     }
 
     // ------------------------------------------------------------------
