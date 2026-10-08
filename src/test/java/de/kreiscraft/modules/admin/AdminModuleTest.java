@@ -1,21 +1,15 @@
 package de.kreiscraft.modules.admin;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
-import com.mojang.brigadier.tree.LiteralCommandNode;
-import de.kreiscraft.core.command.CommandRegistrar;
 import de.kreiscraft.core.event.EventBus;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
-import de.kreiscraft.shared.gui.Gui;
-import de.kreiscraft.shared.gui.GuiRegistry;
-import io.papermc.paper.command.brigadier.CommandSourceStack;
+import de.kreiscraft.testsupport.CapturingCommandRegistrar;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
@@ -43,29 +37,32 @@ class AdminModuleTest {
     }
 
     @Test
-    void enable_registersTemporaryStylePreview() {
-        CommandRegistrar commands = mock(CommandRegistrar.class);
+    void enable_doesNotRegisterStylePreviewAfterPaletteApproval() {
+        CapturingCommandRegistrar registrar = enableAdminModule();
+        assertThat(registrar.names()).doesNotContain("commandstylepreview");
+    }
+
+    @Test
+    void enable_registersExpectedProductionCommands() {
+        CapturingCommandRegistrar registrar = enableAdminModule();
+        assertThat(registrar.names()).contains("item", "skull", "ip", "uuid", "ping", "tps");
+    }
+
+    private CapturingCommandRegistrar enableAdminModule() {
+        CapturingCommandRegistrar registrar = new CapturingCommandRegistrar();
         ServiceRegistry services = new ServiceRegistry();
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));
-        services.publish(Gui.class, new Gui(new GuiRegistry()));
-        ModuleContext ctx = new ModuleContext(
-                plugin,
-                CommentedConfigurationNode.root(),
-                mock(MessageService.class),
-                services,
-                mock(Scheduler.class),
-                commands,
-                mock(EventBus.class));
-
-        new AdminModule().enable(ctx);
-
-        verify(commands)
-                .register(
-                        argThat(
-                                (LiteralCommandNode<CommandSourceStack> node) -> node.getName()
-                                        .equals("commandstylepreview")),
-                        anyString());
+        new AdminModule()
+                .enable(new ModuleContext(
+                        plugin,
+                        CommentedConfigurationNode.root(),
+                        mock(MessageService.class),
+                        services,
+                        mock(Scheduler.class),
+                        registrar,
+                        mock(EventBus.class)));
+        return registrar;
     }
 }
