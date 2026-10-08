@@ -247,16 +247,6 @@ public final class ServerConfigSchema {
                 ConfigValidators.integerRange(1, 100),
                 ConfigLifecycle.HOT_RELOAD));
         fields.add(field(
-                path("modules", "spawn", "swap-hand-boost", "enabled"),
-                ConfigFieldType.BOOLEAN,
-                ConfigValidators.booleanValue(),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
-                path("modules", "spawn", "swap-hand-boost", "vector-multiplier"),
-                ConfigFieldType.DOUBLE,
-                ConfigValidators.decimalRange(0.1, 100.0),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
                 path("modules", "spawn", "glide-boost", "enabled"),
                 ConfigFieldType.BOOLEAN,
                 ConfigValidators.booleanValue(),
@@ -265,11 +255,6 @@ public final class ServerConfigSchema {
                 path("modules", "spawn", "glide-boost", "boost-strength"),
                 ConfigFieldType.DOUBLE,
                 ConfigValidators.decimalRange(0.1, 100.0),
-                ConfigLifecycle.HOT_RELOAD));
-        fields.add(field(
-                path("modules", "spawn", "glide-boost", "cooldown-seconds"),
-                ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, 3_600),
                 ConfigLifecycle.HOT_RELOAD));
 
         // ── start-sequence ──────────────────────────────────────────────────
