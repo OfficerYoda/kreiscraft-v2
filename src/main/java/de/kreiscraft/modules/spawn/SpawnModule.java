@@ -11,7 +11,7 @@ import org.spongepowered.configurate.ConfigurationNode;
 
 /**
  * Spawn module — configures the server spawn point, the shared Spawn Radius, the spawn glide zone,
- * and the swap-hand / sneak glide boosts.
+ * and the single-use sneak glide boost.
  */
 public final class SpawnModule implements Module {
 
@@ -37,7 +37,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null);
         }
 
         // ── service ─────────────────────────────────────────────────────────
@@ -50,9 +50,6 @@ public final class SpawnModule implements Module {
                     service, ctx.messages(), () -> this.config, ctx.scheduler(),
                     ctx.plugin().getServer());
             ctx.events().register(glideListener);
-        }
-        if (config.swapHandBoost().enabled()) {
-            ctx.events().register(new SwapHandBoostListener(() -> this.config));
         }
 
         // ── commands ────────────────────────────────────────────────────────
@@ -77,7 +74,7 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null);
         }
         if (service != null) {
             service.updateConfig(config);
