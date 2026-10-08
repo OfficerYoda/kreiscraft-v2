@@ -51,8 +51,11 @@ permissions:
     description: Set the jail location to your current position
     default: op
   kreiscraft.positions.use:
-    description: Save/teleport to personal positions
+    description: Save and inspect personal positions
     default: true
+  kreiscraft.positions.teleport:
+    description: Teleport by clicking a position in the GUI
+    default: op
   kreiscraft.reboot.admin:
     description: Trigger or cancel a server restart
     default: op
