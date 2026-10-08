@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
@@ -186,15 +187,27 @@ class SettingsGuiTest {
     // ------------------------------------------------------------------
 
     @Test
-    void effectsPage_togglesEnabledAndCyclesParticle() {
+    void effectsPage_particleSelectionPersistsWithoutEnablingEffects() {
         Gui gui = SettingsGui.buildEffects(settings, messages, navigator);
 
         click(gui, SettingsGui.SLOT_EFFECTS_ENABLED);
         assertThat(settings.effectsEnabled(playerId)).isFalse();
 
         click(gui, SettingsGui.SLOT_EFFECTS_PARTICLE);
-        assertThat(settings.effectsParticle(playerId))
-                .isEqualTo(SettingsGui.nextParticle(Particle.FLAME));
+        navigator.select(Particle.HEART);
+
+        assertThat(settings.effectsParticle(playerId)).isEqualTo(Particle.HEART);
+        assertThat(settings.effectsEnabled(playerId)).isFalse();
+    }
+
+    @Test
+    void effectsPage_particlePickerCancellationLeavesParticleUnchanged() {
+        Gui gui = SettingsGui.buildEffects(settings, messages, navigator);
+
+        click(gui, SettingsGui.SLOT_EFFECTS_PARTICLE);
+        navigator.cancel();
+
+        assertThat(settings.effectsParticle(playerId)).isEqualTo(Particle.FLAME);
     }
 
     @Test
@@ -269,10 +282,27 @@ class SettingsGuiTest {
 
     private static final class NavigatorRecorder implements SettingsGui.Navigator {
         private final List<Page> pages = new ArrayList<>();
+        private Consumer<Particle> particleSelection;
+        private Runnable particleCancellation;
 
         @Override
         public void open(Player player, Page page) {
             pages.add(page);
+        }
+
+        @Override
+        public void pickParticle(
+                Player player, Consumer<Particle> selection, Runnable cancellation) {
+            particleSelection = selection;
+            particleCancellation = cancellation;
+        }
+
+        private void select(Particle particle) {
+            particleSelection.accept(particle);
+        }
+
+        private void cancel() {
+            particleCancellation.run();
         }
     }
 
