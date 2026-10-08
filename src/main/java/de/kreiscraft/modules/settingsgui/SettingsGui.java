@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -193,7 +194,7 @@ public final class SettingsGui {
     }
 
     /** Creates a textured player-head for the given language using the approved flag textures. */
-    private static ItemStack flagHead(PlayerLanguage language, Component displayName) {
+    static ItemStack flagHead(PlayerLanguage language, Component displayName) {
         String texture = language == PlayerLanguage.DE ? TEXTURE_DE : TEXTURE_EN;
         ItemStack stack = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) stack.getItemMeta();
@@ -201,7 +202,7 @@ public final class SettingsGui {
                 UUID.nameUUIDFromBytes(texture.getBytes(StandardCharsets.UTF_8)));
         profile.setProperty(new ProfileProperty("textures", texture));
         meta.setPlayerProfile(profile);
-        meta.displayName(displayName);
+        meta.displayName(displayName.decoration(TextDecoration.ITALIC, false));
         stack.setItemMeta(meta);
         return stack;
     }
