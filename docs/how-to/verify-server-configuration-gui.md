@@ -21,7 +21,9 @@ the server language). In each pass:
 
 1. From the Player Settings root, click the **Server Configuration** entry.
 2. Confirm the category list opens with one representative icon per configured module (including a
-   Wither skull for `wither`) and no separate generic `modules` category.
+   Wither skull for `wither`) and no separate generic `modules` category. Confirm a disabled
+   module's entry (for example `firework` or `positions` on a bundled config) shows the localized
+   `| disabled` suffix.
 3. Open several categories (including a nested one such as `spawn` and the large `wither` page) and
    confirm related settings occupy one row per group. In `wither`, spawn, half-health and death
    settings must be on separate rows. Confirm the **Back** arrow returns to the category list.
@@ -44,6 +46,9 @@ For each control, make one change and confirm the displayed value updates immedi
   saved; repeat with `cancel` to confirm nothing changes.
 - **Text list** — click `combat → Excluded worlds`, enter a comma-separated list, and confirm it is
   saved.
+- **Integer list** — click `reboot → Title seconds` or `reboot → Chat seconds`, enter a
+  comma-separated list of whole numbers, and confirm it is saved. Enter a non-integer and confirm it
+  is rejected with `server-config.list.not-an-integer`.
 
 Confirm an invalid value is rejected with an explanatory message and does not change the file: for
 example, attempt a text value that is not valid MiniMessage for `chat-format → Chat format`.
@@ -70,9 +75,11 @@ The `tablist` category should only offer `Update interval`.
    glass pane whose lore says a restart is required. Toggle it, or change
    `tablist → Update interval`, close the GUI, and confirm the prompt states that a restart is
    required and does **not** offer a live reload.
-3. Change both kinds in one session and confirm the close message reports both, with module
+3. Confirm a hot-reloadable field such as `combat → Disable elytra in combat` shows no lifecycle
+   lore, while a restart-only field such as `tablist → Update interval` shows restart-required lore.
+4. Change both kinds in one session and confirm the close message reports both, with module
    enablement described only as restart-required.
-4. Close the GUI without changing anything and confirm no prompt is shown.
+5. Close the GUI without changing anything and confirm no prompt is shown.
 
 ## Persistence
 

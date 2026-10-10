@@ -76,7 +76,8 @@ Fields that are not declared there remain YAML-only.
 
 Authorized administrators (`kreiscraft.settingsgui.admin`) reach the editor from the Player Settings
 root or with `/settings admin`. `ServerConfigSchema.editableFields()` declares the complete safe,
-GUI-exposed field set. Every configured module has a section with a representative icon. Settings
+GUI-exposed field set. Every configured module has a section with a representative icon; a section
+whose module is currently disabled shows a localized `| disabled` suffix on its entry. Settings
 are arranged one related group per row; the module enable toggle is a glass pane in the far-left
 slot of the bottom row and explains that the change requires a restart. The GUI picks a control from
 each field's value type:
@@ -89,7 +90,8 @@ each field's value type:
 - Enum — a cycled set of the field's allowed values.
 - Material — a cycled set of Bukkit material names (supported for any material-typed field).
 - Location — set to the editing administrator's current position.
-- Text and text list — entered in chat; the entered value is validated before it is written.
+- Text, text list, and integer list — entered in chat; the entered value is validated before it is
+  written (integer-list entries must be whole numbers).
 
 Every module `enabled` flag is also exposed and is **restart-only**.
 
@@ -265,6 +267,9 @@ jail location is set.
 | `default-countdown` | Duration | `60s` | Default countdown duration when no argument is passed to `/reboot`. |
 | `title-seconds` | List\<Integer\> | `[500, 60, 30, 10]` | Seconds-remaining values at which a title is shown to all players. |
 | `chat-seconds` | List\<Integer\> | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | Seconds-remaining values at which a chat message is broadcast. |
+
+`title-seconds` and `chat-seconds` are hot-reloadable and editable through the Server Configuration
+GUI as integer lists.
 
 ---
 

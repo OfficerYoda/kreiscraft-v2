@@ -63,7 +63,7 @@ For config keys and defaults, see [Configuration](/reference/configuration/).
 
 ### Description
 
-Provides a collection of general-purpose admin utility commands: item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links.
+Provides a collection of general-purpose admin utility commands: item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links. The module also blocks the vanilla `/seed` and `/minecraft:seed` commands: a player who runs either is told that `/seed` is disabled (`admin.seed-blocked`).
 
 ---
 
@@ -273,7 +273,7 @@ Allows each player to save named waypoints with `/positions` (`/pos`) and inspec
 
 ### Description
 
-Schedules a server restart with a countdown. At seconds listed in `title-seconds` a title (with the reason as subtitle) is shown to all players; at seconds listed in `chat-seconds` a chat message is broadcast. When the countdown reaches zero, all players are kicked with a message containing the reason, initiator, and website, and the server is stopped via `PaperPlatform`. The command is registered as `/reboot` with alias `/restart`.
+Schedules a server restart with a countdown. The start announcement is sent per recipient so each player sees the reason — or the localized `reboot.no-reason` placeholder when none was given — in their own language. At seconds listed in `title-seconds` a title (with the reason as subtitle) is shown to all players; at seconds listed in `chat-seconds` a chat message is broadcast. When the countdown reaches zero, all players are kicked with a message containing the reason, initiator, and website, and the server is stopped via `PaperPlatform`. The command is registered as `/reboot` with alias `/restart`.
 
 ### Services published
 
@@ -297,7 +297,7 @@ The GUI owns no persistence of its own: it reads and writes the always-available
 
 Players holding `kreiscraft.settingsgui.admin` also see a **Server Configuration** entry on the Player Settings root, and can open it directly with `/settings admin`. Unauthorized players never see the entry and cannot reach the subcommand.
 
-The editor gives every configured module its own section and representative icon. Related settings occupy one row per group; Wither spawn, half-health, and death controls use separate rows. Each module's enable toggle is a glass pane in the far-left slot of the bottom row with restart-required lore. Other controls remain typed: booleans toggle, whole and decimal numbers step, durations/enums/materials cycle, a location is set to the editor's current position, and free-form text and text lists are entered in chat. Sections have forward/back navigation.
+The editor gives every configured module its own section and representative icon; a section whose module is currently disabled shows a localized `| disabled` suffix on its entry. Related settings occupy one row per group; Wither spawn, half-health, and death controls use separate rows. Each module's enable toggle is a glass pane in the far-left slot of the bottom row with restart-required lore. Other controls remain typed: booleans toggle, whole and decimal numbers step, durations/enums/materials cycle, a location is set to the editor's current position, and free-form text, text lists, and integer lists are entered in chat (integer-list entries must be whole numbers). Sections have forward/back navigation.
 
 Every edit goes through the validated, atomic `ConfigService` boundary, so a value is validated and durably written the moment it is clicked; a rejected or failed edit changes neither the running configuration nor `config.yml`. The editor is closed with a session-specific report: hot-reloadable edits offer the applicable clickable `/kc reload` action, and restart-only edits (always including every module enable flag) warn that a server restart is required. Module lifecycle changes are never described as hot-applied. Low-level, sensitive, networking, and tab-list header/footer values stay YAML-only.
 
