@@ -173,7 +173,7 @@ public final class ServerConfigGui {
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
-                int count = fieldsIn(editor.schema(), category).size();
+                int count = fieldsIn(editor.schema(), category).size() - 1; // -1: don´t count the module toggle
                 Component name = messages.renderFor(viewer, categoryKey(category))
                         .append(Component.text(" (" + count + ")").color(NamedTextColor.DARK_GRAY));
                 return new ItemWrapper(named(categoryMaterial(category), name));
