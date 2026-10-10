@@ -100,8 +100,8 @@ class GlideListenerTest {
         // Location is at origin — within spawn radius of 30
         player.setLocation(new Location(world, 5, 64, 5));
 
-        // Advance 3 ticks (150ms) to fire the repeating task
-        scheduler.advance(Duration.ofMillis(150));
+        // Advance 5 ticks (250ms) to fire the repeating task
+        scheduler.advance(Duration.ofMillis(250));
 
         assertThat(player.getAllowFlight()).isTrue();
     }
@@ -113,7 +113,7 @@ class GlideListenerTest {
         // Move player far outside spawn radius
         player.setLocation(new Location(world, 100, 64, 100));
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
 
         assertThat(player.getAllowFlight()).isFalse();
     }
@@ -126,7 +126,7 @@ class GlideListenerTest {
         player.setLocation(new Location(world, 100, 64, 100));
         player.setAllowFlight(true); // creative normally has this
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
 
         // Listener must not touch creative player's flight state
         assertThat(player.getAllowFlight()).isTrue();
@@ -140,7 +140,7 @@ class GlideListenerTest {
         // Horizontal distance 0 but vertical 40: outside the 3D Glide Zone of radius 30.
         player.setLocation(new Location(world, 0, 104, 0));
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
 
         assertThat(player.getAllowFlight()).isFalse();
     }
@@ -308,14 +308,14 @@ class GlideListenerTest {
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 35, 64, 0));
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
         assertThat(player.getAllowFlight()).isFalse(); // outside original radius
 
         // Simulate config reload: widen spawn radius to 50.
         config = makeConfig(50, 3);
         service.updateConfig(config);
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
         assertThat(player.getAllowFlight()).isTrue(); // now inside reloaded radius
     }
 
@@ -327,7 +327,7 @@ class GlideListenerTest {
         config = makeDisabledConfig(30, 3);
         service.updateConfig(config);
 
-        scheduler.advance(Duration.ofMillis(150));
+        scheduler.advance(Duration.ofMillis(250));
         assertThat(player.getAllowFlight()).isFalse();
 
         config = makeConfig(30, 3);
@@ -443,10 +443,53 @@ class GlideListenerTest {
     }
 
     @Test
-    void glideEnd_clearsBoostEligibility() {
+    void serverGlideStop_whileManagedPlayerIsAirborne_isCancelled() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
         service.updateConfig(config);
         PlayerMock player = server.addPlayer("penny");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        player.setAllowFlight(true);
+        player.setOnGround(false);
+
+        PlayerToggleFlightEvent toggle = new PlayerToggleFlightEvent(player, true);
+        server.getPluginManager().callEvent(toggle);
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+
+        EntityToggleGlideEvent endGlide = new EntityToggleGlideEvent(player, false);
+        server.getPluginManager().callEvent(endGlide);
+
+        assertThat(endGlide.isCancelled()).isTrue();
+        assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
+        assertThat(listener.isFlying(player.getUniqueId())).isTrue();
+    }
+
+    @Test
+    void serverGlideStop_afterLeavingGlideZone_isCancelled() {
+        PlayerMock player = server.addPlayer("outside-zone");
+        player.setGameMode(GameMode.SURVIVAL);
+        player.setLocation(new Location(world, 5, 64, 5));
+        player.setAllowFlight(true);
+        player.setOnGround(false);
+
+        server.getPluginManager().callEvent(new PlayerToggleFlightEvent(player, true));
+        assertThat(listener.isFlying(player.getUniqueId())).isTrue();
+
+        player.setLocation(new Location(world, 200, 64, 200));
+        scheduler.advance(Duration.ofMillis(250));
+        EntityToggleGlideEvent endGlide = new EntityToggleGlideEvent(player, false);
+        server.getPluginManager().callEvent(endGlide);
+
+        assertThat(player.getAllowFlight()).isFalse();
+        assertThat(endGlide.isCancelled()).isTrue();
+        assertThat(listener.isFlying(player.getUniqueId())).isTrue();
+    }
+
+    @Test
+    void glideEnd_onLanding_clearsBoostEligibility() {
+        config = makeConfigWithBoost(30, 3, true, 2.0);
+        service.updateConfig(config);
+        PlayerMock player = server.addPlayer("landed");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
         player.setAllowFlight(true);
@@ -455,10 +498,11 @@ class GlideListenerTest {
         server.getPluginManager().callEvent(toggle);
         assertThat(listener.isBoostEligible(player.getUniqueId())).isTrue();
 
-        // Glide ends
+        player.setOnGround(true);
         EntityToggleGlideEvent endGlide = new EntityToggleGlideEvent(player, false);
         server.getPluginManager().callEvent(endGlide);
 
+        assertThat(endGlide.isCancelled()).isFalse();
         assertThat(listener.isBoostEligible(player.getUniqueId())).isFalse();
         assertThat(listener.isFlying(player.getUniqueId())).isFalse();
     }

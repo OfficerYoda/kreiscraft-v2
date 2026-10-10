@@ -38,8 +38,8 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
  */
 public final class GlideListener implements PriorityListener {
 
-    /** 3 Minecraft ticks expressed in milliseconds (3 × 50 ms). */
-    private static final Duration TICK_3 = Duration.ofMillis(150);
+    /** 5 Minecraft ticks expressed in milliseconds (5 × 50 ms). */
+    private static final Duration TICK_5 = Duration.ofMillis(250);
 
     private final SpawnService service;
     private final MessageService messages;
@@ -62,7 +62,7 @@ public final class GlideListener implements PriorityListener {
         this.messages = messages;
         this.configSupply = configSupply;
         this.server = server;
-        this.task = scheduler.runRepeating(TICK_3, TICK_3, this::updateFlightPermissions);
+        this.task = scheduler.runRepeating(TICK_5, TICK_5, this::updateFlightPermissions);
     }
 
     // ── repeating task ───────────────────────────────────────────────────────
@@ -78,7 +78,9 @@ public final class GlideListener implements PriorityListener {
                 player.setAllowFlight(true);
             } else {
                 player.setAllowFlight(false);
-                clearPlayerState(player.getUniqueId());
+                if (!enabled || !player.isGliding()) {
+                    clearPlayerState(player.getUniqueId());
+                }
             }
         }
     }
@@ -111,12 +113,13 @@ public final class GlideListener implements PriorityListener {
         }
         SpawnConfig cfg = configSupply.get();
         event.setCancelled(true);
-        UUID id = player.getUniqueId();
-        flying.add(id);
+        UUID uuid = player.getUniqueId();
+        flying.add(uuid);
         // Mark boost-eligible: glide started inside the Glide Zone.
         if (cfg.glideBoost().enabled()) {
-            boostEligible.add(id);
+            boostEligible.add(uuid);
         }
+
         player.setGliding(true);
         // Directional launch: the facing unit vector scaled by multiplyValue.
         if (cfg.glide().multiplyValue() > 0) {
@@ -142,14 +145,23 @@ public final class GlideListener implements PriorityListener {
         }
     }
 
-    /** Clears boost eligibility and flying state when a glide ends naturally. */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Keeps a plugin-managed glide active while the player is airborne. Paper reverts
+     * {@link Player#setGliding(boolean)} on the next tick when no Elytra is equipped, so its
+     * stop-glide event must be cancelled. Landing still ends the glide and clears its state.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityToggleGlide(EntityToggleGlideEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
         if (!event.isGliding()) {
-            clearPlayerState(player.getUniqueId());
+            UUID uuid = player.getUniqueId();
+            if (flying.contains(uuid) && !isOnGround(player)) {
+                event.setCancelled(true);
+                return;
+            }
+            clearPlayerState(uuid);
         }
     }
 
@@ -174,8 +186,8 @@ public final class GlideListener implements PriorityListener {
         if (!boostCfg.enabled()) {
             return;
         }
-        UUID id = player.getUniqueId();
-        if (!boostEligible.remove(id)) {
+        UUID uuid = player.getUniqueId();
+        if (!boostEligible.remove(uuid)) {
             return;
         }
         player.setVelocity(player.getLocation().getDirection().multiply(boostCfg.boostStrength()));
@@ -188,6 +200,15 @@ public final class GlideListener implements PriorityListener {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Paper deprecates this flag for authorization decisions because clients can influence it. Here
+     * it is only used to let Paper's own stop-glide transition through when the player lands.
+     */
+    @SuppressWarnings("deprecation")
+    private static boolean isOnGround(Player player) {
+        return player.isOnGround();
+    }
 
     private void clearPlayerState(UUID id) {
         flying.remove(id);

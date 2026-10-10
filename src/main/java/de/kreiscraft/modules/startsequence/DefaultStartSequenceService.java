@@ -129,10 +129,6 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     }
 
     private void startBorderTransition(World world) {
-        // One continuous expansion, delegated to Minecraft. Bukkit owns the in-progress transition
-        // and Paper persists it across a graceful restart, so the plugin keeps no phase, timestamp,
-        // or remaining-duration resume state. The Duration is converted to ticks only here, at the
-        // Bukkit boundary (20 ticks = 1 second).
         world.getWorldBorder().changeSize(config.targetBorderSize(), toTicks(config.borderDuration()));
     }
 
