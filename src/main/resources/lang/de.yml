@@ -218,16 +218,16 @@ reboot:
   cancelled: "<prefix> <green>Neustart abgebrochen."
   not-running: "<prefix> <red>Kein Neustart läuft."
   no-reason: "<italic><kein Grund></italic>"
-  countdown-title: "<red>Neustart in <seconds> Sekunden</red>"
+  countdown-title: "<yellow>Neustart in <aqua><seconds></aqua><yellow>s</yellow>"
   countdown-subtitle: "<gray>Grund: <light_purple><reason></light_purple></gray>"
-  countdown-chat: "<prefix> <red>Neustart in <aqua><seconds></aqua><red> Sekunden."
+  countdown-chat: "<yellow>Neustart in <aqua><seconds></aqua><yellow>s</yellow>"
   kick-message: |-
     <gray>===================================
     <aqua>Neustart
 
     <gray>Grund: <light_purple><reason>
     <gray>Neugestartet von: <gold><initiator>
-    <gray>Website: <aqua><website>
+    <gray>Website: <green><website>
 
     <aqua>Neustart
     <gray>==================================="
