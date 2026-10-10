@@ -190,6 +190,7 @@ invsee:
 jail:
   jailed: "<prefix> <gold><player></gold><gray> wurde eingesperrt: <light_purple><reason>"
   jailed-target: "<prefix> <red>Du wurdest eingesperrt.</red> <gray>Grund: <light_purple><reason></light_purple></gray>"
+  no-reason: "<italic><kein Grund></italic>"
   set: "<prefix> <green>Gefängnisposition auf deine aktuelle Position gesetzt."
   released: "<prefix> <green><gold><player></gold> wurde freigelassen."
   already-jailed: "<prefix> <gold><player></gold><red> ist bereits eingesperrt."
