@@ -194,6 +194,7 @@ public final class ServerConfigGui {
                         fieldsIn(editor.schema(), category).size()
                                 - (moduleToggle(editor.schema(), category).isPresent() ? 1 : 0);
                 Component name = messages.renderFor(viewer, categoryKey(category))
+                        .color(NamedTextColor.WHITE)
                         .append(Component.text(" (" + count + ")")
                                 .color(NamedTextColor.DARK_GRAY));
 
