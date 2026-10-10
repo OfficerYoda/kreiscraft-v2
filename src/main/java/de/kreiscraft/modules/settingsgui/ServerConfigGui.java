@@ -323,7 +323,7 @@ public final class ServerConfigGui {
     static Material categoryMaterial(String category) {
         return switch (category) {
             case "core" -> Material.COMMAND_BLOCK;
-            case "admin" -> Material.GOLD_BLOCK;
+            case "admin" -> Material.ENDER_PEARL;
             case "api" -> Material.REDSTONE_TORCH;
             case "anti-cheat" -> Material.SHIELD;
             case "bedrock" -> Material.BEDROCK;

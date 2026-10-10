@@ -122,7 +122,7 @@ admin:
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
   sudo-executed: "<prefix> <gray>sudo <gold><player></gold><gray>: <text>"
   help:
-    text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+    text: "<prefix> <green><click:open_url:'<website>'>[Website]</click></green> <gray>-</gray> <color:#5865F2><click:open_url:'<discord>'>[Discord]</click></color> <gray>-</gray> <color:#FF0000><click:open_url:'<youtube>'>[YouTube]</click></color>"
   target-not-found: "<prefix> <red>Spieler <gold><player></gold><red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
 api:
