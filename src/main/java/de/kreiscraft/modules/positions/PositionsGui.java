@@ -41,6 +41,7 @@ public final class PositionsGui {
      *
      * @param positions    the player's current positions (snapshot)
      * @param config       module config (for {@code teleportOnClick})
+     * @param player       the player opening the gui
      * @param onTeleport   called when the player clicks a position item; only
      *                     invoked when {@code config.teleportOnClick()} is
      *                     {@code true}
@@ -50,8 +51,9 @@ public final class PositionsGui {
     public static Gui build(
             Map<String, PositionEntry> positions,
             PositionsConfig config,
+            Player player,
             BiConsumer<Player, PositionEntry> onTeleport) {
-        return build(positions, config, null, onTeleport);
+        return build(positions, config, null, player, onTeleport);
     }
 
     /** Builds a localized GUI whose item lore includes position provenance. */
@@ -59,6 +61,7 @@ public final class PositionsGui {
             Map<String, PositionEntry> positions,
             PositionsConfig config,
             MessageService messages,
+            Player player,
             BiConsumer<Player, PositionEntry> onTeleport) {
 
         int rows = config.guiRows();
@@ -94,7 +97,7 @@ public final class PositionsGui {
                 if (idx < entries.size()) {
                     Map.Entry<String, PositionEntry> e = entries.get(idx);
                     gui.setItem(slot, createPositionItem(e.getKey(), e.getValue(),
-                            config.teleportOnClick(), messages, onTeleport));
+                            config.teleportOnClick(), messages, player, onTeleport));
                 }
             }
         }
@@ -121,6 +124,7 @@ public final class PositionsGui {
             PositionEntry entry,
             boolean teleportOnClick,
             MessageService messages,
+            Player player,
             BiConsumer<Player, PositionEntry> onTeleport) {
 
         Material material = materialFor(entry.location());
@@ -155,7 +159,7 @@ public final class PositionsGui {
                 lore.add(messages.renderFor(viewer, "positions.gui-location", "location", coordLine));
                 lore.add(messages.renderFor(viewer, "positions.gui-saver", "player", saver));
                 lore.add(messages.renderFor(viewer, "positions.gui-saved-at", "time", savedAt));
-                if (teleportOnClick) {
+                if (teleportOnClick && player.hasPermission("kreiscraft.positions.teleport")) {
                     lore.add(messages.renderFor(viewer, "positions.gui-teleport-hint"));
                 }
                 return new ItemWrapper(createItemStack(
@@ -167,8 +171,7 @@ public final class PositionsGui {
             @Override
             public void handleClick(
                     ClickType clickType, Player player, Click click) {
-                if (teleportOnClick
-                        && player.hasPermission("kreiscraft.positions.teleport")) {
+                if (teleportOnClick && player.hasPermission("kreiscraft.positions.teleport")) {
                     onTeleport.accept(player, entry);
                 }
             }

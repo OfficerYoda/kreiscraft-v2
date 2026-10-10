@@ -93,7 +93,7 @@ class PositionsGuiTest {
         PositionsConfig cfg = new PositionsConfig(6, true);
         Map<String, PositionEntry> positions = new LinkedHashMap<>();
 
-        Gui gui = PositionsGui.build(positions, cfg, (p, e) -> {
+        Gui gui = PositionsGui.build(positions, cfg, player, (p, e) -> {
         });
 
         assertThat(gui).isNotNull();
@@ -108,7 +108,7 @@ class PositionsGuiTest {
         Map<String, PositionEntry> positions = new LinkedHashMap<>();
         positions.put("home", new PositionEntry(loc));
 
-        Gui gui = PositionsGui.build(positions, cfg, (p, e) -> {
+        Gui gui = PositionsGui.build(positions, cfg, player, (p, e) -> {
         });
 
         assertThat(gui).isNotNull();
@@ -125,7 +125,7 @@ class PositionsGuiTest {
             positions.put("pos" + i, new PositionEntry(loc));
         }
 
-        Gui gui = PositionsGui.build(positions, cfg, (p, e) -> {
+        Gui gui = PositionsGui.build(positions, cfg, player, (p, e) -> {
         });
 
         assertThat(gui).isNotNull();
@@ -140,7 +140,7 @@ class PositionsGuiTest {
         PositionsConfig cfg = new PositionsConfig(4, false);
         Map<String, PositionEntry> positions = new LinkedHashMap<>();
 
-        Gui gui = PositionsGui.build(positions, cfg, (p, e) -> {
+        Gui gui = PositionsGui.build(positions, cfg, player, (p, e) -> {
         });
 
         assertThat(gui.getWidth()).isEqualTo(9);
@@ -185,6 +185,7 @@ class PositionsGuiTest {
         return PositionsGui.build(
                 Map.of("home", new PositionEntry(location)),
                 new PositionsConfig(6, true),
+                player,
                 (clickedPlayer, entry) -> teleports.incrementAndGet());
     }
 
@@ -192,13 +193,14 @@ class PositionsGuiTest {
     void build_rendersColoredProvenanceAndActionLore(@TempDir Path tmp) throws IOException {
         ConfigurateMessageService messages =
                 new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+        player.addAttachment(plugin, "kreiscraft.positions.teleport", true);
         PlayerMock viewer = server.addPlayer("Viewer");
         Location location = new Location(server.getWorld("world"), 1, 64, 2);
         PositionEntry entry = new PositionEntry(
                 location, UUID.randomUUID(), "Alex", Instant.parse("2026-10-08T12:34:56Z"));
 
         Gui gui = PositionsGui.build(
-                Map.of("home", entry), new PositionsConfig(6, true), messages, (p, e) -> {
+                Map.of("home", entry), new PositionsConfig(6, true), messages, player, (p, e) -> {
                 });
 
         var meta = gui.getItem(10).getItemProvider(viewer).get().getItemMeta();
@@ -224,7 +226,7 @@ class PositionsGuiTest {
         PositionEntry entry = new PositionEntry(new Location(server.getWorld("world"), 1, 64, 2));
 
         Gui gui = PositionsGui.build(
-                Map.of("legacy", entry), new PositionsConfig(6, false), messages, (p, e) -> {
+                Map.of("legacy", entry), new PositionsConfig(6, false), messages, player, (p, e) -> {
                 });
 
         List<Component> lore = gui.getItem(10).getItemProvider(viewer).get().getItemMeta().lore();
