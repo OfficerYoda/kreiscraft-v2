@@ -57,9 +57,15 @@ public final class JailModule implements Module {
         ctx.events().register(new JailListener(service, configRef, ctx.messages()));
 
         // Commands — /jail and /kerker are identical toggles; /setjail stores the jail location
-        ctx.commands().register(JailCommand.build(service, ctx.messages()), "Jail or release a player");
-        ctx.commands().register(JailCommand.buildWithName("kerker", service, ctx.messages()),
-                "Jail or release a player (alias)");
+        ctx.commands()
+                .register(
+                        JailCommand.build(service, ctx.messages(), ctx.plugin().getServer()),
+                        "Jail or release a player");
+        ctx.commands()
+                .register(
+                        JailCommand.buildWithName(
+                                "kerker", service, ctx.messages(), ctx.plugin().getServer()),
+                        "Jail or release a player (alias)");
         ctx.commands().register(SetJailCommand.build(service, ctx.messages()),
                 "Set the jail location to your current position");
     }

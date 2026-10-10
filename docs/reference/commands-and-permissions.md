@@ -35,7 +35,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/glow <player>` | — | `glow` | Toggle the Glowing effect on another online player. | `kreiscraft.glow.other` | op |
 | `/invsee <player>` | — | `invsee` | View (or edit) a player's inventory; offline targets open as an editable snapshot. | `kreiscraft.invsee.use` | op |
 | `/enderchest <player>` | `ec`, `echest` | `invsee` | View (or edit) a player's ender chest; offline targets open as an editable snapshot. | `kreiscraft.invsee.use` | op |
-| `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player (sending them a localized message with a distinctly styled reason), or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
+| `/jail <target> [reason...]` | `kerker` | `jail` | Jail an unjailed player (the target completes to online player names; the localized message carries a distinctly styled reason, or a localized no-reason placeholder when omitted), or release an already-jailed player back to their original location. | `kreiscraft.jail.use` | op |
 | `/setjail` | — | `jail` | Store your current location as the operator-owned jail location in Server Configuration. | `kreiscraft.jail.set` | op |
 | `/positions` | `pos` | `positions` | Open the positions GUI. | `kreiscraft.positions.use` | true |
 | `/positions set <name>` | `pos` | `positions` | Save current location as a named position. | `kreiscraft.positions.use` | true |
