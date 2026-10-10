@@ -112,6 +112,7 @@ server-config:
     hot-reload: "<prefix> <green><count> Änderung(en) automatisch übernommen."
     restart-required: "<prefix> <red><count> Änderung(en) (inkl. Modul-Aktivierung) erfordern einen Server-Neustart; sie werden niemals live übernommen."
 admin:
+  seed-blocked: "<prefix> <red>/seed ist deaktiviert."
   item-given: "<prefix> <green><count>x <item></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gold><player></gold><gray> IP: <aqua><ip>"
@@ -220,7 +221,6 @@ reboot:
   countdown-title: "<red>Neustart in <seconds> Sekunden</red>"
   countdown-subtitle: "<gray>Grund: <light_purple><reason></light_purple></gray>"
   countdown-chat: "<prefix> <red>Neustart in <aqua><seconds></aqua><red> Sekunden."
-  seed-blocked: "<prefix> <red>/seed ist deaktiviert."
   kick-message: |-
     <gray>===================================
     <aqua>Neustart

@@ -112,6 +112,7 @@ server-config:
     hot-reload: "<prefix> <green><count> change(s) applied automatically."
     restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."
 admin:
+  seed-blocked: "<prefix> <red>/seed is disabled."
   item-given: "<prefix> <green><count>x <item></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gold><player></gold><gray> IP: <aqua><ip>"
@@ -220,7 +221,6 @@ reboot:
   countdown-title: "<red>Reboot in <seconds> seconds</red>"
   countdown-subtitle: "<gray>Reason: <light_purple><reason></light_purple></gray>"
   countdown-chat: "<prefix> <red>Reboot in <aqua><seconds></aqua><red> seconds."
-  seed-blocked: "<prefix> <red>/seed is disabled."
   kick-message: |-
     <gray>===================================
     <aqua>Restart

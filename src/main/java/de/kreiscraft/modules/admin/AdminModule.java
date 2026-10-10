@@ -50,6 +50,7 @@ public final class AdminModule implements Module {
         Server server = ctx.plugin().getServer();
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
+        ctx.events().register(new AdminListener(messages));
         ctx.commands().register(ItemCommand.build(messages), "Spawn items");
         ctx.commands()
                 .register(SkullCommand.build(messages, server), "Get a player head", "kopf");
