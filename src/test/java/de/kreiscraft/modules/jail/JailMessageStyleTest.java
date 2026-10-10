@@ -130,9 +130,17 @@ class JailMessageStyleTest {
     @Test
     void noReason_rendersInTheRecipientsLanguage(@TempDir Path tmp) throws IOException {
         ConfigurateMessageService messages =
-                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "de", server);
+                new ConfigurateMessageService(
+                        tmp,
+                        getClass().getClassLoader(),
+                        "en",
+                        server,
+                        recipient -> Optional.of("de"));
+        Player target = server.addPlayer("Target");
 
-        assertThat(PlainTextComponentSerializer.plainText().serialize(messages.render("jail.no-reason")))
+        assertThat(
+                PlainTextComponentSerializer.plainText()
+                        .serialize(messages.renderFor(target, "jail.no-reason")))
                 .as("the no-reason placeholder must be translated, not a hard-coded English token")
                 .isEqualTo("<kein Grund>");
     }

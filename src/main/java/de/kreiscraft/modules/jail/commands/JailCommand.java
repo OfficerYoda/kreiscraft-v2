@@ -105,14 +105,14 @@ public final class JailCommand {
     }
 
     /**
-     * The value for the {@code <reason>} placeholder: the supplied reason, or the recipient-localized
-     * {@code jail.no-reason} placeholder when none was given. Returned as a {@link net.kyori.adventure.text.Component}
-     * so the placeholder keeps its own styling, and rendered per recipient so each party sees the
+     * The value for the {@code <reason>} placeholder: the supplied reason string, or — when none was
+     * given — the recipient-localized {@code jail.no-reason}
+     * {@link net.kyori.adventure.text.Component}, rendered per recipient so each party sees the
      * fallback in their own language.
      */
     private static Object reasonPlaceholder(
             MessageService messages, CommandSender recipient, String reason) {
-        if (reason == null || reason.isBlank()) {
+        if (reason.isBlank()) {
             return messages.renderFor(recipient, "jail.no-reason");
         }
         return reason;
