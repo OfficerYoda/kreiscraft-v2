@@ -64,10 +64,40 @@ class DefaultRebootServiceTest {
     }
 
     @Test
-    void start_setsRunningAndBroadcasts() {
+    void start_setsRunningAndAnnouncesToEachPlayer() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
         service.start(Duration.ofSeconds(10), "test", "alice");
         assertThat(service.isRunning()).isTrue();
-        verify(messages).broadcast(eq("reboot.started"), eq("seconds"), eq("10"), eq("reason"), eq("test"));
+        verify(messages)
+                .send(
+                        eq(player),
+                        eq("reboot.started"),
+                        eq("seconds"),
+                        eq("10"),
+                        eq("reason"),
+                        eq("test"));
+    }
+
+    @Test
+    void start_withoutReason_announcesTheNoReasonPlaceholder() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
+        Component noReason = Component.text("<no reason>");
+        doReturn(noReason)
+                .when(messages)
+                .renderFor(eq(player), eq("reboot.no-reason"), any(Object[].class));
+
+        service.start(Duration.ofSeconds(10), "", "alice");
+
+        verify(messages)
+                .send(
+                        eq(player),
+                        eq("reboot.started"),
+                        eq("seconds"),
+                        eq("10"),
+                        eq("reason"),
+                        eq(noReason));
     }
 
     @Test
@@ -164,6 +194,52 @@ class DefaultRebootServiceTest {
         // 10 is in titleSeconds; subtitle should be rendered with the reason
         verify(messages).renderFor(eq(player), eq("reboot.countdown-subtitle"), eq("reason"),
                 eq("maintenance"), eq("seconds"), eq("10"));
+    }
+
+    @Test
+    void tick_atTitleSecond_withoutReason_usesNoReasonPlaceholderInSubtitle() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
+        Component noReason = Component.text("<no reason>");
+        doReturn(noReason)
+                .when(messages)
+                .renderFor(eq(player), eq("reboot.no-reason"), any(Object[].class));
+
+        service.start(Duration.ofSeconds(10), "", "alice");
+        scheduler.advance(Duration.ofSeconds(1));
+
+        verify(messages)
+                .renderFor(
+                        eq(player),
+                        eq("reboot.countdown-subtitle"),
+                        eq("reason"),
+                        eq(noReason),
+                        eq("seconds"),
+                        eq("10"));
+    }
+
+    @Test
+    void tick_atZero_withoutReason_usesNoReasonPlaceholderInKickMessage() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
+        Component noReason = Component.text("<no reason>");
+        doReturn(noReason)
+                .when(messages)
+                .renderFor(eq(player), eq("reboot.no-reason"), any(Object[].class));
+
+        service.start(Duration.ofSeconds(1), "", "alice");
+        scheduler.advance(Duration.ofSeconds(1));
+
+        verify(messages)
+                .renderFor(
+                        eq(player),
+                        eq("reboot.kick-message"),
+                        eq("reason"),
+                        eq(noReason),
+                        eq("initiator"),
+                        eq("alice"),
+                        eq("website"),
+                        eq("kreiscraft.de"));
     }
 
     @Test

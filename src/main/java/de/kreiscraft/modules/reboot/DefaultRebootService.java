@@ -6,6 +6,7 @@ import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerKickEvent;
 
@@ -54,7 +55,7 @@ public final class DefaultRebootService implements RebootService {
         this.currentReason = reason;
         this.currentInitiator = initiator;
         this.running = true;
-        messages.broadcast("reboot.started", "seconds", String.valueOf(remainingSeconds), "reason", currentReason);
+        announceStarted();
         // delay=1s so first tick announces the starting second before decrementing
         task = scheduler.runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), this::tick);
     }
@@ -77,6 +78,32 @@ public final class DefaultRebootService implements RebootService {
 
     public void updateConfig(RebootConfig config) {
         this.config = config;
+    }
+
+    /**
+     * Announces the start to every online player and the console, rendering the reason fallback in
+     * each recipient's own language. {@code broadcast} cannot carry a per-recipient placeholder, so
+     * the announcement is sent per recipient.
+     */
+    private void announceStarted() {
+        String seconds = String.valueOf(remainingSeconds);
+        for (Player player : platform.server().getOnlinePlayers()) {
+            messages.send(player, "reboot.started", "seconds", seconds, "reason", reasonFor(player));
+        }
+        CommandSender console = platform.server().getConsoleSender();
+        if (console != null) {
+            messages.send(console, "reboot.started", "seconds", seconds, "reason", reasonFor(console));
+        }
+    }
+
+    /**
+     * The {@code <reason>} placeholder value: the supplied reason, or the recipient-localized {@code
+     * reboot.no-reason} placeholder when none was given.
+     */
+    private Object reasonFor(CommandSender recipient) {
+        return currentReason.isBlank()
+                ? messages.renderFor(recipient, "reboot.no-reason")
+                : currentReason;
     }
 
     public void shutdown() {
@@ -102,11 +129,11 @@ public final class DefaultRebootService implements RebootService {
                         player,
                         "reboot.countdown-title",
                         "seconds", seconds,
-                        "reason", currentReason);
+                        "reason", reasonFor(player));
                 Component titleSub = messages.renderFor(
                         player,
                         "reboot.countdown-subtitle",
-                        "reason", currentReason,
+                        "reason", reasonFor(player),
                         "seconds", seconds);
                 player.showTitle(Title.title(titleMain, titleSub, times));
             }
@@ -128,7 +155,7 @@ public final class DefaultRebootService implements RebootService {
                 Component kickMessage = messages.renderFor(
                         player,
                         "reboot.kick-message",
-                        "reason", currentReason,
+                        "reason", reasonFor(player),
                         "initiator", currentInitiator,
                         "website", "kreiscraft.de");
                 player.kick(kickMessage, PlayerKickEvent.Cause.RESTART_COMMAND);

@@ -216,6 +216,7 @@ reboot:
   started: "<prefix> <yellow>Reboot in <aqua><seconds></aqua><yellow>s</yellow> — <light_purple><reason>"
   cancelled: "<prefix> <green>Reboot cancelled."
   not-running: "<prefix> <red>No reboot is running."
+  no-reason: "<italic><no reason></italic>"
   countdown-title: "<red>Reboot in <seconds> seconds</red>"
   countdown-subtitle: "<gray>Reason: <light_purple><reason></light_purple></gray>"
   countdown-chat: "<prefix> <red>Reboot in <aqua><seconds></aqua><red> seconds."
