@@ -409,11 +409,13 @@ public final class ServerConfigGui {
         } else {
             stack = named(material(field, current), displayName);
         }
-        Component lifecycle = messages.renderFor(viewer, field.lifecycle().messageKey())
-                .colorIfAbsent(
-                        field.hotReloadable() ? NamedTextColor.GREEN : NamedTextColor.RED)
-                .decoration(TextDecoration.ITALIC, false);
-        stack.editMeta(meta -> meta.lore(List.of(lifecycle)));
+
+        if (field.lifecycle().restartRequired()) {
+            Component lifecycle = messages.renderFor(viewer, field.lifecycle().messageKey())
+                    .colorIfAbsent(field.hotReloadable() ? NamedTextColor.GREEN : NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false);
+            stack.editMeta(meta -> meta.lore(List.of(lifecycle)));
+        }
         return stack;
     }
 
