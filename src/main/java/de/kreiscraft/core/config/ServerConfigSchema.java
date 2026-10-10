@@ -216,6 +216,16 @@ public final class ServerConfigSchema {
         fields.add(duration(
                 path("modules", "reboot", "default-countdown"),
                 List.of("10s", "30s", "60s", "2m", "5m")));
+        fields.add(field(
+                path("modules", "reboot", "title-seconds"),
+                ConfigFieldType.INT_LIST,
+                ConfigValidators.intList(),
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(
+                path("modules", "reboot", "chat-seconds"),
+                ConfigFieldType.INT_LIST,
+                ConfigValidators.intList(),
+                ConfigLifecycle.HOT_RELOAD));
 
         // ── spawn ───────────────────────────────────────────────────────────
         fields.add(spawnLocation());

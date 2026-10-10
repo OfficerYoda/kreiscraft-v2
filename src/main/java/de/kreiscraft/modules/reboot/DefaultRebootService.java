@@ -122,7 +122,7 @@ public final class DefaultRebootService implements RebootService {
         // Announce current value BEFORE decrementing (announces the supplied starting second first)
         if (config.titleSeconds().contains((int) remainingSeconds)) {
             Title.Times times =
-                    Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(4), Duration.ofSeconds(1));
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(4), Duration.ofSeconds(1));
             String seconds = String.valueOf(remainingSeconds);
             for (Player player : platform.server().getOnlinePlayers()) {
                 Component titleMain = messages.renderFor(

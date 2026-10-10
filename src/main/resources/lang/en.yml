@@ -69,6 +69,8 @@ server-config:
     positions-gui-rows: "GUI rows"
     positions-teleport-on-click: "Teleport on click"
     reboot-default-countdown: "Default countdown"
+    reboot-title-seconds: "Title seconds"
+    reboot-chat-seconds: "Chat seconds"
     spawn-location: "Spawn location"
     spawn-spawn-radius: "Spawn radius"
     spawn-glide-enabled: "Glide enabled"
@@ -108,6 +110,7 @@ server-config:
   list:
     blank: "<prefix> <red>Enter a nonblank value."
     duplicate: "<prefix> <red><value> already exists."
+    not-an-integer: "<prefix> <red>Value must be a whole number."
   close:
     hot-reload: "<prefix> <green><count> change(s) applied automatically."
     restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."

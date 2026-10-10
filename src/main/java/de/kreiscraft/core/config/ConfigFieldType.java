@@ -26,5 +26,7 @@ public enum ConfigFieldType {
     /** Free-form text. */
     STRING,
     /** A list of text values. */
-    STRING_LIST
+    STRING_LIST,
+    /** A list of integer values. */
+    INT_LIST
 }

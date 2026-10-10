@@ -2,6 +2,7 @@ package de.kreiscraft.modules.settingsgui;
 
 import de.kreiscraft.core.config.ConfigEditResult;
 import de.kreiscraft.core.config.ConfigField;
+import de.kreiscraft.core.config.ConfigFieldType;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.scheduler.Scheduler;
@@ -280,6 +281,14 @@ public final class ServerConfigNavigator
             messages.send(player, "server-config.list.blank");
             return;
         }
+        if (field.type() == ConfigFieldType.INT_LIST) {
+            try {
+                Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                messages.send(player, "server-config.list.not-an-integer");
+                return;
+            }
+        }
         List<String> updated = new ArrayList<>(listValue(field));
         if (updated.contains(value)) {
             messages.send(player, "server-config.list.duplicate", "value", value);
@@ -291,7 +300,10 @@ public final class ServerConfigNavigator
 
     private void applyListEdit(
             Player player, ConfigField field, ServerConfigPage page, List<String> updated) {
-        ConfigEditResult result = editor.edit(field, updated);
+        Object value = field.type() == ConfigFieldType.INT_LIST
+                ? updated.stream().map(Integer::parseInt).toList()
+                : updated;
+        ConfigEditResult result = editor.edit(field, value);
         if (result instanceof ConfigEditResult.Applied) {
             ServerConfigSession session = sessions.get(player.getUniqueId());
             if (session != null) {

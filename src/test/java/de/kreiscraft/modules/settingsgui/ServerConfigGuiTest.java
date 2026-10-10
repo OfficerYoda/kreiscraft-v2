@@ -429,12 +429,12 @@ class ServerConfigGuiTest {
     }
 
     @Test
-    void fieldLore_usesLifecycleStateColor() {
+    void fieldLore_isShownOnlyForRestartRequiredFields() {
         ConfigField hotReload = field("effects", "count");
         ConfigField restart = field("tablist", "update-interval");
 
-        assertThat(loreColor(stackAt(category("effects"), slotOf("effects", hotReload))))
-                .isEqualTo(NamedTextColor.GREEN);
+        assertThat(stackAt(category("effects"), slotOf("effects", hotReload)).getItemMeta().lore())
+                .isNull();
         assertThat(loreColor(stackAt(category("tablist"), slotOf("tablist", restart))))
                 .isEqualTo(NamedTextColor.RED);
     }

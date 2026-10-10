@@ -243,7 +243,8 @@ public final class ServerConfigGui {
                                     player, ServerConfigPage.of(category)));
                     return;
                 }
-                if (field.type() == de.kreiscraft.core.config.ConfigFieldType.STRING_LIST) {
+                if (field.type() == de.kreiscraft.core.config.ConfigFieldType.STRING_LIST
+                        || field.type() == de.kreiscraft.core.config.ConfigFieldType.INT_LIST) {
                     navigator.openListEditor(player, field, ServerConfigPage.of(category));
                     return;
                 }
@@ -454,7 +455,7 @@ public final class ServerConfigGui {
             case MATERIAL -> Material.STONE;
             case LOCATION -> Material.COMPASS;
             case STRING -> Material.NAME_TAG;
-            case STRING_LIST -> Material.WRITABLE_BOOK;
+            case STRING_LIST, INT_LIST -> Material.WRITABLE_BOOK;
         };
     }
 
