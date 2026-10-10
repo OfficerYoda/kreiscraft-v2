@@ -271,7 +271,7 @@ class OfflinePlayerEditSessionTest {
             }
             return ("ENCODED:" + sourceNbtBytes.length + ":" + inventory.size() + ":"
                     + enderItems.size())
-                    .getBytes(UTF_8);
+                            .getBytes(UTF_8);
         }
     }
 }

@@ -81,7 +81,7 @@ class TablistConfigTest {
                 "update-interval: 20t\n"
                         + "header: \"line1\\nline2\"\n"
                         + "footer: \"tail   \"\n")
-                .load();
+                                .load();
         TablistConfig cfg = root.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.headerTemplate()).isEqualTo("line1\nline2");

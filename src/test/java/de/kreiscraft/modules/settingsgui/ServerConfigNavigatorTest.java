@@ -440,7 +440,7 @@ class ServerConfigNavigatorTest {
         assertThat(IntStream.range(0, 36)
                 .filter(slot -> lastAnvilLower.getItem(slot) != null)
                 .count())
-                .isEqualTo(36);
+                        .isEqualTo(36);
         assertThat(lastAnvilLower.getSize()).isEqualTo(36);
     }
 

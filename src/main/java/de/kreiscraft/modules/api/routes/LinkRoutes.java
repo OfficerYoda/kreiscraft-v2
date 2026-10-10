@@ -117,24 +117,21 @@ public final class LinkRoutes {
                                                                                 .cancelVerification(
                                                                                         browserUuid)));
                                                 switch (result) {
-                                                    case SENT ->
-                                                        ctx.status(202)
-                                                                .json(
-                                                                        Map.of(
-                                                                                "status",
-                                                                                "verification_sent"));
-                                                    case ALREADY_PENDING ->
-                                                        ctx.status(409)
-                                                                .json(
-                                                                        Map.of(
-                                                                                "status",
-                                                                                "already_pending"));
-                                                    default ->
-                                                        ctx.status(500)
-                                                                .json(
-                                                                        Map.of(
-                                                                                "error",
-                                                                                "unexpected_result"));
+                                                    case SENT -> ctx.status(202)
+                                                            .json(
+                                                                    Map.of(
+                                                                            "status",
+                                                                            "verification_sent"));
+                                                    case ALREADY_PENDING -> ctx.status(409)
+                                                            .json(
+                                                                    Map.of(
+                                                                            "status",
+                                                                            "already_pending"));
+                                                    default -> ctx.status(500)
+                                                            .json(
+                                                                    Map.of(
+                                                                            "error",
+                                                                            "unexpected_result"));
                                                 }
                                                 cf.complete(null);
                                             } catch (Exception e) {

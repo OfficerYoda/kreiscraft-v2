@@ -177,7 +177,7 @@ class PositionsGuiTest {
 
         assertThat(pluginConfig.node("permissions", "kreiscraft.positions.teleport", "default")
                 .getString())
-                .isEqualTo("op");
+                        .isEqualTo("op");
     }
 
     private Gui guiWithOnePosition(AtomicInteger teleports) {

@@ -60,7 +60,7 @@ class ServerConfigServiceTest {
                 .load()
                 .node("modules", "combat", "disable-elytra")
                 .getBoolean())
-                .isFalse();
+                        .isFalse();
     }
 
     @Test

@@ -5,12 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
-import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
@@ -21,7 +19,6 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import xyz.xenondevs.invui.Click;
 import xyz.xenondevs.invui.gui.Gui;
-import xyz.xenondevs.invui.item.ItemProvider;
 
 import java.io.IOException;
 

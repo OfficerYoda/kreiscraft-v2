@@ -323,7 +323,7 @@ class DefaultStartSequenceServiceTest {
                         .load()
                         .node("modules", "start-sequence", "has-started")
                         .getBoolean())
-                .isTrue();
+                                .isTrue();
         assertThat(java.nio.file.Files.exists(tempDir.resolve("data/start-sequence.yml")))
                 .isFalse();
     }

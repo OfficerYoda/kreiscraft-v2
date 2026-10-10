@@ -201,7 +201,7 @@ class ServerConfigGuiTest {
                     .isNotEmpty()
                     .allSatisfy(line -> assertThat(
                             PlainTextComponentSerializer.plainText().serialize(line))
-                            .containsIgnoringCase("restart"));
+                                    .containsIgnoringCase("restart"));
         }
     }
 

@@ -186,7 +186,8 @@ tasks.check {
 spotless {
     java {
         target("src/**/*.java")
-        eclipse().configFile("eclipse-formatter.xml")
+        eclipse("4.38").configFile("eclipse-formatter.xml")
+        removeUnusedImports()
     }
 }
 

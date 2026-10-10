@@ -379,8 +379,7 @@ public final class ServerConfigGui {
                             : "server-config.value-off")
                     .colorIfAbsent(Boolean.TRUE.equals(current) ? NamedTextColor.GREEN : NamedTextColor.RED);
             case LOCATION -> Component.text(formatLocation((Location) current), NamedTextColor.AQUA);
-            case STRING_LIST ->
-                Component.text(String.join(", ", (List<String>) current), NamedTextColor.AQUA);
+            case STRING_LIST -> Component.text(String.join(", ", (List<String>) current), NamedTextColor.AQUA);
             default -> Component.text(String.valueOf(current), NamedTextColor.AQUA);
         };
     }
@@ -422,8 +421,7 @@ public final class ServerConfigGui {
     /** The icon material for a field, reflecting its type and boolean state. */
     static Material material(ConfigField field, Object current) {
         return switch (field.type()) {
-            case BOOLEAN ->
-                Boolean.TRUE.equals(current) ? Material.LIME_DYE : Material.RED_DYE;
+            case BOOLEAN -> Boolean.TRUE.equals(current) ? Material.LIME_DYE : Material.RED_DYE;
             case INTEGER -> Material.REPEATER;
             case DOUBLE -> Material.COMPARATOR;
             case DURATION -> Material.CLOCK;
