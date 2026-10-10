@@ -101,10 +101,10 @@ class DefaultRebootServiceTest {
     }
 
     @Test
-    void start_andAdvance5s_remaining5s() {
+    void start_andAdvance5s_remaining4s() {
         service.start(Duration.ofSeconds(10), "test", "alice");
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(service.remaining()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(service.remaining()).isEqualTo(Duration.ofSeconds(4));
     }
 
     @Test
@@ -158,7 +158,7 @@ class DefaultRebootServiceTest {
         doReturn(List.of(player)).when(server).getOnlinePlayers();
 
         service.start(Duration.ofSeconds(1), "test", "alice");
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
 
         assertThat(service.isRunning()).isFalse();
         verify(player).kick(kickComponent, PlayerKickEvent.Cause.RESTART_COMMAND);
@@ -204,7 +204,7 @@ class DefaultRebootServiceTest {
         service = new DefaultRebootService(scheduler, messages, platform, config);
 
         service.start(Duration.ofSeconds(2), "maintenance", "alice");
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
 
         verify(messages).renderFor(
                 eq(player),
