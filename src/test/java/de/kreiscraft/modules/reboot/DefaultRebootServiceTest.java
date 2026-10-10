@@ -158,7 +158,7 @@ class DefaultRebootServiceTest {
         doReturn(List.of(player)).when(server).getOnlinePlayers();
 
         service.start(Duration.ofSeconds(1), "test", "alice");
-        scheduler.advance(Duration.ofSeconds(1));
+        scheduler.advance(Duration.ofSeconds(2));
 
         assertThat(service.isRunning()).isFalse();
         verify(player).kick(kickComponent, PlayerKickEvent.Cause.RESTART_COMMAND);
@@ -174,7 +174,7 @@ class DefaultRebootServiceTest {
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
 
         service.start(Duration.ofSeconds(1), "planned", "alice");
-        scheduler.advance(Duration.ofSeconds(1));
+        scheduler.advance(Duration.ofSeconds(2));
 
         verify(messages).renderFor(
                 eq(player),
@@ -194,6 +194,38 @@ class DefaultRebootServiceTest {
         // 10 is in titleSeconds; subtitle should be rendered with the reason
         verify(messages).renderFor(eq(player), eq("reboot.countdown-subtitle"), eq("reason"),
                 eq("maintenance"), eq("seconds"), eq("10"));
+    }
+
+    @Test
+    void tick_givesOneAFullSecond_thenSendsZeroAndKicks() {
+        Player player = mock(Player.class);
+        when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
+        config = new RebootConfig(Duration.ofSeconds(60), List.of(2, 1, 0), List.of());
+        service = new DefaultRebootService(scheduler, messages, platform, config);
+
+        service.start(Duration.ofSeconds(2), "maintenance", "alice");
+        scheduler.advance(Duration.ofSeconds(2));
+
+        verify(messages).renderFor(
+                eq(player),
+                eq("reboot.countdown-title"),
+                eq("seconds"),
+                eq("1"),
+                eq("reason"),
+                eq("maintenance"));
+        verify(player, never()).kick(any(Component.class), eq(PlayerKickEvent.Cause.RESTART_COMMAND));
+
+        scheduler.advance(Duration.ofSeconds(1));
+
+        verify(messages).renderFor(
+                eq(player),
+                eq("reboot.countdown-title"),
+                eq("seconds"),
+                eq("0"),
+                eq("reason"),
+                eq("maintenance"));
+        verify(player).kick(any(Component.class), eq(PlayerKickEvent.Cause.RESTART_COMMAND));
+        verify(server).shutdown();
     }
 
     @Test
@@ -228,7 +260,7 @@ class DefaultRebootServiceTest {
                 .renderFor(eq(player), eq("reboot.no-reason"), any(Object[].class));
 
         service.start(Duration.ofSeconds(1), "", "alice");
-        scheduler.advance(Duration.ofSeconds(1));
+        scheduler.advance(Duration.ofSeconds(2));
 
         verify(messages)
                 .renderFor(

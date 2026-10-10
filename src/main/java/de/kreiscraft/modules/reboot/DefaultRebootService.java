@@ -56,8 +56,7 @@ public final class DefaultRebootService implements RebootService {
         this.currentInitiator = initiator;
         this.running = true;
         announceStarted();
-        // delay=1s so first tick announces the starting second before decrementing
-        task = scheduler.runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), this::tick);
+        task = scheduler.runRepeating(Duration.ofSeconds(0), Duration.ofSeconds(1), this::tick);
     }
 
     @Override
@@ -119,7 +118,6 @@ public final class DefaultRebootService implements RebootService {
             return;
         }
 
-        // Announce current value BEFORE decrementing (announces the supplied starting second first)
         if (config.titleSeconds().contains((int) remainingSeconds)) {
             Title.Times times =
                     Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(4), Duration.ofSeconds(1));
@@ -143,8 +141,6 @@ public final class DefaultRebootService implements RebootService {
             messages.broadcast("reboot.countdown-chat", "seconds", String.valueOf(remainingSeconds));
         }
 
-        remainingSeconds--;
-
         if (remainingSeconds <= 0) {
             running = false;
             if (task != null) {
@@ -162,5 +158,7 @@ public final class DefaultRebootService implements RebootService {
             }
             platform.server().shutdown();
         }
+
+        remainingSeconds--;
     }
 }
