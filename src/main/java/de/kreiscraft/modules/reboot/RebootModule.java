@@ -32,7 +32,7 @@ public final class RebootModule implements Module {
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
         this.service = new DefaultRebootService(ctx.scheduler(), ctx.messages(), platform, config);
         ctx.services().publish(RebootService.class, service);
-        ctx.events().register(new RebootListener(ctx.messages()));
+        ctx.events().register(new RebootListener());
         ctx.commands().register(
                 RebootCommand.build(service, ctx.messages(), config),
                 "Trigger or cancel a server restart",

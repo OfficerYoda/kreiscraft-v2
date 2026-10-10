@@ -43,6 +43,7 @@ public final class DefaultServerConfigService implements ServerConfigService {
                 case DURATION, ENUM, MATERIAL, STRING -> node.getString();
                 case LOCATION -> node.get(Location.class);
                 case STRING_LIST -> node.getList(String.class);
+                case INT_LIST -> node.getList(Integer.class);
             };
         } catch (SerializationException e) {
             return null;

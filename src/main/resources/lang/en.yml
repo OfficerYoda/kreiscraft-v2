@@ -13,10 +13,11 @@ server-config:
   entry: "<gold>Server Configuration <dark_gray>(admins only)"
   title: "<gray>Server Configuration"
   category-title: "<gray>Server Configuration: <category>"
+  category-disabled: "<dark_gray> | disabled</dark_gray>"
   category:
     modules: "Modules"
     core: "Core"
-    admin: "Admin"
+    admin: "Links"
     api: "HTTP API"
     anti-cheat: "Anti-Cheat"
     bedrock: "Bedrock"
@@ -68,6 +69,8 @@ server-config:
     positions-gui-rows: "GUI rows"
     positions-teleport-on-click: "Teleport on click"
     reboot-default-countdown: "Default countdown"
+    reboot-title-seconds: "Title seconds"
+    reboot-chat-seconds: "Chat seconds"
     spawn-location: "Spawn location"
     spawn-spawn-radius: "Spawn radius"
     spawn-glide-enabled: "Glide enabled"
@@ -107,10 +110,12 @@ server-config:
   list:
     blank: "<prefix> <red>Enter a nonblank value."
     duplicate: "<prefix> <red><value> already exists."
+    not-an-integer: "<prefix> <red>Value must be a whole number."
   close:
     hot-reload: "<prefix> <green><count> change(s) applied automatically."
     restart-required: "<prefix> <red><count> change(s) (including module enablement) require a server restart; they are never applied live."
 admin:
+  seed-blocked: "<prefix> <red>/seed is disabled."
   item-given: "<prefix> <green><count>x <item></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gold><player></gold><gray> IP: <aqua><ip>"
@@ -122,7 +127,7 @@ admin:
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
   sudo-executed: "<prefix> <gray>sudo <gold><player></gold><gray>: <text>"
   help:
-    text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+    text: "<prefix> <green><click:open_url:'<website>'>[Website]</click></green> <gray>-</gray> <color:#5865F2><click:open_url:'<discord>'>[Discord]</click></color> <gray>-</gray> <color:#FF0000><click:open_url:'<youtube>'>[YouTube]</click></color>"
   target-not-found: "<prefix> <red>Player <gold><player></gold><red> not found."
   usage: "<prefix> <red>Usage: <usage>"
 api:
@@ -189,6 +194,7 @@ invsee:
 jail:
   jailed: "<prefix> <gold><player></gold><gray> has been jailed: <light_purple><reason>"
   jailed-target: "<prefix> <red>You have been jailed.</red> <gray>Reason: <light_purple><reason></light_purple></gray>"
+  no-reason: "<italic><no reason></italic>"
   set: "<prefix> <green>Jail location set to your current position."
   released: "<prefix> <green>Released <gold><player></gold>."
   already-jailed: "<prefix> <gold><player></gold><red> is already jailed."
@@ -214,17 +220,17 @@ reboot:
   started: "<prefix> <yellow>Reboot in <aqua><seconds></aqua><yellow>s</yellow> — <light_purple><reason>"
   cancelled: "<prefix> <green>Reboot cancelled."
   not-running: "<prefix> <red>No reboot is running."
-  countdown-title: "<red>Reboot in <seconds> seconds</red>"
+  no-reason: "<italic><no reason></italic>"
+  countdown-title: "<yellow>Reboot in <aqua><seconds></aqua><yellow>s</yellow>"
   countdown-subtitle: "<gray>Reason: <light_purple><reason></light_purple></gray>"
-  countdown-chat: "<prefix> <red>Reboot in <aqua><seconds></aqua><red> seconds."
-  seed-blocked: "<prefix> <red>/seed is disabled."
+  countdown-chat: "<yellow>Reboot in <aqua><seconds></aqua><yellow>s</yellow>"
   kick-message: |-
     <gray>===================================
     <aqua>Restart
 
     <gray>Reason: <light_purple><reason>
     <gray>Restarted by: <gold><initiator>
-    <gray>Website: <aqua><website>
+    <gray>Website: <green><website>
 
     <aqua>Restart
     <gray>==================================="

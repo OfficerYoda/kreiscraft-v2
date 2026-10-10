@@ -185,4 +185,30 @@ public final class ConfigValidators {
             }
         };
     }
+
+    /** Requires a list of strings which can be parsed to integers. */
+    public static ConfigValidator intList() {
+        return value -> {
+            if (!value.isList()) {
+                return Optional.of("must be a list of integers");
+            }
+            try {
+                List<String> list = value.getList(String.class);
+                if (list == null) {
+                    return Optional.of("must be a list of integers");
+                }
+                if (list.contains(null)) {
+                    return Optional.of("must not contain empty entries");
+                }
+                for (String item : list) {
+                    try {
+                        Integer.parseInt(item);
+                    } catch (NumberFormatException e) {
+                        return Optional.of("all entries must be valid integers");
+                    }
+                }
+                return Optional.empty();
+            } catch (SerializationException e) { return Optional.of("must be a list of integers"); }
+        };
+    }
 }

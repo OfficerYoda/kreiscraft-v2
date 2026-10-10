@@ -51,20 +51,17 @@ final class OfflineCommitCoordinator {
                         return;
                     }
                     switch (result) {
-                        case COMMITTED ->
-                            messages.send(viewer, "invsee.saved", "player", displayName);
-                        case ABORTED_TARGET_ONLINE ->
-                            messages.send(
-                                    viewer,
-                                    "invsee.commit-player-online",
-                                    "player",
-                                    displayName);
-                        case ABORTED_SOURCE_CHANGED ->
-                            messages.send(
-                                    viewer,
-                                    "invsee.commit-source-changed",
-                                    "player",
-                                    displayName);
+                        case COMMITTED -> messages.send(viewer, "invsee.saved", "player", displayName);
+                        case ABORTED_TARGET_ONLINE -> messages.send(
+                                viewer,
+                                "invsee.commit-player-online",
+                                "player",
+                                displayName);
+                        case ABORTED_SOURCE_CHANGED -> messages.send(
+                                viewer,
+                                "invsee.commit-source-changed",
+                                "player",
+                                displayName);
                     }
                 });
     }

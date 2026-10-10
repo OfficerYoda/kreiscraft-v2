@@ -7,7 +7,6 @@ import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.shared.preferences.CombatDisplay;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;

@@ -86,14 +86,10 @@ public final class LastOnlineCommand {
             MessageService messages, CommandSender sender, Relative relative) {
         return switch (relative.bucket()) {
             case "just-now" -> messages.renderFor(sender, "time.relative.just-now");
-            case "seconds" ->
-                messages.renderFor(sender, "time.relative.seconds", "count", relative.count());
-            case "minutes" ->
-                messages.renderFor(sender, "time.relative.minutes", "count", relative.count());
-            case "hours" ->
-                messages.renderFor(sender, "time.relative.hours", "count", relative.count());
-            case "days" ->
-                messages.renderFor(sender, "time.relative.days", "count", relative.count());
+            case "seconds" -> messages.renderFor(sender, "time.relative.seconds", "count", relative.count());
+            case "minutes" -> messages.renderFor(sender, "time.relative.minutes", "count", relative.count());
+            case "hours" -> messages.renderFor(sender, "time.relative.hours", "count", relative.count());
+            case "days" -> messages.renderFor(sender, "time.relative.days", "count", relative.count());
             default -> Component.empty();
         };
     }

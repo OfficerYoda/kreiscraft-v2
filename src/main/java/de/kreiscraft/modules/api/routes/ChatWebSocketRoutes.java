@@ -168,9 +168,8 @@ public final class ChatWebSocketRoutes {
         }
 
         switch (msg.type()) {
-            case PING ->
-                sendToClient(
-                        ctx, new WebSocketMessage(WebSocketMessageType.PONG, "heartbeat pong"));
+            case PING -> sendToClient(
+                    ctx, new WebSocketMessage(WebSocketMessageType.PONG, "heartbeat pong"));
             case PONG -> {
                 // ignore
             }

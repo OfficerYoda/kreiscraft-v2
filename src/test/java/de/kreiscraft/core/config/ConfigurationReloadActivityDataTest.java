@@ -101,7 +101,7 @@ class ConfigurationReloadActivityDataTest {
                 .load()
                 .node("modules", "update-mode", "active")
                 .getBoolean())
-                .isTrue();
+                        .isTrue();
     }
 
     @Test

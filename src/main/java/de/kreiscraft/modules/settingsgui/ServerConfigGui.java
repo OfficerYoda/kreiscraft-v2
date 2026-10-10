@@ -8,6 +8,7 @@ import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
@@ -103,6 +104,22 @@ public final class ServerConfigGui {
                 .toList();
     }
 
+    /**
+     * The module-enable field declared for {@code category}, or empty when the category has no enable
+     * flag (such as {@code core}, which is not a module).
+     */
+    static Optional<ConfigField> moduleToggle(ServerConfigSchema schema, String category) {
+        return schema.find(List.of("modules", category, "enabled"));
+    }
+
+    /** Whether the module backing {@code category} is currently enabled. */
+    static boolean categoryEnabled(ServerConfigService editor, String category) {
+        return moduleToggle(editor.schema(), category)
+                .map(editor::current)
+                .map(Boolean.TRUE::equals)
+                .orElse(true);
+    }
+
     /** Stable slot for a field, with each related group occupying one row. */
     static int fieldSlot(ServerConfigSchema schema, String category, ConfigField field) {
         if (isModuleEnabled(field)) {
@@ -173,9 +190,18 @@ public final class ServerConfigGui {
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
-                int count = fieldsIn(editor.schema(), category).size();
+                int count =
+                        fieldsIn(editor.schema(), category).size()
+                                - (moduleToggle(editor.schema(), category).isPresent() ? 1 : 0);
                 Component name = messages.renderFor(viewer, categoryKey(category))
-                        .append(Component.text(" (" + count + ")").color(NamedTextColor.DARK_GRAY));
+                        .color(NamedTextColor.WHITE)
+                        .append(Component.text(" (" + count + ")")
+                                .color(NamedTextColor.DARK_GRAY));
+
+                if (!categoryEnabled(editor, category)) {
+                    name = name.append(messages.renderFor(viewer, "server-config.category-disabled"));
+                }
+
                 return new ItemWrapper(named(categoryMaterial(category), name));
             }
 
@@ -218,7 +244,8 @@ public final class ServerConfigGui {
                                     player, ServerConfigPage.of(category)));
                     return;
                 }
-                if (field.type() == de.kreiscraft.core.config.ConfigFieldType.STRING_LIST) {
+                if (field.type() == de.kreiscraft.core.config.ConfigFieldType.STRING_LIST
+                        || field.type() == de.kreiscraft.core.config.ConfigFieldType.INT_LIST) {
                     navigator.openListEditor(player, field, ServerConfigPage.of(category));
                     return;
                 }
@@ -323,7 +350,7 @@ public final class ServerConfigGui {
     static Material categoryMaterial(String category) {
         return switch (category) {
             case "core" -> Material.COMMAND_BLOCK;
-            case "admin" -> Material.GOLD_BLOCK;
+            case "admin" -> Material.ENDER_PEARL;
             case "api" -> Material.REDSTONE_TORCH;
             case "anti-cheat" -> Material.SHIELD;
             case "bedrock" -> Material.BEDROCK;
@@ -379,8 +406,7 @@ public final class ServerConfigGui {
                             : "server-config.value-off")
                     .colorIfAbsent(Boolean.TRUE.equals(current) ? NamedTextColor.GREEN : NamedTextColor.RED);
             case LOCATION -> Component.text(formatLocation((Location) current), NamedTextColor.AQUA);
-            case STRING_LIST ->
-                Component.text(String.join(", ", (List<String>) current), NamedTextColor.AQUA);
+            case STRING_LIST -> Component.text(String.join(", ", (List<String>) current), NamedTextColor.AQUA);
             default -> Component.text(String.valueOf(current), NamedTextColor.AQUA);
         };
     }
@@ -409,19 +435,20 @@ public final class ServerConfigGui {
         } else {
             stack = named(material(field, current), displayName);
         }
-        Component lifecycle = messages.renderFor(viewer, field.lifecycle().messageKey())
-                .colorIfAbsent(
-                        field.hotReloadable() ? NamedTextColor.GREEN : NamedTextColor.RED)
-                .decoration(TextDecoration.ITALIC, false);
-        stack.editMeta(meta -> meta.lore(List.of(lifecycle)));
+
+        if (field.lifecycle().restartRequired()) {
+            Component lifecycle = messages.renderFor(viewer, field.lifecycle().messageKey())
+                    .colorIfAbsent(field.hotReloadable() ? NamedTextColor.GREEN : NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false);
+            stack.editMeta(meta -> meta.lore(List.of(lifecycle)));
+        }
         return stack;
     }
 
     /** The icon material for a field, reflecting its type and boolean state. */
     static Material material(ConfigField field, Object current) {
         return switch (field.type()) {
-            case BOOLEAN ->
-                Boolean.TRUE.equals(current) ? Material.LIME_DYE : Material.RED_DYE;
+            case BOOLEAN -> Boolean.TRUE.equals(current) ? Material.LIME_DYE : Material.RED_DYE;
             case INTEGER -> Material.REPEATER;
             case DOUBLE -> Material.COMPARATOR;
             case DURATION -> Material.CLOCK;
@@ -429,7 +456,7 @@ public final class ServerConfigGui {
             case MATERIAL -> Material.STONE;
             case LOCATION -> Material.COMPASS;
             case STRING -> Material.NAME_TAG;
-            case STRING_LIST -> Material.WRITABLE_BOOK;
+            case STRING_LIST, INT_LIST -> Material.WRITABLE_BOOK;
         };
     }
 

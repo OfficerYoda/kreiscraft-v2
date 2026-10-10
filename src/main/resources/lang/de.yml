@@ -13,25 +13,26 @@ server-config:
   entry: "<gold>Server-Konfiguration <dark_gray>(nur Admins)"
   title: "<gray>Server-Konfiguration"
   category-title: "<gray>Server-Konfiguration: <category>"
+  category-disabled: "<dark_gray> | deaktiviert</dark_gray>"
   category:
     modules: "Module"
-    core: "Kern"
+    core: "Core"
     admin: "Admin"
     api: "HTTP-API"
     anti-cheat: "Anti-Cheat"
     bedrock: "Bedrock"
     chat-format: "Chat-Format"
-    clickthrough: "Durchklicken"
+    clickthrough: "Click-throgh"
     combat: "Combat"
     effects: "Effekte"
     firework: "Feuerwerk"
-    glow: "Leuchten"
+    glow: "Glow"
     invsee: "Inventaransicht"
     jail: "Kerker"
     positions: "Positionen"
     reboot: "Neustart"
     settings-gui: "Spielereinstellungen"
-    sign-color: "Schildfarben"
+    sign-color: "Sign Colors"
     spawn: "Spawn"
     start-sequence: "Start-Sequenz"
     status: "Status"
@@ -68,6 +69,8 @@ server-config:
     positions-gui-rows: "GUI-Zeilen"
     positions-teleport-on-click: "Bei Klick teleportieren"
     reboot-default-countdown: "Standard-Countdown"
+    reboot-title-seconds: "Titel-Sekunden"
+    reboot-chat-seconds: "Chat-Sekunden"
     spawn-location: "Spawn-Position"
     spawn-spawn-radius: "Spawn-Radius"
     spawn-glide-enabled: "Gleiten aktiviert"
@@ -107,10 +110,12 @@ server-config:
   list:
     blank: "<prefix> <red>Gib einen nicht leeren Wert ein."
     duplicate: "<prefix> <red><value> ist bereits vorhanden."
+    not-an-integer: "<prefix> <red>Der Wert muss eine ganze Zahl sein."
   close:
     hot-reload: "<prefix> <green><count> Änderung(en) automatisch übernommen."
     restart-required: "<prefix> <red><count> Änderung(en) (inkl. Modul-Aktivierung) erfordern einen Server-Neustart; sie werden niemals live übernommen."
 admin:
+  seed-blocked: "<prefix> <red>/seed ist deaktiviert."
   item-given: "<prefix> <green><count>x <item></green>."
   spawnmob-spawned: "<prefix> <green><count>x <entity></green> spawned."
   ip: "<prefix> <gold><player></gold><gray> IP: <aqua><ip>"
@@ -122,7 +127,7 @@ admin:
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
   sudo-executed: "<prefix> <gray>sudo <gold><player></gold><gray>: <text>"
   help:
-    text: "<prefix> <gradient:#5555ff:#55ffff>Kreiscraft</gradient> — <click:open_url:'<website>'>Web</click> | <click:open_url:'<discord>'>Discord</click> | <click:open_url:'<youtube>'>YouTube</click>"
+    text: "<prefix> <green><click:open_url:'<website>'>[Website]</click></green> <gray>-</gray> <color:#5865F2><click:open_url:'<discord>'>[Discord]</click></color> <gray>-</gray> <color:#FF0000><click:open_url:'<youtube>'>[YouTube]</click></color>"
   target-not-found: "<prefix> <red>Spieler <gold><player></gold><red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
 api:
@@ -189,6 +194,7 @@ invsee:
 jail:
   jailed: "<prefix> <gold><player></gold><gray> wurde eingesperrt: <light_purple><reason>"
   jailed-target: "<prefix> <red>Du wurdest eingesperrt.</red> <gray>Grund: <light_purple><reason></light_purple></gray>"
+  no-reason: "<italic><kein Grund></italic>"
   set: "<prefix> <green>Gefängnisposition auf deine aktuelle Position gesetzt."
   released: "<prefix> <green><gold><player></gold> wurde freigelassen."
   already-jailed: "<prefix> <gold><player></gold><red> ist bereits eingesperrt."
@@ -214,17 +220,17 @@ reboot:
   started: "<prefix> <yellow>Neustart in <aqua><seconds></aqua><yellow>s</yellow> — <light_purple><reason>"
   cancelled: "<prefix> <green>Neustart abgebrochen."
   not-running: "<prefix> <red>Kein Neustart läuft."
-  countdown-title: "<red>Neustart in <seconds> Sekunden</red>"
+  no-reason: "<italic><kein Grund></italic>"
+  countdown-title: "<yellow>Neustart in <aqua><seconds></aqua><yellow>s</yellow>"
   countdown-subtitle: "<gray>Grund: <light_purple><reason></light_purple></gray>"
-  countdown-chat: "<prefix> <red>Neustart in <aqua><seconds></aqua><red> Sekunden."
-  seed-blocked: "<prefix> <red>/seed ist deaktiviert."
+  countdown-chat: "<yellow>Neustart in <aqua><seconds></aqua><yellow>s</yellow>"
   kick-message: |-
     <gray>===================================
     <aqua>Neustart
 
     <gray>Grund: <light_purple><reason>
     <gray>Neugestartet von: <gold><initiator>
-    <gray>Website: <aqua><website>
+    <gray>Website: <green><website>
 
     <aqua>Neustart
     <gray>==================================="

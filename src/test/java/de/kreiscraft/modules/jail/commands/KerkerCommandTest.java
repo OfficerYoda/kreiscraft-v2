@@ -7,12 +7,15 @@ import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import de.kreiscraft.core.command.SuggestionTestSupport;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.jail.JailEntry;
 import de.kreiscraft.modules.jail.JailService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.junit.jupiter.api.AfterEach;
@@ -47,7 +50,7 @@ class KerkerCommandTest {
     }
 
     private LiteralCommandNode<CommandSourceStack> buildNode() {
-        return JailCommand.buildWithName("kerker", service, messages);
+        return JailCommand.buildWithName("kerker", service, messages, server);
     }
 
     @Test
@@ -79,6 +82,9 @@ class KerkerCommandTest {
         PlayerMock admin = server.addPlayer("Admin");
         PlayerMock target = server.addPlayer("Target");
         when(service.isJailed(target.getUniqueId())).thenReturn(false);
+        Component noReason = Component.text("<no reason>");
+        when(messages.renderFor(admin, "jail.no-reason")).thenReturn(noReason);
+        when(messages.renderFor(target, "jail.no-reason")).thenReturn(noReason);
 
         CommandSourceStack src = mock(CommandSourceStack.class);
         when(src.getSender()).thenReturn(admin);
@@ -90,8 +96,8 @@ class KerkerCommandTest {
 
         verify(service).jail(org.mockito.ArgumentMatchers.eq(target.getUniqueId()),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(""));
-        verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", "");
-        verify(messages).send(target, "jail.jailed-target", "reason", "");
+        verify(messages).send(admin, "jail.jailed", "player", "Target", "reason", noReason);
+        verify(messages).send(target, "jail.jailed-target", "reason", noReason);
     }
 
     @SuppressWarnings("unchecked")
@@ -119,5 +125,21 @@ class KerkerCommandTest {
     @Test
     void build_hasTargetChildArgument() {
         assertThat(buildNode().getChild("target")).isNotNull();
+    }
+
+    @Test
+    void targetArgument_suggestsOnlinePlayerNames() {
+        LiteralCommandNode<CommandSourceStack> node = buildNode();
+        PlayerMock admin = server.addPlayer("Admin");
+        server.addPlayer("Target");
+        admin.addAttachment(plugin, "kreiscraft.jail.use", true);
+
+        CommandSourceStack src = mock(CommandSourceStack.class);
+        when(src.getSender()).thenReturn(admin);
+
+        List<String> suggestions =
+                SuggestionTestSupport.suggestions(node.getChild("target"), src, "");
+
+        assertThat(suggestions).containsExactly("Admin", "Target");
     }
 }

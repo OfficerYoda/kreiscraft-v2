@@ -243,7 +243,7 @@ class AnvilRenameListenerTest {
                     consumer.accept(meta);
                     return null;
                 })
-                .when(result)
-                .editMeta(any());
+                        .when(result)
+                        .editMeta(any());
     }
 }

@@ -69,6 +69,7 @@ public final class PositionCommand {
                                             positions,
                                             cfg,
                                             messages,
+                                            player,
                                             (p, entry) -> p.teleport(entry.location()));
                             gui.open(
                                     player,

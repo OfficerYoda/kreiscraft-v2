@@ -84,8 +84,8 @@ class CombatCountdownTest {
                                     .serialize(inv.getArgument(0)));
                     return null;
                 })
-                .when(player)
-                .sendActionBar(any(Component.class));
+                        .when(player)
+                        .sendActionBar(any(Component.class));
         service = new DefaultCombatService(scheduler, messages, preferences, platform, config);
     }
 

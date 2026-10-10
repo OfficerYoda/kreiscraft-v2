@@ -159,6 +159,6 @@ class LastOnlineCommandTest {
         assertThat(
                 de.kreiscraft.core.command.SuggestionTestSupport.suggestions(
                         node.getChild("player"), src, "Al"))
-                .contains("Alice");
+                                .contains("Alice");
     }
 }

@@ -57,7 +57,7 @@ public final class ServerConfigControls {
             case ENUM -> cycle(field.options(), current, direction);
             case MATERIAL -> cycle(optionsOr(field, MATERIAL_OPTIONS), current, direction);
             case LOCATION -> player.getLocation();
-            case STRING, STRING_LIST -> null;
+            case STRING, STRING_LIST, INT_LIST -> null;
         };
     }
 

@@ -170,6 +170,6 @@ class ApiServerTest {
                         opt -> assertThat(
                                 opt.isEmpty()
                                         || !opt.get().equals(MALICIOUS_ORIGIN))
-                                .isTrue());
+                                                .isTrue());
     }
 }

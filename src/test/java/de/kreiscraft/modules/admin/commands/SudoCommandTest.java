@@ -83,6 +83,6 @@ class SudoCommandTest {
         assertThat(
                 de.kreiscraft.core.command.SuggestionTestSupport.suggestions(
                         node.getChild("target"), src, ""))
-                .contains("all", "Admin", "Target");
+                                .contains("all", "Admin", "Target");
     }
 }

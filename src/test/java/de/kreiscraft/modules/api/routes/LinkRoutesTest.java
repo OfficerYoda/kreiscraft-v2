@@ -108,8 +108,8 @@ class LinkRoutesTest {
                     dispatchPromptOnMain.run();
                     return VerificationService.SendResult.SENT;
                 })
-                .when(verification)
-                .sendVerification(any(), any(), any(), any());
+                        .when(verification)
+                        .sendVerification(any(), any(), any(), any());
 
         JavalinTest.test(
                 app,

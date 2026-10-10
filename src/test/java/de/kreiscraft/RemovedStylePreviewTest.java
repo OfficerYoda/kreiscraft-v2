@@ -3,7 +3,6 @@ package de.kreiscraft;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import de.kreiscraft.core.command.CommandRegistrar;
 import de.kreiscraft.core.event.EventBus;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;

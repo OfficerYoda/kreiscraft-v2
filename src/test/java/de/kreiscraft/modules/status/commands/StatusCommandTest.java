@@ -13,7 +13,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.util.List;
