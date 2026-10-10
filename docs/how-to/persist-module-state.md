@@ -54,8 +54,14 @@ to work with Configurate. Example:
 public record MyFeatureState(String lastValue, int counter) {}
 ```
 
-See `SpawnData.java` for a real example that stores a nullable `Location` via
-`AtomicReference<Location>` and uses explicit node paths instead of a top-level record.
+See `JailData.java` and `HackLogData.java` for real examples that store record and collection
+state via explicit node paths rather than a single top-level record.
+
+> **Operator-owned state is not a `DataFile`.** Values that represent operator choices — the spawn
+> location, update-mode state, start-sequence completion — live in writable `config.yml` and are
+> written through `ConfigService` (see ADR-10). Use `DataFile` only for player and gameplay
+> Activity Data such as jail records, saved positions, Bedrock identities and pre-login
+> authorizations, and anti-cheat logs.
 
 ### 2. Load the file in `enable()`
 

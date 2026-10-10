@@ -8,14 +8,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
@@ -31,6 +35,10 @@ class ConfigurateMessageServiceTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
+    }
+
+    private static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
     }
 
     @Test
@@ -76,6 +84,115 @@ class ConfigurateMessageServiceTest {
                 PlainTextComponentSerializer.plainText()
                         .serialize(svc.render("does.not.exist"));
         assertThat(plain).contains("[?does.not.exist]");
+    }
+
+    @Test
+    void renderFor_usesRecipientLanguageOverServerDefault(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp, getClass().getClassLoader(), "de", server, recipient -> Optional.of("en"));
+        Player alice = server.addPlayer("Alice");
+
+        assertThat(plain(svc.renderFor(alice, "core.reload.success")))
+                .as("recipient preference must take precedence over the server language")
+                .contains("Configuration reloaded");
+        assertThat(plain(svc.render("core.reload.success")))
+                .as("server-language rendering must stay in the server language")
+                .contains("Konfiguration neu geladen");
+    }
+
+    @Test
+    void renderFor_withoutStoredPreference_usesServerLanguage(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp, getClass().getClassLoader(), "de", server, recipient -> Optional.empty());
+        Player alice = server.addPlayer("Alice");
+
+        assertThat(plain(svc.renderFor(alice, "core.reload.success")))
+                .contains("Konfiguration neu geladen");
+    }
+
+    @Test
+    void renderFor_unknownStoredLocale_fallsBackToServerLanguage(@TempDir Path tmp)
+            throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp, getClass().getClassLoader(), "de", server, recipient -> Optional.of("fr"));
+        Player alice = server.addPlayer("Alice");
+
+        assertThat(plain(svc.renderFor(alice, "core.reload.success")))
+                .as("an unknown stored locale must fall back rather than blank the output")
+                .contains("Konfiguration neu geladen");
+    }
+
+    @Test
+    void send_rendersInRecipientLanguage(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp, getClass().getClassLoader(), "de", server, recipient -> Optional.of("en"));
+        PlayerMock alice = server.addPlayer("Alice");
+
+        svc.send(alice, "core.reload.success");
+
+        assertThat(alice.nextMessage()).contains("Configuration reloaded");
+    }
+
+    @Test
+    void broadcast_rendersEachRecipientInTheirOwnLanguage(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp,
+                getClass().getClassLoader(),
+                "de",
+                server,
+                recipient -> "Alice".equals(recipient.getName()) ? Optional.of("en") : Optional.empty());
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+
+        svc.broadcast("core.reload.success");
+
+        assertThat(alice.nextMessage())
+                .as("Alice stored English and must receive English")
+                .contains("Configuration reloaded");
+        assertThat(bob.nextMessage())
+                .as("Bob stored no preference and must receive the server language")
+                .contains("Konfiguration neu geladen");
+    }
+
+    @Test
+    void localeFor_usesRecipientLanguageAndFallsBackToServerLanguage(@TempDir Path tmp)
+            throws IOException {
+        ConfigurateMessageService svc = new ConfigurateMessageService(
+                tmp,
+                getClass().getClassLoader(),
+                "de",
+                server,
+                recipient -> "Alice".equals(recipient.getName()) ? Optional.of("en") : Optional.empty());
+        Player alice = server.addPlayer("Alice");
+        Player bob = server.addPlayer("Bob");
+
+        assertThat(svc.localeFor(alice))
+                .as("a stored English preference must format dates in English")
+                .isEqualTo(java.util.Locale.ENGLISH);
+        assertThat(svc.localeFor(bob))
+                .as("a recipient without a preference must use the server language")
+                .isEqualTo(java.util.Locale.GERMAN);
+    }
+
+    @Test
+    void render_supportsComponentPlaceholdersWithoutStringifyingThem(@TempDir Path tmp)
+            throws IOException {
+        ConfigurateMessageService svc =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+
+        Component relative = Component.text("2 days ago");
+        String plain =
+                plain(
+                        svc.render(
+                                "admin.lastonline",
+                                "player",
+                                "Bob",
+                                "when",
+                                "2026-01-15 12:34:56",
+                                "relative",
+                                relative));
+
+        assertThat(plain).contains("Bob").contains("2026-01-15 12:34:56").contains("2 days ago");
     }
 
     @Test

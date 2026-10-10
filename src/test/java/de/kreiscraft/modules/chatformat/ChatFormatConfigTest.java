@@ -25,7 +25,7 @@ class ChatFormatConfigTest {
     void defaults_format_isExpectedString() {
         ChatFormatConfig cfg = new ChatFormatConfig();
         assertThat(cfg.format())
-                .isEqualTo("<team-prefix><name-colored><team-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
     }
 
     @Test
@@ -53,7 +53,7 @@ class ChatFormatConfigTest {
         assertThat(cfg.eventPriority()).isEqualTo(EventPriority.LOWEST);
         assertThat(cfg.allowMiniMessageInBody()).isFalse();
         assertThat(cfg.format())
-                .isEqualTo("<team-prefix><name-colored><team-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
     }
 
     @Test
@@ -61,6 +61,6 @@ class ChatFormatConfigTest {
         ChatFormatConfig cfg = new ChatFormatConfig(null, false, null);
         assertThat(cfg.eventPriority()).isEqualTo(EventPriority.LOWEST);
         assertThat(cfg.format())
-                .isEqualTo("<team-prefix><name-colored><team-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
     }
 }

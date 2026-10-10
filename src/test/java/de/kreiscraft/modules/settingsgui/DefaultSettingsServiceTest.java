@@ -1,115 +1,128 @@
 package de.kreiscraft.modules.settingsgui;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
-import java.util.HashMap;
-import java.util.Map;
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
 import java.util.UUID;
-import java.util.function.Consumer;
-import org.junit.jupiter.api.BeforeEach;
+import org.bukkit.Particle;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 class DefaultSettingsServiceTest {
 
-    @Mock
-    private SettingsData data;
+    private static final PlayerLanguage SERVER_LANGUAGE = PlayerLanguage.DE;
+    private static final Particle SERVER_PARTICLE = Particle.FLAME;
 
-    private final Map<UUID, Settings> store = new HashMap<>();
+    private DefaultSettingsService service() {
+        return new DefaultSettingsService(
+                new InMemoryPlayerPreferencesService(), SERVER_LANGUAGE, SERVER_PARTICLE);
+    }
 
-    @BeforeEach
-    @SuppressWarnings("unchecked")
-    void setUp() {
-        when(data.get()).thenReturn(store);
-        // lenient: update is a no-op for read-only tests
-        lenient()
-                .doAnswer(inv -> {
-                    ((Consumer<Map<UUID, Settings>>) inv.getArgument(0)).accept(store);
-                    return null;
-                })
-                .when(data)
-                .update(any());
+    @Test
+    void unknownPlayer_language_returnsServerLanguage() {
+        assertThat(service().language(UUID.randomUUID())).isEqualTo(SERVER_LANGUAGE);
     }
 
     @Test
     void unknownPlayer_clickThrough_returnsDefaultTrue() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        assertThat(svc.isClickThroughEnabled(UUID.randomUUID())).isTrue();
+        assertThat(service().clickThrough(UUID.randomUUID())).isTrue();
     }
 
     @Test
     void unknownPlayer_combatDisplay_returnsDefaultActionbar() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        assertThat(svc.getCombatDisplay(UUID.randomUUID())).isEqualTo(CombatDisplay.ACTIONBAR);
+        assertThat(service().combatDisplay(UUID.randomUUID())).isEqualTo(CombatDisplay.ACTIONBAR);
     }
 
     @Test
-    void setClickThroughEnabled_false_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        UUID alice = UUID.randomUUID();
-        svc.setClickThroughEnabled(alice, false);
-        assertThat(svc.isClickThroughEnabled(alice)).isFalse();
+    void unknownPlayer_effectsEnabled_returnsDefaultTrue() {
+        assertThat(service().effectsEnabled(UUID.randomUUID())).isTrue();
     }
 
     @Test
-    void setClickThroughEnabled_true_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+    void unknownPlayer_effectsParticle_returnsServerDefault() {
+        assertThat(service().effectsParticle(UUID.randomUUID())).isEqualTo(SERVER_PARTICLE);
+    }
+
+    @Test
+    void unknownPlayer_glowEnabled_returnsDefaultFalse() {
+        assertThat(service().glowEnabled(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void setLanguage_persists() {
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
-        svc.setClickThroughEnabled(alice, false);
-        svc.setClickThroughEnabled(alice, true);
-        assertThat(svc.isClickThroughEnabled(alice)).isTrue();
+        svc.setLanguage(alice, PlayerLanguage.EN);
+        assertThat(svc.language(alice)).isEqualTo(PlayerLanguage.EN);
+    }
+
+    @Test
+    void setClickThrough_false_persists() {
+        DefaultSettingsService svc = service();
+        UUID alice = UUID.randomUUID();
+        svc.setClickThrough(alice, false);
+        assertThat(svc.clickThrough(alice)).isFalse();
+    }
+
+    @Test
+    void setClickThrough_true_persists() {
+        DefaultSettingsService svc = service();
+        UUID alice = UUID.randomUUID();
+        svc.setClickThrough(alice, false);
+        svc.setClickThrough(alice, true);
+        assertThat(svc.clickThrough(alice)).isTrue();
     }
 
     @Test
     void setCombatDisplay_chat_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
         svc.setCombatDisplay(alice, CombatDisplay.CHAT);
-        assertThat(svc.getCombatDisplay(alice)).isEqualTo(CombatDisplay.CHAT);
+        assertThat(svc.combatDisplay(alice)).isEqualTo(CombatDisplay.CHAT);
     }
 
     @Test
-    void setCombatDisplay_title_persists() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+    void setEffectsEnabled_false_persists() {
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
-        svc.setCombatDisplay(alice, CombatDisplay.TITLE);
-        assertThat(svc.getCombatDisplay(alice)).isEqualTo(CombatDisplay.TITLE);
+        svc.setEffectsEnabled(alice, false);
+        assertThat(svc.effectsEnabled(alice)).isFalse();
+    }
+
+    @Test
+    void setEffectsParticle_persistsWithoutEnablingEffects() {
+        DefaultSettingsService svc = service();
+        UUID alice = UUID.randomUUID();
+        svc.setEffectsEnabled(alice, false);
+        svc.setEffectsParticle(alice, Particle.HEART);
+        assertThat(svc.effectsParticle(alice)).isEqualTo(Particle.HEART);
+        assertThat(svc.effectsEnabled(alice)).isFalse();
+    }
+
+    @Test
+    void setGlowEnabled_true_persists() {
+        DefaultSettingsService svc = service();
+        UUID alice = UUID.randomUUID();
+        svc.setGlowEnabled(alice, true);
+        assertThat(svc.glowEnabled(alice)).isTrue();
     }
 
     @Test
     void setCombatDisplay_doesNotAffectClickThrough() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
-        svc.setClickThroughEnabled(alice, false);
+        svc.setClickThrough(alice, false);
         svc.setCombatDisplay(alice, CombatDisplay.CHAT);
-        assertThat(svc.isClickThroughEnabled(alice)).isFalse();
+        assertThat(svc.clickThrough(alice)).isFalse();
     }
 
     @Test
-    void toggleClickThrough_firstCall_accepted_andFlips() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
+    void consecutiveWrites_areNotDebounced() {
+        DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
-        boolean accepted = svc.toggleClickThrough(alice);
-        assertThat(accepted).isTrue();
-        assertThat(svc.isClickThroughEnabled(alice)).isFalse();
-    }
-
-    @Test
-    void toggleClickThrough_immediateSecondCall_debounced() {
-        DefaultSettingsService svc = new DefaultSettingsService(data);
-        UUID alice = UUID.randomUUID();
-        boolean first = svc.toggleClickThrough(alice);
-        boolean second = svc.toggleClickThrough(alice); // within 1 second
-        assertThat(first).isTrue();
-        assertThat(second).isFalse();
-        // value should be flipped only once (true → false)
-        assertThat(svc.isClickThroughEnabled(alice)).isFalse();
+        svc.setClickThrough(alice, false);
+        svc.setClickThrough(alice, true);
+        assertThat(svc.clickThrough(alice)).isTrue();
     }
 }

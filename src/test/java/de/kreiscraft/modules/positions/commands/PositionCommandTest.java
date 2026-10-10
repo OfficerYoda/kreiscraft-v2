@@ -18,6 +18,7 @@ import de.kreiscraft.modules.positions.PositionsConfig;
 import de.kreiscraft.modules.positions.PositionsService;
 import de.kreiscraft.shared.gui.Gui;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -69,11 +70,10 @@ class PositionCommandTest {
 
     private CommandDispatcher<CommandSourceStack> buildDispatcher() {
         CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
-        dispatcher
-                .getRoot()
-                .addChild(
-                        PositionCommand.build(
-                                service, messages, gui, PositionCommandTest::defaultConfig));
+        LiteralCommandNode<CommandSourceStack> positions = PositionCommand.build(
+                service, messages, gui, PositionCommandTest::defaultConfig);
+        dispatcher.getRoot().addChild(positions);
+        dispatcher.getRoot().addChild(Commands.literal("pos").redirect(positions).build());
         return dispatcher;
     }
 
@@ -88,7 +88,7 @@ class PositionCommandTest {
         LiteralCommandNode<CommandSourceStack> node =
                 PositionCommand.build(
                         service, messages, gui, PositionCommandTest::defaultConfig);
-        assertThat(node.getName()).isEqualTo("pos");
+        assertThat(node.getName()).isEqualTo("positions");
     }
 
     @Test
@@ -109,10 +109,30 @@ class PositionCommandTest {
         // service.set should be called with the player's location
         // We don't stub service.set() since it has void return — Mockito does nothing by default
 
+        buildDispatcher().execute("positions set home", sourceFor(player));
+
+        verify(service).set(
+                eq(player.getUniqueId()),
+                eq("home"),
+                any(Location.class),
+                eq(player.getUniqueId()),
+                eq("Alice"));
+        verify(messages).send(player, "positions.set", "name", "home");
+    }
+
+    @Test
+    void posAlias_exposesIdenticalCommandTree() throws CommandSyntaxException {
+        PlayerMock player = server.addPlayer("Alice");
+        player.addAttachment(plugin, "kreiscraft.positions.use", true);
+
         buildDispatcher().execute("pos set home", sourceFor(player));
 
-        verify(service).set(eq(player.getUniqueId()), eq("home"), any(Location.class));
-        verify(messages).send(player, "positions.set", "name", "home");
+        verify(service).set(
+                eq(player.getUniqueId()),
+                eq("home"),
+                any(Location.class),
+                eq(player.getUniqueId()),
+                eq("Alice"));
     }
 
     @Test
@@ -211,9 +231,9 @@ class PositionCommandTest {
         PlayerMock player = server.addPlayer("Alice");
         player.addAttachment(plugin, "kreiscraft.positions.use", true);
         when(service.forPlayer(player.getUniqueId())).thenReturn(Map.of());
-        when(messages.render("positions.gui-title")).thenReturn(Component.text("Positions"));
+        when(messages.renderFor(player, "positions.gui-title")).thenReturn(Component.text("Positions"));
 
-        buildDispatcher().execute("pos", sourceFor(player));
+        buildDispatcher().execute("positions", sourceFor(player));
 
         verify(gui).open(eq(player), any(xyz.xenondevs.invui.gui.Gui.class), any(Component.class));
     }

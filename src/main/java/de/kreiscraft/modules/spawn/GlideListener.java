@@ -1,12 +1,10 @@
 package de.kreiscraft.modules.spawn;
 
 import de.kreiscraft.core.event.PriorityListener;
+import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -23,16 +21,20 @@ import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 /**
- * Grants elytra-glide flight to players inside the spawn radius (survival only,
- * spawn world only) and cancels FALL / FLY_INTO_WALL damage while gliding.
+ * Grants elytra-glide flight to survival players inside the Glide Zone and cancels FALL /
+ * FLY_INTO_WALL damage while gliding.
  *
- * <p><b>Persistent glide boost:</b> when a player starts gliding inside the spawn zone they
- * become boost-eligible for that glide. While still gliding (even after leaving the zone),
- * pressing sneak applies a configurable directional velocity boost with a per-player cooldown.
- * Eligibility is cleared when the glide ends, the player quits, or the module is disabled.
+ * <p><b>Glide initiation:</b> a survival player may only start a glide inside the three-dimensional
+ * Glide Zone (centered on spawn, radius = Spawn Radius). A double-jump outside the zone is refused
+ * explicitly with {@code spawn.glide-outside-zone} instead of failing silently.
  *
- * <p>Config is read fresh on every event via a {@link Supplier} so that
- * {@code onConfigReload} in {@link SpawnModule} takes effect without restart.
+ * <p><b>Persistent glide boost:</b> when a player starts gliding inside the Glide Zone they become
+ * boost-eligible for that glide. While still gliding (even after leaving the zone), pressing sneak
+ * applies one configurable directional velocity boost. Eligibility is consumed by that boost and
+ * cleared when the glide ends, the player quits, or the module is disabled.
+ *
+ * <p>Config is read fresh on every event via a {@link Supplier} so that {@code onConfigReload} in
+ * {@link SpawnModule} takes effect without restart.
  */
 public final class GlideListener implements PriorityListener {
 
@@ -40,6 +42,7 @@ public final class GlideListener implements PriorityListener {
     private static final Duration TICK_3 = Duration.ofMillis(150);
 
     private final SpawnService service;
+    private final MessageService messages;
     private final Supplier<SpawnConfig> configSupply;
     private final Server server;
     private final Scheduler.Task task;
@@ -48,17 +51,15 @@ public final class GlideListener implements PriorityListener {
     private final Set<UUID> flying = new HashSet<>();
 
     /**
-     * UUIDs of players whose current glide was STARTED inside the spawn zone — eligible to
+     * UUIDs of players whose current glide was STARTED inside the Glide Zone — eligible to
      * receive a sneak-triggered boost until the glide ends or they disconnect.
      */
     private final Set<UUID> boostEligible = new HashSet<>();
 
-    /** Per-player timestamp of the most recent boost, used to enforce the cooldown. */
-    private final Map<UUID, Long> lastBoostTimes = new HashMap<>();
-
-    public GlideListener(SpawnService service, Supplier<SpawnConfig> configSupply,
-            Scheduler scheduler, Server server) {
+    public GlideListener(SpawnService service, MessageService messages,
+            Supplier<SpawnConfig> configSupply, Scheduler scheduler, Server server) {
         this.service = service;
+        this.messages = messages;
         this.configSupply = configSupply;
         this.server = server;
         this.task = scheduler.runRepeating(TICK_3, TICK_3, this::updateFlightPermissions);
@@ -67,36 +68,57 @@ public final class GlideListener implements PriorityListener {
     // ── repeating task ───────────────────────────────────────────────────────
 
     private void updateFlightPermissions() {
-        SpawnConfig.GlideConfig cfg = configSupply.get().glide();
+        boolean enabled = configSupply.get().glide().enabled();
         for (Player player : server.getOnlinePlayers()) {
-            if (isEligibleForGlide(player, cfg)) {
+            if (player.getGameMode() != GameMode.SURVIVAL) {
+                // Creative/adventure players manage their own flight state.
+                continue;
+            }
+            if (enabled && service.isInGlideZone(player)) {
                 player.setAllowFlight(true);
-            } else if (player.getGameMode() == GameMode.SURVIVAL) {
-                // Only revoke flight for survival players; creative/adventure manage their own.
+            } else {
                 player.setAllowFlight(false);
-                flying.remove(player.getUniqueId());
+                clearPlayerState(player.getUniqueId());
             }
         }
+    }
+
+    /** Applies a reloaded glide enablement value immediately. */
+    public void reload() {
+        updateFlightPermissions();
     }
 
     // ── event handlers ───────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleFlight(PlayerToggleFlightEvent event) {
-        Player player = event.getPlayer();
-        SpawnConfig cfg = configSupply.get();
-        if (!isEligibleForGlide(player, cfg.glide())) {
+        if (!configSupply.get().glide().enabled()) {
             return;
         }
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.SURVIVAL) {
+            return;
+        }
+        if (!service.isInGlideZone(player)) {
+            // Only report when a glide zone actually exists in this world, so players in other
+            // dimensions or on a server with no spawn set are not spammed.
+            Location spawn = service.spawnLocation().orElse(null);
+            if (spawn != null && spawn.getWorld() != null
+                    && spawn.getWorld().equals(player.getWorld())) {
+                messages.send(player, "spawn.glide-outside-zone");
+            }
+            return;
+        }
+        SpawnConfig cfg = configSupply.get();
         event.setCancelled(true);
         UUID id = player.getUniqueId();
         flying.add(id);
-        // Mark boost-eligible: glide started inside the spawn zone.
+        // Mark boost-eligible: glide started inside the Glide Zone.
         if (cfg.glideBoost().enabled()) {
             boostEligible.add(id);
         }
         player.setGliding(true);
-        // Apply initial launch boost (legacy: direction × multiplyValue).
+        // Directional launch: the facing unit vector scaled by multiplyValue.
         if (cfg.glide().multiplyValue() > 0) {
             player.setVelocity(player.getLocation().getDirection().multiply(cfg.glide().multiplyValue()));
         }
@@ -104,6 +126,9 @@ public final class GlideListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onEntityDamage(EntityDamageEvent event) {
+        if (!configSupply.get().glide().enabled()) {
+            return;
+        }
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -130,11 +155,13 @@ public final class GlideListener implements PriorityListener {
 
     /**
      * Applies the sneak boost when the player presses sneak while gliding, is boost-eligible,
-     * and has left the spawn zone. The boost is directional (facing direction × configured
-     * strength) and is rate-limited by {@link SpawnConfig.GlideBoostConfig#cooldownSeconds()}.
+     * The boost is directional (facing direction × configured strength) and consumes eligibility.
      */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onToggleSneak(PlayerToggleSneakEvent event) {
+        if (!configSupply.get().glide().enabled()) {
+            return;
+        }
         if (!event.isSneaking()) {
             return;
         }
@@ -148,20 +175,9 @@ public final class GlideListener implements PriorityListener {
             return;
         }
         UUID id = player.getUniqueId();
-        if (!boostEligible.contains(id)) {
+        if (!boostEligible.remove(id)) {
             return;
         }
-        // Boost applies only after the player has left the spawn zone (AC4).
-        if (isEligibleForGlide(player, cfg.glide())) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        long cooldownMs = (long) boostCfg.cooldownSeconds() * 1000L;
-        Long last = lastBoostTimes.get(id);
-        if (last != null && now - last < cooldownMs) {
-            return;
-        }
-        lastBoostTimes.put(id, now);
         player.setVelocity(player.getLocation().getDirection().multiply(boostCfg.boostStrength()));
     }
 
@@ -176,22 +192,6 @@ public final class GlideListener implements PriorityListener {
     private void clearPlayerState(UUID id) {
         flying.remove(id);
         boostEligible.remove(id);
-        lastBoostTimes.remove(id);
-    }
-
-    private boolean isEligibleForGlide(Player player, SpawnConfig.GlideConfig cfg) {
-        if (player.getGameMode() != GameMode.SURVIVAL) {
-            return false;
-        }
-        Optional<Location> spawnOpt = service.spawnLocation();
-        if (spawnOpt.isEmpty()) {
-            return false;
-        }
-        Location spawn = spawnOpt.get();
-        if (spawn.getWorld() == null || !spawn.getWorld().equals(player.getWorld())) {
-            return false;
-        }
-        return player.getLocation().distance(spawn) <= cfg.spawnRadius();
     }
 
     /** Cancels the background task and clears all state. Called from {@link SpawnModule#disable()}. */
@@ -199,7 +199,6 @@ public final class GlideListener implements PriorityListener {
         task.cancel();
         flying.clear();
         boostEligible.clear();
-        lastBoostTimes.clear();
     }
 
     /** Exposed for tests — returns whether the player is currently tracked as gliding. */

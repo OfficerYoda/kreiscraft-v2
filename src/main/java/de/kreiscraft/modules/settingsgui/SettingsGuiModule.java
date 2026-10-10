@@ -1,20 +1,25 @@
 package de.kreiscraft.modules.settingsgui;
 
+import de.kreiscraft.ReloadService;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
+import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.settingsgui.commands.SettingsCommand;
 import de.kreiscraft.shared.gui.Gui;
-import java.io.IOException;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.util.List;
+import org.bukkit.Particle;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 public final class SettingsGuiModule implements Module {
 
+    private static final Particle DEFAULT_EFFECTS_PARTICLE = Particle.HAPPY_VILLAGER;
+
     private SettingsGuiConfig config;
-    private SettingsService service; // published interface type
 
     @Override
     public String id() {
@@ -34,24 +39,38 @@ public final class SettingsGuiModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
 
-        ConfigService configService = ctx.services().get(ConfigService.class);
-        SettingsData data = new SettingsData(ctx.plugin().getDataFolder().toPath());
-        try {
-            data.load();
-        } catch (IOException e) {
-            throw new ModuleException("failed to load settings data for module " + id(), e);
-        }
-        configService.register(data);
-
+        PlayerPreferencesService preferences = ctx.services().get(PlayerPreferencesService.class);
         Gui gui = ctx.services().get(Gui.class);
-        // Use concrete type locally so SettingsCommand can call toggleClickThrough
-        DefaultSettingsService impl = new DefaultSettingsService(data);
-        this.service = impl;
-        ctx.services().publish(SettingsService.class, impl);
+        ModuleEnablement modules = ctx.services().get(ModuleEnablement.class);
+        ConfigService configService = ctx.services().get(ConfigService.class);
+        ReloadService reload = ctx.services().get(ReloadService.class);
 
-        ctx.commands().register(
-                SettingsCommand.build(impl, ctx.messages(), gui),
-                "Open the per-player settings GUI");
+        // The GUI only ever reads and mutates preferences through the shared boundary. The language
+        // and particle fallbacks mirror what the owning features would use so the GUI shows a
+        // concrete current value even before the player chooses.
+        PlayerLanguage defaultLanguage = serverLanguage(ctx);
+        Particle defaultParticle = defaultEffectsParticle(ctx);
+        SettingsService settings =
+                new DefaultSettingsService(preferences, defaultLanguage, defaultParticle);
+
+        // Server Configuration reads and writes go through the validated ConfigService boundary, so
+        // every edit is atomic and rejected values never reach memory or disk.
+        ServerConfigService serverConfig = new DefaultServerConfigService(configService);
+        ServerConfigNavigator navigator =
+                new ServerConfigNavigator(
+                        settings,
+                        modules,
+                        serverConfig,
+                        ctx.messages(),
+                        gui,
+                        ctx.scheduler(),
+                        reload::reload);
+
+        ctx.commands()
+                .register(
+                        SettingsCommand.build(navigator),
+                        "Open the per-player settings GUI");
+        ctx.events().register(navigator);
     }
 
     @Override
@@ -66,5 +85,29 @@ public final class SettingsGuiModule implements Module {
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
+    }
+
+    private static PlayerLanguage serverLanguage(ModuleContext ctx) {
+        return ctx.services()
+                .find(ConfigService.class)
+                .map(config -> config.root().node("core", "language").getString("de"))
+                .flatMap(PlayerLanguage::fromCode)
+                .orElse(PlayerLanguage.DE);
+    }
+
+    private static Particle defaultEffectsParticle(ModuleContext ctx) {
+        return ctx.services()
+                .find(ConfigService.class)
+                .map(config -> {
+                    try {
+                        Particle particle = config.root()
+                                .node("modules", "effects", "default-particle")
+                                .get(Particle.class);
+                        return particle != null ? particle : DEFAULT_EFFECTS_PARTICLE;
+                    } catch (SerializationException e) {
+                        return DEFAULT_EFFECTS_PARTICLE;
+                    }
+                })
+                .orElse(DEFAULT_EFFECTS_PARTICLE);
     }
 }

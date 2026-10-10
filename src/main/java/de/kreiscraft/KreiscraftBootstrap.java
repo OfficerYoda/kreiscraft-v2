@@ -10,26 +10,38 @@ import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
+import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.module.ModuleRegistry;
 import de.kreiscraft.core.module.StartupSummary;
 import de.kreiscraft.core.scheduler.BukkitScheduler;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.core.util.Durations;
+import de.kreiscraft.platform.NmsPlayerDataCodec;
 import de.kreiscraft.platform.NmsWhitelist;
-import de.kreiscraft.platform.OfflineInventoryReader;
+import de.kreiscraft.platform.OfflinePlayerData;
+import de.kreiscraft.platform.OfflinePlayerDataEditor;
+import de.kreiscraft.platform.OfflinePlayerDataStore;
+import de.kreiscraft.platform.PaperPlayerDataPaths;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.platform.PlayerBrandProvider;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
+import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
+import de.kreiscraft.shared.preferences.PlayerPreferencesData;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import de.kreiscraft.shared.user.UserListener;
 import de.kreiscraft.shared.user.UserService;
 import de.kreiscraft.shared.whitelist.PaperWhitelistService;
 import de.kreiscraft.shared.whitelist.WhitelistService;
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
+import java.util.Optional;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class KreiscraftBootstrap {
@@ -55,9 +67,27 @@ public final class KreiscraftBootstrap {
         this.config = new YamlConfigService(plugin.getDataFolder().toPath(),
                 plugin.getClass().getClassLoader());
         String lang = config.root().node("core", "language").getString("de");
+
+        // Always-available player preferences are loaded before the message service so that every
+        // recipient can be rendered in their persisted language independently of the settings GUI.
+        PlayerPreferencesData preferencesData =
+                new PlayerPreferencesData(plugin.getDataFolder().toPath());
+        try {
+            preferencesData.load();
+        } catch (IOException e) {
+            throw new IOException("failed to load player preferences", e);
+        }
+        config.register(preferencesData);
+        PlayerPreferencesService preferences =
+                new DefaultPlayerPreferencesService(preferencesData);
+
         this.messages = new ConfigurateMessageService(plugin.getDataFolder().toPath(),
                 plugin.getClass().getClassLoader(),
-                lang, plugin.getServer());
+                lang, plugin.getServer(),
+                recipient -> recipient instanceof Player player
+                        ? preferences.preferences(player.getUniqueId()).language()
+                                .map(PlayerLanguage::code)
+                        : Optional.empty());
 
         this.scheduler = new BukkitScheduler(plugin);
         this.events = new EventBus(plugin);
@@ -74,12 +104,15 @@ public final class KreiscraftBootstrap {
         PaperPlatform platform = new PaperPlatform(plugin, plugin.getServer());
         PlayerBrandProvider brands = new PlayerBrandProvider(platform);
         NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
-        OfflineInventoryReader offlineInv = new OfflineInventoryReader(platform);
+        OfflinePlayerDataStore offlineData =
+                new OfflinePlayerDataStore(
+                        PaperPlayerDataPaths.playerDataDirectory(platform), new NmsPlayerDataCodec());
 
         services.publish(PaperPlatform.class, platform);
         services.publish(PlayerBrandProvider.class, brands);
         services.publish(NmsWhitelist.class, nmsWhitelist);
-        services.publish(OfflineInventoryReader.class, offlineInv);
+        services.publish(OfflinePlayerData.class, offlineData);
+        services.publish(OfflinePlayerDataEditor.class, offlineData);
 
         // --- shared services ---
         this.userService = new UserService(platform, Clock.systemDefaultZone());
@@ -97,10 +130,16 @@ public final class KreiscraftBootstrap {
         services.publish(GuiRegistry.class, guiRegistry);
         services.publish(Gui.class, gui);
 
+        // --- always-available player preferences (independent of the settings-gui module) ---
+        services.publish(PlayerPreferencesService.class, preferences);
+
         this.modules = new ModuleRegistry(
                 m -> new ModuleContext(plugin, config.module(m.id()), messages, services, scheduler, commands, events),
                 config.root(),
                 plugin.getLogger());
+        services.publish(ModuleEnablement.class, modules);
+        ReloadService reload = new ReloadService(config, modules, messages);
+        services.publish(ReloadService.class, reload);
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
         modules.register(new de.kreiscraft.modules.api.ApiModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
@@ -113,7 +152,6 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.glow.GlowModule());
         modules.register(new de.kreiscraft.modules.invsee.InvseeModule());
         modules.register(new de.kreiscraft.modules.jail.JailModule());
-        modules.register(new de.kreiscraft.modules.pluginhider.PluginHiderModule());
         modules.register(new de.kreiscraft.modules.positions.PositionsModule());
         modules.register(new de.kreiscraft.modules.reboot.RebootModule());
         modules.register(new de.kreiscraft.modules.settingsgui.SettingsGuiModule());
@@ -137,7 +175,7 @@ public final class KreiscraftBootstrap {
         this.autoSave = new AutoSaveTask(scheduler, autoSaveInterval, config::registeredDataFiles);
         autoSave.start();
 
-        commands.register(ReloadCommand.build(config, modules, messages),
+        commands.register(ReloadCommand.build(reload),
                 "Kreiscraft admin commands", "kc");
     }
 

@@ -1,18 +1,11 @@
-# Kreiscraft configuration.
-# See docs/configuration.md for a full reference of every module and key.
-#
-# Most modules ship enabled. Effects, Firework, Glow, Plugin Hider and Positions ship
-# disabled by default; set `enabled: true` below to opt in. See the Module Catalog for details.
 core:
   language: de
   timezone: Europe/Berlin
   auto-save-interval: 5m
-  debug: false
 
 modules:
   admin:
     enabled: true
-    timezone: "UTC"
     links:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"
@@ -43,7 +36,7 @@ modules:
     enabled: true
     event-priority: LOWEST
     allow-mini-message-in-body: false
-    format: "<team-prefix> <name-colored> <team-suffix><gray> » <reset><body>"
+    format: "<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>"
   clickthrough:
     enabled: true
   combat:
@@ -53,8 +46,9 @@ modules:
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: false
+    enabled: true
     default-particle: HAPPY_VILLAGER
+    schedule: 5t
     count: 25
     offset-x: 0.9
     offset-y: 0.9
@@ -65,25 +59,13 @@ modules:
     custom-model-data: 696969
     namespace-key: "kreiscraft:firework_rocket"
   glow:
-    enabled: false
+    enabled: true
   invsee:
     enabled: true
   jail:
     enabled: true
-    location: { world: world, x: 126, y: 91, z: 92, yaw: 0, pitch: 0 }
+    location: { world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0 }
     blocked-commands: [msg, tell, w, r]
-  plugin-hider:
-    enabled: false
-    default-allowed-commands:
-      - help
-      - spawn
-      - msg
-      - tell
-      - w
-      - r
-      - tps
-      - ping
-      - status
   positions:
     enabled: false
     gui-rows: 6
@@ -99,35 +81,20 @@ modules:
     enabled: true
   spawn:
     enabled: true
-    teleport-range: 100
+    spawn-radius: 50
     glide:
       enabled: true
       multiply-value: 3
-      spawn-radius: 30
-      launch-location:
-        { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
-    swap-hand-boost:
-      enabled: false
-      vector-multiplier: 3.0
     glide-boost:
       enabled: true
       boost-strength: 2.0
-      cooldown-seconds: 5
-    spawn-launch:
-      enabled: false
-      trigger: { world: world, x: -35, y: 141, z: -101, yaw: 0, pitch: 0 }
-      velocity: { x: 0.0, y: 5.0, z: 0.0 }
   start-sequence:
     enabled: true
+    has-started: false
     countdown: 10s
     initial-border-size: 50.0
     target-border-size: 30000000.0
-    # Border phase durations and delays are tick values (20 ticks = 1 second), matching the
-    # original RusticPrism sequence. Bukkit's WorldBorder API also takes a duration in ticks.
-    phase-1-duration: 550000t
-    phase-2-duration: 300000t
-    phase-1-to-2-delay: 150t
-    phase-2-to-instant-delay: 300t
+    border-duration: 30000s
   status:
     enabled: true
   tablist:
@@ -142,6 +109,7 @@ modules:
       <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
+    active: false
     bypass-permission: kreiscraft.updatemode.bypass
     bypass-names: []
   wither:
@@ -151,10 +119,15 @@ modules:
     armor: 8.0
     half-health-threshold: 300.0
     minion-count: 4
+    spawn-explosion-power: 20.0
+    spawn-explosion-fire: true
+    spawn-explosion-block-damage: true
     half-health-explosion-power: 4.0
     half-health-explosion-fire: true
     half-health-explosion-block-damage: true
-    death-boss-bar-radius: 50
     death-explosion-power: 20.0
+    death-explosion-fire: true
+    death-explosion-block-damage: true
+    death-boss-bar-radius: 50
   world-mgmt:
     enabled: true

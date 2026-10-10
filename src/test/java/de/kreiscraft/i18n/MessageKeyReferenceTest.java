@@ -22,11 +22,11 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
  * Code–lang parity test.
  *
  * <p>Scans every {@code *.java} file under {@code src/main/java/de/kreiscraft/} and extracts the
- * string-literal key from every {@code messages.send(...)}, {@code messages.broadcast(...)}, and
- * {@code messages.render(...)} call. Each extracted key is then resolved against both
- * {@code lang/de.yml} and {@code lang/en.yml} (loaded from the test classpath). The test fails if
- * any key does not resolve to a non-null string leaf in either file, reporting the source
- * file+location and the missing lang file(s).
+ * string-literal key from every {@code messages.send(...)}, {@code messages.broadcast(...)},
+ * {@code messages.render(...)}, and {@code messages.renderFor(...)} call. Each extracted key is then
+ * resolved against both {@code lang/de.yml} and {@code lang/en.yml} (loaded from the test classpath).
+ * The test fails if any key does not resolve to a non-null string leaf in either file, reporting the
+ * source file+location and the missing lang file(s).
  *
  * <p>Keys passed via variables (non-literal arguments) are not captured by the regex and are
  * therefore not checked — this is intentional and documented as a known limitation.
@@ -34,8 +34,8 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 class MessageKeyReferenceTest {
 
     /**
-     * Regex to extract the first string-literal argument from a {@code messages.send/broadcast/render}
-     * call.
+     * Regex to extract the first string-literal argument from a {@code
+     * messages.send/broadcast/render/renderFor} call.
      *
      * <p>Uses {@code [^";]*} (not {@code [^"]*}) to prevent the pattern from spanning across
      * statement boundaries (a {@code ;} terminates the Java statement). Without this restriction the
@@ -50,7 +50,7 @@ class MessageKeyReferenceTest {
      */
     private static final Pattern KEY_PATTERN =
             Pattern.compile(
-                    "messages\\.(send|broadcast|render)\\s*\\([^\";]*\"([a-z][a-z0-9.\\-]+)\"",
+                    "messages\\.(send|broadcast|renderFor|render)\\s*\\([^\";]*\"([a-z][a-z0-9.\\-]+)\"",
                     Pattern.DOTALL);
 
     /** Root of the main Java sources to scan. */

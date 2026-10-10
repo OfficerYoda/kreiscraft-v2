@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import de.kreiscraft.modules.settingsgui.SettingsService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.UUID;
@@ -31,28 +31,28 @@ import org.junit.jupiter.api.Test;
 class ClickthroughListenerTest {
 
     private ClickthroughListener listener;
-    private SettingsService settingsService;
+    private PlayerPreferencesService preferences;
     private MockScheduler scheduler;
     private Player player;
     private UUID playerId;
 
     @BeforeEach
     void setUp() {
-        settingsService = mock(SettingsService.class);
+        preferences = mock(PlayerPreferencesService.class);
         scheduler = new MockScheduler();
         player = mock(Player.class);
         playerId = UUID.randomUUID();
         when(player.getUniqueId()).thenReturn(playerId);
         when(player.isSneaking()).thenReturn(false);
 
-        listener = new ClickthroughListener(settingsService, scheduler);
+        listener = new ClickthroughListener(preferences, true, scheduler);
     }
 
     // --- PlayerInteractEvent (wall sign) ---
 
     @Test
     void onInteract_signRightClick_whenEnabled_opensContainerAndCancels() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_SIGN);
@@ -77,7 +77,7 @@ class ClickthroughListenerTest {
     @Test
     void onInteract_signRightClick_whenSneaking_doesNothing() {
         when(player.isSneaking()).thenReturn(true);
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_SIGN);
@@ -93,7 +93,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteract_signRightClick_whenDisabled_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(false);
+        when(preferences.clickThrough(playerId, true)).thenReturn(false);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_SIGN);
@@ -109,7 +109,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteract_signRightClick_targetIsEnderChest_opensEnderChest() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_SIGN);
@@ -132,7 +132,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteract_leftClick_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_SIGN);
@@ -148,7 +148,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteract_hangingWallSign_whenEnabled_opensContainerAndCancels() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block signBlock = mock(Block.class);
         when(signBlock.getType()).thenReturn(Material.OAK_WALL_HANGING_SIGN);
@@ -172,7 +172,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteract_nonWallSign_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         Block normalBlock = mock(Block.class);
         when(normalBlock.getType()).thenReturn(Material.STONE);
@@ -190,7 +190,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteractAtEntity_itemFrame_whenEnabled_opensContainerAndRestoresRotation() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.STONE);
@@ -221,7 +221,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteractAtEntity_itemFrame_targetIsEnderChest_opensEnderChestAndRestoresRotation() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.STONE);
@@ -252,7 +252,7 @@ class ClickthroughListenerTest {
     @Test
     void onInteractAtEntity_itemFrame_whenSneaking_doesNothing() {
         when(player.isSneaking()).thenReturn(true);
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.STONE);
@@ -271,7 +271,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteractAtEntity_itemFrame_whenDisabled_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(false);
+        when(preferences.clickThrough(playerId, true)).thenReturn(false);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.STONE);
@@ -290,7 +290,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteractAtEntity_emptyItemFrame_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.AIR);
@@ -309,7 +309,7 @@ class ClickthroughListenerTest {
 
     @Test
     void onInteractAtEntity_noTargetBlock_doesNothing() {
-        when(settingsService.isClickThroughEnabled(playerId)).thenReturn(true);
+        when(preferences.clickThrough(playerId, true)).thenReturn(true);
 
         ItemStack frameItem = mock(ItemStack.class);
         when(frameItem.getType()).thenReturn(Material.STONE);

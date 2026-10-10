@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +35,26 @@ class DefaultPositionsServiceTest {
         data = new PositionsData(tmp);
         data.load();
         service = new DefaultPositionsService(data);
+    }
+
+    @Test
+    void set_recordsAndRefreshesSaverAndTime() {
+        UUID owner = UUID.randomUUID();
+        UUID firstSaver = UUID.randomUUID();
+        UUID latestSaver = UUID.randomUUID();
+        Location location = new Location(server.getWorld("world"), 1, 64, 2);
+        service = new DefaultPositionsService(
+                data, Clock.fixed(Instant.parse("2026-10-08T13:00:00Z"), ZoneOffset.UTC));
+        service.set(owner, "home", location, firstSaver, "Alex");
+        service = new DefaultPositionsService(
+                data, Clock.fixed(Instant.parse("2026-10-08T14:00:00Z"), ZoneOffset.UTC));
+
+        service.set(owner, "home", location, latestSaver, "Steve");
+
+        PositionEntry entry = service.get(owner, "home").orElseThrow();
+        assertThat(entry.savedBy()).isEqualTo(latestSaver);
+        assertThat(entry.savedByName()).isEqualTo("Steve");
+        assertThat(entry.savedAt()).isEqualTo(Instant.parse("2026-10-08T14:00:00Z"));
     }
 
     @AfterEach

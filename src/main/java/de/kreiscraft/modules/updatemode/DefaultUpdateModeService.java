@@ -1,27 +1,38 @@
 package de.kreiscraft.modules.updatemode;
 
+import de.kreiscraft.core.config.ConfigService;
+import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
-import java.io.IOException;
 import java.util.logging.Logger;
 import org.bukkit.entity.Player;
 
+/**
+ * Default {@link UpdateModeService}.
+ *
+ * <p>The active/inactive maintenance state is operator-owned Server Configuration, so it lives in
+ * {@code modules.update-mode.active} inside {@code config.yml} and is read live. A {@code
+ * /kreiscraft reload} therefore observes the persisted value without any extra state.
+ */
 public final class DefaultUpdateModeService implements UpdateModeService {
 
-    private final UpdateModeData data;
+    private static final String MODULE = "update-mode";
+    private static final String ACTIVE = "active";
+
+    private final ConfigService config;
     private final PaperPlatform platform;
     private final MessageService messages;
     private final Logger logger;
-    private UpdateModeConfig config;
+    private UpdateModeConfig moduleConfig;
 
     public DefaultUpdateModeService(
-            UpdateModeData data,
-            UpdateModeConfig config,
+            ConfigService config,
+            UpdateModeConfig moduleConfig,
             PaperPlatform platform,
             MessageService messages,
             Logger logger) {
-        this.data = data;
         this.config = config;
+        this.moduleConfig = moduleConfig;
         this.platform = platform;
         this.messages = messages;
         this.logger = logger;
@@ -29,16 +40,16 @@ public final class DefaultUpdateModeService implements UpdateModeService {
 
     @Override
     public boolean isActive() {
-        return data.get()[0];
+        return config.module(MODULE).node(ACTIVE).getBoolean(false);
     }
 
     @Override
     public void setActive(boolean active) {
-        data.update(s -> s[0] = active);
         try {
-            data.flushIfDirty();
-        } catch (IOException e) {
+            config.applyEdit(ServerConfigSchema.updateModeActive(), active);
+        } catch (IllegalArgumentException | IllegalStateException e) {
             logger.warning("update-mode: failed to persist state: " + e.getMessage());
+            return;
         }
         if (active) {
             disconnectNonBypassedPlayers();
@@ -54,7 +65,7 @@ public final class DefaultUpdateModeService implements UpdateModeService {
             if (isBypassed(player)) {
                 messages.send(player, "update-mode.bypass-notice");
             } else {
-                player.kick(messages.render("update-mode.kick-message"));
+                player.kick(messages.renderFor(player, "update-mode.kick-message"));
             }
         }
     }
@@ -62,17 +73,17 @@ public final class DefaultUpdateModeService implements UpdateModeService {
     /** Whether the given player may stay online while maintenance mode is active. */
     @Override
     public boolean isBypassed(Player player) {
-        UpdateModeConfig cfg = config;
+        UpdateModeConfig cfg = moduleConfig;
         return cfg.bypassNames().contains(player.getName())
                 || player.isOp()
                 || player.hasPermission(cfg.bypassPermission());
     }
 
     public UpdateModeConfig config() {
-        return config;
+        return moduleConfig;
     }
 
     public void updateConfig(UpdateModeConfig config) {
-        this.config = config;
+        this.moduleConfig = config;
     }
 }

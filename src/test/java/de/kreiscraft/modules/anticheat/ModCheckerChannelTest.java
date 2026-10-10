@@ -51,6 +51,7 @@ class ModCheckerChannelTest {
         when(player.getUniqueId()).thenReturn(playerId);
         when(player.getName()).thenReturn("TestPlayer");
         when(messages.render(any(), any())).thenReturn(Component.empty());
+        when(messages.renderFor(any(), any(), any())).thenReturn(Component.empty());
     }
 
     private byte[] bytes(String s) {
@@ -59,7 +60,7 @@ class ModCheckerChannelTest {
 
     @Test
     void cheats_recordsEntryAndKicksPlayer() {
-        when(messages.render(eq("anti-cheat.cheat-kick"), eq("detail"), eq("killaura")))
+        when(messages.renderFor(eq(player), eq("anti-cheat.cheat-kick"), eq("detail"), eq("killaura")))
                 .thenReturn(Component.text("kick"));
 
         channel.onPluginMessageReceived("kreiscraft:mod_checker", player, bytes("cheats:killaura"));
@@ -73,7 +74,7 @@ class ModCheckerChannelTest {
 
     @Test
     void xray_recordsEntryAndKicksPlayer() {
-        when(messages.render(eq("anti-cheat.xray-kick"), eq("detail"), eq("diamond_ore")))
+        when(messages.renderFor(eq(player), eq("anti-cheat.xray-kick"), eq("detail"), eq("diamond_ore")))
                 .thenReturn(Component.text("xray-kick"));
 
         channel.onPluginMessageReceived("kreiscraft:mod_checker", player, bytes("xray:diamond_ore"));
@@ -94,7 +95,8 @@ class ModCheckerChannelTest {
 
     @Test
     void freecam_true_kicksPlayer() {
-        when(messages.render("anti-cheat.freecam-kick")).thenReturn(Component.text("freecam-kick"));
+        when(messages.renderFor(eq(player), eq("anti-cheat.freecam-kick")))
+                .thenReturn(Component.text("freecam-kick"));
 
         channel.onPluginMessageReceived("kreiscraft:mod_checker", player, bytes("freecam:true"));
 

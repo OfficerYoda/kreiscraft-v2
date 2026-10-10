@@ -12,9 +12,9 @@ import static org.mockito.Mockito.when;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.modules.bedrock.BedrockAuthorizationResult;
 import de.kreiscraft.modules.bedrock.BedrockRecord;
 import de.kreiscraft.modules.bedrock.BedrockService;
-import de.kreiscraft.shared.whitelist.WhitelistService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.Instant;
 import java.util.List;
@@ -27,7 +27,6 @@ import org.mockito.InOrder;
 class BedrockListCommandTest {
 
     private BedrockService service;
-    private WhitelistService whitelist;
     private MessageService messages;
     private CommandSourceStack source;
     private CommandSender sender;
@@ -36,7 +35,6 @@ class BedrockListCommandTest {
     @BeforeEach
     void setUp() {
         service = mock(BedrockService.class);
-        whitelist = mock(WhitelistService.class);
         messages = mock(MessageService.class);
         sender = mock(CommandSender.class);
         source = mock(CommandSourceStack.class);
@@ -45,31 +43,45 @@ class BedrockListCommandTest {
         when(sender.hasPermission("kreiscraft.bedrock.admin")).thenReturn(true);
 
         dispatcher = new CommandDispatcher<>();
-        dispatcher.getRoot().addChild(
-                BedrockListCommand.build(service, whitelist, messages));
+        dispatcher.getRoot().addChild(BedrockListCommand.build(service, messages));
     }
 
     @Test
-    void add_whenPlayerKnown_whitelists() throws CommandSyntaxException {
-        UUID uuid = UUID.randomUUID();
-        when(service.knownPlayers()).thenReturn(
-                List.of(new BedrockRecord(".steve", uuid, Instant.now())));
+    void add_registersPendingAuthorization() throws CommandSyntaxException {
+        when(service.register(".steve")).thenReturn(BedrockAuthorizationResult.REGISTERED);
 
         dispatcher.execute("bedrocklist add .steve", source);
 
-        verify(whitelist).addBedrockPlayer(".steve", uuid);
-        verify(messages).send(sender, "bedrock.added", "player", ".steve");
+        verify(service).register(".steve");
+        verify(messages).send(sender, "bedrock.authorized", "player", ".steve");
     }
 
     @Test
-    void add_whenPlayerUnknown_sendsUnknownMessage() throws CommandSyntaxException {
-        when(service.knownPlayers()).thenReturn(List.of());
+    void add_whenAlreadyAuthorized_reportsExisting() throws CommandSyntaxException {
+        when(service.register(".steve")).thenReturn(BedrockAuthorizationResult.ALREADY_REGISTERED);
 
-        dispatcher.execute("bedrocklist add .nobody", source);
+        dispatcher.execute("bedrocklist add .steve", source);
 
-        verify(whitelist, never()).addBedrockPlayer(org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any());
-        verify(messages).send(sender, "bedrock.unknown", "player", ".nobody");
+        verify(messages).send(sender, "bedrock.already-authorized", "player", ".steve");
+    }
+
+    @Test
+    void remove_whenAuthorized_revokes() throws CommandSyntaxException {
+        when(service.remove(".steve")).thenReturn(BedrockAuthorizationResult.REMOVED);
+
+        dispatcher.execute("bedrocklist remove .steve", source);
+
+        verify(service).remove(".steve");
+        verify(messages).send(sender, "bedrock.revoked", "player", ".steve");
+    }
+
+    @Test
+    void remove_whenNotAuthorized_reportsMissing() throws CommandSyntaxException {
+        when(service.remove(".nobody")).thenReturn(BedrockAuthorizationResult.NOT_FOUND);
+
+        dispatcher.execute("bedrocklist remove .nobody", source);
+
+        verify(messages).send(sender, "bedrock.not-authorized", "player", ".nobody");
     }
 
     @Test
@@ -107,17 +119,5 @@ class BedrockListCommandTest {
         var node = dispatcher.getRoot().getChild("bedrocklist");
         assertThat(node).isNotNull();
         assertThat(node.canUse(source)).isFalse();
-    }
-
-    @Test
-    void add_caseInsensitiveLookup() throws CommandSyntaxException {
-        UUID uuid = UUID.randomUUID();
-        // stored name has different case
-        when(service.knownPlayers()).thenReturn(
-                List.of(new BedrockRecord(".Steve", uuid, Instant.now())));
-
-        dispatcher.execute("bedrocklist add .steve", source);
-
-        verify(whitelist).addBedrockPlayer(".Steve", uuid);
     }
 }

@@ -27,7 +27,7 @@ artifact — the shadow JAR.
 **Consequences:**  
 - The build is simple: one project, one task (`./gradlew shadowJar`), one JAR to copy to the
   server.
-- All 24 modules share the same classpath; cross-module utility code does not require published
+- All 23 modules share the same classpath; cross-module utility code does not require published
   library versions.
 - Modules cannot have separate release cycles or be installed on third-party servers without the
   full plugin.
@@ -135,15 +135,16 @@ the `Javalin` instance and exposes `start()` / `stop()` methods. `ApiModule.disa
 **Status:** Accepted; amended by ADR-10
 
 **Context:**  
-Several modules need to persist data that changes at runtime: the spawn location, jailed players,
-saved positions, anti-cheat hack logs, start-sequence state. Storing this in `config.yml` would
-mean that every admin config reload risks overwriting or merging runtime data, and it would be
-unclear at a glance which fields are admin-controlled vs server-generated.
+Several modules need to persist data that changes at runtime: jailed players, saved positions, and
+anti-cheat hack logs. (ADR-10 later moved the operator-owned spawn location, update-mode and
+start-sequence state out of data files and into writable `config.yml`.) Storing all runtime data
+in `config.yml` would mean that every admin config reload risks overwriting or merging runtime
+data, and it would be unclear at a glance which fields are admin-controlled vs server-generated.
 
 **Decision:**  
 Each domain that needs persistent runtime state subclasses `DataFile<T>`, which writes to a
-dedicated YAML file under `data/` inside the plugin data folder (e.g. `data/spawn.yml`,
-`data/jaildata.yml`). Modules register their `DataFile` instances with `ConfigService` during
+dedicated YAML file under `data/` inside the plugin data folder (e.g. `data/jaildata.yml`,
+`data/hacklogs.yml`). Modules register their `DataFile` instances with `ConfigService` during
 `enable()`. `AutoSaveTask` calls `flushIfDirty()` on all registered files at a configurable
 interval (default 5 minutes). On shutdown, `AutoSaveTask.stop()` performs a final flush before
 cancelling the repeating task.
@@ -269,20 +270,20 @@ consumer, enabling `api` to clean up during `disable()` without affecting any ot
 
 ---
 
-## ADR-9: Five Modules Ship Disabled by Default
+## ADR-9: Four Modules Ship Disabled by Default
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0001
 
 **Context:**  
 `ModuleRegistry` treats a module as active only when `modules.<id>.enabled: true` is present in
 `config.yml`, and the bundled template controls what a fresh install looks like. Most modules are
-useful on every server, but five are not: `effects`, `firework` and `glow` are cosmetic
-player-facing features that a server may not want, while `plugin-hider` and `positions` encode
-server-specific policy (which commands are discoverable, and how players navigate). Shipping them
+useful on every server, but four are not: `effects`, `firework` and `glow` are cosmetic
+player-facing features that a server may not want, while `positions` encodes
+server-specific policy (how players navigate). Shipping them
 active would silently change gameplay on servers that never asked for them.
 
 **Decision:**  
-Ship `effects`, `firework`, `glow`, `plugin-hider` and `positions` with `enabled: false` in the
+Ship `effects`, `firework`, `glow` and `positions` with `enabled: false` in the
 bundled `config.yml`. Keep their implementations, commands, listeners and services fully
 registered in `KreiscraftBootstrap`; enabling the flag is the only step required to activate them.
 Document the policy in the Module Catalog, the Configuration reference, and the
@@ -290,12 +291,12 @@ enable/disable how-to, and pin it with a configuration test
 (`YamlConfigServiceTest.everyModuleSection_hasEnabledKey`).
 
 **Consequences:**  
-- A fresh install leaves all five inactive; their commands and listeners are never registered.
+- A fresh install leaves all four inactive; their commands and listeners are never registered.
 - Operators can opt in per module with `modules.<id>.enabled: true`; no code changes are needed.
 - The set of default-off modules is explicit in code review: changing it requires editing both
   the bundled config and the configuration test, so the policy cannot drift silently.
 - The distinction between "opt-in cosmetic" (`effects`, `firework`, `glow`) and "opt-in policy"
-  (`plugin-hider`, `positions`) is documented but not enforced in code.
+  (`positions`) is documented but not enforced in code.
 
 ---
 
@@ -326,3 +327,261 @@ migrated; the new config values start from defaults.
 - Activity data remains protected from ordinary config reloads.
 - The admin GUI is a supported configuration surface, so every exposed field needs validation,
   lifecycle metadata, documentation, and tests.
+
+**Applied keys:** The operator-owned values live at `modules.spawn.location`,
+`modules.update-mode.active` and `modules.start-sequence.has-started`. Their write metadata is
+declared in `ServerConfigSchema` and commands persist them through `ConfigService.applyEdit`, which
+rejects or fails without touching the live tree or the file. The single Spawn Radius is module
+configuration (`modules.spawn.spawn-radius`), not operator-owned state. The retired `data/spawn.yml`,
+`data/update-mode.yml` and `data/start-sequence.yml` files are no longer read or written, so no
+migration occurs and config reloads cannot touch the remaining Activity Data.
+
+---
+
+## ADR-11: Shared Command Suggestion Providers
+
+**Status:** Accepted
+
+**Context:**
+Several commands accept the same kinds of argument values: a player name, an entity type, or a
+particle name. Before this decision, each command would have had to enumerate players or scan the
+entity/particle registries itself, producing near-identical loops in many command classes and
+allowing the candidates (and their filtering) to drift between commands. Player lookups also have
+two distinct scopes — online only, and online plus known-offline profiles — that commands must pick
+deliberately.
+
+**Decision:**
+Centralise Brigadier completions in `de.kreiscraft.core.command.SuggestionProviders`. Each factory
+returns a `SuggestionProvider<CommandSourceStack>` for one candidate family:
+
+- `onlinePlayers(server, permission)` — every currently-online player name.
+- `onlineAndKnownOfflineProfiles(server, permission)` — online names plus offline profiles that
+  have played before and still resolve to a name.
+- `allAndOnlinePlayers(server, permission)` — the literal `all` alongside every online player name,
+  for broadcast-style targets such as `/sudo`.
+- `entityTypes(permission)` — every spawnable `EntityType`, by lowercase enum name.
+- `particles(permission)` — every `Particle`, by lowercase enum name.
+
+Commands attach a provider with `.suggests(...)` on the argument node and pass the same permission
+node their `.requires(...)` predicate uses. Suggestions are filtered case-insensitively against the
+partially typed input and emitted in deterministic order.
+
+**Consequences:**
+- Commands no longer duplicate profile or registry scans; adding a command that takes a player,
+  entity, or particle argument reuses an existing provider.
+- A provider emits nothing when the sender lacks its permission, so completions cannot leak a
+  candidate that the command would refuse to execute.
+- The offline scope is explicit in the provider name and mirrors the command's visibility rule
+  (`hasPlayedBefore()`): historical profiles are suggested only by commands that can act on them.
+- Registry-backed providers track the server's own `EntityType`/`Particle` enums, so new types are
+  suggested automatically after a Minecraft upgrade; test assertions target representative,
+  stable members rather than the exact full list.
+
+---
+
+## ADR-12: Validated Atomic Server Configuration Edits
+
+**Status:** Accepted
+
+**Context:**
+ADR-10 makes `config.yml` writable through an admin GUI and through commands such as `/setspawn`.
+Rewriting the file in place risks a half-written file if the process is interrupted, and
+Configurate's YAML backend drops comments and reformats unrelated keys whenever it serializes a
+tree. An invalid value must never mutate either the live configuration or the durable file.
+
+**Decision:**
+`ConfigService` exposes one validated edit boundary, `edit(ConfigEdit)`. Each edit:
+
+1. applies the proposed value to a detached candidate tree (`root().copy()`);
+2. validates the candidate value with the field's `ConfigValidator`;
+3. renders the candidate and writes it to a flushed temporary file in the same directory;
+4. replaces `config.yml` with an atomic move where the filesystem supports it, falling back to a
+   plain replace otherwise;
+5. swaps the live tree to the candidate only after the write succeeds.
+
+Rejected values and I/O failures return a `ConfigEditResult` and leave both the live tree and the
+file untouched. Because Configurate's YAML backend does not carry comments, the candidate is
+rendered through SnakeYAML with comment processing enabled, and comment metadata is copied from
+the file being replaced onto the matching nodes of the candidate; this preserves the file header
+and comments on unrelated keys. Every editable field declares a `ConfigFieldType`, a
+`ConfigValidator`, GUI exposure, and a `ConfigLifecycle` (hot-reload or restart). Module `enabled`
+flags are always restart-only.
+
+**Consequences:**
+- On a filesystem with atomic renames the durable file can never be observed half-written.
+- A rejected or failed edit is a no-op, so the GUI can report the reason and retry safely.
+- Every edit rewrites the whole file; edits are operator-driven and infrequent, so this is cheap.
+- Comments on unrelated keys survive, and an inline comment on the edited value is carried across.
+- New GUI fields must be declared in `ServerConfigSchema`; the edit boundary itself only needs a
+  `ConfigField`.
+
+---
+
+## ADR-13: Pending Bedrock Authorization Binds Once
+
+**Status:** Accepted
+
+**Context:**
+Bedrock players connect with a configured name prefix (default `.`) and a synthetic UUID that the
+Mojang profile service cannot resolve. An administrator may need to admit a Bedrock player before
+that player has ever connected, but a name is not an identity: the same name could later present a
+different UUID. Treating a pre-approved name as permanently interchangeable would let an identity
+silently take over another player's authorization.
+
+**Decision:**
+Model pre-login access as a Pending Bedrock Authorization. `/bedrocklist add <name>` stores an
+unbound authorization in `data/bedrock-authorizations.yml`, keyed by the normalized name
+(configured prefix plus lower-cased name body). On pre-login, the first matching login binds the
+authorization permanently to the observed UUID and whitelists that identity. A bound authorization
+is never rebound to a different UUID; replacing it requires `/bedrocklist remove <name>` and
+re-registration, which starts from a fresh unbound state. Authorization records are Activity Data,
+not operator-owned Server Configuration, so ordinary config reloads cannot overwrite them.
+
+**Consequences:**
+- Registration and login matching share one normalization step, so the configured prefix and case
+  cannot disagree between the two paths.
+- A rebound attempt leaves the original binding intact and is logged; it does not admit the new
+  UUID.
+- Removal revokes the bound whitelist entry, so the explicit lifecycle cannot leave a stale
+  identity whitelisted.
+- The lifecycle is covered by removal/re-registration tests rather than by an implicit
+  overwrite.
+
+---
+
+## ADR-14: Forwarding Aliases via Brigadier Redirect
+
+**Status:** Superseded — `/gm` removed for Paper 26.2 compatibility
+
+**Context:**
+Administrative commands should match the syntax and authorization players already know from
+vanilla Minecraft. Re-implementing a command such as `/gamemode` — its argument types, its
+selector support, its completions, and its op-level requirement — invites drift from vanilla
+behaviour and duplicates parsing logic. `/gm` was wanted purely as an alias for the existing
+`minecraft:gamemode` command.
+
+**Decision:**
+Add `CommandRegistrar.registerRedirect(alias, target, description, aliases...)`. Registration is
+deferred to the `LifecycleEvents.COMMANDS` phase, where `Commands#getDispatcher()` exposes the live
+server tree together with the command nodes vanilla already registered. The registrar resolves the
+`target` label to its node and builds the alias with `RedirectCommand.build(alias, target)`:
+
+```java
+Commands.literal(alias).requires(target.getRequirement()).redirect(target).build();
+```
+
+The alias copies the target's own requirement predicate and adds a Brigadier redirect into the
+target subtree, so a `/gm` invocation parses and executes exactly as `minecraft:gamemode` would.
+If the target is absent the registrar logs a warning and skips the alias rather than registering a
+broken command.
+
+**Consequences:**
+- `/gm` inherited vanilla syntax, selector handling, completions, and authorization without
+  duplicated logic.
+- The requirement was reused from the target because redirects do not re-apply the target root's
+  own predicate.
+- Forwarding was generic: any alias could point at a command already in the dispatcher.
+
+**Supersession:**
+Paper 26.2 represents vanilla targets as opaque `ShadowBrigNode` instances. Bukkit help-map
+initialization traversed the redirect target and threw `UnsupportedOperationException`, crashing
+server startup. `/gm`, the generic redirect API, and their tests were therefore removed. Operators
+can use vanilla `/gamemode` directly.
+
+---
+
+## ADR-15: Delegate the Start-Sequence Border Expansion to Minecraft
+
+**Status:** Accepted
+
+**Context:**
+The old Start Sequence expanded the world border in three plugin-owned phases (two timed expansions
+and an instant snap) and stored phase state itself. That produced a hidden final snap and required the
+plugin to reason about resume state. A prototype verified that Paper 26.2 build 132 persists a
+world-border transition's current size, target, and remaining ticks across a graceful restart and
+resumes it after downtime.
+
+**Decision:**
+The Start Sequence issues exactly one `WorldBorder.changeSize(target, ticks)` and nothing else. The
+border duration is configured and documented in seconds, represented internally as a `Duration`, and
+converted to ticks (20 ticks = 1 second) only at the Bukkit boundary. The plugin keeps no phase,
+start timestamp, or remaining-duration state. The only persisted value is the operator-owned
+`modules.start-sequence.has-started` completion flag, which prevents re-triggering.
+
+**Consequences:**
+- Minecraft owns the in-progress transition; a graceful restart resumes it without plugin
+  intervention.
+- The countdown is a pure presentation loop: it renders the configured value down through `1`, then
+  the start title, then delegates the single transition.
+- Abrupt process death and cross-version border-state migration are not guaranteed and are
+  documented as unsupported.
+- Tests verify the delegation contract — one transition call and no competing persistence — under
+  MockBukkit rather than automating a real restart.
+
+---
+
+## ADR-16: Version-Isolated Offline Player-Data Access
+
+**Status:** Accepted
+
+**Context:**
+Reading an offline player's inventory requires the server's NMS NBT and item-conversion surface,
+which is unavailable under MockBukkit's test classpath and differs across Paper versions. The
+`invsee` module nevertheless needs to display ordinary inventories, armor, offhand, and Ender Chest
+contents, and the same surface must later support committed offline writes. Letting gameplay code
+import NMS directly would make the module untestable and entangle it with the version-specific
+reader.
+
+**Decision:**
+Offline player data is reached through a version-independent `OfflinePlayerData` interface that
+returns an immutable-by-copy `OfflinePlayerSnapshot` of ordinary-inventory and Ender Chest slot
+items. File access (`OfflinePlayerDataStore`) is plain Java over a player-data directory and a
+`PlayerDataCodec`; the NMS decode (`NmsPlayerDataCodec`) and the world-directory lookup
+(`PaperPlayerDataPaths`) are the only version-specific classes. The composition root wires the NMS
+codec behind the store and publishes only the interface to the service registry.
+
+**Consequences:**
+- The file protocol — missing files, reading without writing, and decode failures — is tested
+  against real temporary files with a substitute codec; the NMS decode is a documented seam.
+- The module never imports NMS and remains fully testable under MockBukkit.
+- Offline writes extend the same boundary (ADR-17) without leaking NMS into gameplay code or the
+  commands.
+
+---
+
+## ADR-17: Two-Phase Commits for Offline Player-Data Edits
+
+**Status:** Accepted
+
+**Context:**
+`/invsee` and `/enderchest` present an offline target's inventory and Ender Chest as an editable
+snapshot. Committing those edits must never lose the player's unrelated data, must not race a
+concurrent login, and must be recoverable if a write fails. The server may also be writing the same
+`<uuid>.dat` when the player joins, so a naive in-place write is unsafe.
+
+**Decision:**
+Offline edits are opened as an `OfflinePlayerEditSession` (via `OfflinePlayerDataEditor`) that holds
+the decoded `OfflinePlayerSnapshot`, the raw source bytes, and a SHA-256 digest of the source as
+opened. Committing is a two-phase protocol:
+
+1. **Stage** — the edited inventory and Ender Chest items are converted to compressed NBT by the
+   version-specific `PlayerDataCodec.encode`, which deep-copies the complete source document and
+   replaces only `Inventory` and `EnderItems`. The result is written, flushed, and read back through
+   the codec before the source is touched.
+2. **Commit** — in one server-main-thread turn the session re-checks that the target is still offline
+   and that the source digest still matches, creates a byte-for-byte backup, then performs an atomic
+   `Files.move(..., ATOMIC_MOVE, REPLACE_EXISTING)`. A non-atomic fallback is refused.
+
+The GUI is backed by a detached InvUI `VirtualInventory` (indexed by Bukkit slot), so edits are made
+against the snapshot, never the source. Aborts are reported to the viewer: a login collision offers a
+clickable reopen of the live inventory, a stale source aborts without overwriting the newer data, and
+a write failure reports that the source was left unchanged.
+
+**Consequences:**
+- Unrelated root tags and item component metadata survive because `encode` copies the whole source
+  document; only the two editable lists are replaced.
+- The offline/digest check and the atomic replace run in one main-thread turn, so a join event cannot
+  interleave between them.
+- The file protocol — staging, read-back verification, backup, abort on login/stale source, and
+  atomic replace — is tested against real temporary files with a substitute codec; the NMS
+  encode/decode remains a documented seam (ADR-16).

@@ -8,4 +8,5 @@ public interface CommandRegistrar {
     void register(LiteralCommandNode<CommandSourceStack> node, String description);
 
     void register(LiteralCommandNode<CommandSourceStack> node, String description, String... aliases);
+
 }

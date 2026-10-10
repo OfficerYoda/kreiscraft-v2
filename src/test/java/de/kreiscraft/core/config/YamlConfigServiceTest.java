@@ -21,6 +21,14 @@ class YamlConfigServiceTest {
     }
 
     @Test
+    void bundledConfig_isCommentFree(@TempDir Path tmp) throws IOException {
+        new YamlConfigService(tmp, getClass().getClassLoader());
+
+        assertThat(Files.readString(tmp.resolve("config.yml")))
+                .doesNotContainPattern("(?m)(?:^|\\s)#");
+    }
+
+    @Test
     void reload_picksUpChangesOnDisk(@TempDir Path tmp) throws IOException {
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
         Files.writeString(tmp.resolve("config.yml"),
@@ -42,15 +50,16 @@ class YamlConfigServiceTest {
     /** Modules that ship active in the bundled config so a clean server works out of the box. */
     private static final List<String> DEFAULT_ENABLED = List.of(
             "admin", "api", "anti-cheat", "bedrock", "chat-format", "clickthrough",
-            "combat", "invsee", "jail", "reboot", "settings-gui", "sign-color", "spawn",
-            "start-sequence", "status", "tablist", "update-mode", "wither", "world-mgmt");
+            "combat", "effects", "glow", "invsee", "jail", "reboot", "settings-gui",
+            "sign-color", "spawn", "start-sequence", "status", "tablist", "update-mode",
+            "wither", "world-mgmt");
 
     /**
      * Modules that ship inactive by default. Their implementations remain available for explicit
      * opt-in via {@code modules.<id>.enabled: true}; see the Module Catalog for the rationale.
      */
     private static final List<String> DEFAULT_DISABLED = List.of(
-            "effects", "firework", "glow", "plugin-hider", "positions");
+            "firework", "positions");
 
     @Test
     void everyModuleSection_hasEnabledKey(@TempDir Path tmp) throws IOException {

@@ -31,6 +31,6 @@ public final class UpdateModeListener implements PriorityListener {
         }
         event.disallow(
                 PlayerLoginEvent.Result.KICK_WHITELIST,
-                messages.render("update-mode.kick-message"));
+                messages.renderFor(player, "update-mode.kick-message"));
     }
 }

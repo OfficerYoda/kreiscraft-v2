@@ -14,9 +14,9 @@ import org.bukkit.entity.Player;
 /**
  * Teleports the executing player to the server spawn point.
  *
- * <p>Guards: the player must be in the overworld ({@link World.Environment#NORMAL}) and within
- * the configured teleport radius. On success, 30 {@link Particle#CRIT} particles are spawned at
- * the player's location — matching the original RusticPrism behaviour.
+ * <p>Guards: the player must be in the overworld ({@link World.Environment#NORMAL}) and inside the
+ * horizontal Spawn Access Zone (XZ distance from spawn within the Spawn Radius). On success, 30
+ * {@link Particle#CRIT} particles are spawned at the player's departure location.
  */
 public final class SpawnCommand {
 
@@ -46,7 +46,7 @@ public final class SpawnCommand {
             messages.send(player, "spawn.no-spawn-set");
             return Command.SINGLE_SUCCESS;
         }
-        if (!service.isInSpawnRadius(player)) {
+        if (!service.isInSpawnAccessZone(player)) {
             messages.send(player, "spawn.out-of-range");
             return Command.SINGLE_SUCCESS;
         }

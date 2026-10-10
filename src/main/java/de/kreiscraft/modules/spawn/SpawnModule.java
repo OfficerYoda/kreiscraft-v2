@@ -6,11 +6,13 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.modules.spawn.commands.SetSpawnCommand;
 import de.kreiscraft.modules.spawn.commands.SpawnCommand;
-import java.io.IOException;
 import java.util.List;
 import org.spongepowered.configurate.ConfigurationNode;
 
-/** Spawn module — configures server spawn, glide zone, swap-hand boost, and launch pad. */
+/**
+ * Spawn module — configures the server spawn point, the shared Spawn Radius, the spawn glide zone,
+ * and the single-use sneak glide boost.
+ */
 public final class SpawnModule implements Module {
 
     private SpawnConfig config;
@@ -35,34 +37,18 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null);
         }
-
-        // ── data ────────────────────────────────────────────────────────────
-        SpawnData data = new SpawnData(ctx.plugin().getDataFolder().toPath());
-        try {
-            data.load();
-        } catch (IOException e) {
-            throw new ModuleException("failed to load spawn data", e);
-        }
-        ctx.services().get(ConfigService.class).register(data);
 
         // ── service ─────────────────────────────────────────────────────────
-        this.service = new DefaultSpawnService(data, config);
+        this.service = new DefaultSpawnService(ctx.services().get(ConfigService.class), config);
         ctx.services().publish(SpawnService.class, service);
 
         // ── listeners (config supplied via lambda so reloads propagate) ─────
-        if (config.glide().enabled()) {
-            this.glideListener = new GlideListener(
-                    service, () -> this.config, ctx.scheduler(), ctx.plugin().getServer());
-            ctx.events().register(glideListener);
-        }
-        if (config.swapHandBoost().enabled()) {
-            ctx.events().register(new SwapHandBoostListener(() -> this.config));
-        }
-        if (config.spawnLaunch().enabled()) {
-            ctx.events().register(new SpawnLaunchListener(() -> this.config));
-        }
+        this.glideListener = new GlideListener(
+                service, ctx.messages(), () -> this.config, ctx.scheduler(),
+                ctx.plugin().getServer());
+        ctx.events().register(glideListener);
 
         // ── commands ────────────────────────────────────────────────────────
         ctx.commands().register(SpawnCommand.build(service, ctx.messages()),
@@ -86,11 +72,13 @@ public final class SpawnModule implements Module {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
         if (config == null) {
-            config = new SpawnConfig(100, null, null, null, null);
+            config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null);
         }
         if (service != null) {
             service.updateConfig(config);
         }
-        // Listener instances read config.get() on every event — no further update needed.
+        if (glideListener != null) {
+            glideListener.reload();
+        }
     }
 }

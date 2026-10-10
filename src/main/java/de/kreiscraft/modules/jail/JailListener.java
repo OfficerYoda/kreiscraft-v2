@@ -69,10 +69,7 @@ public final class JailListener implements PriorityListener {
         if (!service.isJailed(event.getPlayer().getUniqueId())) {
             return;
         }
-        var location = configRef.get().location();
-        if (location != null) {
-            event.getPlayer().teleport(location);
-        }
+        service.jailLocation().ifPresent(event.getPlayer()::teleport);
     }
 
     /**

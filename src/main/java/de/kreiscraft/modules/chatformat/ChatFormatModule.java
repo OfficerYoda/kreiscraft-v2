@@ -37,7 +37,8 @@ public final class ChatFormatModule implements Module {
         ChatBridge chatBridge = ctx.services().get(ChatBridge.class);
 
         ctx.events().register(
-                new ChatFormatListener(configRef::get, statusService, platform, chatBridge));
+                new ChatFormatListener(
+                        configRef::get, statusService, platform, chatBridge, ctx.messages()));
     }
 
     @Override

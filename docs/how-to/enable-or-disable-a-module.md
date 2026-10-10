@@ -23,10 +23,9 @@ This is the only supported way to toggle a module.
 > the module is **disabled**. You must explicitly set `enabled: true`.
 
 > **Shipped defaults:** the bundled `config.yml` enables most modules, but
-> `effects`, `firework`, `glow`, `plugin-hider` and `positions` ship with
-> `enabled: false`. Set `enabled: true` to activate any of them. `plugin-hider` and
-> `positions` are intentionally disabled by default because they are server-specific
-> policy choices.
+> `firework` and `positions` ship with `enabled: false`.
+> Set `enabled: true` to activate either one. `positions` is intentionally disabled
+> by default because it is a server-specific policy choice.
 
 ---
 

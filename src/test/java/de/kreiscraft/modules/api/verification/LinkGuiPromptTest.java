@@ -56,6 +56,9 @@ class LinkGuiPromptTest {
         when(messages.render(anyString())).thenReturn(Component.text("mock"));
         when(messages.render(anyString(), anyString(), anyString()))
                 .thenReturn(Component.text("mock"));
+        when(messages.renderFor(any(Player.class), anyString())).thenReturn(Component.text("mock"));
+        when(messages.renderFor(any(Player.class), anyString(), anyString(), anyString()))
+                .thenReturn(Component.text("mock"));
     }
 
     @AfterEach
@@ -108,7 +111,7 @@ class LinkGuiPromptTest {
         AtomicBoolean declined = new AtomicBoolean(false);
 
         xyz.xenondevs.invui.gui.Gui invui =
-                prompt.buildInvUiGui("browser #abc", () -> accepted.set(true), () -> declined.set(true));
+                prompt.buildInvUiGui(player, "browser #abc", () -> accepted.set(true), () -> declined.set(true));
 
         // Accept is at row 1 col 2 = slot 11
         Item acceptItem = invui.getItem(11);
@@ -129,7 +132,7 @@ class LinkGuiPromptTest {
         AtomicBoolean declined = new AtomicBoolean(false);
 
         xyz.xenondevs.invui.gui.Gui invui =
-                prompt.buildInvUiGui("browser #xyz", () -> accepted.set(true), () -> declined.set(true));
+                prompt.buildInvUiGui(player, "browser #xyz", () -> accepted.set(true), () -> declined.set(true));
 
         // Decline is at row 1 col 6 = slot 15
         Item declineItem = invui.getItem(15);
@@ -150,7 +153,7 @@ class LinkGuiPromptTest {
         AtomicBoolean declined = new AtomicBoolean(false);
 
         xyz.xenondevs.invui.gui.Gui invui =
-                prompt.buildInvUiGui("browser #fill", () -> accepted.set(true), () -> declined.set(true));
+                prompt.buildInvUiGui(player, "browser #fill", () -> accepted.set(true), () -> declined.set(true));
 
         // Filler is at slot 0 (row 0 col 0)
         Item fillerItem = invui.getItem(0);

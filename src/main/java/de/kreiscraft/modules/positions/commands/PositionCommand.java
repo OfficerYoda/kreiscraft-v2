@@ -18,14 +18,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * Brigadier command tree for {@code /pos}.
+ * Brigadier command tree for {@code /positions} ({@code /pos} alias).
  *
  * <pre>
- * /pos                       – opens the positions GUI
- * /pos set &lt;name&gt;           – saves current location as &lt;name&gt;
- * /pos get &lt;name&gt;           – prints coords for &lt;name&gt;
- * /pos delete &lt;name&gt;        – removes &lt;name&gt;
- * /pos list                  – lists all saved positions
+ * /positions                       – opens the positions GUI
+ * /positions set &lt;name&gt;           – saves current location as &lt;name&gt;
+ * /positions get &lt;name&gt;           – prints coords for &lt;name&gt;
+ * /positions delete &lt;name&gt;        – removes &lt;name&gt;
+ * /positions list                  – lists all saved positions
  * </pre>
  *
  * <p>All subcommands require the {@code kreiscraft.positions.use} permission.
@@ -35,7 +35,7 @@ public final class PositionCommand {
     private PositionCommand() {}
 
     /**
-     * Builds the {@code /pos} command node.
+     * Builds the {@code /positions} command node.
      *
      * @param service        the positions service
      * @param messages       message service for user feedback
@@ -51,9 +51,9 @@ public final class PositionCommand {
             Gui gui,
             Supplier<PositionsConfig> configSupplier) {
 
-        return Commands.literal("pos")
+        return Commands.literal("positions")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.positions.use"))
-                // /pos — opens GUI
+                // /positions — opens GUI
                 .executes(
                         ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
@@ -68,14 +68,15 @@ public final class PositionCommand {
                                     PositionsGui.build(
                                             positions,
                                             cfg,
+                                            messages,
                                             (p, entry) -> p.teleport(entry.location()));
                             gui.open(
                                     player,
                                     invuiGui,
-                                    messages.render("positions.gui-title"));
+                                    messages.renderFor(player, "positions.gui-title"));
                             return Command.SINGLE_SUCCESS;
                         })
-                // /pos set <name>
+                // /positions set <name>
                 .then(
                         Commands.literal("set")
                                 .then(
@@ -93,7 +94,9 @@ public final class PositionCommand {
                                                             service.set(
                                                                     player.getUniqueId(),
                                                                     name,
-                                                                    player.getLocation());
+                                                                    player.getLocation(),
+                                                                    player.getUniqueId(),
+                                                                    player.getName());
                                                             messages.send(
                                                                     sender,
                                                                     "positions.set",
@@ -101,7 +104,7 @@ public final class PositionCommand {
                                                                     name);
                                                             return Command.SINGLE_SUCCESS;
                                                         })))
-                // /pos get <name>
+                // /positions get <name>
                 .then(
                         Commands.literal("get")
                                 .then(
@@ -156,7 +159,7 @@ public final class PositionCommand {
                                                             }
                                                             return Command.SINGLE_SUCCESS;
                                                         })))
-                // /pos delete <name>
+                // /positions delete <name>
                 .then(
                         Commands.literal("delete")
                                 .then(
@@ -193,7 +196,7 @@ public final class PositionCommand {
                                                             }
                                                             return Command.SINGLE_SUCCESS;
                                                         })))
-                // /pos list
+                // /positions list
                 .then(
                         Commands.literal("list")
                                 .executes(

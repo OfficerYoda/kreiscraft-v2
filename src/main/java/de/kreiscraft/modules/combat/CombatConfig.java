@@ -1,6 +1,6 @@
 package de.kreiscraft.modules.combat;
 
-import de.kreiscraft.modules.settingsgui.CombatDisplay;
+import de.kreiscraft.shared.preferences.CombatDisplay;
 import java.time.Duration;
 import java.util.List;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;

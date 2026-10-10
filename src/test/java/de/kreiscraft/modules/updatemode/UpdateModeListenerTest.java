@@ -1,9 +1,11 @@
 package de.kreiscraft.modules.updatemode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.config.YamlConfigService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import java.io.IOException;
@@ -34,6 +36,7 @@ class UpdateModeListenerTest {
     private ServerMock server;
     private PluginMock plugin;
     private MessageService messages;
+    private YamlConfigService config;
     private DefaultUpdateModeService service;
     private UpdateModeListener listener;
 
@@ -42,12 +45,12 @@ class UpdateModeListenerTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         messages = mock(MessageService.class);
-        when(messages.render("update-mode.kick-message")).thenReturn(KICK_COMPONENT);
+        when(messages.renderFor(any(), any())).thenReturn(KICK_COMPONENT);
+        when(messages.renderFor(any(), any(), any())).thenReturn(KICK_COMPONENT);
 
-        UpdateModeData data = new UpdateModeData(tmp);
-        data.load();
+        config = new YamlConfigService(tmp, getClass().getClassLoader());
         service = new DefaultUpdateModeService(
-                data,
+                config,
                 new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
                 new PaperPlatform(plugin, server),
                 messages,
@@ -154,14 +157,13 @@ class UpdateModeListenerTest {
 
     @Test
     void onLogin_afterRestart_stillBlocksNonBypassedPlayers() throws IOException {
-        // First run: activation persists the active state to disk.
+        // First run: activation persists the active state to config.yml.
         service.setActive(true);
 
-        // Second run: a fresh service loads the persisted state from the same data folder.
-        UpdateModeData reloaded = new UpdateModeData(tmp);
-        reloaded.load();
+        // Second run: a fresh service loads the persisted state from the same config file.
+        YamlConfigService reopened = new YamlConfigService(tmp, getClass().getClassLoader());
         DefaultUpdateModeService restarted = new DefaultUpdateModeService(
-                reloaded,
+                reopened,
                 new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
                 new PaperPlatform(plugin, server),
                 messages,

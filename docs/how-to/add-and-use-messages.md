@@ -53,6 +53,10 @@ ctx.messages().send(sender, "my-feature.not-found", "name", playerName);
 
 Signature: `void send(CommandSender sender, String key, Object... placeholders)`
 
+`send` renders in the recipient's persisted language when one is stored in `data/settings.yml`,
+otherwise in the server language (`core.language`). An invalid stored language warns once and falls
+back to the server language.
+
 Placeholders are interleaved `name, value` pairs. Every `<name>` tag in the message
 string is replaced with the corresponding `value`. Values are converted with
 `String.valueOf()`.
@@ -60,10 +64,17 @@ string is replaced with the corresponding `value`. Values are converted with
 ### 4. Render as `Component` (without sending)
 
 ```java
+// Server language — use for console output or when no recipient is available:
 Component c = ctx.messages().render("my-feature.action-done", "result", "42");
+
+// Recipient language — use whenever the component is shown to a specific player
+// (GUI titles and labels, action bars, titles, kick messages, boss bars):
+Component forViewer =
+    ctx.messages().renderFor(viewer, "my-feature.action-done", "result", "42");
 ```
 
-Signature: `Component render(String key, Object... placeholders)`
+Signatures: `Component render(String key, Object... placeholders)` and
+`Component renderFor(CommandSender recipient, String key, Object... placeholders)`.
 
 ### 5. Broadcast to all online players
 
@@ -71,6 +82,9 @@ Signature: `Component render(String key, Object... placeholders)`
 ctx.messages().broadcast("core.startup.summary",
     "enabled", 5, "disabled", 2, "failed", 0);
 ```
+
+`broadcast` renders separately per online player so each receives their own language; the console
+receives the server-language rendering.
 
 ### 6. Built-in `%token%` placeholders (`PlaceholderResolver`)
 

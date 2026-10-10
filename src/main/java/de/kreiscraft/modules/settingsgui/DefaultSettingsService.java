@@ -1,67 +1,113 @@
 package de.kreiscraft.modules.settingsgui;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
+import de.kreiscraft.shared.preferences.CombatDisplay;
+import de.kreiscraft.shared.preferences.PlayerLanguage;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.util.UUID;
+import org.bukkit.Particle;
 
+/**
+ * GUI-facing client over the always-available {@link PlayerPreferencesService}.
+ *
+ * <p>The settings GUI owns no persistence of its own: every read and write is delegated to the
+ * shared preferences boundary, so preferences persist whether or not this module is enabled. Reads
+ * fall back to the owning module's default when the player has no stored value, so the GUI shows the
+ * same value the feature would actually use.
+ *
+ * <p>A click is applied directly to the preferences boundary. There is deliberately no time-based
+ * debounce: InvUI dispatches exactly one click to exactly one item, so one physical click produces
+ * exactly one logical mutation.
+ */
 public final class DefaultSettingsService implements SettingsService {
 
-    private static final Duration CLICK_DEBOUNCE = Duration.ofSeconds(1);
+    /** Click-through is opt-out, matching the click-through module default. */
+    static final boolean CLICK_THROUGH_DEFAULT_ENABLED = true;
 
-    private final SettingsData data;
+    /** Fallback shown in the GUI when a player has no stored combat-display preference. */
+    static final CombatDisplay DISPLAY_FALLBACK = CombatDisplay.ACTIONBAR;
 
-    public DefaultSettingsService(SettingsData data) {
-        this.data = data;
-    }
+    /** Effects are opt-out once the effects module is enabled. */
+    static final boolean EFFECTS_DEFAULT_ENABLED = true;
 
-    private Settings settingsFor(UUID playerId) {
-        Map<UUID, Settings> map = data.get();
-        if (map == null) {
-            return Settings.defaults();
-        }
-        return map.getOrDefault(playerId, Settings.defaults());
-    }
+    /** Glow is opt-in until the player enables it. */
+    static final boolean GLOW_DEFAULT_ENABLED = false;
 
-    @Override
-    public boolean isClickThroughEnabled(UUID playerId) {
-        return settingsFor(playerId).clickThrough();
-    }
+    private final PlayerPreferencesService preferences;
+    private final PlayerLanguage defaultLanguage;
+    private final Particle defaultEffectsParticle;
 
-    @Override
-    public void setClickThroughEnabled(UUID playerId, boolean enabled) {
-        Settings current = settingsFor(playerId);
-        Settings updated = new Settings(enabled, current.combatDisplay(), current.lastClickAt());
-        data.update(m -> m.put(playerId, updated));
+    public DefaultSettingsService(
+            PlayerPreferencesService preferences,
+            PlayerLanguage defaultLanguage,
+            Particle defaultEffectsParticle) {
+        this.preferences = preferences;
+        this.defaultLanguage = defaultLanguage;
+        this.defaultEffectsParticle = defaultEffectsParticle;
     }
 
     @Override
-    public CombatDisplay getCombatDisplay(UUID playerId) {
-        return settingsFor(playerId).combatDisplay();
+    public PlayerLanguage language(UUID playerId) {
+        return preferences.preferences(playerId).language().orElse(defaultLanguage);
+    }
+
+    @Override
+    public void setLanguage(UUID playerId, PlayerLanguage language) {
+        preferences.setLanguage(playerId, language);
+    }
+
+    @Override
+    public boolean clickThrough(UUID playerId) {
+        return preferences.clickThrough(playerId, CLICK_THROUGH_DEFAULT_ENABLED);
+    }
+
+    @Override
+    public void setClickThrough(UUID playerId, boolean enabled) {
+        preferences.setClickThrough(playerId, enabled);
+    }
+
+    @Override
+    public CombatDisplay combatDisplay(UUID playerId) {
+        return preferences.combatDisplay(playerId, DISPLAY_FALLBACK);
     }
 
     @Override
     public void setCombatDisplay(UUID playerId, CombatDisplay display) {
-        Settings current = settingsFor(playerId);
-        Settings updated = new Settings(current.clickThrough(), display, current.lastClickAt());
-        data.update(m -> m.put(playerId, updated));
+        preferences.setCombatDisplay(playerId, display);
     }
 
-    /**
-     * Toggles click-through for the given player, subject to a 1-second per-player debounce.
-     * Debounce timestamp is stored in the {@link Settings#lastClickAt()} field (in-memory only).
-     *
-     * @return {@code true} if the toggle was applied; {@code false} if rejected by debounce
-     */
-    public boolean toggleClickThrough(UUID playerId) {
-        Settings current = settingsFor(playerId);
-        Instant now = Instant.now();
-        if (current.lastClickAt() != null
-                && Duration.between(current.lastClickAt(), now).compareTo(CLICK_DEBOUNCE) < 0) {
-            return false;
-        }
-        Settings updated = new Settings(!current.clickThrough(), current.combatDisplay(), now);
-        data.update(m -> m.put(playerId, updated));
-        return true;
+    @Override
+    public boolean effectsEnabled(UUID playerId) {
+        return preferences
+                .preferences(playerId)
+                .effectsEnabled()
+                .orElse(EFFECTS_DEFAULT_ENABLED);
+    }
+
+    @Override
+    public void setEffectsEnabled(UUID playerId, boolean enabled) {
+        preferences.setEffectsEnabled(playerId, enabled);
+    }
+
+    @Override
+    public Particle effectsParticle(UUID playerId) {
+        return preferences
+                .preferences(playerId)
+                .effectsParticle()
+                .orElse(defaultEffectsParticle);
+    }
+
+    @Override
+    public void setEffectsParticle(UUID playerId, Particle particle) {
+        preferences.setEffectsParticle(playerId, particle);
+    }
+
+    @Override
+    public boolean glowEnabled(UUID playerId) {
+        return preferences.preferences(playerId).glowEnabled().orElse(GLOW_DEFAULT_ENABLED);
+    }
+
+    @Override
+    public void setGlowEnabled(UUID playerId, boolean enabled) {
+        preferences.setGlowEnabled(playerId, enabled);
     }
 }

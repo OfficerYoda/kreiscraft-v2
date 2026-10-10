@@ -25,6 +25,23 @@ public final class PlaceholderResolver {
         this.clock = clock;
     }
 
+    /**
+     * The canonical server timezone ({@code core.timezone}). Absolute times shown to players and
+     * operators are derived from this single zone.
+     */
+    public ZoneId zone() {
+        return zone;
+    }
+
+    /**
+     * The clock used to evaluate time-dependent placeholders. Exposed so commands that render
+     * relative durations can compute "now" from the same clock the resolver uses, keeping tests
+     * deterministic.
+     */
+    public Clock clock() {
+        return clock;
+    }
+
     public String resolveString(String template, Player context) {
         Matcher m = TOKEN.matcher(template);
         StringBuilder out = new StringBuilder();

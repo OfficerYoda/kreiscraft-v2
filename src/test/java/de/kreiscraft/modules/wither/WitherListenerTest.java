@@ -27,12 +27,14 @@ import org.bukkit.entity.WitherSkeleton;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.ArmorStandMock;
 import org.mockbukkit.mockbukkit.entity.WitherMock;
 import org.mockbukkit.mockbukkit.world.WorldMock;
 
@@ -52,7 +54,7 @@ class WitherListenerTest {
         messages = mock(MessageService.class);
         when(messages.render(anyString())).thenReturn(Component.empty());
         scheduler = new MockScheduler();
-        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0);
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true, 20.0, true, true, 50);
         listener = new WitherListener(() -> config, messages, scheduler);
     }
 
@@ -100,12 +102,81 @@ class WitherListenerTest {
         assertThat(sb.getTeam("bedrock_wither").allowFriendlyFire()).isFalse();
     }
 
+    // --- Spawn explosion interception tests ---
+
+    @Test
+    void onExplosionPrime_wither_cancelsVanillaAndReplacesOnceWithConfiguredSpawnSettings() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("spawn-configured");
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 25.0, false, true, 4.0, true, true, 20.0, true, true,
+                50);
+        listener = new WitherListener(() -> config, messages, scheduler);
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
+
+        ExplosionPrimeEvent event = new ExplosionPrimeEvent(wither, 7.0f, false);
+        listener.onExplosionPrime(event);
+
+        assertThat(event.isCancelled()).isTrue();
+        verify(testWorld, times(1))
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(25.0f), eq(false), eq(true));
+    }
+
+    @Test
+    void onExplosionPrime_wither_usesDefaultDestructiveSpawnSettings() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("spawn-defaults");
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
+
+        ExplosionPrimeEvent event = new ExplosionPrimeEvent(wither, 7.0f, false);
+        listener.onExplosionPrime(event);
+
+        assertThat(event.isCancelled()).isTrue();
+        verify(testWorld, times(1))
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+    }
+
+    @Test
+    void onExplosionPrime_nonWither_isIgnored() {
+        WorldMock testWorld = spiedWorldWithExplosionSupport("spawn-non-wither");
+        ArmorStandMock stand = new ArmorStandMock(server, UUID.randomUUID());
+
+        ExplosionPrimeEvent event = new ExplosionPrimeEvent(stand, 4.0f, true);
+        listener.onExplosionPrime(event);
+
+        assertThat(event.isCancelled()).isFalse();
+        verify(testWorld, never())
+                .createExplosion(
+                        anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
+    }
+
+    @Test
+    void onExplosionPrime_afterConfigReload_usesUpdatedSpawnSettings() {
+        AtomicReference<WitherConfig> configRef = new AtomicReference<>(
+                new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true, 20.0, true, true,
+                        50));
+        WitherListener reloadListener = new WitherListener(configRef::get, messages, scheduler);
+
+        WorldMock before = spiedWorldWithExplosionSupport("spawn-reload-before");
+        WitherMock beforeWither = new WitherMock(server, UUID.randomUUID(), before);
+        reloadListener.onExplosionPrime(new ExplosionPrimeEvent(beforeWither, 7.0f, false));
+        verify(before)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+
+        configRef.set(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 9.0, false, false, 4.0, true, true, 20.0, true, true,
+                50));
+
+        WorldMock after = spiedWorldWithExplosionSupport("spawn-reload-after");
+        WitherMock afterWither = new WitherMock(server, UUID.randomUUID(), after);
+        reloadListener.onExplosionPrime(new ExplosionPrimeEvent(afterWither, 7.0f, false));
+        verify(after)
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(9.0f), eq(false), eq(false));
+    }
+
     // --- Config hot-reload test (fix 2) ---
 
     @Test
     void onCreatureSpawn_afterConfigReload_usesUpdatedMaxHealth() {
         AtomicReference<WitherConfig> configRef =
-                new AtomicReference<>(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
+                new AtomicReference<>(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true,
+                        20.0, true, true, 50));
         WitherListener reloadListener =
                 new WitherListener(configRef::get, messages, scheduler);
 
@@ -117,7 +188,8 @@ class WitherListenerTest {
         assertThat(wither1.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(600.0);
 
         // Simulate config reload with new max health
-        configRef.set(new WitherConfig(800.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
+        configRef.set(
+                new WitherConfig(800.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true, 20.0, true, true, 50));
 
         // Second spawn — updated max health should be applied
         WitherMock wither2 = new WitherMock(server, UUID.randomUUID(), world);
@@ -182,7 +254,7 @@ class WitherListenerTest {
     @Test
     void onEntityDamage_halfHealthExplosion_usesConfiguredPowerFireAndBlockDamage() {
         WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-configured");
-        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 5.0, true, true, 50, 20.0);
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 5.0, true, true, 20.0, true, true, 50);
         listener = new WitherListener(() -> config, messages, scheduler);
         WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
         wither.setMaxHealth(600.0);
@@ -201,7 +273,7 @@ class WitherListenerTest {
     @Test
     void onEntityDamage_explosionFireDisabled_independentlyHonored() {
         WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-no-fire");
-        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, false, true, 50, 20.0);
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, false, true, 20.0, true, true, 50);
         listener = new WitherListener(() -> config, messages, scheduler);
         WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
         wither.setMaxHealth(600.0);
@@ -220,7 +292,7 @@ class WitherListenerTest {
     @Test
     void onEntityDamage_explosionBlockDamageDisabled_independentlyHonored() {
         WorldMock testWorld = spiedWorldWithExplosionSupport("explosion-no-block-damage");
-        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, false, 50, 20.0);
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, false, 20.0, true, true, 50);
         listener = new WitherListener(() -> config, messages, scheduler);
         WitherMock wither = new WitherMock(server, UUID.randomUUID(), testWorld);
         wither.setMaxHealth(600.0);
@@ -239,7 +311,7 @@ class WitherListenerTest {
     @Test
     void onEntityDamage_afterConfigReload_usesUpdatedExplosionSettings() {
         AtomicReference<WitherConfig> configRef = new AtomicReference<>(
-                new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 4.0, true, true, 50, 20.0));
+                new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true, 20.0, true, true, 50));
         WitherListener reloadListener = new WitherListener(configRef::get, messages, scheduler);
 
         WorldMock beforeWorld = spiedWorldWithExplosionSupport("reload-before");
@@ -255,7 +327,8 @@ class WitherListenerTest {
                 .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(4.0f), eq(true), eq(true));
 
         // Simulate a hot reload that changes every explosion option.
-        configRef.set(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 9.0, false, false, 50, 20.0));
+        configRef.set(new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 9.0, false, false, 20.0, true,
+                true, 50));
 
         WorldMock afterWorld = spiedWorldWithExplosionSupport("reload-after");
         WitherMock afterWither = new WitherMock(server, UUID.randomUUID(), afterWorld);
@@ -284,12 +357,13 @@ class WitherListenerTest {
         // 9 ticks fire (at t=0…8 s): no explosion yet
         scheduler.advance(Duration.ofSeconds(8));
         verify(arena, never())
-                .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
+                .createExplosion(
+                        anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
 
         // 10th tick fires at t=9 s: explosion triggered
         scheduler.advance(Duration.ofSeconds(1));
         verify(arena, times(1))
-                .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
     }
 
     @Test
@@ -305,7 +379,24 @@ class WitherListenerTest {
 
         // Explosion fires exactly once, not repeated
         verify(arena, times(1))
-                .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+    }
+
+    @Test
+    void onEntityDeath_usesConfiguredFireBlockDamageAndPower() {
+        WorldMock arena = spiedWorldWithExplosionSupport("arena-configured");
+        config = new WitherConfig(600.0, 40.0, 8.0, 300.0, 4, 20.0, true, true, 4.0, true, true, 30.0, false, false,
+                50);
+        listener = new WitherListener(() -> config, messages, scheduler);
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), arena);
+        EntityDeathEvent event = new EntityDeathEvent(
+                wither, mock(DamageSource.class), new ArrayList<>());
+
+        listener.onEntityDeath(event);
+        scheduler.advance(Duration.ofSeconds(10));
+
+        verify(arena, times(1))
+                .createExplosion(anyDouble(), anyDouble(), anyDouble(), eq(30.0f), eq(false), eq(false));
     }
 
     @Test
@@ -325,7 +416,9 @@ class WitherListenerTest {
         // Remaining time passes but task is cancelled
         scheduler.advance(Duration.ofSeconds(5));
 
-        verify(arena, never()).createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
+        verify(arena, never())
+                .createExplosion(
+                        anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
     }
 
     // --- Helper ---

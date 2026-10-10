@@ -3,11 +3,11 @@ package de.kreiscraft.modules.spawn;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.kreiscraft.core.config.serializers.KreiscraftSerializers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationOptions;
 
@@ -35,48 +35,20 @@ class SpawnConfigTest {
     @Test
     void fullConfig_parsesAllFields() throws Exception {
         CommentedConfigurationNode node = CommentedConfigurationNode.root(opts());
-        node.node("teleport-range").set(50);
+        node.node("spawn-radius").set(75);
         node.node("glide", "enabled").set(true);
         node.node("glide", "multiply-value").set(5);
-        node.node("glide", "spawn-radius").set(20);
-        node.node("glide", "launch-location", "world").set("world");
-        node.node("glide", "launch-location", "x").set(10.0);
-        node.node("glide", "launch-location", "y").set(64.0);
-        node.node("glide", "launch-location", "z").set(-5.0);
-        node.node("glide", "launch-location", "yaw").set(0.0);
-        node.node("glide", "launch-location", "pitch").set(0.0);
-        node.node("swap-hand-boost", "enabled").set(true);
-        node.node("swap-hand-boost", "vector-multiplier").set(2.5);
         node.node("glide-boost", "enabled").set(true);
         node.node("glide-boost", "boost-strength").set(3.0);
-        node.node("glide-boost", "cooldown-seconds").set(10);
-        node.node("spawn-launch", "enabled").set(false);
-        node.node("spawn-launch", "trigger", "world").set("world");
-        node.node("spawn-launch", "trigger", "x").set(0.0);
-        node.node("spawn-launch", "trigger", "y").set(64.0);
-        node.node("spawn-launch", "trigger", "z").set(0.0);
-        node.node("spawn-launch", "trigger", "yaw").set(0.0);
-        node.node("spawn-launch", "trigger", "pitch").set(0.0);
-        node.node("spawn-launch", "velocity", "x").set(0.0);
-        node.node("spawn-launch", "velocity", "y").set(10.0);
-        node.node("spawn-launch", "velocity", "z").set(0.0);
 
         SpawnConfig cfg = node.get(SpawnConfig.class);
 
         assertThat(cfg).isNotNull();
-        assertThat(cfg.teleportRange()).isEqualTo(50);
+        assertThat(cfg.spawnRadius()).isEqualTo(75);
         assertThat(cfg.glide().enabled()).isTrue();
         assertThat(cfg.glide().multiplyValue()).isEqualTo(5);
-        assertThat(cfg.glide().spawnRadius()).isEqualTo(20);
-        assertThat(cfg.glide().launchLocation()).isNotNull();
-        assertThat(cfg.glide().launchLocation().getWorld().getName()).isEqualTo("world");
-        assertThat(cfg.swapHandBoost().enabled()).isTrue();
-        assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(2.5);
         assertThat(cfg.glideBoost().enabled()).isTrue();
         assertThat(cfg.glideBoost().boostStrength()).isEqualTo(3.0);
-        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(10);
-        assertThat(cfg.spawnLaunch().enabled()).isFalse();
-        assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(10.0);
     }
 
     @Test
@@ -87,31 +59,20 @@ class SpawnConfigTest {
         SpawnConfig cfg = node.get(SpawnConfig.class);
 
         assertThat(cfg).isNotNull();
-        assertThat(cfg.teleportRange()).isEqualTo(100); // default: 0 → 100
+        assertThat(cfg.spawnRadius()).isEqualTo(SpawnConfig.DEFAULT_SPAWN_RADIUS); // 0 → 50
         assertThat(cfg.glide()).isNotNull();
         // NOTE: boolean enabled is a Java primitive; when the key is absent Configurate
         // initialises it to false (the zero value). The production config.yml always
         // provides an explicit 'enabled: true', so we only assert the numeric defaults here.
         assertThat(cfg.glide().multiplyValue()).isEqualTo(3); // default: 0 → 3
-        assertThat(cfg.glide().spawnRadius()).isEqualTo(30); // default: 0 → 30
-        assertThat(cfg.swapHandBoost().enabled()).isFalse(); // boolean zero = false
-        assertThat(cfg.swapHandBoost().vectorMultiplier()).isEqualTo(3.0); // default: 0 → 3.0
         assertThat(cfg.glideBoost().enabled()).isFalse(); // boolean zero = false
         assertThat(cfg.glideBoost().boostStrength()).isEqualTo(2.0); // default: 0 → 2.0
-        assertThat(cfg.glideBoost().cooldownSeconds()).isEqualTo(5); // default: 0 → 5
-        assertThat(cfg.spawnLaunch().enabled()).isFalse(); // boolean zero = false
-        // velocity all-zero → compact constructor applies (0, 5, 0)
-        assertThat(cfg.spawnLaunch().velocity().getY()).isEqualTo(5.0);
     }
 
     @Test
-    void locationSpec_missingKey_isNotSet() throws Exception {
-        CommentedConfigurationNode node = CommentedConfigurationNode.root(opts());
-        node.node("glide", "enabled").set(true);
-        // launch-location omitted
-
-        SpawnConfig cfg = node.get(SpawnConfig.class);
-
-        assertThat(cfg.glide().launchLocation()).isNull();
+    void spawnRadius_defaultsToFifty_whenAbsentOrNonPositive() {
+        assertThat(new SpawnConfig(0, null, null).spawnRadius()).isEqualTo(50);
+        assertThat(new SpawnConfig(-1, null, null).spawnRadius()).isEqualTo(50);
+        assertThat(new SpawnConfig(120, null, null).spawnRadius()).isEqualTo(120);
     }
 }

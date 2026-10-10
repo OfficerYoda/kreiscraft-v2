@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -10,45 +10,41 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
-| `admin` | `de.kreiscraft.modules.admin` | stable | none | kreiscraftgamemode, item, skull, head, kreiscraftweather, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (gamemode, item spawning, player info, TPS, weather). |
+| `admin` | `de.kreiscraft.modules.admin` | stable | none | item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (item spawning, player info, TPS). |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
-| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | `settings-gui` | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled per-player via the settings GUI. |
-| `combat` | `de.kreiscraft.modules.combat` | stable | `settings-gui` | combat | Tags players as in combat on damage; optionally removes elytra while tagged. |
-| `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players toggle and choose a personal particle trail emitted around them each tick. |
+| `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | none | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences. |
+| `combat` | `de.kreiscraft.modules.combat` | stable | none | combat | Tags players as in combat on damage; optionally removes elytra while tagged; combat display follows a player preference with a module default. |
+| `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players report, toggle, and choose a personal particle trail emitted on a configurable schedule (default 5 ticks) independent of movement; state and particle persist as player preferences. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
 | `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
-| `plugin-hider` | `de.kreiscraft.modules.pluginhider` | stable | none | pluginhider | Hides non-allowlisted commands from tab-completion to obscure the full plugin list. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
-| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Per-player settings GUI (clickthrough toggle, combat display mode selection). |
+| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
-| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes an elytra glide zone, optional swap-hand boost, and a block-trigger launch pad. |
-| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, world border expansion across three phases. |
-| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to scoreboard teams and chat. |
+| `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
+| `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
+| `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to chat, the Bukkit display name, the scoreboard/overhead name, and the tab list. |
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
-| `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, minion spawning, and a death explosion. |
-| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, setworldspawn, portal | Commands for teleporting between worlds, setting world spawns, and computing Nether/Overworld portal coordinates. |
+| `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, independently configurable spawn, half-health, and death explosions, and minion spawning. |
+| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, portal | Commands for teleporting between worlds and computing Nether/Overworld portal coordinates. |
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Five ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Two ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
 |-----------|--------------------------|
-| `effects` | Player-facing particle trails are cosmetic; operators opt in per server. |
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
-| `glow` | Player-facing glow effect is cosmetic; operators opt in per server. |
-| `plugin-hider` | Intentionally disabled by default — command hiding is a server-specific policy decision. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
-All five implementations are fully functional; enabling the flag is sufficient to activate them.
+Both implementations are fully functional; enabling the flag is sufficient to activate them.
 
 ---
 
@@ -67,7 +63,7 @@ For config keys and defaults, see [Configuration](/reference/configuration/).
 
 ### Description
 
-Provides a collection of general-purpose admin utility commands: gamemode changes, item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, weather control, sudo, and Kreiscraft help links.
+Provides a collection of general-purpose admin utility commands: item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links.
 
 ---
 
@@ -79,7 +75,7 @@ Provides a collection of general-purpose admin utility commands: gamemode change
 
 ### Description
 
-Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`).
+Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for reports from an external cheat-detection mod, logs them to `data/hackerlog.yml`, and can kick players who connect with a Fabric or Forge client before the handshake grace period expires (disabled by default via `kick-on-fabric-forge`). The `/hackerlogs <target> [cheats|xray]` command accepts a player selector (`@a`, `@p`, …), reports each selected player's entries with a localized kind label, and completes online plus known-offline profiles through the shared suggestion providers.
 
 ### Services published
 
@@ -111,11 +107,17 @@ Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data,
 
 ### Description
 
-Detects Bedrock Edition players by their username prefix (default `.`) when they connect, records their name and UUID in `data/bedrock-players.yml`, lists the known players via `/bedrocklist list`, and provides a command to add them to the server whitelist via `WhitelistService`.
+Detects Bedrock Edition players by their username prefix (default `.`) when they connect and records
+their name and UUID in `data/bedrock-players.yml`. Administrators pre-authorize a Bedrock name with
+`/bedrocklist add <name>`, which creates a Pending Bedrock Authorization in
+`data/bedrock-authorizations.yml`: the first matching login binds it to the observed UUID and
+whitelists that identity, and a bound authorization never silently rebinds. Replacing a bound
+identity requires `/bedrocklist remove <name>` followed by re-registration. `/bedrocklist list`
+lists the known players in deterministic order.
 
 ### Services published
 
-- `BedrockService` — query the set of known Bedrock player records.
+- `BedrockService` — query known Bedrock player records and Pending Bedrock Authorizations.
 
 ---
 
@@ -127,7 +129,7 @@ Detects Bedrock Edition players by their username prefix (default `.`) when they
 
 ### Description
 
-Intercepts `AsyncChatEvent` (at the configured priority) and reformats each message using a MiniMessage template. The template has access to `<team-prefix>`, `<name-colored>`, `<team-suffix>`, and `<body>` placeholders drawn from `StatusService`. Optionally allows players to use MiniMessage tags inside the chat body.
+Intercepts `AsyncChatEvent` (at the configured priority) and reformats each message using a MiniMessage template. The template has access to `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, and `<body>`. Player affixes come from `StatusService`; present prefixes and suffixes supply their adjacent space while empty values remain spacing-neutral. Optionally allows players to use MiniMessage tags inside the chat body.
 
 Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoint`, followed by the protocol's `:` separator) are passed through untouched: the event is left uncancelled so clients and the Xaero mod receive the raw payload, and no formatted message is broadcast or published to `ChatBridge`. Near-matches such as `xaero-waypoints` and ordinary chat are unaffected and formatted normally.
 
@@ -136,24 +138,24 @@ Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoi
 ## `clickthrough`
 
 **Package:** `de.kreiscraft.modules.clickthrough`
-**Depends on:** `settings-gui`
+**Depends on:** none
 **Default enabled:** true
 
 ### Description
 
-Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is stored by `SettingsService`.
+Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is read from the always-available `PlayerPreferencesService`, falling back to the module default (enabled) when no preference is stored.
 
 ---
 
 ## `combat`
 
 **Package:** `de.kreiscraft.modules.combat`
-**Depends on:** `settings-gui`
+**Depends on:** none
 **Default enabled:** true
 
 ### Description
 
-Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference stored in `SettingsService` (action bar, chat, or title).
+Tags players in combat when they deal or receive damage, keeping them tagged for a configurable duration (default `5s`). While tagged, elytra use can be blocked: a continuously swept check removes a worn elytra, returning it to the inventory when space exists or otherwise dropping it glowing and pickup-protected for its owner for a bounded window. Worlds listed in `excluded-worlds` are exempt. Combat status is displayed via the per-player preference read from the always-available `PlayerPreferencesService` (action bar, chat, or title); when a player has no stored preference the combat module's `default-display` applies. A fresh tag renders its full duration immediately and then counts down exactly once per second, driven by its own scheduler task rather than a shared sweep. The `/combat <target> <seconds>` command accepts a player selector (`@a`, `@p`, …) and tags every selected player.
 
 ### Events published
 
@@ -169,15 +171,23 @@ Tags players in combat when they deal or receive damage, keeping them tagged for
 
 **Package:** `de.kreiscraft.modules.effects`
 **Depends on:** none
-**Default enabled:** false — opt in with `modules.effects.enabled: true`
+**Default enabled:** true
 
 ### Description
 
-Spawns a configurable particle effect around a player each tick while they have effects enabled. Players can toggle their trail on/off and choose the particle type via `/effects`. State is stored in memory (not persisted).
+Spawns a configurable particle effect around a player on a configurable tick schedule (default `5t`) while they have effects enabled and have selected a particle; emission is independent of movement. A new player emits nothing until choosing a particle with `/effects <particle>`, which enables the trail immediately. Enabled state and particle are stored as player preferences in `data/settings.yml`, so existing choices survive reconnects.
+
+### Configuration
+
+| Key (relative to `modules.effects`) | Type | Default | Description |
+|---|---|---|---|
+| `default-particle` | Particle | `HAPPY_VILLAGER` | Particle shown by controls until the player chooses one; it is not emitted automatically. |
+| `schedule` | Duration | `5t` | Emission period; hot-reloaded. |
+| `count` / `offset-x` / `offset-y` / `offset-z` / `force` | — | — | Emission shape and visibility, as in the Configuration reference. |
 
 ### Services published
 
-- `EffectsService` — enable, disable, and query particle effects for players.
+- `EffectsService` — report, toggle, and select particle effects for players, backed by persisted preferences.
 
 ---
 
@@ -197,15 +207,15 @@ Registers a Bukkit shaped crafting recipe that yields a firework rocket with the
 
 **Package:** `de.kreiscraft.modules.glow`
 **Depends on:** none
-**Default enabled:** false — opt in with `modules.glow.enabled: true`
+**Default enabled:** true
 
 ### Description
 
-Applies or removes the Bukkit `Glowing` effect for a player via `/glow`. State is tracked in `DefaultGlowService` and all active glow effects are cleared on module disable.
+Applies or removes the Bukkit `Glowing` effect for a player via `/glow`, and for another online player via `/glow <player>` (requires `kreiscraft.glow.other`). The entity's current glowing state is the toggle truth; the resulting value is persisted as the player's desired glow preference, which is reconciled onto the entity on join. When one player changes another's glow, both the actor and the target are notified in their own language. Active glow effects owned by this module are cleared on module disable.
 
 ### Services published
 
-- `GlowService` — toggle and query glow state for players.
+- `GlowService` — toggle, query, and reconcile the glow state of players.
 
 ---
 
@@ -217,7 +227,7 @@ Applies or removes the Bukkit `Glowing` effect for a player via `/glow`. State i
 
 ### Description
 
-Opens a GUI showing another player's inventory or ender chest. Players with `kreiscraft.invsee.edit` can modify the inventory directly; without it they get a read-only view. Offline inventory is read from the player data file via `OfflineInventoryReader`; offline ender-chest viewing is not supported.
+Opens a GUI showing another player's inventory or ender chest. The single `kreiscraft.invsee.use` permission authorizes viewing and editing: a viewer who passes it may modify the target's live inventory directly. GUI titles are rendered through the message service so they are localized per viewer and follow the current message styling boundary. Online targets are edited live. Offline targets are opened as an editable snapshot through the version-isolated `OfflinePlayerDataEditor` boundary (`OfflinePlayerDataStore` over a `PlayerDataCodec`): the inventory uses a five-row layout with helmet, chestplate, leggings, boots, and offhand in the top row, main inventory in the middle, and the hotbar on the bottom, with immovable barrier items in positions that have no inventory slot; the Ender Chest is a three-row snapshot. Edits are held in a detached inventory and committed with a two-phase protocol (ADR-17): the edited items are encoded to compressed NBT preserving every unrelated tag, written and read back without touching the source, then — in one server-main-thread turn — the target's offline state and the source digest are re-checked, a backup is created, and the source is atomically replaced. A concurrent login aborts the write and offers a clickable reopen of the live inventory; a stale source or write failure aborts without modifying the file.
 
 ---
 
@@ -229,27 +239,13 @@ Opens a GUI showing another player's inventory or ender chest. Players with `kre
 
 ### Description
 
-`/jail` and its alias `/kerker` are identical toggles: they jail an unjailed player (teleporting them to the configured jail `location` and recording an entry in `data/jail.yml`) or release an already-jailed player (teleporting them back to their original location). While jailed, a configurable set of commands is blocked; `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed. Players with `kreiscraft.jail.bypass` cannot be jailed, but the bypass permission does not prevent releasing an already-jailed player.
+`/jail` and its alias `/kerker` are identical toggles: they jail an unjailed player (teleporting them to the jail `location` and recording an entry in `data/jail.yml`) or release an already-jailed player (teleporting them back to their original location). A freshly jailed player also receives a localized direct message whose reason is styled distinctly from the surrounding prose. While jailed, a configurable set of commands is blocked; `/jail`, `/kerker`, and `/kreiscrafthelp` are always allowed. Players with `kreiscraft.jail.bypass` cannot be jailed, but the bypass permission does not prevent releasing an already-jailed player.
+
+`/setjail` stores the executing player's current location as `modules.jail.location` in `config.yml` through the validated, atomic Server Configuration edit boundary. The jail location is operator-owned Server Configuration; jail entries and their restore locations remain Activity Data in `data/jail.yml`.
 
 ### Services published
 
-- `JailService` — jail, release, and query jail state for players.
-
----
-
-## `plugin-hider`
-
-**Package:** `de.kreiscraft.modules.pluginhider`
-**Depends on:** none
-**Default enabled:** false — intentionally disabled by default; opt in with `modules.plugin-hider.enabled: true`
-
-### Description
-
-Intercepts `TabCompleteEvent` and filters out command suggestions not in the allowlist, so non-operators cannot discover which plugins are installed. The allowlist is persisted in `data/plugin-hider.yml`. Players with `kreiscraft.pluginhider.bypass` see all commands regardless.
-
-### Services published
-
-- `PluginHiderService` — query and mutate the command allowlist.
+- `JailService` — jail, release, query jail state, and read/write the operator-owned jail location for players.
 
 ---
 
@@ -261,7 +257,7 @@ Intercepts `TabCompleteEvent` and filters out command suggestions not in the all
 
 ### Description
 
-Allows each player to save named waypoints at their current location and retrieve or teleport to them. A GUI browser displays all saved positions; clicking a position can optionally teleport the player. Positions are persisted per-player in `data/positions.yml`.
+Allows each player to save named waypoints with `/positions` (`/pos`) and inspect them in a GUI. Clicking a position can optionally teleport players with `kreiscraft.positions.teleport`. Positions are persisted per-player in `data/positions.yml`.
 
 ### Services published
 
@@ -293,11 +289,21 @@ Schedules a server restart with a countdown. At seconds listed in `title-seconds
 
 ### Description
 
-Opens an InvUI-backed GUI for per-player settings. Currently exposes two toggles: the clickthrough enable/disable (consumed by the `clickthrough` module) and the combat display mode (consumed by the `combat` module). Settings are persisted in `data/settings.yml`.
+Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, effects (enabled state and particle), and glow preferences. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
+
+The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
+
+#### Server Configuration editor
+
+Players holding `kreiscraft.settingsgui.admin` also see a **Server Configuration** entry on the Player Settings root, and can open it directly with `/settings admin`. Unauthorized players never see the entry and cannot reach the subcommand.
+
+The editor gives every configured module its own section and representative icon. Related settings occupy one row per group; Wither spawn, half-health, and death controls use separate rows. Each module's enable toggle is a glass pane in the far-left slot of the bottom row with restart-required lore. Other controls remain typed: booleans toggle, whole and decimal numbers step, durations/enums/materials cycle, a location is set to the editor's current position, and free-form text and text lists are entered in chat. Sections have forward/back navigation.
+
+Every edit goes through the validated, atomic `ConfigService` boundary, so a value is validated and durably written the moment it is clicked; a rejected or failed edit changes neither the running configuration nor `config.yml`. The editor is closed with a session-specific report: hot-reloadable edits offer the applicable clickable `/kc reload` action, and restart-only edits (always including every module enable flag) warn that a server restart is required. Module lifecycle changes are never described as hot-applied. Low-level, sensitive, networking, and tab-list header/footer values stay YAML-only.
 
 ### Services published
 
-- `SettingsService` — read and write per-player settings (combat display, clickthrough toggle).
+None. The GUI is a client of the shared `PlayerPreferencesService` and the validated `ConfigService`.
 
 ---
 
@@ -321,11 +327,11 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 ### Description
 
-Manages the server spawn point (persisted in `data/spawn.yml`). Includes three optional subsystems: a glide zone that boosts elytra velocity near spawn, a swap-hand velocity boost while gliding, and a block-trigger launch pad. The `/spawn` command is restricted to players within `teleportRange` blocks of spawn.
+Manages the server spawn point and the single Spawn Radius (module configuration in `config.yml`). `/spawn` is overworld-only and restricted to the horizontal Spawn Access Zone; glide initiation requires the full three-dimensional Glide Zone. Includes three optional subsystems: elytra glide around spawn, a swap-hand velocity boost while gliding, and a persistent sneak boost for glides that started inside the Glide Zone. Spawn-launch behavior has been removed.
 
 ### Services published
 
-- `SpawnService` — get/set the spawn location and check whether a player is within the spawn radius.
+- `SpawnService` — get/set the spawn location and check the Spawn Access Zone (XZ) and the Glide Zone (3D).
 
 ---
 
@@ -337,7 +343,7 @@ Manages the server spawn point (persisted in `data/spawn.yml`). Includes three o
 
 ### Description
 
-Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`, each with a title and sound), followed by the start title and three world-border phases (phase 1: slow expansion; phase 2: medium expansion; instant: full size). Border phase durations are configured in ticks, matching the original RusticPrism sequence, and passed to Bukkit's tick-based world-border API. State is persisted in `data/start-sequence.yml` so a restart does not re-trigger the sequence.
+Triggers the season-start ceremony: a countdown (`countdown` down through `1`, each with a title and sound), followed by the start title and exactly one continuous world-border expansion. The border duration is configured in seconds, represented internally as a `Duration`, and converted to ticks only at Bukkit's `WorldBorder` boundary. The plugin delegates the in-progress transition to Minecraft and keeps no phase, timestamp, or remaining-duration resume state, so a graceful restart resumes the expansion. Completion is stored in operator-owned Server Configuration (`modules.start-sequence.has-started` in `config.yml`) so a restart does not re-trigger the sequence.
 
 ### Services published
 
@@ -353,7 +359,7 @@ Triggers the season-start ceremony: a countdown (numbers `countdown - 1` … `1`
 
 ### Description
 
-Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and team color are applied to every online player's scoreboard team and broadcast as a `StatusChangedEvent` so other modules (`chat-format`, `tablist`) can react.
+Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and color are applied to every online viewer's scoreboard team (the overhead/nametag presentation), to the Bukkit display name, and to the tab-list player name. A `StatusChangedEvent` is broadcast so other modules (`chat-format`, `tablist`) can react. On join and on every status change, each online viewer's scoreboard is rebuilt so all viewers stay synchronized, and the player's display/tab-list names are refreshed.
 
 ### Events published
 
@@ -385,7 +391,7 @@ Updates the tab list header and footer for all online players on a repeating sch
 
 ### Description
 
-When active, activation immediately disconnects every online player who is not allowed to bypass, and login attempts from non-bypassed players are blocked. A player bypasses if their name is listed in `bypass-names`, they are an operator, or they hold the configured `bypass-permission`. Bypassed players who are online when maintenance is activated receive a notification instead of being disconnected. State (active/inactive) is persisted in `data/update-mode.yml`.
+When active, activation immediately disconnects every online player who is not allowed to bypass, and login attempts from non-bypassed players are blocked. A player bypasses if their name is listed in `bypass-names`, they are an operator, or they hold the configured `bypass-permission`. Bypassed players who are online when maintenance is activated receive a notification instead of being disconnected. The active/inactive state is operator-owned Server Configuration (`modules.update-mode.active` in `config.yml`).
 
 ### Services published
 
@@ -401,7 +407,7 @@ When active, activation immediately disconnects every online player who is not a
 
 ### Description
 
-Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers an explosion whose power, fire, and block-damage behavior are configurable. On death it creates a large explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks.
+Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour attributes are overridden. The Wither's vanilla post-charge spawn blast is intercepted through `ExplosionPrimeEvent`, cancelled, and synchronously replaced once with the configured `spawn-explosion-*` power, fire, and block-damage settings. When it reaches `half-health-threshold` it spawns `minion-count` Wither Skeletons and triggers a `half-health-explosion-*` explosion. On death it creates a `death-explosion-*` explosion and displays a boss-bar effect to players within `death-boss-bar-radius` blocks. Each of the three phases independently honors its own power, fire, and block-damage fields, including after a configuration reload.
 
 ---
 
@@ -413,4 +419,4 @@ Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour
 
 ### Description
 
-Provides three world-management commands: teleport to any loaded world's spawn, set the spawn point of the current world, and compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8).
+Provides two world-management commands: teleport to any loaded world's spawn and compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8).

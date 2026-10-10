@@ -1,22 +1,29 @@
 package de.kreiscraft.modules.startsequence;
 
+import de.kreiscraft.core.config.ConfigService;
+import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
 public final class DefaultStartSequenceService implements StartSequenceService {
 
+    private static final String MODULE = "start-sequence";
+    private static final String HAS_STARTED = "has-started";
+
     private final Scheduler scheduler;
+    private final ConfigService configService;
     private final MessageService messages;
     private final PaperPlatform platform;
-    private final StartSequenceData data;
     private StartSequenceConfig config;
 
     private final List<Scheduler.Task> activeTasks = new ArrayList<>();
@@ -27,40 +34,38 @@ public final class DefaultStartSequenceService implements StartSequenceService {
             StartSequenceConfig config,
             MessageService messages,
             PaperPlatform platform,
-            StartSequenceData data) {
+            ConfigService configService) {
         this.scheduler = scheduler;
         this.config = config;
         this.messages = messages;
         this.platform = platform;
-        this.data = data;
+        this.configService = configService;
     }
 
     @Override
     public boolean hasStarted() {
-        return data.hasStarted();
+        return configService.module(MODULE).node(HAS_STARTED).getBoolean(false);
     }
 
     @Override
     public void trigger(World world) {
-        if (data.hasStarted()) {
+        if (hasStarted()) {
             throw new IllegalStateException("Season has already started; call reset() first");
         }
-        data.setStarted(true);
+        configService.applyEdit(ServerConfigSchema.startSequenceStarted(), true);
         this.activeWorld = world;
 
-        // RusticPrism starts its counter at the configured countdown, decrements it before the
-        // first display, and launches the season once it reaches zero. The displayed numbers are
-        // therefore (countdown - 1) .. 1, one per second, with the start title one second after
-        // the final number.
-        long firstNumber = Math.max(0L, config.countdown().toSeconds() - 1L);
-        for (long number = firstNumber; number >= 1L; number--) {
+        // Render the full promise before starting: countdown, countdown - 1, ..., 1, one number
+        // per second, then the start title one second after the final number.
+        long seconds = Math.max(0L, config.countdown().toSeconds());
+        for (long number = seconds; number >= 1L; number--) {
             final int displayed = (int) number;
-            Duration delay = Duration.ofSeconds(firstNumber - number);
+            Duration delay = Duration.ofSeconds(seconds - number);
             activeTasks.add(scheduler.runLater(delay, () -> showCountdownTitle(displayed)));
         }
-        activeTasks.add(scheduler.runLater(Duration.ofSeconds(firstNumber), () -> {
+        activeTasks.add(scheduler.runLater(Duration.ofSeconds(seconds), () -> {
             showStartedTitle();
-            triggerBorderSequence(world);
+            startBorderTransition(world);
         }));
     }
 
@@ -71,7 +76,7 @@ public final class DefaultStartSequenceService implements StartSequenceService {
             activeWorld.getWorldBorder().setSize(config.initialBorderSize());
             activeWorld = null;
         }
-        data.setStarted(false);
+        configService.applyEdit(ServerConfigSchema.startSequenceStarted(), false);
     }
 
     public void updateConfig(StartSequenceConfig newConfig) {
@@ -88,45 +93,47 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     }
 
     private void showCountdownTitle(int seconds) {
-        Component title =
-                messages.render("start-sequence.countdown-title", "seconds", String.valueOf(seconds));
+        String value = String.valueOf(seconds);
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ZERO);
-        // Volume and pitch mirror RusticPrism's Sound.sound(..., 100, 100) call.
+        // Full-volume experience-orb pickup for the countdown tick.
         Sound sound = Sound.sound(
                 org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, Sound.Source.PLAYER, 100f, 100f);
-        showToAll(title, Component.empty(), times, sound);
+        showToAll(
+                player -> messages.renderFor(player, "start-sequence.countdown-title", "seconds", value),
+                player -> Component.empty(),
+                times,
+                sound);
     }
 
     private void showStartedTitle() {
-        Component title = messages.render("start-sequence.started");
-        Component subtitle = messages.render("start-sequence.started-subtitle");
         Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofSeconds(4), Duration.ZERO);
-        // Volume and pitch mirror RusticPrism's Sound.sound(..., 200, 1) call.
+        // Full-volume, low-pitch goat horn for the start title.
         Sound sound =
                 Sound.sound(org.bukkit.Sound.ITEM_GOAT_HORN_SOUND_2, Sound.Source.PLAYER, 200f, 1f);
-        showToAll(title, subtitle, times, sound);
+        showToAll(
+                player -> messages.renderFor(player, "start-sequence.started"),
+                player -> messages.renderFor(player, "start-sequence.started-subtitle"),
+                times,
+                sound);
     }
 
-    private void showToAll(Component title, Component subtitle, Title.Times times, Sound sound) {
+    private void showToAll(
+            Function<Player, Component> titleFor,
+            Function<Player, Component> subtitleFor,
+            Title.Times times,
+            Sound sound) {
         platform.server().getOnlinePlayers().forEach(p -> {
-            p.showTitle(Title.title(title, subtitle, times));
+            p.showTitle(Title.title(titleFor.apply(p), subtitleFor.apply(p), times));
             p.playSound(sound);
         });
     }
 
-    private void triggerBorderSequence(World world) {
-        // Bukkit's WorldBorder.changeSize takes a duration in ticks. The configured phases are
-        // tick values (RusticPrism parity), so derive the tick count from each Duration.
-        world.getWorldBorder()
-                .changeSize(config.targetBorderSize(), toTicks(config.phase1Duration()));
-
-        Scheduler.Task phase2Task = scheduler.runLater(config.phase1To2Delay(), () -> world.getWorldBorder()
-                .changeSize(config.targetBorderSize(), toTicks(config.phase2Duration())));
-        activeTasks.add(phase2Task);
-
-        Scheduler.Task instantTask = scheduler.runLater(config.phase2ToInstantDelay(),
-                () -> world.getWorldBorder().setSize(config.targetBorderSize()));
-        activeTasks.add(instantTask);
+    private void startBorderTransition(World world) {
+        // One continuous expansion, delegated to Minecraft. Bukkit owns the in-progress transition
+        // and Paper persists it across a graceful restart, so the plugin keeps no phase, timestamp,
+        // or remaining-duration resume state. The Duration is converted to ticks only here, at the
+        // Bukkit boundary (20 ticks = 1 second).
+        world.getWorldBorder().changeSize(config.targetBorderSize(), toTicks(config.borderDuration()));
     }
 
     private static long toTicks(Duration duration) {

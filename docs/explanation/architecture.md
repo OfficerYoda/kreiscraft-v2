@@ -24,7 +24,8 @@ make changes confidently.
 
 Modules are cohesive but not isolated. They can collaborate through declared dependencies, shared
 services, and events. For example, `chat-format` depends on `status`, while `combat` and
-`clickthrough` depend on `settings-gui`.
+`clickthrough` consume the shared, always-available `PlayerPreferencesService` instead of depending
+on the settings GUI.
 
 ---
 
@@ -37,7 +38,7 @@ de.kreiscraft/
 ├── platform/          — thin Paper/NMS wrappers (no game logic)
 ├── core/              — module registry, config, events, scheduler, commands, messages
 ├── shared/            — cross-cutting services used by multiple modules (ChatBridge, UserService, …)
-└── modules/           — 24 independently opt-in feature modules
+└── modules/           — 23 independently opt-in feature modules
 ```
 
 **Platform layer** (`platform/`)  
@@ -46,7 +47,7 @@ calls `Bukkit.getServer()` or other static methods directly. `PaperPlatform` is 
 `record(JavaPlugin, Server)` that is constructed once in the composition root and injected
 wherever it is needed. This design means that any class that operates only on `PaperPlatform`
 can be instantiated in a test without starting a real server. Other platform classes
-(`NmsWhitelist`, `OfflineInventoryReader`, `PlayerBrandProvider`) follow the same pattern: they
+(`NmsWhitelist`, `OfflinePlayerDataStore`, `PlayerBrandProvider`) follow the same pattern: they
 accept a `PaperPlatform` as a constructor argument instead of reaching into global Bukkit state.
 
 **Core layer** (`core/`)  
@@ -57,11 +58,14 @@ classes have knowledge of any specific feature; they are the engine, not the gam
 
 **Shared layer** (`shared/`)  
 Houses services that cut across modules but are not part of the core engine: `ChatBridge`,
-`UserService`/`UserListener`, `GuiRegistry`/`Gui`, and `WhitelistService`. They are constructed
-in the composition root and published to `ServiceRegistry` so any module can consume them.
+`UserService`/`UserListener`, `GuiRegistry`/`Gui`, `WhitelistService`, and the always-available
+`PlayerPreferencesService`/`PlayerPreferencesData`. They are constructed in the composition root and
+published to `ServiceRegistry` so any module can consume them. `PlayerPreferencesService` is
+published by the root rather than by a module so preferences stay available even when every
+preference-editing module is disabled.
 
 **Feature layer** (`modules/`)  
-Contains 24 feature modules, one package per feature. Each module keeps its feature-specific code
+Contains 23 feature modules, one package per feature. Each module keeps its feature-specific code
 together and registers its Bukkit listeners, Brigadier commands, and data files through the
 handles provided by `ModuleContext`. Modules that need services from other modules declare that
 dependency explicitly via `dependsOn()`, which both enforces initialization order and documents
@@ -78,14 +82,15 @@ a `KreiscraftBootstrap` and calls `bootstrap.start()`; `onDisable()` calls `boot
 instantiated and every dependency is wired. The full wiring sequence in `start()` is:
 
 1. Build `YamlConfigService` (reads `config.yml`).
-2. Build `ConfigurateMessageService` (reads the language file from config).
-3. Build `BukkitScheduler`, `EventBus`, `PaperCommandRegistrar`, `ServiceRegistry`.
-4. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`) to the registry.
-5. Construct platform-layer objects and publish them.
-6. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
-7. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
-8. Start `AutoSaveTask`.
-9. Register the `/kreiscraft reload` command.
+2. Load `PlayerPreferencesData` and build the always-available `PlayerPreferencesService`.
+3. Build `ConfigurateMessageService`, loading every language tree and resolving each recipient's persisted language through the preferences service.
+4. Build `BukkitScheduler`, `EventBus`, `PaperCommandRegistrar`, `ServiceRegistry`.
+5. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`, `PlayerPreferencesService`) to the registry.
+6. Construct platform-layer objects and publish them.
+7. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
+8. Create `ModuleRegistry`, register all 23 module instances, call `enableAll()`.
+9. Start `AutoSaveTask`.
+10. Register the `/kreiscraft reload` command.
 
 `stop()` does the inverse: close all GUIs, stop auto-save, disable all modules in reverse order,
 and unregister all Bukkit event listeners.
@@ -105,7 +110,7 @@ receives, you trace from the call site in `KreiscraftBootstrap.start()` to the m
 
 ### Registration and enable ordering
 
-After all 24 module instances are registered with `ModuleRegistry.register()`, a single call to
+After all 23 module instances are registered with `ModuleRegistry.register()`, a single call to
 `enableAll()` processes them:
 
 1. Iterate all registered modules; collect those with `enabled: true` into a candidate list.
@@ -257,12 +262,14 @@ between them. It costs a small amount of indirection but preserves full opt-in i
 
 ## `DataFile<T>` and the Separation of Config vs State
 
-`config.yml` is the admin configuration file. It is managed by humans, version-controlled, and
-should not be overwritten by runtime events. Runtime state — jail entries, saved positions,
-start-sequence flags, spawn location — changes during normal server operation and must be
-persisted independently.
+`config.yml` is the writable Server Configuration file. It holds admin-managed settings and the
+operator-owned choices that in-game commands write, such as the spawn and jail locations, the
+update-mode flag, and start-sequence completion (see ADR-10). Player and gameplay **Activity
+Data** — jail entries and restore locations, saved positions, Bedrock identities and pre-login
+authorizations, statuses, anti-cheat logs, and player settings — changes during normal server
+operation and is persisted separately.
 
-`DataFile<T>` is an abstract base class for YAML-backed runtime state:
+`DataFile<T>` is an abstract base class for YAML-backed Activity Data:
 
 ```java
 public abstract class DataFile<T> {
@@ -276,7 +283,7 @@ public abstract class DataFile<T> {
 }
 ```
 
-A concrete subclass (e.g. `SpawnData`, `JailData`, `HackLogData`) implements three abstract
+A concrete subclass (e.g. `JailData`, `HackLogData`, `PositionsData`) implements three abstract
 methods: `load(ConfigurationNode)`, `save(T, ConfigurationNode)`, and `empty()`. The `dirty`
 flag means that disk I/O only happens when something actually changed, which keeps the periodic
 save cycle cheap.
@@ -296,7 +303,7 @@ When an admin runs `/kreiscraft reload`, `ReloadCommand` executes three steps in
 
 ```java
 cfg.reload();                          // re-read config.yml from disk
-messages.reload();                     // re-read the language file from disk
+messages.reload();                     // re-read every language tree from disk
 modules.reloadConfigs(cfg.root());     // dispatch to each enabled module
 ```
 
@@ -326,7 +333,7 @@ for the implementation pattern.
 │     EventBus · CommandRegistrar · ServiceRegistry               │
 │                                                                 │
 │  2. Build platform layer                                        │
-│     PaperPlatform · NmsWhitelist · OfflineInventoryReader       │
+│     PaperPlatform · NmsWhitelist · OfflinePlayerDataStore       │
 │     PlayerBrandProvider                                         │
 │                                                                 │
 │  3. Build shared layer                                          │
@@ -372,9 +379,16 @@ Module dependency graph example (subset):
                                           WebSocket
                                             clients
 
-  settings-gui ◄── combat
-```
+  PlayerPreferencesService ◄── combat
+                          ◄── clickthrough
+                          ◄── settings-gui (GUI client)
 
 `status` must be enabled before `chat-format` starts (declared via `dependsOn`). `api` and
 `chat-format` share `ChatBridge` without any declared dependency on each other — the pub/sub bus
-is the only connection.
+is the only connection. `PlayerPreferencesService` is published by the composition root, so
+`combat`, `clickthrough`, and `settings-gui` consume it without depending on one another.
+
+The composition root also publishes a `ModuleEnablement` view backed by the `ModuleRegistry`.
+`settings-gui` uses it to omit controls whose owning module is disabled, so the GUI presents only
+features the running server actually offers, while still taking no declared dependency on those
+modules.

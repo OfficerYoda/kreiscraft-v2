@@ -26,9 +26,9 @@ import org.bukkit.persistence.PersistentDataType;
  * it is returned to the inventory when there is space, otherwise it is dropped glowing
  * and pickup-protected for its owner for a bounded window.
  *
- * <p>The removal is swept continuously (mirroring the legacy RusticPrism behaviour of
- * de-equipping every tick while in combat) rather than only on a glide attempt, so a
- * tagged player cannot keep wearing an elytra without trying to fly.
+ * <p>The removal is swept continuously (de-equipping every tick while in combat)
+ * rather than only on a glide attempt, so a tagged player cannot keep wearing an
+ * elytra without trying to fly.
  *
  * <p>Drop protection is time-bounded and its PDC tags are removed once the window
  * expires, so no item stays protected forever.
@@ -45,7 +45,7 @@ public final class ElytraDenyListener implements PriorityListener {
 
     private static final long DROP_PROTECT_MILLIS = 30_000L;
 
-    /** Re-check cadence for tagged players — every server tick, matching RusticPrism's continuous sweep. */
+    /** Re-check cadence for tagged players — every server tick, matching the continuous sweep. */
     private static final Duration SWEEP_PERIOD = Duration.ofMillis(50);
 
     private final CombatService service;

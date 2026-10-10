@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusService;
+import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
@@ -19,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
 import org.junit.jupiter.api.AfterEach;
@@ -37,6 +40,9 @@ class ChatFormatListenerTest {
 
     @Mock
     private StatusService statusService;
+
+    @Mock
+    private MessageService messages;
 
     /**
      * Separate mock Server used for PaperPlatform. We cannot pass MockBukkit's ServerMock
@@ -60,6 +66,7 @@ class ChatFormatListenerTest {
         // Use the Mockito-mocked Server for the platform so sendMessage is a safe no-op.
         platform = new PaperPlatform(plugin, mockServer);
         lenient().when(statusService.get(any(UUID.class))).thenReturn(Status.defaults());
+        lenient().when(messages.render("prefix")).thenReturn(Component.text("[Kreiscraft]"));
     }
 
     @AfterEach
@@ -77,7 +84,7 @@ class ChatFormatListenerTest {
     }
 
     private ChatFormatListener listenerWith(ChatFormatConfig config) {
-        return new ChatFormatListener(() -> config, statusService, platform, chatBridge);
+        return new ChatFormatListener(() -> config, statusService, platform, chatBridge, messages);
     }
 
     // ── tests ─────────────────────────────────────────────────────────────────
@@ -128,10 +135,10 @@ class ChatFormatListenerTest {
     }
 
     @Test
-    void onChat_renderedComponentContainsTeamPrefixAndSuffix() {
+    void onChat_presentPlayerAffixesHaveExactlyOneSurroundingSpace() {
         PlayerMock player = server.addPlayer("Dave");
         when(statusService.get(player.getUniqueId()))
-                .thenReturn(new Status("[Owner]", "[/Owner]", 0xFF4400));
+                .thenReturn(new Status("<gold>[Owner] </gold>", "<gray> [/Owner]</gray>", 0xFF4400));
         AsyncChatEvent event = mockEvent(player, "sup");
 
         List<ChatBridgeEvent> captured = new ArrayList<>();
@@ -142,10 +149,58 @@ class ChatFormatListenerTest {
         assertThat(captured).hasSize(1);
         String plain = PlainTextComponentSerializer.plainText()
                 .serialize(captured.getFirst().rendered());
-        assertThat(plain).contains("[Owner]");
-        assertThat(plain).contains("[/Owner]");
-        assertThat(plain).contains("Dave");
-        assertThat(plain).contains("sup");
+        assertThat(plain).isEqualTo("[Kreiscraft] [Owner] Dave [/Owner]: sup");
+    }
+
+    @Test
+    void onChat_absentPlayerAffixesAddNoWhitespace() {
+        PlayerMock player = server.addPlayer("Dave");
+        when(statusService.get(player.getUniqueId())).thenReturn(new Status("", "", 0xFF4400));
+        AsyncChatEvent event = mockEvent(player, "sup");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        ChatFormatConfig config = new ChatFormatConfig(
+                null,
+                false,
+                "<kc-prefix> <player-prefix><name-colored><player-suffix>: <body>");
+        listenerWith(config).onChat(event);
+
+        String plain = PlainTextComponentSerializer.plainText()
+                .serialize(captured.getFirst().rendered());
+        assertThat(plain).isEqualTo("[Kreiscraft] Dave: sup");
+    }
+
+    @Test
+    void onChat_nameIsColouredWithExactStatusColour() {
+        PlayerMock player = server.addPlayer("Heidi");
+        when(statusService.get(player.getUniqueId()))
+                .thenReturn(new Status("[Owner]", "[/Owner]", 0xFF4400));
+        AsyncChatEvent event = mockEvent(player, "colour me");
+
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(event);
+
+        assertThat(captured).hasSize(1);
+        TextComponent name = findText(captured.getFirst().rendered(), "Heidi");
+        assertThat(name).isNotNull();
+        assertThat(name.style().color()).isEqualTo(TextColor.color(0xFF4400));
+    }
+
+    private static TextComponent findText(Component component, String content) {
+        if (component instanceof TextComponent text && text.content().equals(content)) {
+            return text;
+        }
+        for (Component child : component.children()) {
+            TextComponent found = findText(child, content);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     @Test

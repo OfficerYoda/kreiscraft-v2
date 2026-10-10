@@ -49,7 +49,7 @@ The same pattern applies to any service that accepts collaborators through its c
 
 Use MockBukkit. It provides a fake `Server`, plugin manager, world, and players.
 
-**Setup / teardown pattern** (`PluginHiderListenerTest.java`):
+**Setup / teardown pattern** (`CombatListenerTest.java`):
 
 ```java
 class MyListenerTest {

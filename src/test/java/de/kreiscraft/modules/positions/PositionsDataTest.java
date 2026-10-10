@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.UUID;
 import org.bukkit.Location;
 import org.junit.jupiter.api.AfterEach;
@@ -77,6 +78,53 @@ class PositionsDataTest {
         assertThat(loaded.location().getZ()).isEqualTo(loc.getZ());
         assertThat(loaded.location().getWorld()).isNotNull();
         assertThat(loaded.location().getWorld().getName()).isEqualTo("world");
+    }
+
+    @Test
+    void reload_restoresPositionProvenance() throws IOException {
+        UUID owner = UUID.randomUUID();
+        UUID saver = UUID.randomUUID();
+        Instant savedAt = Instant.parse("2026-10-08T12:34:56Z");
+        Location location = new Location(server.getWorld("world"), 1, 2, 3);
+        PositionsData data = new PositionsData(tmp);
+        data.load();
+        data.update(m -> m.computeIfAbsent(owner, ignored -> new java.util.LinkedHashMap<>())
+                .put("home", new PositionEntry(location, saver, "Alex", savedAt)));
+        data.flushIfDirty();
+
+        PositionsData reloaded = new PositionsData(tmp);
+        reloaded.load();
+
+        PositionEntry entry = reloaded.get().get(owner).get("home");
+        assertThat(entry.savedBy()).isEqualTo(saver);
+        assertThat(entry.savedByName()).isEqualTo("Alex");
+        assertThat(entry.savedAt()).isEqualTo(savedAt);
+    }
+
+    @Test
+    void reload_acceptsLegacyPositionWithoutProvenance() throws IOException {
+        UUID owner = UUID.randomUUID();
+        Files.createDirectories(tmp.resolve("data"));
+        Files.writeString(tmp.resolve("data/positions.yml"), """
+                %s:
+                  legacy:
+                    location:
+                      world: world
+                      x: 1.0
+                      y: 64.0
+                      z: 2.0
+                      yaw: 0.0
+                      pitch: 0.0
+                """.formatted(owner));
+
+        PositionsData data = new PositionsData(tmp);
+        data.load();
+
+        PositionEntry entry = data.get().get(owner).get("legacy");
+        assertThat(entry.location().getWorld().getName()).isEqualTo("world");
+        assertThat(entry.savedBy()).isNull();
+        assertThat(entry.savedByName()).isNull();
+        assertThat(entry.savedAt()).isNull();
     }
 
     @Test
