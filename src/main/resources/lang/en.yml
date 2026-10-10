@@ -13,6 +13,7 @@ server-config:
   entry: "<gold>Server Configuration <dark_gray>(admins only)"
   title: "<gray>Server Configuration"
   category-title: "<gray>Server Configuration: <category>"
+  category-disabled: "<dark_gray> | disabled</dark_gray>"
   category:
     modules: "Modules"
     core: "Core"

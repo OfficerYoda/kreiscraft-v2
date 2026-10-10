@@ -8,6 +8,7 @@ import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
@@ -103,6 +104,22 @@ public final class ServerConfigGui {
                 .toList();
     }
 
+    /**
+     * The module-enable field declared for {@code category}, or empty when the category has no enable
+     * flag (such as {@code core}, which is not a module).
+     */
+    static Optional<ConfigField> moduleToggle(ServerConfigSchema schema, String category) {
+        return schema.find(List.of("modules", category, "enabled"));
+    }
+
+    /** Whether the module backing {@code category} is currently enabled. */
+    static boolean categoryEnabled(ServerConfigService editor, String category) {
+        return moduleToggle(editor.schema(), category)
+                .map(editor::current)
+                .map(Boolean.TRUE::equals)
+                .orElse(true);
+    }
+
     /** Stable slot for a field, with each related group occupying one row. */
     static int fieldSlot(ServerConfigSchema schema, String category, ConfigField field) {
         if (isModuleEnabled(field)) {
@@ -173,9 +190,17 @@ public final class ServerConfigGui {
         return new AbstractItem() {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
-                int count = fieldsIn(editor.schema(), category).size() - 1; // -1: don´t count the module toggle
+                int count =
+                        fieldsIn(editor.schema(), category).size()
+                                - (moduleToggle(editor.schema(), category).isPresent() ? 1 : 0);
                 Component name = messages.renderFor(viewer, categoryKey(category))
-                        .append(Component.text(" (" + count + ")").color(NamedTextColor.DARK_GRAY));
+                        .append(Component.text(" (" + count + ")")
+                                .color(NamedTextColor.DARK_GRAY));
+
+                if (!categoryEnabled(editor, category)) {
+                    name = name.append(messages.renderFor(viewer, "server-config.category-disabled"));
+                }
+
                 return new ItemWrapper(named(categoryMaterial(category), name));
             }
 

@@ -9,6 +9,7 @@ import de.kreiscraft.core.config.ConfigLifecycle;
 import de.kreiscraft.core.config.ConfigValidators;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.config.YamlConfigService;
+import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.testsupport.RecordingMessageService;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -181,6 +182,64 @@ class ServerConfigGuiTest {
             assertThat(stackAt(gui, ServerConfigGui.entrySlot(index)).getType())
                     .isNotIn(org.bukkit.Material.CHEST, org.bukkit.Material.PAPER);
         }
+    }
+
+    @Test
+    void categoryEntry_marksDisabledModule() {
+        Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
+        int firework = ServerConfigGui.categories(editor.schema()).indexOf("firework");
+
+        assertThat(plain(stackAt(gui, ServerConfigGui.entrySlot(firework))))
+                .contains("server-config.category-disabled");
+    }
+
+    @Test
+    void categoryEntry_omitsDisabledMarkerForEnabledModule() {
+        Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
+        int combat = ServerConfigGui.categories(editor.schema()).indexOf("combat");
+
+        assertThat(plain(stackAt(gui, ServerConfigGui.entrySlot(combat))))
+                .doesNotContain("server-config.category-disabled");
+    }
+
+    @Test
+    void categoryEntry_coreHasNoEnableFlagAndIsNeverMarkedDisabled() {
+        Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
+        int core = ServerConfigGui.categories(editor.schema()).indexOf("core");
+
+        assertThat(plain(stackAt(gui, ServerConfigGui.entrySlot(core))))
+                .doesNotContain("server-config.category-disabled");
+    }
+
+    @Test
+    void categoryEntry_countExcludesTheModuleToggleOnlyWhenOneExists() {
+        Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
+        List<String> categories = ServerConfigGui.categories(editor.schema());
+
+        int combat = categories.indexOf("combat");
+        assertThat(plain(stackAt(gui, ServerConfigGui.entrySlot(combat))))
+                .contains("(" + (ServerConfigGui.fieldsIn(editor.schema(), "combat").size() - 1) + ")");
+
+        int core = categories.indexOf("core");
+        assertThat(plain(stackAt(gui, ServerConfigGui.entrySlot(core))))
+                .contains("(" + ServerConfigGui.fieldsIn(editor.schema(), "core").size() + ")");
+    }
+
+    @Test
+    void categoryDisabledMarker_rendersTheLocalizedSuffix(@TempDir Path tmp) throws IOException {
+        ConfigurateMessageService english =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "en", server);
+        assertThat(
+                PlainTextComponentSerializer.plainText()
+                        .serialize(english.render("server-config.category-disabled")))
+                                .isEqualTo(" | disabled");
+
+        ConfigurateMessageService german =
+                new ConfigurateMessageService(tmp, getClass().getClassLoader(), "de", server);
+        assertThat(
+                PlainTextComponentSerializer.plainText()
+                        .serialize(german.render("server-config.category-disabled")))
+                                .isEqualTo(" | deaktiviert");
     }
 
     @Test
