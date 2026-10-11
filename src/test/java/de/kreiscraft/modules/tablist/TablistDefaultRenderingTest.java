@@ -52,8 +52,7 @@ class TablistDefaultRenderingTest {
                 Clock.fixed(Instant.parse("2026-01-01T11:34:56Z"), ZoneId.of("Europe/Berlin")));
 
         TablistConfig cfg = new TablistConfig(null, null, null);
-        TablistUpdater updater =
-                new TablistUpdater(server, resolver, cfg.headerTemplate(), cfg.footerTemplate());
+        TablistUpdater updater = new TablistUpdater(server, resolver, () -> cfg);
         updater.tick();
 
         ArgumentCaptor<Component> header = ArgumentCaptor.forClass(Component.class);

@@ -109,7 +109,7 @@ class DefaultStartSequenceServiceTest {
     }
 
     private DefaultStartSequenceService createService() {
-        return new DefaultStartSequenceService(scheduler, config, messages, platform, configService);
+        return new DefaultStartSequenceService(scheduler, () -> config, messages, platform, configService);
     }
 
     private YamlConfigService reopenConfig() throws IOException {
@@ -239,7 +239,7 @@ class DefaultStartSequenceServiceTest {
         assertThat(startedMoves()).hasSize(1);
 
         DefaultStartSequenceService restarted = new DefaultStartSequenceService(
-                scheduler, config, messages, platform, reopenConfig());
+                scheduler, () -> config, messages, platform, reopenConfig());
 
         assertThat(restarted.hasStarted()).isTrue();
         assertThatThrownBy(() -> restarted.trigger(world)).isInstanceOf(IllegalStateException.class);
@@ -285,7 +285,7 @@ class DefaultStartSequenceServiceTest {
         svc.reset();
 
         DefaultStartSequenceService restarted = new DefaultStartSequenceService(
-                scheduler, config, messages, platform, reopenConfig());
+                scheduler, () -> config, messages, platform, reopenConfig());
 
         assertThat(restarted.hasStarted()).isFalse();
     }
@@ -306,7 +306,7 @@ class DefaultStartSequenceServiceTest {
         svc.trigger(world);
 
         DefaultStartSequenceService restarted = new DefaultStartSequenceService(
-                scheduler, config, messages, platform, reopenConfig());
+                scheduler, () -> config, messages, platform, reopenConfig());
         assertThat(restarted.hasStarted()).isTrue();
         assertThatThrownBy(() -> restarted.trigger(world)).isInstanceOf(IllegalStateException.class);
     }

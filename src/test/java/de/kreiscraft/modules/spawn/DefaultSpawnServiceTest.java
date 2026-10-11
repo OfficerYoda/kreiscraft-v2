@@ -38,7 +38,7 @@ class DefaultSpawnServiceTest {
         world = server.addSimpleWorld("world");
         config = new YamlConfigService(tmp, getClass().getClassLoader());
         moduleConfig = new SpawnConfig(50, null, null);
-        service = new DefaultSpawnService(config, moduleConfig);
+        service = new DefaultSpawnService(config, () -> moduleConfig);
     }
 
     @AfterEach
@@ -90,7 +90,7 @@ class DefaultSpawnServiceTest {
         YamlConfigService reopened =
                 new YamlConfigService(tmp, getClass().getClassLoader());
         DefaultSpawnService restarted =
-                new DefaultSpawnService(reopened, new SpawnConfig(50, null, null));
+                new DefaultSpawnService(reopened, () -> new SpawnConfig(50, null, null));
 
         assertThat(restarted.spawnLocation()).contains(loc);
         Player player = mock(Player.class);
@@ -165,7 +165,7 @@ class DefaultSpawnServiceTest {
         when(player.getLocation()).thenReturn(new Location(world, 30, 64, 0));
         assertThat(service.isInSpawnAccessZone(player)).isTrue(); // within 50
 
-        service.updateConfig(new SpawnConfig(20, null, null));
+        moduleConfig = new SpawnConfig(20, null, null);
         assertThat(service.isInSpawnAccessZone(player)).isFalse(); // 30 > reloaded 20
     }
 
@@ -223,7 +223,7 @@ class DefaultSpawnServiceTest {
         when(player.getLocation()).thenReturn(new Location(world, 40, 64, 0));
         assertThat(service.isInGlideZone(player)).isTrue();
 
-        service.updateConfig(new SpawnConfig(30, null, null));
+        moduleConfig = new SpawnConfig(30, null, null);
         assertThat(service.isInGlideZone(player)).isFalse();
     }
 

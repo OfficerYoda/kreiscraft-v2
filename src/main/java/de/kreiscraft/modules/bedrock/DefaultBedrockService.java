@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
@@ -16,6 +17,10 @@ import java.util.logging.Logger;
  * <p>A registered Pending Bedrock Authorization is bound to the first observed UUID whose
  * normalized name matches. Binding also whitelists the observed identity; a bound authorization is
  * never rebound to a different UUID, so replacing it requires explicit removal and re-registration.
+ *
+ * <p>The module config is read live through the supplied {@link Supplier} so a reload is observed
+ * without any push. Detection runs off the main thread ({@code AsyncPlayerPreLoginEvent}), so the
+ * module holds the backing config in a {@code volatile} field.
  *
  * <p>Thread-safety note: the data mutations are safe to call from an async context only because the
  * caller wraps {@link #handleLogin(String, UUID)} in {@code Scheduler.runOnMain} — the underlying
@@ -27,12 +32,12 @@ public final class DefaultBedrockService implements BedrockService {
     private final BedrockAuthorizationData authorizationData;
     private final WhitelistService whitelist;
     private final Logger logger;
-    private volatile BedrockConfig config;
+    private final Supplier<BedrockConfig> config;
 
     public DefaultBedrockService(
             BedrockData playerData,
             BedrockAuthorizationData authorizationData,
-            BedrockConfig config,
+            Supplier<BedrockConfig> config,
             WhitelistService whitelist,
             Logger logger) {
         this.playerData = Objects.requireNonNull(playerData, "playerData");
@@ -44,13 +49,13 @@ public final class DefaultBedrockService implements BedrockService {
 
     @Override
     public boolean isBedrock(String playerName) {
-        return playerName.startsWith(config.prefix());
+        return playerName.startsWith(config.get().prefix());
     }
 
     @Override
     public String normalize(String name) {
         Objects.requireNonNull(name, "name");
-        String prefix = config.prefix();
+        String prefix = config.get().prefix();
         String body = name;
         if (!prefix.isEmpty() && body.regionMatches(true, 0, prefix, 0, prefix.length())) {
             body = body.substring(prefix.length());
@@ -64,7 +69,7 @@ public final class DefaultBedrockService implements BedrockService {
      * prefix still routes through the Bedrock whitelist path.
      */
     private String prefixed(String name) {
-        String prefix = config.prefix();
+        String prefix = config.get().prefix();
         if (prefix.isEmpty() || name.regionMatches(true, 0, prefix, 0, prefix.length())) {
             return name;
         }
@@ -134,10 +139,5 @@ public final class DefaultBedrockService implements BedrockService {
     @Override
     public Collection<BedrockRecord> knownPlayers() {
         return Collections.unmodifiableCollection(playerData.get().values());
-    }
-
-    /** Called by {@link BedrockModule#onConfigReload} to propagate updated config. */
-    public void updateConfig(BedrockConfig config) {
-        this.config = Objects.requireNonNull(config, "config");
     }
 }

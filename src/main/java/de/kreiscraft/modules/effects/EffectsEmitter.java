@@ -3,6 +3,7 @@ package de.kreiscraft.modules.effects;
 import de.kreiscraft.core.scheduler.Scheduler;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Server;
@@ -19,14 +20,20 @@ import org.bukkit.entity.Player;
 public final class EffectsEmitter {
 
     private final DefaultEffectsService service;
+    private final Supplier<EffectsConfig> config;
     private final Server server;
     private final Scheduler scheduler;
 
     private Scheduler.Task task;
 
     public EffectsEmitter(
-            DefaultEffectsService service, Server server, Scheduler scheduler, Duration schedule) {
+            DefaultEffectsService service,
+            Supplier<EffectsConfig> config,
+            Server server,
+            Scheduler scheduler,
+            Duration schedule) {
         this.service = service;
+        this.config = config;
         this.server = server;
         this.scheduler = scheduler;
         reschedule(schedule);
@@ -52,7 +59,7 @@ public final class EffectsEmitter {
     }
 
     private void emit() {
-        EffectsConfig cfg = service.getConfig();
+        EffectsConfig cfg = config.get();
         for (Player player : server.getOnlinePlayers()) {
             if (!service.isEnabled(player.getUniqueId())) {
                 continue;

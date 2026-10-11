@@ -22,7 +22,13 @@ import org.spongepowered.configurate.ConfigurationNode;
 
 public final class XxxModule implements Module {
 
-    // Store config and service as fields so onConfigReload() can update them.
+    // Hold the config in a plain field and hand out () -> this.config (a Supplier) to any
+    // listener, command, or service that reads config at event time. Those objects then
+    // observe the new record after onConfigReload() swaps the field — see
+    // docs/how-to/reload-configuration.md.
+    //
+    // If any consumer reads config off the main thread (e.g. an AsyncChatEvent handler),
+    // mark the field `volatile` so the reload is visible to that thread.
     private XxxConfig config;
     private XxxService service; // remove if no service interface
 
@@ -45,11 +51,11 @@ public final class XxxModule implements Module {
         //    to abort startup cleanly.
         try {
             this.config = ctx.moduleConfig().get(XxxConfig.class);
+            if (this.config == null) {
+                this.config = new XxxConfig(/* safe defaults */);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
-        }
-        if (config == null) {
-            config = new XxxConfig(/* safe defaults */);
         }
 
         // 2. Load persistent data (if any).
@@ -63,11 +69,12 @@ public final class XxxModule implements Module {
         ctx.services().get(ConfigService.class).register(data);
 
         // 3. Build and publish your service (so other modules can depend on it).
-        this.service = new DefaultXxxService(data, config);
+        //    Pass () -> this.config so the service always reads the current config.
+        this.service = new DefaultXxxService(data, () -> this.config);
         ctx.services().publish(XxxService.class, service);
 
-        // 4. Register event listeners.
-        ctx.events().register(new XxxListener(service));
+        // 4. Register event listeners. Pass () -> this.config if the listener reads config.
+        ctx.events().register(new XxxListener(service, () -> this.config));
 
         // 5. Register commands (MUST happen inside enable() — Brigadier lifecycle).
         ctx.commands().register(
@@ -88,21 +95,25 @@ public final class XxxModule implements Module {
 
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
-        // Re-deserialize config and propagate to live objects.
+        // Re-deserialize and swap the whole field. Suppliers handed out above observe the
+        // new value on their next .get() — nothing else to push.
         try {
             this.config = moduleConfig.get(XxxConfig.class);
+            if (this.config == null) {
+                this.config = new XxxConfig(/* safe defaults */);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
-        }
-        if (config == null) {
-            config = new XxxConfig(/* safe defaults */);
-        }
-        if (service != null) {
-            service.updateConfig(config); // only if your service caches config
         }
     }
 }
 ```
+
+The config field is a plain field. Consumers (listeners, services, commands) receive a
+`Supplier<XxxConfig>` built as `() -> this.config`, so they read the record that
+`onConfigReload()` most recently assigned. **If any consumer reads config off the main thread**
+(an `AsyncChatEvent` handler, an async task), mark the field `volatile`; a plain field is not
+guaranteed visible across threads.
 
 ---
 
@@ -217,6 +228,7 @@ public final class XxxData extends DataFile<XxxData.XxxState> {
 ```java
 package de.kreiscraft.modules.xxx;
 
+import java.util.function.Supplier;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -224,24 +236,40 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 /**
  * Bukkit event listener for the xxx module.
- * Register via ctx.events().register(new XxxListener(service)) in XxxModule.enable().
- * Unregistration is automatic — do not call HandlerList.unregisterAll() manually.
+ * Register via ctx.events().register(new XxxListener(service, () -> this.config)) in
+ * XxxModule.enable(). Unregistration is automatic — do not call HandlerList.unregisterAll()
+ * manually.
+ *
+ * <p>The config arrives as a {@link Supplier}, never as a plain record: read it with
+ * {@code config.get()} inside the handler so a {@code /kreiscraft reload} is visible on the
+ * next event. Holding the record itself would pin the value loaded at enable time.
  */
 public final class XxxListener implements Listener {
 
     private final XxxService service;
+    private final Supplier<XxxConfig> config;
 
-    public XxxListener(XxxService service) {
+    public XxxListener(XxxService service, Supplier<XxxConfig> config) {
         this.service = service;
+        this.config = config;
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        // Example: notify the service when a player joins.
+        XxxConfig cfg = config.get(); // always the latest value after /kreiscraft reload
+        // Example: gate on config, then notify the service when a player joins.
+        if (cfg.exampleValue() <= 0) {
+            return;
+        }
         service.onPlayerJoin(event.getPlayer());
     }
 }
 ```
+
+Leave the config out of the listener entirely when it only delegates to the service — pass the
+config to the service (`new DefaultXxxService(data, () -> this.config)`) and let the listener hold just
+`XxxService`. Either topology is fine; the rule is that **whoever reads config at event time holds a
+`Supplier`, never the record**. See [reload-configuration](../how-to/reload-configuration.md).
 
 Alternatively, implement `de.kreiscraft.core.event.PriorityListener` (a sub-interface of `Listener`) as a documentation marker when a specific priority is important:
 

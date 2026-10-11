@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import de.kreiscraft.core.message.PlaceholderResolver;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,10 @@ class TablistUpdaterTest {
     private static final String HEADER_TPL = "<gradient:#5555ff:#55ffff>Kreiscraft</gradient>";
     private static final String FOOTER_TPL = "TPS: %tps% | Players: %server_players%";
 
+    private static TablistConfig cfg(String header, String footer) {
+        return new TablistConfig(null, header, footer);
+    }
+
     @SuppressWarnings("unchecked")
     private void stubTwoPlayers() {
         when(server.getOnlinePlayers()).thenReturn((Collection) List.of(alice, bob));
@@ -50,7 +55,7 @@ class TablistUpdaterTest {
     void tick_callsSendPlayerListHeaderAndFooter_onEachOnlinePlayerExactlyOnce() {
         stubTwoPlayers();
         stubDefaultTemplates();
-        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
+        TablistUpdater updater = new TablistUpdater(server, resolver, () -> cfg(HEADER_TPL, FOOTER_TPL));
 
         updater.tick();
 
@@ -62,7 +67,7 @@ class TablistUpdaterTest {
     void tick_callsResolveString_onEachPlayerForBothTemplates() {
         stubTwoPlayers();
         stubDefaultTemplates();
-        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
+        TablistUpdater updater = new TablistUpdater(server, resolver, () -> cfg(HEADER_TPL, FOOTER_TPL));
 
         updater.tick();
 
@@ -76,7 +81,7 @@ class TablistUpdaterTest {
     @SuppressWarnings("unchecked")
     void tick_withNoOnlinePlayers_doesNotCallSendPlayerListHeaderAndFooter() {
         when(server.getOnlinePlayers()).thenReturn((Collection) List.of());
-        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
+        TablistUpdater updater = new TablistUpdater(server, resolver, () -> cfg(HEADER_TPL, FOOTER_TPL));
 
         updater.tick();
 
@@ -94,8 +99,9 @@ class TablistUpdaterTest {
         when(resolver.resolveString(eq(newHeader), eq(bob))).thenReturn("New Header");
         when(resolver.resolveString(eq(newFooter), eq(bob))).thenReturn("new footer");
 
-        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
-        updater.templates(newHeader, newFooter);
+        AtomicReference<TablistConfig> holder = new AtomicReference<>(cfg(HEADER_TPL, FOOTER_TPL));
+        TablistUpdater updater = new TablistUpdater(server, resolver, holder::get);
+        holder.set(cfg(newHeader, newFooter));
 
         updater.tick();
 
@@ -109,7 +115,7 @@ class TablistUpdaterTest {
     void sendTo_resolvesAndSendsToTheGivenPlayerOnly() {
         when(resolver.resolveString(eq(HEADER_TPL), eq(alice))).thenReturn("Kreiscraft");
         when(resolver.resolveString(eq(FOOTER_TPL), eq(alice))).thenReturn("footer");
-        TablistUpdater updater = new TablistUpdater(server, resolver, HEADER_TPL, FOOTER_TPL);
+        TablistUpdater updater = new TablistUpdater(server, resolver, () -> cfg(HEADER_TPL, FOOTER_TPL));
 
         updater.sendTo(alice);
 

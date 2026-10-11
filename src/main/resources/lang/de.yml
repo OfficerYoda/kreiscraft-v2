@@ -21,7 +21,8 @@ server-config:
   category:
     modules: "Module"
     core: "Core"
-    admin: "Admin"
+    admin: "Links"
+    ai-chat: "KI-Chat"
     api: "HTTP-API"
     anti-cheat: "Anti-Cheat"
     bedrock: "Bedrock"
@@ -50,6 +51,9 @@ server-config:
     admin-links-website: "Webseite"
     admin-links-discord: "Discord"
     admin-links-youtube: "YouTube"
+    ai-chat-ai-trigger: "KI Auslößer"
+    ai-chat-context-msg-count: "Kontext Nachrichten Anzahl"
+    ai-chat-always-supported-players: "Immer unterstütze Spieler"
     anti-cheat-kick-on-fabric-forge: "Bei Fabric/Forge kicken"
     anti-cheat-handshake-grace-duration: "Handshake-Karenzzeit"
     bedrock-prefix: "Namenspräfix"
@@ -108,9 +112,6 @@ server-config:
   value-none: "<gray>nicht gesetzt"
   edit-rejected: "<prefix> <red>Ungültiger Wert: <reason>"
   edit-failed: "<prefix> <red>Speichern fehlgeschlagen; nichts geändert."
-  input:
-    prompt: "<prefix> <yellow>Gib einen neuen Wert für <field> (<kind>) im Chat ein oder schreibe 'cancel'."
-    cancelled: "<prefix> <gray>Eingabe abgebrochen."
   list:
     blank: "<prefix> <red>Gib einen nicht leeren Wert ein."
     duplicate: "<prefix> <red><value> ist bereits vorhanden."
@@ -139,7 +140,7 @@ api:
   link-prompt-info: "<yellow>Website möchte sich mit deinem Account verknüpfen"
   link-prompt-accept: "<green>Akzeptieren"
   link-prompt-decline: "<red>Ablehnen"
-  chat-format-from-web: "<gray>[WEB]</gray> <content>"
+  chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Deine Website-Verknüpfung wurde aufgehoben."
 anti-cheat:
   cheat-kick: "<red>Bitte entferne deinen Cheat-Client (<detail>)."

@@ -8,14 +8,12 @@ import de.kreiscraft.modules.jail.commands.JailCommand;
 import de.kreiscraft.modules.jail.commands.SetJailCommand;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.spongepowered.configurate.ConfigurationNode;
 
 /** Module that provides player-jailing functionality via {@link JailService}. */
 public final class JailModule implements Module {
 
     private JailConfig config;
-    private AtomicReference<JailConfig> configRef;
     private DefaultJailService service;
 
     @Override
@@ -50,11 +48,8 @@ public final class JailModule implements Module {
         this.service = new DefaultJailService(data, ctx.services().get(ConfigService.class));
         ctx.services().publish(JailService.class, service);
 
-        // Live config reference for the listener's blocked-commands enforcement
-        this.configRef = new AtomicReference<>(config);
-
-        // Listener
-        ctx.events().register(new JailListener(service, configRef, ctx.messages()));
+        // Listener — reads the live config via a Supplier so /kreiscraft reload propagates
+        ctx.events().register(new JailListener(service, () -> this.config, ctx.messages()));
 
         // Commands — /jail and /kerker are identical toggles; /setjail stores the jail location
         ctx.commands()
@@ -74,9 +69,6 @@ public final class JailModule implements Module {
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
             this.config = moduleConfig.get(JailConfig.class);
-            if (configRef != null) {
-                configRef.set(config);
-            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

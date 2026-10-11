@@ -330,37 +330,36 @@ class ServerConfigNavigatorTest {
     // ------------------------------------------------------------------
 
     @Test
-    void chatInput_appliesStringFieldAndReopensPage() throws Exception {
+    void stringField_opensAnvilAndSavesValue() {
         navigator.openAdmin(player);
         captureLastWindow();
         openCategory("chat-format");
 
         ConfigField format = field("chat-format", "format");
         clickField("chat-format", format);
-        assertThat(messages.sentKeys).contains("server-config.input.prompt");
+        captureLastAnvil();
 
-        player.chat("NEW FORMAT");
-        server.getScheduler().waitAsyncEventsFinished();
+        lastRename.accept("NEW FORMAT");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+        captureLastWindow();
 
         assertThat(editor.current(format)).isEqualTo("NEW FORMAT");
-        verify(gui, atLeast(1)).open(any(), any(), any(), any());
     }
 
     @Test
-    void chatInput_cancel_doesNotEdit() throws Exception {
+    void stringField_trimsWhitespaceBeforeSaving() {
         navigator.openAdmin(player);
         captureLastWindow();
         openCategory("chat-format");
 
         ConfigField format = field("chat-format", "format");
-        String before = (String) editor.current(format);
         clickField("chat-format", format);
+        captureLastAnvil();
 
-        player.chat("cancel");
-        server.getScheduler().waitAsyncEventsFinished();
+        lastRename.accept("  NEW FORMAT  ");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
 
-        assertThat(editor.current(format)).isEqualTo(before);
-        assertThat(messages.sentKeys).contains("server-config.input.cancelled");
+        assertThat(editor.current(format)).isEqualTo("NEW FORMAT");
     }
 
     @Test
@@ -374,7 +373,6 @@ class ServerConfigNavigatorTest {
 
         assertThat(lastAnvilUpper.getSize()).isEqualTo(3);
         assertThat(lastAnvilLower.getSize()).isEqualTo(36);
-        assertThat(messages.sentKeys).doesNotContain("server-config.input.prompt");
     }
 
     @Test

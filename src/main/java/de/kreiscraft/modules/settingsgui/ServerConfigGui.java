@@ -63,8 +63,8 @@ public final class ServerConfigGui {
         /** Leaves Server Configuration and reopens the Player Settings root. */
         void openSettingsRoot(Player player);
 
-        /** Closes the GUI and asks the player to type a free-form value in chat. */
-        void requestTextInput(Player player, ConfigField field, ServerConfigPage page);
+        /** Opens the anvil editor for a free-form string field. */
+        void openStringEditor(Player player, ConfigField field, ServerConfigPage page);
 
         /** Opens the anvil editor for a list-valued field. */
         void openListEditor(Player player, ConfigField field, ServerConfigPage page);
@@ -250,7 +250,7 @@ public final class ServerConfigGui {
                     return;
                 }
                 if (ServerConfigControls.isTextEntry(field)) {
-                    navigator.requestTextInput(player, field, ServerConfigPage.of(category));
+                    navigator.openStringEditor(player, field, ServerConfigPage.of(category));
                     return;
                 }
                 Object current = editor.current(field);
@@ -351,6 +351,7 @@ public final class ServerConfigGui {
         return switch (category) {
             case "core" -> Material.COMMAND_BLOCK;
             case "admin" -> Material.ENDER_PEARL;
+            case "ai-chat" -> Material.LECTERN;
             case "api" -> Material.REDSTONE_TORCH;
             case "anti-cheat" -> Material.SHIELD;
             case "bedrock" -> Material.BEDROCK;

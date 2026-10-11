@@ -6,9 +6,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Publish/subscribe bus for chat lines. The chat-format module publishes {@link ChatBridgeEvent}s;
- * the API module subscribes to forward them to connected WebSocket clients. Thread-safe: publish and
- * subscribe may be called from any thread.
+ * Publish/subscribe bus for chat lines. Modules publish {@link ChatBridgeEvent}s from player, web,
+ * and AI sources; subscribers can consume every source. Thread-safe: publish and subscribe may be
+ * called from any thread.
  */
 public final class ChatBridge {
 

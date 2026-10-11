@@ -53,7 +53,7 @@ class DefaultCombatServiceTest {
         when(server.getPluginManager()).thenReturn(pluginManager);
         when(server.getOnlinePlayers()).thenReturn(List.of());
         when(preferences.combatDisplay(any(), any())).thenReturn(CombatDisplay.ACTIONBAR);
-        service = new DefaultCombatService(scheduler, messages, preferences, platform, config);
+        service = new DefaultCombatService(scheduler, messages, preferences, platform, () -> config);
     }
 
     // --- isInCombat ---
@@ -219,13 +219,13 @@ class DefaultCombatServiceTest {
         verify(pluginManager, atLeastOnce()).callEvent(any(CombatTaggedEvent.class)); // from tag()
     }
 
-    // --- updateConfig ---
+    // --- config swap ---
 
     @Test
-    void updateConfig_appliedForNewTags() {
+    void configSwap_appliedForNewTags() {
         CombatConfig newConfig = new CombatConfig(
                 Duration.ofSeconds(20), Boolean.FALSE, List.of(), CombatDisplay.CHAT);
-        service.updateConfig(newConfig);
+        config = newConfig;
         UUID alice = UUID.randomUUID();
         service.tag(alice, Duration.ofSeconds(20));
         assertThat(service.isInCombat(alice)).isTrue();

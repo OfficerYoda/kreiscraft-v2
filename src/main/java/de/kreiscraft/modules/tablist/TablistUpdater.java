@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.tablist;
 
 import de.kreiscraft.core.message.PlaceholderResolver;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Server;
@@ -8,33 +9,20 @@ import org.bukkit.entity.Player;
 
 /**
  * Holds the shared repeating-task logic for updating the player-list header and footer.
- * One instance is scheduled once; it iterates all online players on each tick.
- * Templates can be swapped atomically on config reload without rescheduling.
+ * One instance is scheduled once; it iterates all online players on each tick. The templates are
+ * read live through the supplied {@link Supplier}, so a config reload takes effect on the next tick
+ * without rescheduling.
  */
 public final class TablistUpdater {
 
     private final Server server;
     private final PlaceholderResolver resolver;
-    private volatile String headerTemplate;
-    private volatile String footerTemplate;
+    private final Supplier<TablistConfig> config;
 
-    public TablistUpdater(
-            Server server,
-            PlaceholderResolver resolver,
-            String headerTemplate,
-            String footerTemplate) {
+    public TablistUpdater(Server server, PlaceholderResolver resolver, Supplier<TablistConfig> config) {
         this.server = server;
         this.resolver = resolver;
-        this.headerTemplate = headerTemplate;
-        this.footerTemplate = footerTemplate;
-    }
-
-    /**
-     * Replaces the header and footer templates; the change takes effect on the next tick.
-     */
-    public void templates(String headerTemplate, String footerTemplate) {
-        this.headerTemplate = headerTemplate;
-        this.footerTemplate = footerTemplate;
+        this.config = config;
     }
 
     /**
@@ -52,11 +40,10 @@ public final class TablistUpdater {
      * interval.
      */
     public void sendTo(Player player) {
-        String headerSource = this.headerTemplate;
-        String footerSource = this.footerTemplate;
+        TablistConfig cfg = config.get();
         MiniMessage mm = MiniMessage.miniMessage();
-        Component header = mm.deserialize(resolver.resolveString(headerSource, player));
-        Component footer = mm.deserialize(resolver.resolveString(footerSource, player));
+        Component header = mm.deserialize(resolver.resolveString(cfg.headerTemplate(), player));
+        Component footer = mm.deserialize(resolver.resolveString(cfg.footerTemplate(), player));
         player.sendPlayerListHeaderAndFooter(header, footer);
     }
 }

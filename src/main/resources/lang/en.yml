@@ -22,6 +22,7 @@ server-config:
     modules: "Modules"
     core: "Core"
     admin: "Links"
+    ai-chat: "AI Chat"
     api: "HTTP API"
     anti-cheat: "Anti-Cheat"
     bedrock: "Bedrock"
@@ -50,6 +51,9 @@ server-config:
     admin-links-website: "Website"
     admin-links-discord: "Discord"
     admin-links-youtube: "YouTube"
+    ai-chat-ai-trigger: "AI Trigger"
+    ai-chat-context-msg-count: "Context Messages Count"
+    ai-chat-always-supported-players: "Always supported players"
     anti-cheat-kick-on-fabric-forge: "Kick on Fabric/Forge"
     anti-cheat-handshake-grace-duration: "Handshake grace duration"
     bedrock-prefix: "Name prefix"
@@ -108,9 +112,6 @@ server-config:
   value-none: "<gray>not set"
   edit-rejected: "<prefix> <red>Invalid value: <reason>"
   edit-failed: "<prefix> <red>Save failed; nothing changed."
-  input:
-    prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
-    cancelled: "<prefix> <gray>Input cancelled."
   list:
     blank: "<prefix> <red>Enter a nonblank value."
     duplicate: "<prefix> <red><value> already exists."
@@ -139,7 +140,7 @@ api:
   link-prompt-info: "<yellow>Website wants to link with your account"
   link-prompt-accept: "<green>Accept"
   link-prompt-decline: "<red>Decline"
-  chat-format-from-web: "<gray>[WEB]</gray> <content>"
+  chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Your website link has been removed."
 anti-cheat:
   cheat-kick: "<red>Please remove your cheat client (<detail>)."

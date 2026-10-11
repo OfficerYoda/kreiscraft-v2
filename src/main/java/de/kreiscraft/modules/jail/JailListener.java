@@ -3,7 +3,7 @@ package de.kreiscraft.modules.jail;
 import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -23,15 +23,12 @@ import org.bukkit.event.player.PlayerJoinEvent;
 public final class JailListener implements PriorityListener {
 
     private final JailService service;
-    private final AtomicReference<JailConfig> configRef;
+    private final Supplier<JailConfig> config;
     private final MessageService messages;
 
-    public JailListener(
-            JailService service,
-            AtomicReference<JailConfig> configRef,
-            MessageService messages) {
+    public JailListener(JailService service, Supplier<JailConfig> config, MessageService messages) {
         this.service = service;
-        this.configRef = configRef;
+        this.config = config;
         this.messages = messages;
     }
 
@@ -51,7 +48,7 @@ public final class JailListener implements PriorityListener {
             return;
         }
 
-        if (configRef.get().blockedCommands().contains(commandRoot)) {
+        if (config.get().blockedCommands().contains(commandRoot)) {
             event.setCancelled(true);
             messages.send(event.getPlayer(), "jail.command-blocked");
         }

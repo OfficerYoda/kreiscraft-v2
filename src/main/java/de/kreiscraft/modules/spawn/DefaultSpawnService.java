@@ -3,6 +3,7 @@ package de.kreiscraft.modules.spawn;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -16,8 +17,9 @@ import org.spongepowered.configurate.serialize.SerializationException;
  * than cached, so a successful command edit and a {@code /kreiscraft reload} are observed
  * immediately.
  *
- * <p>The single Spawn Radius lives in the spawn module configuration; both the Spawn Access Zone
- * (XZ) and the Glide Zone (3D) are measured against it.
+ * <p>The single Spawn Radius lives in the spawn module configuration, read live through the
+ * supplied {@link Supplier} so both the Spawn Access Zone (XZ) and the Glide Zone (3D) track
+ * reloads.
  */
 public final class DefaultSpawnService implements SpawnService {
 
@@ -25,9 +27,9 @@ public final class DefaultSpawnService implements SpawnService {
     private static final String LOCATION = "location";
 
     private final ConfigService config;
-    private SpawnConfig moduleConfig;
+    private final Supplier<SpawnConfig> moduleConfig;
 
-    public DefaultSpawnService(ConfigService config, SpawnConfig moduleConfig) {
+    public DefaultSpawnService(ConfigService config, Supplier<SpawnConfig> moduleConfig) {
         this.config = config;
         this.moduleConfig = moduleConfig;
     }
@@ -91,11 +93,6 @@ public final class DefaultSpawnService implements SpawnService {
 
     /** The configured Spawn Radius. */
     private int spawnRadius() {
-        return moduleConfig.spawnRadius();
-    }
-
-    /** Called by {@link SpawnModule#onConfigReload} to apply updated tunables at runtime. */
-    public void updateConfig(SpawnConfig config) {
-        this.moduleConfig = config;
+        return moduleConfig.get().spawnRadius();
     }
 }

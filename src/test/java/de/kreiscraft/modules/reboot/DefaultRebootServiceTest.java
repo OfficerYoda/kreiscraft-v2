@@ -55,7 +55,7 @@ class DefaultRebootServiceTest {
         when(messages.render(any(), any(Object[].class))).thenReturn(Component.empty());
         when(messages.renderFor(any(CommandSender.class), anyString(), any(Object[].class)))
                 .thenReturn(Component.empty());
-        service = new DefaultRebootService(scheduler, messages, platform, config);
+        service = new DefaultRebootService(scheduler, messages, platform, () -> config);
     }
 
     @Test
@@ -201,7 +201,7 @@ class DefaultRebootServiceTest {
         Player player = mock(Player.class);
         when(server.getOnlinePlayers()).thenAnswer(inv -> List.of(player));
         config = new RebootConfig(Duration.ofSeconds(60), List.of(2, 1, 0), List.of());
-        service = new DefaultRebootService(scheduler, messages, platform, config);
+        service = new DefaultRebootService(scheduler, messages, platform, () -> config);
 
         service.start(Duration.ofSeconds(2), "maintenance", "alice");
         scheduler.advance(Duration.ofSeconds(1));

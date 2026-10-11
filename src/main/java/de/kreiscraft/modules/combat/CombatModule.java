@@ -37,7 +37,7 @@ public final class CombatModule implements Module {
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
 
         this.service = new DefaultCombatService(
-                ctx.scheduler(), ctx.messages(), preferences, platform, config);
+                ctx.scheduler(), ctx.messages(), preferences, platform, () -> this.config);
         ctx.services().publish(CombatService.class, service);
 
         // Supplier for live config reads — captures the module field, not the value
@@ -67,9 +67,6 @@ public final class CombatModule implements Module {
             this.config = moduleConfig.get(CombatConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
-        }
-        if (service != null) {
-            service.updateConfig(this.config);
         }
     }
 }

@@ -26,6 +26,12 @@ import org.spongepowered.configurate.serialize.SerializationException;
 
 public final class MyFeatureModule implements Module {
 
+    // Hold the config in a plain field and pass () -> this.config (a Supplier) to any listener,
+    // command, or service that reads config at event time. Those objects then observe the new
+    // record after onConfigReload() swaps the field — see docs/how-to/reload-configuration.md.
+    //
+    // If any consumer reads config off the main thread (e.g. an AsyncChatEvent handler), mark
+    // the field `volatile`.
     private MyFeatureConfig config;
 
     @Override
@@ -41,13 +47,16 @@ public final class MyFeatureModule implements Module {
     public void enable(ModuleContext ctx) {
         try {
             this.config = ctx.moduleConfig().get(MyFeatureConfig.class);
+            if (this.config == null) {
+                this.config = new MyFeatureConfig(/* defaults */);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        if (config == null) config = new MyFeatureConfig(/* defaults */);
 
         // Register listeners, commands, services here using ctx.*
-        ctx.events().register(new MyFeatureListener(config, ctx.messages()));
+        // Pass () -> this.config so the listener always reads the current config.
+        ctx.events().register(new MyFeatureListener(() -> this.config, ctx.messages()));
         ctx.commands().register(MyFeatureCommand.build(ctx.messages()), "My feature command");
     }
 
@@ -61,14 +70,20 @@ public final class MyFeatureModule implements Module {
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
             this.config = moduleConfig.get(MyFeatureConfig.class);
+            if (this.config == null) {
+                this.config = new MyFeatureConfig(/* defaults */);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
-        if (config == null) config = new MyFeatureConfig(/* defaults */);
-        // Push new config to any stateful objects that hold a reference.
     }
 }
 ```
+
+`MyFeatureListener` therefore takes a `Supplier<MyFeatureConfig>` and calls `config.get()` inside each
+handler — never the record itself. If no listener, command, or task reads config after startup, a
+plain field is fine; the `Supplier` is what makes reloads propagate. Full detail:
+[reload-configuration](reload-configuration.md).
 
 `ModuleContext` fields available in `enable()`:
 

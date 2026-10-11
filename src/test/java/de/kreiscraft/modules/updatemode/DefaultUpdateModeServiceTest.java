@@ -38,6 +38,7 @@ class DefaultUpdateModeServiceTest {
     private PluginMock plugin;
     private MessageService messages;
     private YamlConfigService config;
+    private UpdateModeConfig moduleConfig;
     private DefaultUpdateModeService service;
 
     private static UpdateModeConfig defaultConfig() {
@@ -46,7 +47,7 @@ class DefaultUpdateModeServiceTest {
 
     private DefaultUpdateModeService serviceWith(YamlConfigService configService) {
         return new DefaultUpdateModeService(
-                configService, defaultConfig(), new PaperPlatform(plugin, server), messages, LOG);
+                configService, () -> moduleConfig, new PaperPlatform(plugin, server), messages, LOG);
     }
 
     @BeforeEach
@@ -57,6 +58,7 @@ class DefaultUpdateModeServiceTest {
         when(messages.renderFor(any(), any(), any())).thenReturn(Component.text("kick"));
 
         config = new YamlConfigService(tmp, getClass().getClassLoader());
+        moduleConfig = defaultConfig();
         service = serviceWith(config);
     }
 
@@ -105,12 +107,11 @@ class DefaultUpdateModeServiceTest {
     }
 
     @Test
-    void updateConfig_replacesConfig() {
-        UpdateModeConfig newCfg = new UpdateModeConfig("kreiscraft.other.bypass", List.of("alice"));
-        service.updateConfig(newCfg);
+    void configSwap_observedByService() {
+        moduleConfig = new UpdateModeConfig(BYPASS_PERMISSION, List.of("Alice"));
+        PlayerMock alice = server.addPlayer("Alice");
 
-        assertThat(service.config().bypassPermission()).isEqualTo("kreiscraft.other.bypass");
-        assertThat(service.config().bypassNames()).containsExactly("alice");
+        assertThat(service.isBypassed(alice)).isTrue();
     }
 
     // --- activation effects ------------------------------------------------
@@ -138,7 +139,7 @@ class DefaultUpdateModeServiceTest {
 
     @Test
     void setActive_true_notifiesNameBypassedPlayers() {
-        service.updateConfig(new UpdateModeConfig(BYPASS_PERMISSION, List.of("Bob")));
+        moduleConfig = new UpdateModeConfig(BYPASS_PERMISSION, List.of("Bob"));
         PlayerMock bob = server.addPlayer("Bob");
 
         service.setActive(true);
@@ -184,7 +185,7 @@ class DefaultUpdateModeServiceTest {
 
     @Test
     void isBypassed_usesConfiguredPermission() {
-        service.updateConfig(new UpdateModeConfig("kreiscraft.custom.bypass", List.of()));
+        moduleConfig = new UpdateModeConfig("kreiscraft.custom.bypass", List.of());
         PlayerMock alice = server.addPlayer("Alice");
         alice.addAttachment(plugin, "kreiscraft.custom.bypass", true);
 

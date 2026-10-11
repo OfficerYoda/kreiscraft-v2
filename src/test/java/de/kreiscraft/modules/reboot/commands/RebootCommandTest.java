@@ -54,7 +54,8 @@ class RebootCommandTest {
         when(sender.hasPermission("kreiscraft.reboot.admin")).thenReturn(true);
         when(sender.getName()).thenReturn("alice");
 
-        LiteralCommandNode<CommandSourceStack> node = RebootCommand.build(service, messages, config);
+        LiteralCommandNode<CommandSourceStack> node =
+                RebootCommand.build(service, messages, () -> config);
         dispatcher = new CommandDispatcher<>();
         dispatcher.getRoot().addChild(node);
     }
@@ -110,7 +111,8 @@ class RebootCommandTest {
         // The /restart alias is registered alongside /reboot in RebootModule.enable().
         // For players, RebootListener already rewrites /restart → /reboot (tested in RebootListenerTest).
         // Here we verify the command node itself accepts /restart by adding it to a separate dispatcher.
-        LiteralCommandNode<CommandSourceStack> node = RebootCommand.build(service, messages, config);
+        LiteralCommandNode<CommandSourceStack> node =
+                RebootCommand.build(service, messages, () -> config);
         CommandDispatcher<CommandSourceStack> aliasDispatcher = new CommandDispatcher<>();
         aliasDispatcher.getRoot().addChild(node);
         // Same node redirected as "restart" would produce identical behavior; spot-check no-args path

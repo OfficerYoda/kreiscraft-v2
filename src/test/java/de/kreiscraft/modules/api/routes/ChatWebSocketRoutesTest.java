@@ -18,11 +18,14 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.modules.api.ApiConfig;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
+import de.kreiscraft.shared.chat.ChatSource;
 import de.kreiscraft.testsupport.MockScheduler;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -181,7 +184,13 @@ class ChatWebSocketRoutesTest {
             throws Exception {
         MockScheduler scheduler = new MockScheduler();
         MessageService mockMessages = mock(MessageService.class);
-        ChatWebSocketRoutes routes = makeRoutes(mock(ChatBridge.class), scheduler, mockMessages);
+        when(mockMessages.render("api.chat-format-from-web", "content", "hello world"))
+                .thenReturn(Component.text("[WEB] hello world"));
+        ChatBridge bridge = new ChatBridge();
+        List<ChatBridgeEvent> received = new ArrayList<>();
+        bridge.subscribe(received::add);
+        ChatWebSocketRoutes routes = makeRoutes(bridge, scheduler, mockMessages);
+        routes.register(mock(Javalin.class));
 
         WsContext senderCtx = simpleMockCtx();
         WsContext receiverCtx = simpleMockCtx();
@@ -192,6 +201,10 @@ class ChatWebSocketRoutesTest {
 
         // MockScheduler.runOnMain() executes the task immediately
         verify(mockMessages).broadcast("api.chat-format-from-web", "content", "hello world");
+        assertThat(received)
+                .singleElement()
+                .extracting(ChatBridgeEvent::source, ChatBridgeEvent::senderName, ChatBridgeEvent::plainText)
+                .containsExactly(ChatSource.WEB, "WEB", "hello world");
 
         // Receiver: VERIFICATION (from handleConnect) + CHAT echo = 2 sends
         ArgumentCaptor<String> receiverCaptor = ArgumentCaptor.forClass(String.class);
@@ -255,6 +268,7 @@ class ChatWebSocketRoutesTest {
 
         ChatBridgeEvent event =
                 new ChatBridgeEvent(
+                        ChatSource.PLAYER,
                         UUID.randomUUID(),
                         "Alice",
                         Component.text("hello"),
@@ -279,6 +293,7 @@ class ChatWebSocketRoutesTest {
         Component translatable = Component.translatable("chat.type.text");
         ChatBridgeEvent event =
                 new ChatBridgeEvent(
+                        ChatSource.PLAYER,
                         UUID.randomUUID(),
                         "Bob",
                         translatable,

@@ -7,6 +7,7 @@ import de.kreiscraft.modules.status.StatusService;
 import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
+import de.kreiscraft.shared.chat.ChatSource;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.time.Instant;
 import java.util.function.Supplier;
@@ -112,7 +113,7 @@ public final class ChatFormatListener implements PriorityListener {
 
         // Publish to ChatBridge for the API module (also safe on any thread).
         chatBridge.publish(new ChatBridgeEvent(
-                sender.getUniqueId(), sender.getName(), rendered, plainBody, Instant.now()));
+                ChatSource.PLAYER, sender.getUniqueId(), sender.getName(), rendered, plainBody, Instant.now()));
     }
 
     /**

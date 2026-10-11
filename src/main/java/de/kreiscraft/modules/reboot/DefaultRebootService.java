@@ -4,6 +4,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.platform.PaperPlatform;
 import java.time.Duration;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.command.CommandSender;
@@ -15,7 +16,7 @@ public final class DefaultRebootService implements RebootService {
     private final Scheduler scheduler;
     private final MessageService messages;
     private final PaperPlatform platform;
-    private RebootConfig config;
+    private final Supplier<RebootConfig> config;
 
     private boolean running = false;
     private long remainingSeconds = 0;
@@ -24,7 +25,10 @@ public final class DefaultRebootService implements RebootService {
     private Scheduler.Task task;
 
     public DefaultRebootService(
-            Scheduler scheduler, MessageService messages, PaperPlatform platform, RebootConfig config) {
+            Scheduler scheduler,
+            MessageService messages,
+            PaperPlatform platform,
+            Supplier<RebootConfig> config) {
         this.scheduler = scheduler;
         this.messages = messages;
         this.platform = platform;
@@ -75,10 +79,6 @@ public final class DefaultRebootService implements RebootService {
         messages.broadcast("reboot.cancelled");
     }
 
-    public void updateConfig(RebootConfig config) {
-        this.config = config;
-    }
-
     /**
      * Announces the start to every online player and the console, rendering the reason fallback in
      * each recipient's own language. {@code broadcast} cannot carry a per-recipient placeholder, so
@@ -118,7 +118,7 @@ public final class DefaultRebootService implements RebootService {
             return;
         }
 
-        if (config.titleSeconds().contains((int) remainingSeconds)) {
+        if (config.get().titleSeconds().contains((int) remainingSeconds)) {
             Title.Times times =
                     Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(4), Duration.ofSeconds(1));
             String seconds = String.valueOf(remainingSeconds);
@@ -137,7 +137,7 @@ public final class DefaultRebootService implements RebootService {
             }
         }
 
-        if (config.chatSeconds().contains((int) remainingSeconds)) {
+        if (config.get().chatSeconds().contains((int) remainingSeconds)) {
             messages.broadcast("reboot.countdown-chat", "seconds", String.valueOf(remainingSeconds));
         }
 

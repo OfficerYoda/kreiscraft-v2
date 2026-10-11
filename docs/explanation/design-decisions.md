@@ -125,7 +125,7 @@ the `Javalin` instance and exposes `start()` / `stop()` methods. `ApiModule.disa
   the same host would conflict.
 - `ApiModule.onConfigReload()` detects changes to `host`, `port`, or `corsOrigins` and restarts
   the Javalin instance; other config changes (timeouts, intervals) do not cause a restart because
-  the sub-services that consume them do not expose an `updateConfig()` method — this is a
+  the sub-services that consume them are baked in at construction and are not rebuilt — this is a
   deliberate simplification documented in the `ApiModule` Javadoc.
 
 ---
@@ -166,9 +166,9 @@ ADR-10 narrows this decision: values deliberately owned by an operator belong in
 
 ---
 
-## ADR-6: `Supplier<Config>` / `AtomicReference<Config>` for Live Config Propagation
+## ADR-6: `Supplier<Config>` for Live Config Propagation
 
-**Status:** Accepted
+**Status:** Accepted; amended to drop `AtomicReference`
 
 **Context:**  
 Bukkit event listeners are registered once at plugin startup and remain registered for the
@@ -176,25 +176,24 @@ lifetime of the module. Modules need their listeners to react to config changes 
 `/kreiscraft reload` without tearing down and re-creating those listeners.
 
 **Decision:**  
-Modules hold config state in an `AtomicReference<XxxConfig>`. The reference is set to the parsed
-config in `enable()` and updated in `onConfigReload()`. Listeners receive either the
-`AtomicReference` directly or the method reference `configRef::get` (which satisfies
-`Supplier<XxxConfig>`). At each event invocation, the listener calls `.get()` on the reference
-to read the latest config.
+Modules hold config state in a plain field. Consumers — listeners, services, commands — receive a
+`Supplier<XxxConfig>`, in practice the lambda `() -> this.config` or the method reference
+`this::config`, and call `.get()` at event time to read the latest record. `onConfigReload()`
+reassigns the field; nothing is pushed to consumers.
 
-For example, `AntiCheatModule` passes `configRef` to `AntiCheatListener`, and
-`ChatFormatModule` passes `configRef::get` to `ChatFormatListener` as a `Supplier`.
+When a consumer reads config off the main thread (for example an `AsyncChatEvent` handler), the
+module marks the field `volatile` so the reload write is visible to that thread. The `Supplier`
+lambda itself is unchanged.
 
 **Consequences:**  
-- Config changes propagate to active listeners on the next event invocation — no listener
-  re-registration required, and no risk of missing events between unregister and re-register.
-- The `AtomicReference` ensures visibility across threads (Bukkit events are dispatched on the
-  main thread, but some modules schedule async tasks).
-- There is a small boilerplate cost: each module that participates in hot-reload declares the
-  field and the update in `onConfigReload()`. This is intentional — it is explicit and grep-able.
-- Config changes are applied atomically at the reference level. If two event handlers run
-  concurrently and one has just seen the old config and another the new, that is acceptable
-  because config changes from `/kreiscraft reload` are operationally low-frequency.
+- Config changes propagate to active consumers on their next read — no re-registration required,
+  and no risk of missing events between unregister and re-register.
+- `volatile` covers the few consumers that run off the main thread. An `AtomicReference` would add
+  nothing here, since a volatile reference is all it provides for this use.
+- There is a small boilerplate cost: each module that participates in hot-reload declares the field
+  and the reassignment in `onConfigReload()`. This is intentional — it is explicit and grep-able.
+- Config changes are observed as whole-record swaps. Two handlers may briefly see different records
+  around a reload, which is acceptable because reloads are operationally low-frequency.
 
 ---
 
@@ -248,8 +247,9 @@ dependency between two modules that have no logical relationship.
 Place a `ChatBridge` pub/sub bus in the shared layer. `KreiscraftBootstrap` constructs it and
 publishes it to `ServiceRegistry`. `chat-format` retrieves it via
 `ctx.services().get(ChatBridge.class)` and calls `chatBridge.publish(event)` after rendering each
-line. `api` retrieves it similarly and calls `chatBridge.subscribe(event -> ...)` to receive
-events.
+player line. The API and AI modules also publish website and AI lines respectively. Consumers use
+the event's source to distinguish these origins; `api` retrieves the bridge similarly and calls
+`chatBridge.subscribe(event -> ...)` to receive events.
 
 `ChatBridge` itself is a `CopyOnWriteArrayList` of `Consumer<ChatBridgeEvent>` subscribers.
 `subscribe()` returns a `Subscription` handle whose `unsubscribe()` removes the specific

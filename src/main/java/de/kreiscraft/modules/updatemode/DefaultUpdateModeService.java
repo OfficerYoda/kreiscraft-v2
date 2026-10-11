@@ -4,6 +4,7 @@ import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.platform.PaperPlatform;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 import org.bukkit.entity.Player;
 
@@ -12,7 +13,8 @@ import org.bukkit.entity.Player;
  *
  * <p>The active/inactive maintenance state is operator-owned Server Configuration, so it lives in
  * {@code modules.update-mode.active} inside {@code config.yml} and is read live. A {@code
- * /kreiscraft reload} therefore observes the persisted value without any extra state.
+ * /kreiscraft reload} therefore observes the persisted value without any extra state. The module
+ * config is likewise read live through the supplied {@link Supplier}.
  */
 public final class DefaultUpdateModeService implements UpdateModeService {
 
@@ -20,14 +22,14 @@ public final class DefaultUpdateModeService implements UpdateModeService {
     private static final String ACTIVE = "active";
 
     private final ConfigService config;
+    private final Supplier<UpdateModeConfig> moduleConfig;
     private final PaperPlatform platform;
     private final MessageService messages;
     private final Logger logger;
-    private UpdateModeConfig moduleConfig;
 
     public DefaultUpdateModeService(
             ConfigService config,
-            UpdateModeConfig moduleConfig,
+            Supplier<UpdateModeConfig> moduleConfig,
             PaperPlatform platform,
             MessageService messages,
             Logger logger) {
@@ -73,17 +75,9 @@ public final class DefaultUpdateModeService implements UpdateModeService {
     /** Whether the given player may stay online while maintenance mode is active. */
     @Override
     public boolean isBypassed(Player player) {
-        UpdateModeConfig cfg = moduleConfig;
+        UpdateModeConfig cfg = moduleConfig.get();
         return cfg.bypassNames().contains(player.getName())
                 || player.isOp()
                 || player.hasPermission(cfg.bypassPermission());
-    }
-
-    public UpdateModeConfig config() {
-        return moduleConfig;
-    }
-
-    public void updateConfig(UpdateModeConfig config) {
-        this.moduleConfig = config;
     }
 }

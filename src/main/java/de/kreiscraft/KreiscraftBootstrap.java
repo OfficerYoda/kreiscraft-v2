@@ -142,6 +142,7 @@ public final class KreiscraftBootstrap {
         ReloadService reload = new ReloadService(config, modules, messages);
         services.publish(ReloadService.class, reload);
         modules.register(new de.kreiscraft.modules.admin.AdminModule());
+        modules.register(new de.kreiscraft.modules.aichat.AiChatModule());
         modules.register(new de.kreiscraft.modules.api.ApiModule());
         modules.register(new de.kreiscraft.modules.anticheat.AntiCheatModule());
         modules.register(new de.kreiscraft.modules.bedrock.BedrockModule());

@@ -68,7 +68,7 @@ class CombatDisplayPreferenceTest {
         CombatConfig config =
                 new CombatConfig(Duration.ofSeconds(60), Boolean.TRUE, List.of("Lobby"), moduleDefault);
         DefaultCombatService service =
-                new DefaultCombatService(scheduler, messages, preferences, platform, config);
+                new DefaultCombatService(scheduler, messages, preferences, platform, () -> config);
         service.tag(alice, Duration.ofSeconds(60));
         scheduler.advance(Duration.ofSeconds(1));
         return service;

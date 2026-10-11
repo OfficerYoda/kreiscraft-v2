@@ -37,7 +37,7 @@ public final class UpdateModeModule implements Module {
         this.service =
                 new DefaultUpdateModeService(
                         ctx.services().get(ConfigService.class),
-                        config,
+                        () -> this.config,
                         platform,
                         ctx.messages(),
                         ctx.plugin().getLogger());
@@ -56,9 +56,6 @@ public final class UpdateModeModule implements Module {
             this.config = moduleConfig.get(UpdateModeConfig.class);
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
-        }
-        if (service != null) {
-            service.updateConfig(config);
         }
     }
 }

@@ -99,6 +99,7 @@ MockScheduler scheduler = new MockScheduler();
 ```
 
 - `runOnMain(task)` — executes `task` immediately on the calling thread.
+- `runAsync(task)` — executes `task` immediately on the calling thread (blocks are not deferred).
 - `runLater(delay, task)` / `runRepeating(delay, period, task)` — queue tasks without running them.
 - `scheduler.advance(Duration.ofSeconds(5))` — fires all tasks whose virtual fire time falls within the next 5 seconds, in order. Repeating tasks reschedule automatically.
 
@@ -151,7 +152,7 @@ When a route needs a `Scheduler` (e.g. to dispatch work to the main thread), pro
 ```java
 private static final Scheduler SYNC_SCHEDULER = new Scheduler() {
     @Override public Task runOnMain(Runnable task) { task.run(); return ...; }
-    // runLater / runRepeating → throw UnsupportedOperationException if not needed
+    // runAsync / runLater / runRepeating → throw UnsupportedOperationException if not needed
 };
 ```
 

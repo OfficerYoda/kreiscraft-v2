@@ -44,12 +44,12 @@ public record SpawnConfig(int spawnRadius, GlideConfig glide, GlideBoostConfig g
      * explicit {@code enabled: true} entry, so this is only relevant for edge-case testing.
      */
     @ConfigSerializable
-    public record GlideConfig(boolean enabled, int multiplyValue) {
+    public record GlideConfig(boolean enabled, float multiplyValue) {
 
         public GlideConfig {
             // 0 / negative means "missing from config" — apply the safe default multiplier.
             if (multiplyValue <= 0) {
-                multiplyValue = 3;
+                multiplyValue = 2;
             }
         }
     }

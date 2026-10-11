@@ -9,6 +9,8 @@ import de.kreiscraft.modules.api.dto.WebSocketMessage;
 import de.kreiscraft.modules.api.dto.WebSocketMessageType;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
+import de.kreiscraft.shared.chat.ChatSource;
+import java.time.Instant;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 import java.util.ArrayList;
@@ -101,10 +103,12 @@ public final class ChatWebSocketRoutes {
 
         chatSubscription =
                 chatBridge.subscribe(
-                        event -> broadcastToWsClients(
-                                new WebSocketMessage(
-                                        WebSocketMessageType.CHAT,
-                                        renderChatEventForWeb(event))));
+                        event -> {
+                            if (event.source() != ChatSource.WEB) {
+                                broadcastToWsClients(new WebSocketMessage(
+                                        WebSocketMessageType.CHAT, renderChatEventForWeb(event)));
+                            }
+                        });
 
         app.ws(
                 "/chat",
@@ -176,8 +180,18 @@ public final class ChatWebSocketRoutes {
             case CHAT -> {
                 // Bukkit API must run on the main thread — schedule via Scheduler
                 scheduler.runOnMain(
-                        () -> messages.broadcast(
-                                "api.chat-format-from-web", "content", msg.content()));
+                        () -> {
+                            Component rendered =
+                                    messages.render("api.chat-format-from-web", "content", msg.content());
+                            messages.broadcast("api.chat-format-from-web", "content", msg.content());
+                            chatBridge.publish(new ChatBridgeEvent(
+                                    ChatSource.WEB,
+                                    null,
+                                    "WEB",
+                                    rendered,
+                                    msg.content(),
+                                    Instant.now()));
+                        });
                 // Echo to OTHER connected clients (sender's UI already showed it optimistically)
                 broadcastToWsClientsExcept(
                         ctx, new WebSocketMessage(WebSocketMessageType.CHAT, msg.content()));

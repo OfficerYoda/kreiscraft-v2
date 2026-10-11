@@ -24,6 +24,12 @@ public final class BukkitScheduler implements Scheduler {
     }
 
     @Override
+    public Task runAsync(Runnable task) {
+        return new BukkitTaskAdapter(
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, task));
+    }
+
+    @Override
     public Task runLater(Duration delay, Runnable task) {
         return new BukkitTaskAdapter(
                 Bukkit.getScheduler().runTaskLater(plugin, task, toTicks(delay)));

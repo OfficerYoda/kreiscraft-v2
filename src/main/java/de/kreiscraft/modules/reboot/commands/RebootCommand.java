@@ -10,18 +10,19 @@ import de.kreiscraft.modules.reboot.RebootService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.time.Duration;
+import java.util.function.Supplier;
 
 public final class RebootCommand {
 
     private RebootCommand() {}
 
     public static LiteralCommandNode<CommandSourceStack> build(
-            RebootService service, MessageService messages, RebootConfig config) {
+            RebootService service, MessageService messages, Supplier<RebootConfig> config) {
         return Commands.literal("reboot")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.reboot.admin"))
                 .executes(ctx -> {
                     String initiator = ctx.getSource().getSender().getName();
-                    service.start(config.defaultCountdown(), "", initiator);
+                    service.start(config.get().defaultCountdown(), "", initiator);
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.literal("cancel")
@@ -33,7 +34,7 @@ public final class RebootCommand {
                             service.cancel();
                             return Command.SINGLE_SUCCESS;
                         }))
-                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(0))
                         .executes(ctx -> {
                             int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
                             String initiator = ctx.getSource().getSender().getName();

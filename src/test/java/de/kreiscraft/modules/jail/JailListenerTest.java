@@ -57,7 +57,7 @@ class JailListenerTest {
         configRef = new AtomicReference<>(new JailConfig(List.of("msg", "tell")));
 
         server.getPluginManager()
-                .registerEvents(new JailListener(service, configRef, messages), plugin);
+                .registerEvents(new JailListener(service, configRef::get, messages), plugin);
     }
 
     @AfterEach

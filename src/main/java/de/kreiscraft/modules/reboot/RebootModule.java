@@ -30,11 +30,12 @@ public final class RebootModule implements Module {
             throw new de.kreiscraft.core.module.ModuleException("failed to load config for module " + id(), e);
         }
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
-        this.service = new DefaultRebootService(ctx.scheduler(), ctx.messages(), platform, config);
+        this.service =
+                new DefaultRebootService(ctx.scheduler(), ctx.messages(), platform, () -> this.config);
         ctx.services().publish(RebootService.class, service);
         ctx.events().register(new RebootListener());
         ctx.commands().register(
-                RebootCommand.build(service, ctx.messages(), config),
+                RebootCommand.build(service, ctx.messages(), () -> this.config),
                 "Trigger or cancel a server restart",
                 "restart");
     }
@@ -52,9 +53,6 @@ public final class RebootModule implements Module {
             this.config = moduleConfig.get(RebootConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new de.kreiscraft.core.module.ModuleException("failed to reload config for module " + id(), e);
-        }
-        if (service != null) {
-            service.updateConfig(config);
         }
     }
 }

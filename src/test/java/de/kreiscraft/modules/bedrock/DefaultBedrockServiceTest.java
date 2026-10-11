@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -21,6 +23,10 @@ class DefaultBedrockServiceTest {
     private final WhitelistService whitelist = mock(WhitelistService.class);
 
     private DefaultBedrockService service(Path tmp, String prefix) throws IOException {
+        return service(tmp, () -> new BedrockConfig(prefix));
+    }
+
+    private DefaultBedrockService service(Path tmp, Supplier<BedrockConfig> config) throws IOException {
         BedrockData players = new BedrockData(tmp);
         players.load();
         BedrockAuthorizationData authorizations = new BedrockAuthorizationData(tmp);
@@ -28,7 +34,7 @@ class DefaultBedrockServiceTest {
         return new DefaultBedrockService(
                 players,
                 authorizations,
-                new BedrockConfig(prefix),
+                config,
                 whitelist,
                 Logger.getLogger("DefaultBedrockServiceTest"));
     }
@@ -261,10 +267,11 @@ class DefaultBedrockServiceTest {
     }
 
     @Test
-    void updateConfig_changesPrefixUsedForNormalization(@TempDir Path tmp) throws IOException {
-        DefaultBedrockService svc = service(tmp, ".");
+    void configSwap_changesPrefixUsedForNormalization(@TempDir Path tmp) throws IOException {
+        AtomicReference<BedrockConfig> config = new AtomicReference<>(new BedrockConfig("."));
+        DefaultBedrockService svc = service(tmp, config::get);
         assertThat(svc.normalize("Alice")).isEqualTo(".alice");
-        svc.updateConfig(new BedrockConfig("_"));
+        config.set(new BedrockConfig("_"));
         assertThat(svc.normalize("Alice")).isEqualTo("_alice");
     }
 }

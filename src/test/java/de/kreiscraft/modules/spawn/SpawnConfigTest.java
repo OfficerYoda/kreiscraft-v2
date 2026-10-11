@@ -64,7 +64,7 @@ class SpawnConfigTest {
         // NOTE: boolean enabled is a Java primitive; when the key is absent Configurate
         // initialises it to false (the zero value). The production config.yml always
         // provides an explicit 'enabled: true', so we only assert the numeric defaults here.
-        assertThat(cfg.glide().multiplyValue()).isEqualTo(3); // default: 0 → 3
+        assertThat(cfg.glide().multiplyValue()).isEqualTo(2); // default: 0 → 2
         assertThat(cfg.glideBoost().enabled()).isFalse(); // boolean zero = false
         assertThat(cfg.glideBoost().boostStrength()).isEqualTo(2.0); // default: 0 → 2.0
     }

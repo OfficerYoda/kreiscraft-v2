@@ -160,6 +160,7 @@ Server-thread-aware task scheduler. The production implementation (`BukkitSchedu
 | Signature | Return | Description |
 |-----------|--------|-------------|
 | `Task runOnMain(Runnable task)` | `Task` | Queues `task` to run on the server main thread as soon as possible. If the calling thread is already the main thread, execution is still deferred to the next tick. |
+| `Task runAsync(Runnable task)` | `Task` | Runs `task` on a background thread, off the main thread. Use for blocking work (network, disk) that must not stall the main thread or a shared I/O thread such as the Netty chat pipeline. Bukkit API must not be touched from `task`; hop back with `runOnMain`. |
 | `Task runLater(Duration delay, Runnable task)` | `Task` | Runs `task` on the main thread after `delay`. Use `Duration.ofMillis()`, `Duration.ofSeconds()`, etc. The scheduler converts to ticks internally. |
 | `Task runRepeating(Duration delay, Duration period, Runnable task)` | `Task` | Runs `task` on the main thread after `delay`, then repeatedly every `period`. The returned handle must be stored and cancelled in `Module.disable()` if the module registers a repeating task. |
 | `boolean isMainThread()` | `boolean` | Returns `true` if the calling thread is the server main thread. Use for assertions/guards in service methods. |
@@ -173,7 +174,7 @@ Nested interface returned by all scheduling methods.
 | `void cancel()` | Cancels the task. No-op if already cancelled or completed. |
 | `boolean isCancelled()` | Returns `true` if the task has been cancelled. |
 
-**Async note:** There are no explicit `async` variants on the `Scheduler` interface; for fire-and-forget async work, call `task.runAsync()` directly on the underlying Bukkit API, or use a `CompletableFuture`. Tasks submitted via `Scheduler` run on the main thread unless documented otherwise.
+**Async note:** `runAsync` runs work on a background thread for blocking operations; everything else (`runOnMain`, `runLater`, `runRepeating`) runs on the main thread. Never call Bukkit API from a `runAsync` task — dispatch results back with `runOnMain`.
 
 ---
 
@@ -292,7 +293,7 @@ A `Player` context is optional — tokens that require a player (e.g. `%player_n
 **Package:** `de.kreiscraft.shared.chat`
 **Type:** `final class`
 
-A thread-safe publish/subscribe bus for in-game chat lines. The `chat-format` module publishes `ChatBridgeEvent` instances; the `api` module subscribes to forward them to WebSocket clients. Any module may subscribe to observe chat.
+A thread-safe publish/subscribe bus for chat lines. The `chat-format`, `api`, and `ai-chat` modules publish `PLAYER`, `WEB`, and `AI` events respectively; any module may subscribe to observe chat.
 
 `ChatBridge` is published in the `ServiceRegistry` under `ChatBridge.class`.
 
@@ -308,6 +309,7 @@ A thread-safe publish/subscribe bus for in-game chat lines. The `chat-format` mo
 
 ```java
 public record ChatBridgeEvent(
+    ChatSource source,      // PLAYER, WEB, or AI
     UUID senderUuid,        // null for console/system messages
     String senderName,      // raw display name at time of send
     Component rendered,     // fully-rendered Adventure component broadcast in-game
@@ -315,6 +317,9 @@ public record ChatBridgeEvent(
     Instant timestamp       // when the line was produced
 ) {}
 ```
+
+`ChatSource` distinguishes messages sent by an in-game player, the website, and the AI. Subscribers
+should use it rather than inferring the source from a sender name.
 
 ### `ChatBridge.Subscription` interface
 
