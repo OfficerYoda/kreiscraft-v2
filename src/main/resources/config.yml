@@ -30,6 +30,7 @@ modules:
     model: "deepseek/deepseek-v4.1-flash"
     ai-trigger: "@claude"
     context-msg-count: 20
+    always-supported-players: []
   anti-cheat:
     enabled: true
     channel: "kreiscraft:mod_checker"

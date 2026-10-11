@@ -15,7 +15,8 @@ import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
 import de.kreiscraft.shared.chat.ChatSource;
 import java.util.Objects;
-import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 public final class DefaultAiChatService implements AiChatService {
 
@@ -80,9 +81,7 @@ public final class DefaultAiChatService implements AiChatService {
     }
 
     private String generateReponse(String userPrompt) {
-        String systemPrompt =
-                ((TextComponent) messages.render("ai-chat.system-prompt", "chat-history", formatChatHistory()))
-                        .content();
+        String systemPrompt = systemPrompt();
         String response = "";
         try {
             response = openRouterClient.sendPrompt(config.get().model(), userPrompt, systemPrompt);
@@ -94,6 +93,18 @@ public final class DefaultAiChatService implements AiChatService {
         }
 
         return response;
+    }
+
+    String systemPrompt() {
+        AiChatConfig currentConfig = config.get();
+        return PlainTextComponentSerializer.plainText().serialize(messages.render(
+                "ai-chat.system-prompt",
+                "ai-trigger",
+                Component.text(currentConfig.aiTrigger()),
+                "always-supported-players",
+                Component.text(String.join(", ", currentConfig.alwaysSupportedPlayers())),
+                "chat-history",
+                Component.text(formatChatHistory())));
     }
 
     void sendResponse(String response) {

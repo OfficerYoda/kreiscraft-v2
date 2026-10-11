@@ -44,7 +44,7 @@ public final class AiChatModule implements Module {
         try {
             config = moduleConfig.get(AiChatConfig.class);
             if (config == null) {
-                config = new AiChatConfig("", "", "", 0);
+                config = new AiChatConfig("", "", "", 0, null);
             }
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);

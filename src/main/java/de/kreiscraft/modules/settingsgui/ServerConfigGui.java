@@ -351,6 +351,7 @@ public final class ServerConfigGui {
         return switch (category) {
             case "core" -> Material.COMMAND_BLOCK;
             case "admin" -> Material.ENDER_PEARL;
+            case "ai-chat" -> Material.LECTERN;
             case "api" -> Material.REDSTONE_TORCH;
             case "anti-cheat" -> Material.SHIELD;
             case "bedrock" -> Material.BEDROCK;
