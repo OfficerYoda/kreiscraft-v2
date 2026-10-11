@@ -6,9 +6,8 @@ core:
   startup:
     summary: "<prefix> <green><enabled> modules enabled</green>, <yellow><disabled> disabled</yellow>, <red><failed> failed</red>."
     failed-modules: |-
-      <prefix> <red>Modules failed to start:
-      • <modules>
-      Check the server logs for more details.
+      <prefix> <red><count> modules failed to start:
+      <modules>
   player-only: "<prefix> <red>This command can only be used by players."
 server-config:
   lifecycle:

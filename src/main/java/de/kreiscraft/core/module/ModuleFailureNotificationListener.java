@@ -2,6 +2,7 @@ package de.kreiscraft.core.module;
 
 import de.kreiscraft.core.message.MessageService;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -23,6 +24,9 @@ public final class ModuleFailureNotificationListener implements Listener {
             return;
         }
         messages.send(event.getPlayer(), "core.startup.failed-modules",
-                "modules", String.join("\n• ", failedModuleIds));
+                "count", failedModuleIds.size(),
+                "modules", failedModuleIds.stream()
+                        .map(id -> "   - " + id)
+                        .collect(Collectors.joining("\n")));
     }
 }

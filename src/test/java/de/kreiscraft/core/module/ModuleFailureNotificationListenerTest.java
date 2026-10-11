@@ -43,7 +43,14 @@ class ModuleFailureNotificationListenerTest {
 
         server.getPluginManager().callEvent(new PlayerJoinEvent(operator, Component.empty()));
 
-        verify(messages).send(operator, "core.startup.failed-modules", "modules", "api\n• bedrock");
+        verify(messages)
+                .send(
+                        operator,
+                        "core.startup.failed-modules",
+                        "count",
+                        2,
+                        "modules",
+                        "  - api\n  - bedrock");
     }
 
     @Test
