@@ -28,8 +28,8 @@ modules:
     enabled: true
     api-key: ""
     model: "deepseek/deepseek-v4.1-flash"
-    aiTrigger: "@claude"
-    contextMsgCount: 20
+    ai-trigger: "@claude"
+    context-msg-count: 20
   anti-cheat:
     enabled: true
     channel: "kreiscraft:mod_checker"
