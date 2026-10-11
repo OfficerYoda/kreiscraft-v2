@@ -34,7 +34,7 @@ public final class RebootCommand {
                             service.cancel();
                             return Command.SINGLE_SUCCESS;
                         }))
-                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(0))
                         .executes(ctx -> {
                             int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
                             String initiator = ctx.getSource().getSender().getName();
