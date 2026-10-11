@@ -347,6 +347,22 @@ class ServerConfigNavigatorTest {
     }
 
     @Test
+    void stringField_trimsWhitespaceBeforeSaving() {
+        navigator.openAdmin(player);
+        captureLastWindow();
+        openCategory("chat-format");
+
+        ConfigField format = field("chat-format", "format");
+        clickField("chat-format", format);
+        captureLastAnvil();
+
+        lastRename.accept("  NEW FORMAT  ");
+        lastAnvilUpper.handleClick(2, new Click(player, ClickType.LEFT));
+
+        assertThat(editor.current(format)).isEqualTo("NEW FORMAT");
+    }
+
+    @Test
     void listField_opensAnvilInsteadOfRequestingChatInput() {
         navigator.openAdmin(player);
         captureLastWindow();

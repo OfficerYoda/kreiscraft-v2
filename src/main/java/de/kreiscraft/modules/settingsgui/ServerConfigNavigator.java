@@ -202,7 +202,7 @@ public final class ServerConfigNavigator
 
     private void applyStringEdit(
             Player player, ConfigField field, ServerConfigPage page, String value) {
-        applyEditResult(player, field, editor.edit(field, value));
+        applyEditResult(player, field, editor.edit(field, value.trim()));
         openServerConfig(player, page);
     }
 
