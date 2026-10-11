@@ -8,7 +8,7 @@ core:
     failed-modules: |-
       <prefix> <red>Modules failed to start:
       • <modules>
-      Check the server log for details.
+      Check the server logs for more details.
   player-only: "<prefix> <red>This command can only be used by players."
 server-config:
   lifecycle:
