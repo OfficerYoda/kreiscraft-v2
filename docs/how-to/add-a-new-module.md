@@ -46,8 +46,10 @@ public final class MyFeatureModule implements Module {
     @Override
     public void enable(ModuleContext ctx) {
         try {
-            MyFeatureConfig loaded = ctx.moduleConfig().get(MyFeatureConfig.class);
-            this.config = loaded == null ? new MyFeatureConfig(/* defaults */) : loaded;
+            this.config = ctx.moduleConfig().get(MyFeatureConfig.class);
+            if (this.config == null) {
+                this.config = new MyFeatureConfig(/* defaults */);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
@@ -67,8 +69,10 @@ public final class MyFeatureModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            MyFeatureConfig loaded = moduleConfig.get(MyFeatureConfig.class);
-            this.config = loaded == null ? new MyFeatureConfig(/* defaults */) : loaded;
+            this.config = moduleConfig.get(MyFeatureConfig.class);
+            if (this.config == null) {
+                this.config = new MyFeatureConfig(/* defaults */);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

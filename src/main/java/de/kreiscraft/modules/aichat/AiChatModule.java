@@ -26,8 +26,10 @@ public final class AiChatModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            AiChatConfig loaded = moduleConfig.get(AiChatConfig.class);
-            config = loaded == null ? new AiChatConfig("", "", "", 0) : loaded;
+            config = moduleConfig.get(AiChatConfig.class);
+            if (config == null) {
+                config = new AiChatConfig("", "", "", 0);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }

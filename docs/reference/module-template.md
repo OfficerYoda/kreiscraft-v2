@@ -50,8 +50,10 @@ public final class XxxModule implements Module {
         // 1. Deserialize config. Wrap SerializationException in ModuleException
         //    to abort startup cleanly.
         try {
-            XxxConfig loaded = ctx.moduleConfig().get(XxxConfig.class);
-            this.config = loaded == null ? new XxxConfig(/* safe defaults */) : loaded;
+            this.config = ctx.moduleConfig().get(XxxConfig.class);
+            if (this.config == null) {
+                this.config = new XxxConfig(/* safe defaults */);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
@@ -96,8 +98,10 @@ public final class XxxModule implements Module {
         // Re-deserialize and swap the whole field. Suppliers handed out above observe the
         // new value on their next .get() — nothing else to push.
         try {
-            XxxConfig loaded = moduleConfig.get(XxxConfig.class);
-            this.config = loaded == null ? new XxxConfig(/* safe defaults */) : loaded;
+            this.config = moduleConfig.get(XxxConfig.class);
+            if (this.config == null) {
+                this.config = new XxxConfig(/* safe defaults */);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

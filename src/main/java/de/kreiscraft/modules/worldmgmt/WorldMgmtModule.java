@@ -49,8 +49,10 @@ public final class WorldMgmtModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            WorldMgmtConfig reloaded = moduleConfig.get(WorldMgmtConfig.class);
-            this.config = reloaded != null ? reloaded : new WorldMgmtConfig();
+            this.config = moduleConfig.get(WorldMgmtConfig.class);
+            if (this.config == null) {
+                this.config = new WorldMgmtConfig();
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

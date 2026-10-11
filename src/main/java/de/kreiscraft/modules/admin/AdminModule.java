@@ -84,8 +84,10 @@ public final class AdminModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            AdminConfig reloaded = moduleConfig.get(AdminConfig.class);
-            this.config = reloaded != null ? reloaded : new AdminConfig(null);
+            this.config = moduleConfig.get(AdminConfig.class);
+            if (this.config == null) {
+                this.config = new AdminConfig(null);
+            }
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

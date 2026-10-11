@@ -60,7 +60,9 @@ public final class GreetModule implements Module {
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        if (config == null) config = new GreetConfig(null);
+        if (config == null) {
+            config = new GreetConfig(null);
+        }
 
         ctx.events().register(new GreetListener(() -> this.config, ctx.messages()));
     }
@@ -73,8 +75,10 @@ public final class GreetModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            GreetConfig reloaded = moduleConfig.get(GreetConfig.class);
-            this.config = reloaded != null ? reloaded : new GreetConfig(null);
+            this.config = moduleConfig.get(GreetConfig.class);
+            if (this.config == null) {
+                this.config = new GreetConfig(null);
+            }
         } catch (SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

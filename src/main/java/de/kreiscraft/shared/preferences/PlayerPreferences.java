@@ -20,12 +20,24 @@ public record PlayerPreferences(
 
     /** Normalises null components to {@link Optional#empty()} so snapshots are always non-null. */
     public PlayerPreferences {
-        language = language == null ? Optional.empty() : language;
-        clickThrough = clickThrough == null ? Optional.empty() : clickThrough;
-        combatDisplay = combatDisplay == null ? Optional.empty() : combatDisplay;
-        effectsEnabled = effectsEnabled == null ? Optional.empty() : effectsEnabled;
-        effectsParticle = effectsParticle == null ? Optional.empty() : effectsParticle;
-        glowEnabled = glowEnabled == null ? Optional.empty() : glowEnabled;
+        if (language == null) {
+            language = Optional.empty();
+        }
+        if (clickThrough == null) {
+            clickThrough = Optional.empty();
+        }
+        if (combatDisplay == null) {
+            combatDisplay = Optional.empty();
+        }
+        if (effectsEnabled == null) {
+            effectsEnabled = Optional.empty();
+        }
+        if (effectsParticle == null) {
+            effectsParticle = Optional.empty();
+        }
+        if (glowEnabled == null) {
+            glowEnabled = Optional.empty();
+        }
     }
 
     /** A snapshot with no preference set. */
