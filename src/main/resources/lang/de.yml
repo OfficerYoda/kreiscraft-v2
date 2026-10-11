@@ -132,7 +132,7 @@ admin:
   usage: "<prefix> <red>Verwendung: <usage>"
 ai-chat:
   system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<chat-history>"
-  response: "<gray>[<color:#4d6bfe>AI</color>]</gray> <content>"
+  response: "<prefix> <color:#D17955>AI Claude</color><gray> » <reset><content>"
 api:
   link-prompt-title: "<gray>Verknüpfen mit <browser>"
   link-prompt-info: "<yellow>Website möchte sich mit deinem Account verknüpfen"

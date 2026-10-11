@@ -20,7 +20,7 @@ public final class AiChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onChat(AsyncChatEvent event) {
-        String msg = ((TextComponent)event.message()).content();
+        String msg = ((TextComponent) event.message()).content();
         System.out.println("Component to string: " + msg);
 
         Player player = event.getPlayer();
