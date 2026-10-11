@@ -17,7 +17,7 @@ server-config:
   category:
     modules: "Module"
     core: "Core"
-    admin: "Admin"
+    admin: "Links"
     ai-chat: "KI-Chat"
     api: "HTTP-API"
     anti-cheat: "Anti-Cheat"
@@ -47,6 +47,9 @@ server-config:
     admin-links-website: "Webseite"
     admin-links-discord: "Discord"
     admin-links-youtube: "YouTube"
+    ai-chat-ai-trigger: "KI Auslößer"
+    ai-chat-context-msg-count: "Kontext Nachrichten Anzahl"
+    ai-chat-always-supported-players: "Immer unterstütze Spieler"
     anti-cheat-kick-on-fabric-forge: "Bei Fabric/Forge kicken"
     anti-cheat-handshake-grace-duration: "Handshake-Karenzzeit"
     bedrock-prefix: "Namenspräfix"

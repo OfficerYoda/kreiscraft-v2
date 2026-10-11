@@ -91,6 +91,23 @@ public final class ServerConfigSchema {
                 ConfigValidators.uri(),
                 ConfigLifecycle.HOT_RELOAD));
 
+        // ── ai-chat───────────────────────────────────────────────────────────
+        fields.add(field(
+                path("modules", "ai-chat", "ai-trigger"),
+                ConfigFieldType.STRING,
+                ConfigValidators.nonEmptyString(),
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(
+                path("modules", "ai-chat", "context-msg-count"),
+                ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(0, 1000),
+                ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(
+                path("modules", "ai-chat", "always-supported-players"),
+                ConfigFieldType.STRING_LIST,
+                ConfigValidators.stringList(),
+                ConfigLifecycle.HOT_RELOAD));
+
         // ── anti-cheat ──────────────────────────────────────────────────────
         // `channel` is a plugin-messaging channel (networking) and stays YAML-only.
         fields.add(field(
