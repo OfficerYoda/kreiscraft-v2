@@ -258,8 +258,8 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.HOT_RELOAD));
         fields.add(field(
                 path("modules", "spawn", "glide", "multiply-value"),
-                ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, 100),
+                ConfigFieldType.DOUBLE,
+                ConfigValidators.decimalRange(0.1, 100.0),
                 ConfigLifecycle.HOT_RELOAD));
         fields.add(field(
                 path("modules", "spawn", "glide-boost", "enabled"),

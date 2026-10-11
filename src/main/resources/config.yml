@@ -106,7 +106,7 @@ modules:
     spawn-radius: 50
     glide:
       enabled: true
-      multiply-value: 3
+      multiply-value: 2
     glide-boost:
       enabled: true
       boost-strength: 2.0
