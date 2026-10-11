@@ -138,6 +138,11 @@ dependency contract machine-checked. It also makes it safe to add a new module t
 The `StartupSummary` record is immediately broadcast as an in-game message via the message service
 so that admins see at login which modules are active, disabled, or failed.
 
+A `ModuleFailureNotificationListener` is registered for `PlayerJoinEvent` after `enableAll()`
+returns. When at least one module failed to enable, an operator who joins after startup receives
+the localized `core.startup.failed-modules` message listing the failed module ids; non-operators
+are not notified.
+
 ---
 
 ## `ModuleContext` as a Dependency Bag
@@ -393,3 +398,4 @@ The composition root also publishes a `ModuleEnablement` view backed by the `Mod
 `settings-gui` uses it to omit controls whose owning module is disabled, so the GUI presents only
 features the running server actually offers, while still taking no declared dependency on those
 modules.
+```
