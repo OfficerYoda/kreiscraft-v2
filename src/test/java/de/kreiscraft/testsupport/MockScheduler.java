@@ -19,6 +19,14 @@ public final class MockScheduler implements Scheduler {
     }
 
     @Override
+    public Task runAsync(Runnable task) {
+        task.run();
+        ScheduledEntry entry = new ScheduledEntry(Long.MAX_VALUE, null, task);
+        entry.cancelled = true;
+        return entry;
+    }
+
+    @Override
     public Task runLater(Duration delay, Runnable task) {
         ScheduledEntry e = new ScheduledEntry(virtualMillis + delay.toMillis(), null, task);
         entries.add(e);

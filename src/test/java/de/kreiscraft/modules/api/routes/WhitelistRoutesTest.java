@@ -41,6 +41,11 @@ class WhitelistRoutesTest {
                 }
 
                 @Override
+                public Task runAsync(Runnable task) {
+                    return runOnMain(task);
+                }
+
+                @Override
                 public Task runLater(Duration delay, Runnable task) {
                     throw new UnsupportedOperationException();
                 }

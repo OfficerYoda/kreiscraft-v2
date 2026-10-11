@@ -18,6 +18,14 @@ class MockSchedulerTest {
     }
 
     @Test
+    void runAsync_runsImmediately() {
+        MockScheduler sched = new MockScheduler();
+        AtomicInteger counter = new AtomicInteger();
+        sched.runAsync(counter::incrementAndGet);
+        assertThat(counter).hasValue(1);
+    }
+
+    @Test
     void runLater_firesAtDeadline() {
         MockScheduler sched = new MockScheduler();
         AtomicInteger counter = new AtomicInteger();
