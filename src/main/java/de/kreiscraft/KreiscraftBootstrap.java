@@ -11,6 +11,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleEnablement;
+import de.kreiscraft.core.module.ModuleFailureNotificationListener;
 import de.kreiscraft.core.module.ModuleRegistry;
 import de.kreiscraft.core.module.StartupSummary;
 import de.kreiscraft.core.scheduler.BukkitScheduler;
@@ -165,6 +166,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.worldmgmt.WorldMgmtModule());
 
         StartupSummary summary = modules.enableAll();
+        events.register(new ModuleFailureNotificationListener(summary.failedIds(), messages));
         messages.broadcast("core.startup.summary",
                 "enabled", summary.enabled(),
                 "disabled", summary.disabled(),
