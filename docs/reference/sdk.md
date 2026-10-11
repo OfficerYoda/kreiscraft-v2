@@ -293,7 +293,7 @@ A `Player` context is optional — tokens that require a player (e.g. `%player_n
 **Package:** `de.kreiscraft.shared.chat`
 **Type:** `final class`
 
-A thread-safe publish/subscribe bus for in-game chat lines. The `chat-format` module publishes `ChatBridgeEvent` instances; the `api` module subscribes to forward them to WebSocket clients. Any module may subscribe to observe chat.
+A thread-safe publish/subscribe bus for chat lines. The `chat-format`, `api`, and `ai-chat` modules publish `PLAYER`, `WEB`, and `AI` events respectively; any module may subscribe to observe chat.
 
 `ChatBridge` is published in the `ServiceRegistry` under `ChatBridge.class`.
 
@@ -309,6 +309,7 @@ A thread-safe publish/subscribe bus for in-game chat lines. The `chat-format` mo
 
 ```java
 public record ChatBridgeEvent(
+    ChatSource source,      // PLAYER, WEB, or AI
     UUID senderUuid,        // null for console/system messages
     String senderName,      // raw display name at time of send
     Component rendered,     // fully-rendered Adventure component broadcast in-game
@@ -316,6 +317,9 @@ public record ChatBridgeEvent(
     Instant timestamp       // when the line was produced
 ) {}
 ```
+
+`ChatSource` distinguishes messages sent by an in-game player, the website, and the AI. Subscribers
+should use it rather than inferring the source from a sender name.
 
 ### `ChatBridge.Subscription` interface
 

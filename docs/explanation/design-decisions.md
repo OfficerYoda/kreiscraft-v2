@@ -247,8 +247,9 @@ dependency between two modules that have no logical relationship.
 Place a `ChatBridge` pub/sub bus in the shared layer. `KreiscraftBootstrap` constructs it and
 publishes it to `ServiceRegistry`. `chat-format` retrieves it via
 `ctx.services().get(ChatBridge.class)` and calls `chatBridge.publish(event)` after rendering each
-line. `api` retrieves it similarly and calls `chatBridge.subscribe(event -> ...)` to receive
-events.
+player line. The API and AI modules also publish website and AI lines respectively. Consumers use
+the event's source to distinguish these origins; `api` retrieves the bridge similarly and calls
+`chatBridge.subscribe(event -> ...)` to receive events.
 
 `ChatBridge` itself is a `CopyOnWriteArrayList` of `Consumer<ChatBridgeEvent>` subscribers.
 `subscribe()` returns a `Subscription` handle whose `unsubscribe()` removes the specific

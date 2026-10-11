@@ -1,7 +1,7 @@
 package de.kreiscraft.modules.aichat;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
-import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import java.util.function.Supplier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,16 +20,13 @@ public final class AiChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onChat(AsyncChatEvent event) {
-        String msg = ((TextComponent) event.message()).content();
-        System.out.println("Component to string: " + msg);
+        String msg = PlainTextComponentSerializer.plainText().serialize(event.message());
 
         Player player = event.getPlayer();
         if (player != null
                 && player.hasPermission("kreiscraft.ai-chat.use")
                 && msg.contains(config.get().aiTrigger())) {
             service.aiRequest(msg);
-        } else {
-            service.chatMessage(msg);
         }
     }
 }
