@@ -49,8 +49,8 @@ class EffectsEmitterTest {
     }
 
     private EffectsEmitter emitter(EffectsConfig config) {
-        DefaultEffectsService service = new DefaultEffectsService(preferences, config, true);
-        return new EffectsEmitter(service, server, scheduler, config.schedule());
+        DefaultEffectsService service = new DefaultEffectsService(preferences, () -> config, true);
+        return new EffectsEmitter(service, () -> config, server, scheduler, config.schedule());
     }
 
     private static EffectsConfig config(Particle particle, boolean force) {

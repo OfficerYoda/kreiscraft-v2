@@ -86,7 +86,7 @@ class CombatCountdownTest {
                 })
                         .when(player)
                         .sendActionBar(any(Component.class));
-        service = new DefaultCombatService(scheduler, messages, preferences, platform, config);
+        service = new DefaultCombatService(scheduler, messages, preferences, platform, () -> config);
     }
 
     @Test

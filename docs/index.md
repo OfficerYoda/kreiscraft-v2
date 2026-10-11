@@ -30,7 +30,7 @@ Terse recipes. You know what you want to do; these tell you how.
 | [Enable or Disable a Module](/how-to/enable-or-disable-a-module/) | Flip `modules.<id>.enabled` in config; understand when a restart is required |
 | [Persist Module State](/how-to/persist-module-state/) | Use `DataFile<T>` for dirty-tracked, auto-saved YAML state |
 | [Add and Use Messages](/how-to/add-and-use-messages/) | Add lang keys, send MiniMessage text, use placeholders |
-| [Reload Configuration](/how-to/reload-configuration/) | Use `/kreiscraft reload`; implement `onConfigReload` with `AtomicReference` |
+| [Reload Configuration](/how-to/reload-configuration/) | Use `/kreiscraft reload`; propagate config to consumers with a `Supplier` |
 | [Configure the HTTP API](/how-to/configure-the-http-api/) | Enable the `api` module, set port/CORS, understand the linking flow |
 | [Write Tests](/how-to/write-tests/) | Unit tests, MockBukkit listener tests, Javalin route tests, lang parity |
 

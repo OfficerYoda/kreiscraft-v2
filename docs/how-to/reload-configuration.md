@@ -50,44 +50,30 @@ default void onConfigReload(ConfigurationNode moduleConfig) {}
 
 Override it whenever your module has runtime state derived from config.
 
-### Minimal pattern
+### Default: a plain field plus a `Supplier`
 
-```java
-@Override
-public void onConfigReload(ConfigurationNode moduleNode) {
-    try {
-        this.config = moduleNode.get(MyConfig.class);
-    } catch (SerializationException e) {
-        throw new ModuleException("failed to reload config for module " + id(), e);
-    }
-}
-```
-
-This is sufficient when no listener or background task holds a direct reference to `config` — you can just read `this.config` from the main thread each time.
-
-### Thread-safe propagation with `AtomicReference`
-
-When a listener or async task needs live access to the current config, hold it in an `AtomicReference` and pass a `Supplier` lambda to the listener. `AntiCheatModule` and `ChatFormatModule` both use this pattern.
+Hold the config in a plain field and hand consumers `() -> this.config`. They read the current value
+on every call, so a reload is observed without re-registering anything.
 
 ```java
 // In the module class:
-private final AtomicReference<MyConfig> configRef = new AtomicReference<>();
+private MyConfig config;
 
 @Override
 public void enable(ModuleContext ctx) {
     try {
-        configRef.set(ctx.moduleConfig().get(MyConfig.class));
+        this.config = ctx.moduleConfig().get(MyConfig.class);
     } catch (SerializationException e) {
         throw new ModuleException("failed to load config for module " + id(), e);
     }
     // Pass a Supplier so the listener always reads the current value:
-    ctx.events().register(new MyListener(configRef::get, ...));
+    ctx.events().register(new MyListener(() -> this.config, ...));
 }
 
 @Override
 public void onConfigReload(ConfigurationNode moduleNode) {
     try {
-        configRef.set(moduleNode.get(MyConfig.class));
+        this.config = moduleNode.get(MyConfig.class);
     } catch (SerializationException e) {
         throw new ModuleException("failed to reload config for module " + id(), e);
     }
@@ -111,7 +97,23 @@ public final class MyListener implements Listener {
 }
 ```
 
-`AtomicReference.set` is a single volatile write — safe to call from the main thread while Bukkit event handlers read it concurrently (`configRef::get`).
+If no listener, command, or task reads config after startup, you do not even need the `Supplier` —
+just read `this.config` from the main thread each time.
+
+### Reading config off the main thread: add `volatile`
+
+`/kreiscraft reload` writes the config on the main thread, and most Bukkit event handlers run there
+too, so the plain field above is enough. But some events fire on another thread — notably Paper's
+`AsyncChatEvent` — and a reload write is not guaranteed to be visible to them. If any consumer calls
+`config.get()` off the main thread, mark the module field `volatile`:
+
+```java
+private volatile MyConfig config;   // the reload is now visible to the async reader
+```
+
+A `volatile` write publishes the new reference so the async reader sees it on its next `config.get()`;
+the `Supplier` lambda itself is unchanged. Without it, an async handler may keep reading the
+pre-reload record indefinitely.
 
 ---
 

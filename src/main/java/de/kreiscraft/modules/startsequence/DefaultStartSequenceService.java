@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -24,14 +25,14 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     private final ConfigService configService;
     private final MessageService messages;
     private final PaperPlatform platform;
-    private StartSequenceConfig config;
+    private final Supplier<StartSequenceConfig> config;
 
     private final List<Scheduler.Task> activeTasks = new ArrayList<>();
     private World activeWorld;
 
     public DefaultStartSequenceService(
             Scheduler scheduler,
-            StartSequenceConfig config,
+            Supplier<StartSequenceConfig> config,
             MessageService messages,
             PaperPlatform platform,
             ConfigService configService) {
@@ -57,7 +58,7 @@ public final class DefaultStartSequenceService implements StartSequenceService {
 
         // Render the full promise before starting: countdown, countdown - 1, ..., 1, one number
         // per second, then the start title one second after the final number.
-        long seconds = Math.max(0L, config.countdown().toSeconds());
+        long seconds = Math.max(0L, config.get().countdown().toSeconds());
         for (long number = seconds; number >= 1L; number--) {
             final int displayed = (int) number;
             Duration delay = Duration.ofSeconds(seconds - number);
@@ -73,14 +74,10 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     public void reset() {
         cancelAllTasks();
         if (activeWorld != null) {
-            activeWorld.getWorldBorder().setSize(config.initialBorderSize());
+            activeWorld.getWorldBorder().setSize(config.get().initialBorderSize());
             activeWorld = null;
         }
         configService.applyEdit(ServerConfigSchema.startSequenceStarted(), false);
-    }
-
-    public void updateConfig(StartSequenceConfig newConfig) {
-        this.config = newConfig;
     }
 
     public void shutdown() {
@@ -129,7 +126,8 @@ public final class DefaultStartSequenceService implements StartSequenceService {
     }
 
     private void startBorderTransition(World world) {
-        world.getWorldBorder().changeSize(config.targetBorderSize(), toTicks(config.borderDuration()));
+        world.getWorldBorder()
+                .changeSize(config.get().targetBorderSize(), toTicks(config.get().borderDuration()));
     }
 
     private static long toTicks(Duration duration) {

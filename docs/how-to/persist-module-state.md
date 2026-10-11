@@ -11,7 +11,7 @@ title: How to persist module state with DataFile
 
 ### 1. Create a class extending `DataFile<T>`
 
-`T` is the in-memory state type (a record, POJO, or `AtomicReference<X>`).
+`T` is the in-memory state type (a record or POJO).
 
 ```java
 package de.kreiscraft.modules.myfeature;

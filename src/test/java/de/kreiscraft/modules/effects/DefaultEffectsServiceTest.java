@@ -20,7 +20,7 @@ class DefaultEffectsServiceTest {
     }
 
     private DefaultEffectsService service() {
-        return new DefaultEffectsService(preferences, config, true);
+        return new DefaultEffectsService(preferences, () -> config, true);
     }
 
     @Test
@@ -31,7 +31,7 @@ class DefaultEffectsServiceTest {
     @Test
     void isEnabled_whenModuleDefaultDisabled_returnsFalse() {
         DefaultEffectsService svc =
-                new DefaultEffectsService(preferences, config, false);
+                new DefaultEffectsService(preferences, () -> config, false);
         assertThat(svc.isEnabled(UUID.randomUUID())).isFalse();
     }
 
@@ -43,7 +43,7 @@ class DefaultEffectsServiceTest {
         svc.toggle(id);
 
         assertThat(svc.isEnabled(id)).isFalse();
-        assertThat(new DefaultEffectsService(preferences, config, true).isEnabled(id)).isFalse();
+        assertThat(new DefaultEffectsService(preferences, () -> config, true).isEnabled(id)).isFalse();
     }
 
     @Test
@@ -86,9 +86,9 @@ class DefaultEffectsServiceTest {
         service().setParticle(id, Particle.FLAME);
 
         assertThat(service().getParticle(id)).isEqualTo(Particle.FLAME);
-        assertThat(new DefaultEffectsService(preferences, config, true).getParticle(id))
+        assertThat(new DefaultEffectsService(preferences, () -> config, true).getParticle(id))
                 .isEqualTo(Particle.FLAME);
-        assertThat(new DefaultEffectsService(preferences, config, true).selectedParticle(id))
+        assertThat(new DefaultEffectsService(preferences, () -> config, true).selectedParticle(id))
                 .contains(Particle.FLAME);
     }
 
@@ -96,7 +96,7 @@ class DefaultEffectsServiceTest {
     void setParticle_enablesEffectsImmediately() {
         UUID id = UUID.randomUUID();
         DefaultEffectsService svc =
-                new DefaultEffectsService(preferences, config, false);
+                new DefaultEffectsService(preferences, () -> config, false);
 
         svc.setParticle(id, Particle.FLAME);
 
@@ -117,21 +117,21 @@ class DefaultEffectsServiceTest {
     }
 
     @Test
-    void updateConfig_changesReturnedConfig() {
+    void configSwap_observableByExistingService() {
         DefaultEffectsService svc = service();
         EffectsConfig newConfig =
                 new EffectsConfig(Particle.FLAME, null, 5, 0.1, 0.1, 0.1, false);
 
-        svc.updateConfig(newConfig);
+        config = newConfig;
 
-        assertThat(svc.getConfig()).isEqualTo(newConfig);
+        assertThat(svc.getParticle(UUID.randomUUID())).isEqualTo(Particle.FLAME);
     }
 
     @Test
     void getParticle_afterConfigUpdate_usesNewDefault() {
         UUID id = UUID.randomUUID();
         DefaultEffectsService svc = service();
-        svc.updateConfig(new EffectsConfig(Particle.LAVA, null, 5, 0.1, 0.1, 0.1, false));
+        config = new EffectsConfig(Particle.LAVA, null, 5, 0.1, 0.1, 0.1, false);
 
         assertThat(svc.getParticle(id)).isEqualTo(Particle.LAVA);
     }

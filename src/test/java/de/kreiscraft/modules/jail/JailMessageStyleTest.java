@@ -141,7 +141,7 @@ class JailMessageStyleTest {
         assertThat(
                 PlainTextComponentSerializer.plainText()
                         .serialize(messages.renderFor(target, "jail.no-reason")))
-                .as("the no-reason placeholder must be translated, not a hard-coded English token")
-                .isEqualTo("<kein Grund>");
+                                .as("the no-reason placeholder must be translated, not a hard-coded English token")
+                                .isEqualTo("<kein Grund>");
     }
 }

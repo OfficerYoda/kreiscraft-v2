@@ -77,7 +77,7 @@ class GlideListenerTest {
         YamlConfigService configService =
                 new YamlConfigService(tmp, getClass().getClassLoader());
         config = makeConfig(30, 3);
-        service = new DefaultSpawnService(configService, config);
+        service = new DefaultSpawnService(configService, () -> config);
 
         // Set spawn at origin in the world
         service.setSpawn(new Location(world, 0, 64, 0));
@@ -313,7 +313,6 @@ class GlideListenerTest {
 
         // Simulate config reload: widen spawn radius to 50.
         config = makeConfig(50, 3);
-        service.updateConfig(config);
 
         scheduler.advance(Duration.ofMillis(250));
         assertThat(player.getAllowFlight()).isTrue(); // now inside reloaded radius
@@ -325,13 +324,11 @@ class GlideListenerTest {
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
         config = makeDisabledConfig(30, 3);
-        service.updateConfig(config);
 
         scheduler.advance(Duration.ofMillis(250));
         assertThat(player.getAllowFlight()).isFalse();
 
         config = makeConfig(30, 3);
-        service.updateConfig(config);
         listener.reload();
 
         assertThat(player.getAllowFlight()).isTrue();
@@ -347,7 +344,6 @@ class GlideListenerTest {
         assertThat(listener.isFlying(player.getUniqueId())).isTrue();
 
         config = makeDisabledConfig(30, 3);
-        service.updateConfig(config);
         listener.reload();
 
         assertThat(player.getAllowFlight()).isFalse();
@@ -359,7 +355,6 @@ class GlideListenerTest {
     @Test
     void glideStart_inGlideZone_withBoostEnabled_marksBoostEligible() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("lily");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5)); // inside glide zone
@@ -375,7 +370,6 @@ class GlideListenerTest {
     @Test
     void glideStart_outsideGlideZone_doesNotMarkBoostEligible() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("mike");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 200, 64, 200)); // far outside
@@ -389,7 +383,6 @@ class GlideListenerTest {
     @Test
     void swappingHands_neverAppliesGlideBoost() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("swapless");
         player.setGliding(true);
         player.setVelocity(new org.bukkit.util.Vector());
@@ -405,7 +398,6 @@ class GlideListenerTest {
     @Test
     void sneak_whileEligibleGliding_appliesBoost() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("nina");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5, 0f, 0f));
@@ -430,7 +422,6 @@ class GlideListenerTest {
     @Test
     void sneak_whenNotEligible_doesNotBoost() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("otto");
         player.setGliding(true);
         // player is NOT in boostEligible (did not start glide through the listener)
@@ -445,7 +436,6 @@ class GlideListenerTest {
     @Test
     void serverGlideStop_whileManagedPlayerIsAirborne_isCancelled() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("penny");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
@@ -488,7 +478,6 @@ class GlideListenerTest {
     @Test
     void glideEnd_onLanding_clearsBoostEligibility() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("landed");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
@@ -510,7 +499,6 @@ class GlideListenerTest {
     @Test
     void playerQuit_clearsBoostEligibility() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("quinn");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
@@ -529,7 +517,6 @@ class GlideListenerTest {
     @Test
     void shutdown_clearsBoostEligibility() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("shutdown");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
@@ -543,7 +530,6 @@ class GlideListenerTest {
     @Test
     void newEligibleGlide_grantsOneNewOpportunity() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("renewed");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5));
@@ -560,7 +546,6 @@ class GlideListenerTest {
     @Test
     void secondSneak_duringSameGlide_doesNotBoost() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("rose");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5, 0f, 0f));
@@ -591,7 +576,6 @@ class GlideListenerTest {
     @Test
     void sneak_whileStillInGlideZone_appliesBoostAndConsumesOpportunity() {
         config = makeConfigWithBoost(30, 3, true, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("sam");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5, 0f, 0f)); // inside zone
@@ -614,7 +598,6 @@ class GlideListenerTest {
     void configReload_glideBoostEnabled_isHonored() {
         // Start with boost disabled
         config = makeConfigWithBoost(30, 3, false, 2.0);
-        service.updateConfig(config);
         PlayerMock player = server.addPlayer("tara");
         player.setGameMode(GameMode.SURVIVAL);
         player.setLocation(new Location(world, 5, 64, 5, 0f, 0f));
@@ -626,7 +609,6 @@ class GlideListenerTest {
 
         // Simulate config reload: enable boost with cooldown 1s
         config = makeConfigWithBoost(30, 3, true, 3.0);
-        service.updateConfig(config);
 
         // New glide for a second player → should now be marked eligible
         PlayerMock player2 = server.addPlayer("uma");

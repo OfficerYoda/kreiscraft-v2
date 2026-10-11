@@ -17,6 +17,7 @@ public final class EffectsModule implements Module {
      */
     static final boolean EFFECTS_DEFAULT_ENABLED = true;
 
+    private EffectsConfig config;
     private DefaultEffectsService service;
     private EffectsEmitter emitter;
 
@@ -32,9 +33,8 @@ public final class EffectsModule implements Module {
 
     @Override
     public void enable(ModuleContext ctx) {
-        EffectsConfig config;
         try {
-            config = ctx.moduleConfig().get(EffectsConfig.class);
+            this.config = ctx.moduleConfig().get(EffectsConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
@@ -42,12 +42,17 @@ public final class EffectsModule implements Module {
         PlayerPreferencesService preferences = ctx.services().get(PlayerPreferencesService.class);
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
 
-        this.service = new DefaultEffectsService(preferences, config, EFFECTS_DEFAULT_ENABLED);
+        this.service =
+                new DefaultEffectsService(preferences, () -> this.config, EFFECTS_DEFAULT_ENABLED);
         ctx.services().publish(EffectsService.class, service);
 
         this.emitter =
                 new EffectsEmitter(
-                        service, platform.server(), ctx.scheduler(), config.schedule());
+                        service,
+                        () -> this.config,
+                        platform.server(),
+                        ctx.scheduler(),
+                        config.schedule());
 
         ctx.commands()
                 .register(
@@ -65,16 +70,12 @@ public final class EffectsModule implements Module {
 
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
-        EffectsConfig config;
         try {
-            config = moduleConfig.get(EffectsConfig.class);
+            this.config = moduleConfig.get(EffectsConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }
 
-        if (service != null) {
-            service.updateConfig(config);
-        }
         if (emitter != null) {
             // The schedule is hot-reloadable: replace the running task so the new period applies.
             emitter.reschedule(config.schedule());

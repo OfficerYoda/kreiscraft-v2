@@ -41,7 +41,8 @@ public final class SpawnModule implements Module {
         }
 
         // ── service ─────────────────────────────────────────────────────────
-        this.service = new DefaultSpawnService(ctx.services().get(ConfigService.class), config);
+        this.service = new DefaultSpawnService(
+                ctx.services().get(ConfigService.class), () -> this.config);
         ctx.services().publish(SpawnService.class, service);
 
         // ── listeners (config supplied via lambda so reloads propagate) ─────
@@ -73,9 +74,6 @@ public final class SpawnModule implements Module {
         }
         if (config == null) {
             config = new SpawnConfig(SpawnConfig.DEFAULT_SPAWN_RADIUS, null, null);
-        }
-        if (service != null) {
-            service.updateConfig(config);
         }
         if (glideListener != null) {
             glideListener.reload();

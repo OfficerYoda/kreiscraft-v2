@@ -13,7 +13,9 @@ import org.spongepowered.configurate.serialize.SerializationException;
 
 public final class BedrockModule implements Module {
 
-    private BedrockConfig config;
+    // Read off the main thread (AsyncPlayerPreLoginEvent), so the field must be volatile for a
+    // reload to be visible to the service.
+    private volatile BedrockConfig config;
     private DefaultBedrockService service;
     private BedrockData data;
     private BedrockAuthorizationData authorizationData;
@@ -57,7 +59,7 @@ public final class BedrockModule implements Module {
         WhitelistService whitelist = ctx.services().get(WhitelistService.class);
 
         this.service = new DefaultBedrockService(
-                data, authorizationData, config, whitelist, ctx.plugin().getLogger());
+                data, authorizationData, () -> this.config, whitelist, ctx.plugin().getLogger());
         ctx.services().publish(BedrockService.class, service);
 
         ctx.events().register(new BedrockListener(service, ctx.scheduler()));
@@ -73,9 +75,6 @@ public final class BedrockModule implements Module {
             this.config = moduleConfig.get(BedrockConfig.class);
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
-        }
-        if (service != null) {
-            service.updateConfig(config);
         }
     }
 }

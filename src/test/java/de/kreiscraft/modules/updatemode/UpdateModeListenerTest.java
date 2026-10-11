@@ -37,6 +37,7 @@ class UpdateModeListenerTest {
     private PluginMock plugin;
     private MessageService messages;
     private YamlConfigService config;
+    private UpdateModeConfig moduleConfig;
     private DefaultUpdateModeService service;
     private UpdateModeListener listener;
 
@@ -49,9 +50,10 @@ class UpdateModeListenerTest {
         when(messages.renderFor(any(), any(), any())).thenReturn(KICK_COMPONENT);
 
         config = new YamlConfigService(tmp, getClass().getClassLoader());
+        moduleConfig = new UpdateModeConfig(BYPASS_PERMISSION, List.of());
         service = new DefaultUpdateModeService(
                 config,
-                new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
+                () -> moduleConfig,
                 new PaperPlatform(plugin, server),
                 messages,
                 LOG);
@@ -103,7 +105,7 @@ class UpdateModeListenerTest {
 
     @Test
     void onLogin_whenActiveAndNameBypass_allowsLogin() throws IOException {
-        service.updateConfig(new UpdateModeConfig(BYPASS_PERMISSION, List.of("Bob")));
+        moduleConfig = new UpdateModeConfig(BYPASS_PERMISSION, List.of("Bob"));
         service.setActive(true);
         PlayerMock bob = server.addPlayer("Bob");
 
@@ -148,7 +150,7 @@ class UpdateModeListenerTest {
         assertThat(before.getResult()).isEqualTo(PlayerLoginEvent.Result.KICK_WHITELIST);
 
         // Reload changes the configured bypass permission to the one Alice holds.
-        service.updateConfig(new UpdateModeConfig("kreiscraft.custom.bypass", List.of()));
+        moduleConfig = new UpdateModeConfig("kreiscraft.custom.bypass", List.of());
 
         PlayerLoginEvent after = loginEvent(alice);
         listener.onLogin(after);
@@ -164,7 +166,7 @@ class UpdateModeListenerTest {
         YamlConfigService reopened = new YamlConfigService(tmp, getClass().getClassLoader());
         DefaultUpdateModeService restarted = new DefaultUpdateModeService(
                 reopened,
-                new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
+                () -> new UpdateModeConfig(BYPASS_PERMISSION, List.of()),
                 new PaperPlatform(plugin, server),
                 messages,
                 LOG);

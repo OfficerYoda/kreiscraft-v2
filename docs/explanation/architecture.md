@@ -311,9 +311,10 @@ modules.reloadConfigs(cfg.root());     // dispatch to each enabled module
 `m.onConfigReload(newRoot.node("modules", m.id()))` for each module. The default implementation
 of `onConfigReload` in the `Module` interface is a no-op; modules opt in by overriding it.
 
-Modules that need live config propagation hold the current config in an `AtomicReference` and
-give listeners a `Supplier<XxxConfig>`. This makes the new value visible without re-registering
-listeners. See [Reload Configuration](/how-to/reload-configuration/#thread-safe-propagation-with-atomicreference)
+Modules that need live config propagation hold the current config in a plain field and give
+consumers a `Supplier<XxxConfig>` (in practice `() -> this.config`). This makes the new value visible
+without re-registering listeners; a `volatile` field covers consumers that read off the main thread.
+See [Reload Configuration](/how-to/reload-configuration/#reading-config-off-the-main-thread-add-volatile)
 for the implementation pattern.
 
 ---

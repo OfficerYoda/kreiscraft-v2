@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.entity.Player;
@@ -33,7 +34,7 @@ public final class DefaultCombatService implements CombatService {
     private final MessageService messages;
     private final PlayerPreferencesService preferences;
     private final PaperPlatform platform;
-    private CombatConfig config;
+    private final Supplier<CombatConfig> config;
 
     private final Map<UUID, PerPlayerCombat> state = new HashMap<>();
 
@@ -42,7 +43,7 @@ public final class DefaultCombatService implements CombatService {
             MessageService messages,
             PlayerPreferencesService preferences,
             PaperPlatform platform,
-            CombatConfig config) {
+            Supplier<CombatConfig> config) {
         this.scheduler = scheduler;
         this.messages = messages;
         this.preferences = preferences;
@@ -98,10 +99,6 @@ public final class DefaultCombatService implements CombatService {
         fireEvent(new CombatTaggedEvent(uuid, before, Duration.ZERO));
     }
 
-    public void updateConfig(CombatConfig config) {
-        this.config = config;
-    }
-
     public void shutdown() {
         for (PerPlayerCombat entry : state.values()) {
             if (entry.task != null) {
@@ -133,7 +130,7 @@ public final class DefaultCombatService implements CombatService {
         String value = String.valueOf(seconds);
         Component msg = messages.renderFor(player, "combat.remaining", "seconds", value);
         // No stored preference means the combat module's configured default applies.
-        CombatDisplay display = preferences.combatDisplay(uuid, config.defaultDisplay());
+        CombatDisplay display = preferences.combatDisplay(uuid, config.get().defaultDisplay());
         switch (display) {
             case CHAT -> messages.send(player, "combat.remaining", "seconds", value);
             case ACTIONBAR -> player.sendActionBar(msg);

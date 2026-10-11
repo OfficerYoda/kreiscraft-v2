@@ -4,12 +4,11 @@ import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.spongepowered.configurate.ConfigurationNode;
 
 public final class WitherModule implements Module {
 
-    private final AtomicReference<WitherConfig> configRef = new AtomicReference<>();
+    private WitherConfig config;
     private WitherListener listener;
 
     @Override
@@ -25,11 +24,11 @@ public final class WitherModule implements Module {
     @Override
     public void enable(ModuleContext ctx) {
         try {
-            configRef.set(ctx.moduleConfig().get(WitherConfig.class));
+            config = ctx.moduleConfig().get(WitherConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        this.listener = new WitherListener(configRef::get, ctx.messages(), ctx.scheduler());
+        this.listener = new WitherListener(() -> config, ctx.messages(), ctx.scheduler());
         ctx.events().register(listener);
     }
 
@@ -43,7 +42,7 @@ public final class WitherModule implements Module {
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
-            configRef.set(moduleConfig.get(WitherConfig.class));
+            config = moduleConfig.get(WitherConfig.class);
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to reload config for module " + id(), e);
         }

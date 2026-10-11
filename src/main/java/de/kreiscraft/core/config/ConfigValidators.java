@@ -208,7 +208,9 @@ public final class ConfigValidators {
                     }
                 }
                 return Optional.empty();
-            } catch (SerializationException e) { return Optional.of("must be a list of integers"); }
+            } catch (SerializationException e) {
+                return Optional.of("must be a list of integers");
+            }
         };
     }
 }

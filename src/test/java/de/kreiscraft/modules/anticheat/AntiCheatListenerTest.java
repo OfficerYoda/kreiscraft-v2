@@ -61,7 +61,7 @@ class AntiCheatListenerTest {
 
     private void registerListener() {
         AntiCheatListener listener =
-                new AntiCheatListener(configRef, service, scheduler, messages, brandProvider);
+                new AntiCheatListener(configRef::get, service, scheduler, messages, brandProvider);
         server.getPluginManager().registerEvents(listener, plugin);
     }
 

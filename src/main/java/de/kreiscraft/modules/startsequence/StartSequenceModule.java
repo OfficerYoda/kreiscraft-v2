@@ -38,7 +38,7 @@ public final class StartSequenceModule implements Module {
 
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
         this.service = new DefaultStartSequenceService(
-                ctx.scheduler(), config, ctx.messages(), platform,
+                ctx.scheduler(), () -> this.config, ctx.messages(), platform,
                 ctx.services().get(ConfigService.class));
 
         ctx.services().publish(StartSequenceService.class, service);
@@ -59,8 +59,8 @@ public final class StartSequenceModule implements Module {
     public void onConfigReload(ConfigurationNode moduleConfig) {
         try {
             StartSequenceConfig reloaded = moduleConfig.get(StartSequenceConfig.class);
-            if (reloaded != null && service != null) {
-                service.updateConfig(reloaded);
+            if (reloaded != null) {
+                this.config = reloaded;
             }
         } catch (SerializationException e) {
             throw new ModuleException("Failed to reload config for module " + id(), e);

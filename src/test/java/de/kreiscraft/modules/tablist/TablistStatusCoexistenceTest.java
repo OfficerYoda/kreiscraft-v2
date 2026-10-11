@@ -60,7 +60,8 @@ class TablistStatusCoexistenceTest {
         Status status = new Status("<gold>Admin</gold>", " <gray>star", GOLD);
         when(statusService.get(any(UUID.class))).thenReturn(status);
 
-        TablistUpdater updater = new TablistUpdater(server, resolver, "header", "footer");
+        TablistUpdater updater =
+                new TablistUpdater(server, resolver, () -> new TablistConfig(null, "header", "footer"));
         server.getPluginManager().registerEvents(new StatusListener(statusService, server), plugin);
         server.getPluginManager().registerEvents(new TablistListener(updater), plugin);
 
@@ -82,7 +83,8 @@ class TablistStatusCoexistenceTest {
         Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
         when(statusService.get(any(UUID.class))).thenReturn(status);
 
-        TablistUpdater updater = new TablistUpdater(server, resolver, "header", "footer");
+        TablistUpdater updater =
+                new TablistUpdater(server, resolver, () -> new TablistConfig(null, "header", "footer"));
         server.getPluginManager().registerEvents(new StatusListener(statusService, server), plugin);
         server.getPluginManager().registerEvents(new TablistListener(updater), plugin);
 
