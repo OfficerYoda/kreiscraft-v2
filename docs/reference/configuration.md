@@ -90,8 +90,8 @@ each field's value type:
 - Enum — a cycled set of the field's allowed values.
 - Material — a cycled set of Bukkit material names (supported for any material-typed field).
 - Location — set to the editing administrator's current position.
-- Text, text list, and integer list — entered in chat; the entered value is validated before it is
-  written (integer-list entries must be whole numbers).
+- Text, text list, and integer list — entered through an anvil editor; each value is validated before
+  it is written (integer-list entries must be whole numbers).
 
 Every module `enabled` flag is also exposed and is **restart-only**.
 

@@ -108,9 +108,6 @@ server-config:
   value-none: "<gray>not set"
   edit-rejected: "<prefix> <red>Invalid value: <reason>"
   edit-failed: "<prefix> <red>Save failed; nothing changed."
-  input:
-    prompt: "<prefix> <yellow>Type a new value for <field> (<kind>) in chat, or type 'cancel'."
-    cancelled: "<prefix> <gray>Input cancelled."
   list:
     blank: "<prefix> <red>Enter a nonblank value."
     duplicate: "<prefix> <red><value> already exists."

@@ -8,7 +8,6 @@ import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
-import io.papermc.paper.event.player.AsyncChatEvent;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,17 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Particle;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.Material;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import xyz.xenondevs.invui.Click;
@@ -45,14 +40,11 @@ import xyz.xenondevs.invui.item.ItemWrapper;
  * {@link ServerConfigCloseReporter} tells the operator which changes need a reload and which need a
  * restart.
  *
- * <p>Free-form strings are entered through chat. String lists use an anvil editor whose lower
- * inventory shows removable values. All chat-triggered GUI work is scheduled on the main thread
- * because the chat event is asynchronous.
+ * <p>Free-form strings and string lists are entered through anvil editors. The list editor's lower
+ * inventory shows removable values.
  */
 public final class ServerConfigNavigator
         implements SettingsNavigator, ServerConfigGui.Navigator, Listener {
-
-    private static final String CANCEL = "cancel";
 
     private final SettingsService settings;
     private final ModuleEnablement modules;
@@ -63,7 +55,6 @@ public final class ServerConfigNavigator
     private final Predicate<CommandSender> reload;
 
     private final Map<UUID, ServerConfigSession> sessions = new HashMap<>();
-    private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
     private final Map<UUID, GuiRegistry.Handle> windows = new HashMap<>();
     private final Set<UUID> suppressReport = new HashSet<>();
     private final Set<UUID> particlePickers = new HashSet<>();
@@ -172,7 +163,6 @@ public final class ServerConfigNavigator
         UUID id = player.getUniqueId();
         windows.remove(id);
         if (suppressReport.contains(id)
-                || pendingInputs.containsKey(id)
                 || particlePickers.contains(id)) {
             return;
         }
@@ -195,46 +185,46 @@ public final class ServerConfigNavigator
     }
 
     // ------------------------------------------------------------------
-    // Chat-based text entry
+    // Anvil-based text entry
     // ------------------------------------------------------------------
 
     @Override
-    public void requestTextInput(Player player, ConfigField field, ServerConfigPage page) {
-        UUID id = player.getUniqueId();
-        pendingInputs.put(id, new PendingInput(field, page));
-        GuiRegistry.Handle handle = windows.get(id);
-        if (handle != null) {
-            handle.close();
-        }
-        String fieldName =
-                PlainTextComponentSerializer.plainText()
-                        .serialize(ServerConfigGui.label(field, messages, player));
-        messages.send(
+    public void openStringEditor(Player player, ConfigField field, ServerConfigPage page) {
+        String[] draft = {""};
+        openAnvilWindow(
                 player,
-                "server-config.input.prompt",
-                "field",
-                fieldName,
-                "kind",
-                "text");
+                anvilInputControls("Save", () -> applyStringEdit(player, field, page, draft[0])),
+                xyz.xenondevs.invui.gui.Gui.empty(9, 4),
+                ServerConfigGui.label(field, messages, player),
+                text -> draft[0] = text,
+                () -> openServerConfig(player, page));
+    }
+
+    private void applyStringEdit(
+            Player player, ConfigField field, ServerConfigPage page, String value) {
+        applyEditResult(player, field, editor.edit(field, value));
+        openServerConfig(player, page);
+    }
+
+    private boolean applyEditResult(Player player, ConfigField field, ConfigEditResult result) {
+        ServerConfigSession session = sessions.get(player.getUniqueId());
+        if (result instanceof ConfigEditResult.Applied && session != null) {
+            session.recordApplied(field);
+            return true;
+        }
+        if (result instanceof ConfigEditResult.Applied) {
+            return true;
+        } else if (result instanceof ConfigEditResult.Rejected rejected) {
+            messages.send(player, "server-config.edit-rejected", "reason", rejected.reason());
+        } else if (result instanceof ConfigEditResult.Failed) {
+            messages.send(player, "server-config.edit-failed");
+        }
+        return false;
     }
 
     @Override
     public void openListEditor(Player player, ConfigField field, ServerConfigPage page) {
         String[] draft = {""};
-        xyz.xenondevs.invui.gui.Gui upper = xyz.xenondevs.invui.gui.Gui.empty(3, 1);
-        upper.setItem(0, Item.simple(named(Material.PAPER, Component.text(" "), List.of())));
-        upper.setItem(2, new AbstractItem() {
-            @Override
-            public ItemProvider getItemProvider(Player viewer) {
-                return new ItemWrapper(named(Material.LIME_DYE, Component.text("Add"), List.of()));
-            }
-
-            @Override
-            public void handleClick(
-                    org.bukkit.event.inventory.ClickType clickType, Player viewer, Click click) {
-                addListValue(viewer, field, page, draft[0]);
-            }
-        });
         xyz.xenondevs.invui.gui.Gui lower = xyz.xenondevs.invui.gui.Gui.empty(9, 4);
         List<String> values = listValue(field);
         for (int slot = 0; slot < Math.min(lower.getSize(), values.size()); slot++) {
@@ -243,11 +233,30 @@ public final class ServerConfigNavigator
         }
         openAnvilWindow(
                 player,
-                upper,
+                anvilInputControls("Add", () -> addListValue(player, field, page, draft[0])),
                 lower,
                 ServerConfigGui.label(field, messages, player),
                 text -> draft[0] = text,
                 () -> openServerConfig(player, page));
+    }
+
+    private static xyz.xenondevs.invui.gui.Gui anvilInputControls(
+            String actionLabel, Runnable action) {
+        xyz.xenondevs.invui.gui.Gui upper = xyz.xenondevs.invui.gui.Gui.empty(3, 1);
+        upper.setItem(0, Item.simple(named(Material.PAPER, Component.text(" "), List.of())));
+        upper.setItem(2, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                return new ItemWrapper(named(Material.LIME_DYE, Component.text(actionLabel), List.of()));
+            }
+
+            @Override
+            public void handleClick(
+                    org.bukkit.event.inventory.ClickType clickType, Player viewer, Click click) {
+                action.run();
+            }
+        });
+        return upper;
     }
 
     private AbstractItem listEntry(
@@ -303,17 +312,8 @@ public final class ServerConfigNavigator
         Object value = field.type() == ConfigFieldType.INT_LIST
                 ? updated.stream().map(Integer::parseInt).toList()
                 : updated;
-        ConfigEditResult result = editor.edit(field, value);
-        if (result instanceof ConfigEditResult.Applied) {
-            ServerConfigSession session = sessions.get(player.getUniqueId());
-            if (session != null) {
-                session.recordApplied(field);
-            }
+        if (applyEditResult(player, field, editor.edit(field, value))) {
             openListEditor(player, field, page);
-        } else if (result instanceof ConfigEditResult.Rejected rejected) {
-            messages.send(player, "server-config.edit-rejected", "reason", rejected.reason());
-        } else if (result instanceof ConfigEditResult.Failed) {
-            messages.send(player, "server-config.edit-failed");
         }
     }
 
@@ -363,44 +363,4 @@ public final class ServerConfigNavigator
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onChat(AsyncChatEvent event) {
-        UUID id = event.getPlayer().getUniqueId();
-        PendingInput input = pendingInputs.remove(id);
-        if (input == null) {
-            return;
-        }
-        // Swallow the message: it was a setting value, not chat.
-        event.setCancelled(true);
-        String text =
-                PlainTextComponentSerializer.plainText()
-                        .serialize(event.originalMessage())
-                        .trim();
-        Player player = event.getPlayer();
-        scheduler.runOnMain(() -> completeInput(player, input, text));
-    }
-
-    private void completeInput(Player player, PendingInput input, String text) {
-        if (!player.isOnline()) {
-            return;
-        }
-        if (CANCEL.equalsIgnoreCase(text)) {
-            messages.send(player, "server-config.input.cancelled");
-            openServerConfig(player, input.page());
-            return;
-        }
-        ConfigEditResult result = editor.edit(input.field(), text);
-        ServerConfigSession session = sessions.get(player.getUniqueId());
-        if (result instanceof ConfigEditResult.Applied && session != null) {
-            session.recordApplied(input.field());
-        } else if (result instanceof ConfigEditResult.Rejected rejected) {
-            messages.send(player, "server-config.edit-rejected", "reason", rejected.reason());
-        } else if (result instanceof ConfigEditResult.Failed) {
-            messages.send(player, "server-config.edit-failed");
-        }
-        openServerConfig(player, input.page());
-    }
-
-    private record PendingInput(ConfigField field, ServerConfigPage page) {
-    }
 }

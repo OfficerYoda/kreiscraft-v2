@@ -14,7 +14,7 @@ Run the checklist once with `core.language: en` and once with `core.language: de
 the server language). In each pass:
 
 1. Open Player Settings with `/settings`.
-2. Confirm every label, category name, close prompt and chat-input prompt appears in the configured
+2. Confirm every label, category name, close prompt and anvil-editor title appears in the configured
    server language, with no raw key such as `server-config.field...` visible.
 
 ## Navigation
@@ -42,13 +42,13 @@ For each control, make one change and confirm the displayed value updates immedi
 - **Enum** — cycle `combat → Combat display`; search and select `effects → Default particle`.
 - **Location** — stand somewhere distinctive and click `spawn → Spawn location` or `jail → Jail
   location`; the stored position matches where you stood.
-- **Text** — click `chat-format → Chat format`, type a MiniMessage format in chat, and confirm it is
-  saved; repeat with `cancel` to confirm nothing changes.
-- **Text list** — click `combat → Excluded worlds`, enter a comma-separated list, and confirm it is
-  saved.
-- **Integer list** — click `reboot → Title seconds` or `reboot → Chat seconds`, enter a
-  comma-separated list of whole numbers, and confirm it is saved. Enter a non-integer and confirm it
-  is rejected with `server-config.list.not-an-integer`.
+- **Text** — click `chat-format → Chat format`, rename the anvil input to a MiniMessage format, use
+  **Save**, and confirm it is saved.
+- **Text list** — click `combat → Excluded worlds`, rename the anvil input to one value, use **Add**,
+  and confirm it is saved. Repeat to add another value, then right-click one entry to delete it.
+- **Integer list** — click `reboot → Title seconds` or `reboot → Chat seconds`, add one whole number
+  at a time with the anvil input. Enter a non-integer and confirm it is rejected with
+  `server-config.list.not-an-integer`.
 
 Confirm an invalid value is rejected with an explanatory message and does not change the file: for
 example, attempt a text value that is not valid MiniMessage for `chat-format → Chat format`.

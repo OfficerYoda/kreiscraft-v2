@@ -486,13 +486,13 @@ class ServerConfigGuiTest {
     // ------------------------------------------------------------------
 
     @Test
-    void textField_clickRequestsChatInput() {
+    void textField_clickRequestsAnvilEditor() {
         ConfigField format = field("chat-format", "format");
         Gui gui = category("chat-format");
 
         click(gui, slotOf("chat-format", format));
 
-        assertThat(navigator.textInputs).containsExactly(ServerConfigPage.of("chat-format"));
+        assertThat(navigator.stringEditors).containsExactly(ServerConfigPage.of("chat-format"));
     }
 
     @Test
@@ -503,7 +503,7 @@ class ServerConfigGuiTest {
         click(gui, slotOf("combat", worlds));
 
         assertThat(navigator.listEditors).containsExactly(ServerConfigPage.of("combat"));
-        assertThat(navigator.textInputs).isEmpty();
+        assertThat(navigator.stringEditors).isEmpty();
     }
 
     @Test
@@ -578,7 +578,7 @@ class ServerConfigGuiTest {
 
     private static final class NavigatorRecorder implements ServerConfigGui.Navigator {
         private final List<ServerConfigPage> serverConfigPages = new ArrayList<>();
-        private final List<ServerConfigPage> textInputs = new ArrayList<>();
+        private final List<ServerConfigPage> stringEditors = new ArrayList<>();
         private final List<ServerConfigPage> listEditors = new ArrayList<>();
         private Consumer<Particle> particleSelection;
         private Runnable particleCancellation;
@@ -595,8 +595,8 @@ class ServerConfigGuiTest {
         }
 
         @Override
-        public void requestTextInput(Player player, ConfigField field, ServerConfigPage page) {
-            textInputs.add(page);
+        public void openStringEditor(Player player, ConfigField field, ServerConfigPage page) {
+            stringEditors.add(page);
         }
 
         @Override
