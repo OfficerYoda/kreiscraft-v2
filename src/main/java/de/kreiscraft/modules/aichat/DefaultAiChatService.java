@@ -52,11 +52,21 @@ public final class DefaultAiChatService implements AiChatService {
     }
 
     @Override
-    public void aiRequest(String requestMsg) {
+    public void aiRequest(MinecraftChatMessage request) {
         scheduler.runAsync(() -> {
-            String response = generateReponse(requestMsg);
+            String response = generateReponse(formatMessage(request));
             scheduler.runOnMain(() -> sendResponse(response));
         });
+    }
+
+    /** One chat line, {@code [timestamp] [source] sender: content}, used for the prompt and the history. */
+    static String formatMessage(MinecraftChatMessage message) {
+        return String.format(
+                "[%s] [%s] %s: %s",
+                TIME_FORMATTER.format(message.timestamp()),
+                message.source(),
+                message.senderName(),
+                message.content());
     }
 
     synchronized String formatChatHistory() {
@@ -65,12 +75,7 @@ public final class DefaultAiChatService implements AiChatService {
         }
 
         return chatHistory.stream()
-                .map(msg -> String.format(
-                        "[%s] [%s] %s: %s",
-                        TIME_FORMATTER.format(msg.timestamp()),
-                        msg.source(),
-                        msg.senderName(),
-                        msg.content()))
+                .map(DefaultAiChatService::formatMessage)
                 .collect(Collectors.joining("\n"));
     }
 

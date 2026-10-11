@@ -1,8 +1,10 @@
 package de.kreiscraft.modules.aichat;
 
+import de.kreiscraft.shared.chat.ChatSource;
 import io.papermc.paper.event.player.AsyncChatEvent;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import java.time.Instant;
 import java.util.function.Supplier;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -26,7 +28,8 @@ public final class AiChatListener implements Listener {
         if (player != null
                 && player.hasPermission("kreiscraft.ai-chat.use")
                 && msg.contains(config.get().aiTrigger())) {
-            service.aiRequest(msg);
+            service.aiRequest(new MinecraftChatMessage(
+                    Instant.now(), ChatSource.PLAYER, player.getName(), msg));
         }
     }
 }

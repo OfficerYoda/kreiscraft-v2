@@ -37,6 +37,15 @@ class DefaultAiChatServiceTest {
     }
 
     @Test
+    void userPrompt_includesTimestampAndSender() {
+        MinecraftChatMessage request = new MinecraftChatMessage(
+                Instant.parse("2026-10-11T12:00:00Z"), ChatSource.PLAYER, "Alice", "hello");
+
+        assertThat(DefaultAiChatService.formatMessage(request))
+                .matches("\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\] \\[PLAYER\\] Alice: hello");
+    }
+
+    @Test
     void sendResponse_broadcastsAndPublishesAnAiMessage() {
         MessageService messages = mock(MessageService.class);
         when(messages.render("ai-chat.response", "content", "hello back"))

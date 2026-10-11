@@ -4,5 +4,5 @@ public interface AiChatService {
 
     void chatMessage(MinecraftChatMessage message);
 
-    void aiRequest(String requestMsg);
+    void aiRequest(MinecraftChatMessage request);
 }
