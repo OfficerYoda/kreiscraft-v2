@@ -25,7 +25,12 @@ public final class AiChatModule implements Module {
         onConfigReload(ctx.moduleConfig());
 
         ChatBridge chatBridge = ctx.services().get(ChatBridge.class);
-        service = new DefaultAiChatService(ctx.scheduler(), ctx.messages(), () -> config, chatBridge);
+        service = new DefaultAiChatService(
+                ctx.scheduler(),
+                ctx.messages(),
+                ctx.services().get(de.kreiscraft.platform.PaperPlatform.class),
+                () -> config,
+                chatBridge);
         chatSubscription = chatBridge.subscribe(this::recordChatMessage);
 
         ctx.events().register(new AiChatListener(() -> config, service));
@@ -44,7 +49,7 @@ public final class AiChatModule implements Module {
         try {
             config = moduleConfig.get(AiChatConfig.class);
             if (config == null) {
-                config = new AiChatConfig("", "", "", 0, null);
+                config = new AiChatConfig("", "", "", "", "", 0, null);
             }
         } catch (SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);

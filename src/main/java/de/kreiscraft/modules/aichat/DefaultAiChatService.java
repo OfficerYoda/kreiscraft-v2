@@ -11,11 +11,15 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
+import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
 import de.kreiscraft.shared.chat.ChatSource;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 public final class DefaultAiChatService implements AiChatService {
@@ -23,9 +27,11 @@ public final class DefaultAiChatService implements AiChatService {
     private static final Logger LOGGER = Logger.getLogger(DefaultAiChatService.class.getName());
     private static final DateTimeFormatter TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     private final Scheduler scheduler;
     private final MessageService messages;
+    private final PaperPlatform platform;
     private final Supplier<AiChatConfig> config;
     private final ChatBridge chatBridge;
 
@@ -33,9 +39,14 @@ public final class DefaultAiChatService implements AiChatService {
     private final OpenRouterClient openRouterClient;
 
     public DefaultAiChatService(
-            Scheduler scheduler, MessageService messages, Supplier<AiChatConfig> config, ChatBridge chatBridge) {
+            Scheduler scheduler,
+            MessageService messages,
+            PaperPlatform platform,
+            Supplier<AiChatConfig> config,
+            ChatBridge chatBridge) {
         this.scheduler = scheduler;
         this.messages = messages;
+        this.platform = platform;
         this.config = config;
         this.chatBridge = chatBridge;
 
@@ -97,14 +108,18 @@ public final class DefaultAiChatService implements AiChatService {
 
     String systemPrompt() {
         AiChatConfig currentConfig = config.get();
-        return PlainTextComponentSerializer.plainText().serialize(messages.render(
-                "ai-chat.system-prompt",
-                "ai-trigger",
-                Component.text(currentConfig.aiTrigger()),
-                "always-supported-players",
-                Component.text(String.join(", ", currentConfig.alwaysSupportedPlayers())),
-                "chat-history",
-                Component.text(formatChatHistory())));
+        TagResolver placeholders = TagResolver.builder()
+                .resolver(TagResolver.resolver(
+                        "ai-trigger", Tag.selfClosingInserting(Component.text(currentConfig.aiTrigger()))))
+                .resolver(TagResolver.resolver(
+                        "always-supported-players",
+                        Tag.selfClosingInserting(
+                                Component.text(String.join(", ", currentConfig.alwaysSupportedPlayers())))))
+                .resolver(TagResolver.resolver(
+                        "chat-history", Tag.selfClosingInserting(Component.text(formatChatHistory()))))
+                .build();
+        return PlainTextComponentSerializer.plainText()
+                .serialize(MINI_MESSAGE.deserialize(currentConfig.systemPrompt(), placeholders));
     }
 
     void sendResponse(String response) {
@@ -112,13 +127,17 @@ public final class DefaultAiChatService implements AiChatService {
             return;
         }
 
-        messages.broadcast("ai-chat.response", "content", response);
+        Component rendered = responseComponent(response);
+        platform.server().sendMessage(rendered);
         chatBridge.publish(new ChatBridgeEvent(
-                ChatSource.AI,
-                null,
-                "AI Claude",
-                messages.render("ai-chat.response", "content", response),
-                response,
-                Instant.now()));
+                ChatSource.AI, null, "AI Claude", rendered, response, Instant.now()));
+    }
+
+    private Component responseComponent(String response) {
+        TagResolver placeholders = TagResolver.builder()
+                .resolver(TagResolver.resolver("prefix", Tag.selfClosingInserting(messages.render("prefix"))))
+                .resolver(TagResolver.resolver("content", Tag.selfClosingInserting(Component.text(response))))
+                .build();
+        return MINI_MESSAGE.deserialize(config.get().responseFormat(), placeholders);
     }
 }
