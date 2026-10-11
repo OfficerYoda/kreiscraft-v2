@@ -23,6 +23,6 @@ public final class ModuleFailureNotificationListener implements Listener {
             return;
         }
         messages.send(event.getPlayer(), "core.startup.failed-modules",
-                "modules", String.join(", ", failedModuleIds));
+                "modules", String.join("\n• ", failedModuleIds));
     }
 }

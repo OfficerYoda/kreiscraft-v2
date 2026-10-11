@@ -5,7 +5,10 @@ core:
     failure: "<prefix> <red>Reload fehlgeschlagen: <error>"
   startup:
     summary: "<prefix> <green><enabled> Module aktiv</green>, <yellow><disabled> deaktiviert</yellow>, <red><failed> fehlgeschlagen</red>."
-    failed-modules: "<prefix> <red>Module konnten nicht gestartet werden: <modules>. Prüfe das Server-Log für Details."
+    failed-modules: |-
+      <prefix> <red>Module konnten nicht gestartet werden:
+      • <modules>
+      Prüfe das Server-Log für Details.
   player-only: "<prefix> <red>Dieser Befehl kann nur von Spielern verwendet werden."
 server-config:
   lifecycle:

@@ -5,7 +5,10 @@ core:
     failure: "<prefix> <red>Reload failed: <error>"
   startup:
     summary: "<prefix> <green><enabled> modules enabled</green>, <yellow><disabled> disabled</yellow>, <red><failed> failed</red>."
-    failed-modules: "<prefix> <red>Modules failed to start: <modules>. Check the server log for details."
+    failed-modules: |-
+      <prefix> <red>Modules failed to start:
+      • <modules>
+      Check the server log for details.
   player-only: "<prefix> <red>This command can only be used by players."
 server-config:
   lifecycle:
