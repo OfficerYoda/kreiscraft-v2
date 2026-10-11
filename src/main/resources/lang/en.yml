@@ -131,14 +131,14 @@ admin:
   target-not-found: "<prefix> <red>Player <gold><player></gold><red> not found."
   usage: "<prefix> <red>Usage: <usage>"
 ai-chat:
-  system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<history>"
-  response: "<gray>[AI]</gray> <content>"
+  system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<chat-history>"
+  response: "<gray>[<color:#4d6bfe>AI</color>]</gray> <content>"
 api:
   link-prompt-title: "<gray>Link to <browser>"
   link-prompt-info: "<yellow>Website wants to link with your account"
   link-prompt-accept: "<green>Accept"
   link-prompt-decline: "<red>Decline"
-  chat-format-from-web: "<gray>[WEB]</gray> <content>"
+  chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Your website link has been removed."
 anti-cheat:
   cheat-kick: "<red>Please remove your cheat client (<detail>)."

@@ -131,14 +131,14 @@ admin:
   target-not-found: "<prefix> <red>Spieler <gold><player></gold><red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
 ai-chat:
-  system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<history>"
-  response: "<gray>[AI]</gray> <content>"
+  system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<chat-history>"
+  response: "<gray>[<color:#4d6bfe>AI</color>]</gray> <content>"
 api:
   link-prompt-title: "<gray>Verknüpfen mit <browser>"
   link-prompt-info: "<yellow>Website möchte sich mit deinem Account verknüpfen"
   link-prompt-accept: "<green>Akzeptieren"
   link-prompt-decline: "<red>Ablehnen"
-  chat-format-from-web: "<gray>[WEB]</gray> <content>"
+  chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Deine Website-Verknüpfung wurde aufgehoben."
 anti-cheat:
   cheat-kick: "<red>Bitte entferne deinen Cheat-Client (<detail>)."

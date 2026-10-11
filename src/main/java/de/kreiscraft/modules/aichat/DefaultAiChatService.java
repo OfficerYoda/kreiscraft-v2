@@ -64,7 +64,9 @@ public final class DefaultAiChatService implements AiChatService {
     }
 
     private String generateReponse(String userPrompt) {
-        String systemPrompt = ((TextComponent) messages.render("ai-chat.system-prompt", "chat-history", formatChatHistory())).content();
+        String systemPrompt =
+                ((TextComponent) messages.render("ai-chat.system-prompt", "chat-history", formatChatHistory()))
+                        .content();
         System.out.println("System prompt: " + systemPrompt);
 
         String response = "";

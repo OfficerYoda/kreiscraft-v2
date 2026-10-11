@@ -6,10 +6,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class OpenRouterClient {
 
     private static final String API_URL = "https://openrouter.ai/api/v1/chat/completions";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final HttpClient httpClient;
     private final String apiKey;
@@ -34,6 +37,9 @@ public class OpenRouterClient {
         String jsonPayload = String.format("""
                 {
                   "model": "%s",
+                  "reasoning": {
+                    "effort": "low"
+                  },
                   "messages": [
                     {
                       "role": "system",
@@ -60,7 +66,7 @@ public class OpenRouterClient {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return response.body();
+            return extractContent(response.body());
         }
 
         throw new IOException(String.format("OpenRouter API request failed [Status %d]: %s",
@@ -73,5 +79,14 @@ public class OpenRouterClient {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
+    }
+
+    private String extractContent(String jsonResponseBody) throws IOException {
+        JsonNode root = MAPPER.readTree(jsonResponseBody);
+        return root.path("choices")
+                .get(0)
+                .path("message")
+                .path("content")
+                .asText();
     }
 }
