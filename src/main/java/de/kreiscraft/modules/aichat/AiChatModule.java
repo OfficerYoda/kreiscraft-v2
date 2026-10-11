@@ -8,9 +8,8 @@ import org.spongepowered.configurate.serialize.SerializationException;
 
 public final class AiChatModule implements Module {
 
-    // Read off the main thread (AsyncChatEvent), so the field must be volatile for a reload to be
-    // visible to the listener.
     private volatile AiChatConfig config;
+    private AiChatService service;
 
     @Override
     public String id() {
@@ -20,7 +19,10 @@ public final class AiChatModule implements Module {
     @Override
     public void enable(ModuleContext ctx) {
         onConfigReload(ctx.moduleConfig());
-        ctx.events().register(new AiChatListener(() -> config));
+
+        service = new DefaultAiChatService(ctx.scheduler(), ctx.messages(), () -> config);
+
+        ctx.events().register(new AiChatListener(() -> config, service));
     }
 
     @Override

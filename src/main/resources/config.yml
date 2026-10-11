@@ -24,6 +24,12 @@ modules:
     metrics-refresh-interval: 1s
     verification-timeout: 2m
     admin-api-key: ""
+  ai-chat:
+    enabled: true
+    api-key: ""
+    model: "deepseek/deepseek-v4.1-flash"
+    aiTrigger: "@claude"
+    contextMsgCount: 20
   anti-cheat:
     enabled: true
     channel: "kreiscraft:mod_checker"

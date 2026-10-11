@@ -130,6 +130,9 @@ admin:
     text: "<prefix> <green><click:open_url:'<website>'>[Website]</click></green> <gray>-</gray> <color:#5865F2><click:open_url:'<discord>'>[Discord]</click></color> <gray>-</gray> <color:#FF0000><click:open_url:'<youtube>'>[YouTube]</click></color>"
   target-not-found: "<prefix> <red>Spieler <gold><player></gold><red> nicht gefunden."
   usage: "<prefix> <red>Verwendung: <usage>"
+ai-chat:
+  system-prompt: "You are an AI assistant in a Minecraft Server. Here is the recent server chat history:\n<history>"
+  response: "<gray>[AI]</gray> <content>"
 api:
   link-prompt-title: "<gray>Verknüpfen mit <browser>"
   link-prompt-info: "<yellow>Website möchte sich mit deinem Account verknüpfen"
