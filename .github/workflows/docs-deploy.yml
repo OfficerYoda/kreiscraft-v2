@@ -13,6 +13,11 @@ on:
       - "docs-site/**"
       - ".github/workflows/docs-deploy.yml"
 
+concurrency:
+  # Serialise deploys so two builds never write the site directory at once.
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   docs:
     runs-on: ubuntu-latest

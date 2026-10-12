@@ -535,7 +535,7 @@ def parse_args() -> argparse.Namespace:
         "--max-tokens",
         type=int,
         default=131072,
-        help="Max output tokens (default: 32768). Raise for very large rebuilds.",
+        help="Max output tokens (default: 131072). Raise for very large rebuilds.",
     )
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--dry-run", action="store_true")

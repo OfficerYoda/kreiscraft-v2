@@ -49,7 +49,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
           OPENROUTER_APP: kreiscraft-docs-ci
-          OPENROUTER_REFERER: https://github.com/${{ github.repository }}
+          OPENROUTER_REFERER: ${{ github.server_url }}/${{ github.repository }}
         run: |
           if [ -z "$OPENROUTER_MODEL" ]; then
             echo "::error::repository variable OPENROUTER_MODEL is not set"
@@ -68,14 +68,8 @@ jobs:
             --base-ref="$base_ref" \
             --head-ref="${{ github.sha }}"
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
-          git config user.name  "kreiscraft-docs-bot"
-          git config user.email "docs-bot@users.noreply.github.com"
-          if git diff --quiet -- README.md docs/; then
-            echo "no doc changes"
-            exit 0
-          fi
-          git add README.md docs/
-          git commit -m "docs: sync with $(git rev-parse --short "${{ github.sha }}")"
-          git push
+          bash .github/scripts/push_docs.sh \
+            "docs: sync with $(git rev-parse --short "${{ github.sha }}")" \
+            "${{ github.ref_name }}"
