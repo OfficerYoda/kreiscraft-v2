@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.function.Supplier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -15,23 +16,22 @@ public class OpenRouterClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final HttpClient httpClient;
-    private final String apiKey;
 
-    public OpenRouterClient(String apiKey) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalArgumentException("API key cannot be null or empty.");
-        }
-        this.apiKey = apiKey;
+    public OpenRouterClient(Supplier<String> apiKeySupplier) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
 
-    public String sendPrompt(String model, String userPrompt, String systemPrompt)
+    public String sendPrompt(String apiKey, String model, String userPrompt, String systemPrompt)
             throws IOException, InterruptedException {
 
         if (model == null || model.isBlank()) {
             throw new IllegalArgumentException("Model cannot be null or empty.");
+        }
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException("API key cannot be null or empty.");
         }
 
         String jsonPayload = String.format("""

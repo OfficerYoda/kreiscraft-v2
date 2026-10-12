@@ -51,7 +51,7 @@ public final class DefaultAiChatService implements AiChatService {
         this.chatBridge = chatBridge;
 
         this.chatHistory = new ArrayDeque<>();
-        this.openRouterClient = new OpenRouterClient(config.get().apiKey());
+        this.openRouterClient = new OpenRouterClient(() -> config.get().apiKey());
     }
 
     @Override
@@ -95,7 +95,9 @@ public final class DefaultAiChatService implements AiChatService {
         String systemPrompt = systemPrompt();
         String response = "";
         try {
-            response = openRouterClient.sendPrompt(config.get().model(), userPrompt, systemPrompt);
+            response =
+                    openRouterClient.sendPrompt(config.get().apiKey(), config.get().model(),
+                            userPrompt, systemPrompt);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.log(Level.WARNING, "AI request interrupted", e);
