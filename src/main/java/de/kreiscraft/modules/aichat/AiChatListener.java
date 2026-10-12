@@ -29,7 +29,7 @@ public final class AiChatListener implements Listener {
                 && player.hasPermission("kreiscraft.ai-chat.use")
                 && msg.contains(config.get().aiTrigger())) {
             service.aiRequest(new MinecraftChatMessage(
-                    Instant.now(), ChatSource.PLAYER, player.getName(), msg));
+                    Instant.now(), ChatSource.PLAYER, player.getName(), msg, player.getUniqueId()));
         }
     }
 }

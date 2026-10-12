@@ -44,6 +44,9 @@ permissions:
   kreiscraft.ai-chat.use:
     description: Trigger ai calls from the chat
     default: true
+  kreiscraft.ai-chat.stats:
+    description: View AI chat usage statistics
+    default: op
   kreiscraft.anticheat.view:
     description: View hack logs
     default: op

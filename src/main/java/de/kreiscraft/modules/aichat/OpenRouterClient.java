@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.math.BigDecimal;
 import java.util.function.Supplier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +24,7 @@ public class OpenRouterClient {
                 .build();
     }
 
-    public String sendPrompt(String apiKey, String model, String userPrompt, String systemPrompt)
+    public OpenRouterResponse sendPrompt(String apiKey, String model, String userPrompt, String systemPrompt)
             throws IOException, InterruptedException {
 
         if (model == null || model.isBlank()) {
@@ -66,7 +67,7 @@ public class OpenRouterClient {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return extractContent(response.body());
+            return extractResponse(response.body());
         }
 
         throw new IOException(String.format("OpenRouter API request failed [Status %d]: %s",
@@ -81,12 +82,19 @@ public class OpenRouterClient {
                 .replace("\t", "\\t");
     }
 
-    private String extractContent(String jsonResponseBody) throws IOException {
+    static OpenRouterResponse extractResponse(String jsonResponseBody) throws IOException {
         JsonNode root = MAPPER.readTree(jsonResponseBody);
-        return root.path("choices")
+        String content = root.path("choices")
                 .get(0)
                 .path("message")
                 .path("content")
                 .asText();
+        JsonNode usage = root.path("usage");
+        return new OpenRouterResponse(
+                content,
+                usage.path("prompt_tokens").asLong(),
+                usage.path("completion_tokens").asLong(),
+                usage.path("total_tokens").asLong(),
+                usage.hasNonNull("cost") ? usage.get("cost").decimalValue() : BigDecimal.ZERO);
     }
 }
