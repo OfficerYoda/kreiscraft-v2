@@ -1,10 +1,10 @@
 # Kreiscraft
 
-A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 23 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
+A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 24 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
 
 ## Highlights
 
-- **Runtime module system.** 23 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
+- **Runtime module system.** 24 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
 - **Modern Paper APIs.** Brigadier commands via `LifecycleEvents.COMMANDS`, Adventure + MiniMessage everywhere, no legacy `CommandExecutor` / `§`-code strings.
 - **Clean lifecycle.** Every module registers through a `ModuleContext` dependency bag; teardown is tracked so `disable()` cleans up listeners, commands, scheduled tasks, and GUIs.
 - **Config vs. state.** Admin-managed settings live in `config.yml`; runtime state lives in dirty-tracked `DataFile<T>` YAMLs under `data/` with periodic auto-save.
@@ -43,7 +43,7 @@ src/main/java/de/kreiscraft/
 │                                scheduler, events, commands, services
 ├── platform/                    Paper-specific adapters
 ├── shared/                      cross-module services (ChatBridge, GUI, user, whitelist)
-└── modules/                     the 23 feature modules
+└── modules/                     the 24 feature modules
 ```
 
 - `src/main/resources/config.yml` — default config template
@@ -54,11 +54,12 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-23 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; only `firework` and `positions` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+24 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; only `firework` and `positions` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
 
 | Module ID | Summary |
 |---|---|
 | `admin` | 12 operator commands (item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, help) |
+| `ai-chat` | Chat-triggered AI replies via OpenRouter, with configurable trigger, model, and system prompt |
 | `anti-cheat` | Client-brand-based cheat detection with hacker log storage and `/hackerlogs` command |
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
 | `bedrock` | Bedrock player tracking, `/bedrocklist` command, and Java-only whitelist enforcement |

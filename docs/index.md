@@ -14,7 +14,7 @@ Start here if you are setting up the project for the first time or building some
 
 | Document | What you will do |
 |----------|-----------------|
-| [Getting Started](/tutorials/getting-started/) | Clone → build → run a local Paper server and verify all 23 modules load |
+| [Getting Started](/tutorials/getting-started/) | Clone → build → run a local Paper server and verify all 24 modules load |
 | [Your First Module](/tutorials/your-first-module/) | Build a minimal end-to-end module with config, listener, and lang keys |
 | [Writing a Command](/tutorials/writing-a-command/) | Build a Brigadier command using `CommandRegistrar`, step by step |
 
@@ -42,7 +42,7 @@ Precise, complete descriptions of the system's components.
 
 | Document | What it covers |
 |----------|---------------|
-| [Module Catalog](/reference/module-catalog/) | All 23 modules: purpose, dependencies, services, and events |
+| [Module Catalog](/reference/module-catalog/) | All 24 modules: purpose, dependencies, services, and events |
 | [Commands and Permissions](/reference/commands-and-permissions/) | Every command, alias, permission node, and default |
 | [Configuration](/reference/configuration/) | Every `config.yml` key — core and per-module — with types and defaults |
 | [HTTP and WebSocket API](/reference/http-api/) | All 8 HTTP endpoints, the `/chat` WebSocket protocol, the account-linking flow |

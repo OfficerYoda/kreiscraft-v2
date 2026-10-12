@@ -167,6 +167,20 @@ Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed h
 
 ---
 
+### `ai-chat`
+
+| Key (relative to `modules.ai-chat`) | Type | Default | Description |
+|---|---|---|---|
+| `api-key` | String | `""` | OpenRouter API key sent as the `Authorization: Bearer` header. The client rejects an empty value. |
+| `model` | String | `deepseek/deepseek-v4.1-flash` | Model identifier sent to the OpenRouter chat-completions endpoint. |
+| `system-prompt` | String | Bundled assistant prompt | MiniMessage template sent as the system prompt. Its `<ai-trigger>`, `<always-supported-players>` and `<chat-history>` placeholders are expanded to literal text before the request. |
+| `response-format` | String | `<prefix> <color:#D17955>AI Claude</color><gray> » <reset><content>` | MiniMessage template used to render the AI reply; `<prefix>` is the lang prefix and `<content>` the model's answer. |
+| `ai-trigger` | String | `@claude` | Substring a chat message must contain to trigger an AI request from a player holding `kreiscraft.ai-chat.use`. |
+| `context-msg-count` | int | `20` | Maximum number of recent chat lines kept as context and sent with each request. |
+| `always-supported-players` | List\<String\> | `[]` | Player names the assistant is instructed to support in subjective disputes, expanded into `<always-supported-players>` in the system prompt. Null and blank entries are dropped. |
+
+---
+
 ### `anti-cheat`
 
 | Key (relative to `modules.anti-cheat`) | Type | Default | Description |
@@ -280,7 +294,7 @@ GUI as integer lists.
 | `location` | Location | *(optional)* | Operator-owned server spawn point, written by `/setspawn`. Absent until a spawn has been set; `/spawn` reports that no spawn is set. Not migrated from the retired `data/spawn.yml`. |
 | `spawn-radius` | int | `50` | The single Spawn Radius (blocks) that bounds both spawn access and glide eligibility. `/spawn` measures horizontal (XZ) distance (the Spawn Access Zone); glide initiation measures full 3D distance (the Glide Zone). |
 | `glide.enabled` | boolean | `true` | Whether elytra glide is active around spawn. |
-| `glide.multiply-value` | int | `3` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
+| `glide.multiply-value` | double | `2` | Multiplier applied to the player's facing unit vector when a glide starts, launching them at that many blocks per tick along their look direction. |
 | `glide-boost.enabled` | boolean | `true` | Whether glides started inside the Glide Zone receive one sneak-triggered boost opportunity. |
 | `glide-boost.boost-strength` | double | `2.0` | Multiplier applied to the player's facing unit vector when that opportunity is consumed, inside or outside the Glide Zone. |
 
