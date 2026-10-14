@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "lint:openapi": "redocly lint --skip-rule=info-license --skip-rule=operation-4xx-response ../docs/reference/openapi.yaml"
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.4",
-    "astro": "7.3.5"
+    "astro": "7.3.5",
+    "@redocly/cli": "2.63.0"
   }
 }

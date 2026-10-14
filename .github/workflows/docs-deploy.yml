@@ -39,6 +39,9 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Lint OpenAPI specification
+        run: bun run lint:openapi
+
       - name: Deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: curl -fsSL https://forgejo.officeryoda.dev/OfficerYoda/site-deploy/raw/branch/main/deploy.sh | bash
