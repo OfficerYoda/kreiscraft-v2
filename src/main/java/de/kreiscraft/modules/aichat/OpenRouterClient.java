@@ -6,6 +6,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.math.BigDecimal;
+import java.util.function.Supplier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -15,23 +17,22 @@ public class OpenRouterClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final HttpClient httpClient;
-    private final String apiKey;
 
-    public OpenRouterClient(String apiKey) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalArgumentException("API key cannot be null or empty.");
-        }
-        this.apiKey = apiKey;
+    public OpenRouterClient(Supplier<String> apiKeySupplier) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
 
-    public String sendPrompt(String model, String userPrompt, String systemPrompt)
+    public OpenRouterResponse sendPrompt(String apiKey, String model, String userPrompt, String systemPrompt)
             throws IOException, InterruptedException {
 
         if (model == null || model.isBlank()) {
             throw new IllegalArgumentException("Model cannot be null or empty.");
+        }
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException("API key cannot be null or empty.");
         }
 
         String jsonPayload = String.format("""
@@ -66,7 +67,7 @@ public class OpenRouterClient {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return extractContent(response.body());
+            return extractResponse(response.body());
         }
 
         throw new IOException(String.format("OpenRouter API request failed [Status %d]: %s",
@@ -81,12 +82,19 @@ public class OpenRouterClient {
                 .replace("\t", "\\t");
     }
 
-    private String extractContent(String jsonResponseBody) throws IOException {
+    static OpenRouterResponse extractResponse(String jsonResponseBody) throws IOException {
         JsonNode root = MAPPER.readTree(jsonResponseBody);
-        return root.path("choices")
+        String content = root.path("choices")
                 .get(0)
                 .path("message")
                 .path("content")
                 .asText();
+        JsonNode usage = root.path("usage");
+        return new OpenRouterResponse(
+                content,
+                usage.path("prompt_tokens").asLong(),
+                usage.path("completion_tokens").asLong(),
+                usage.path("total_tokens").asLong(),
+                usage.hasNonNull("cost") ? usage.get("cost").decimalValue() : BigDecimal.ZERO);
     }
 }

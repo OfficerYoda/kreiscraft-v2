@@ -141,6 +141,16 @@ api:
   link-prompt-decline: "<red>Ablehnen"
   chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Deine Website-Verknüpfung wurde aufgehoben."
+ai-chat:
+    stats:
+      player: "<prefix> <gray>KI-Nutzung von <gold><player></gold><gray>: <aqua><requests></aqua> erfolgreich, <aqua><failed></aqua> fehlgeschlagen, <aqua><tokens></aqua> Tokens (<aqua><prompt-tokens></aqua> Prompt, <aqua><completion-tokens></aqua> Antwort), <green>$<cost></green>."
+      total: "<prefix> <gray>KI-Nutzung gesamt: <aqua><requests></aqua> erfolgreich, <aqua><failed></aqua> fehlgeschlagen, <aqua><tokens></aqua> Tokens (<aqua><prompt-tokens></aqua> Prompt, <aqua><completion-tokens></aqua> Antwort), <green>$<cost></green>."
+      not-found: "<prefix> <yellow>Keine KI-Nutzung für <gold><player></gold><yellow> gefunden."
+      invalid-metric: "<prefix> <red>Unbekannte Metrik '<metric>'. Nutze cost, requests oder tokens."
+      invalid-page: "<prefix> <red>Seite <page> existiert nicht. Wähle 1–<pages>."
+      top-header: "<prefix> <gray>KI-Nutzung nach <aqua><metric></aqua> — Seite <aqua><page></aqua>/<aqua><pages></aqua>:"
+      top-empty: "<gray>(Noch keine KI-Nutzung erfasst.)"
+      top-entry: "<gray>#<rank> <gold><player></gold><gray>: <aqua><requests></aqua> Anfragen, <aqua><tokens></aqua> Tokens, <green>$<cost></green>"
 anti-cheat:
   cheat-kick: "<red>Bitte entferne deinen Cheat-Client (<detail>)."
   xray-kick: "<red>X-Ray erkannt. Bitte entfernen."

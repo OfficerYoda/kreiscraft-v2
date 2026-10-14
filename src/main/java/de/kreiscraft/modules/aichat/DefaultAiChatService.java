@@ -34,6 +34,7 @@ public final class DefaultAiChatService implements AiChatService {
     private final PaperPlatform platform;
     private final Supplier<AiChatConfig> config;
     private final ChatBridge chatBridge;
+    private final AiUsageService usage;
 
     private final ArrayDeque<MinecraftChatMessage> chatHistory;
     private final OpenRouterClient openRouterClient;
@@ -44,14 +45,25 @@ public final class DefaultAiChatService implements AiChatService {
             PaperPlatform platform,
             Supplier<AiChatConfig> config,
             ChatBridge chatBridge) {
+        this(scheduler, messages, platform, config, chatBridge, null);
+    }
+
+    public DefaultAiChatService(
+            Scheduler scheduler,
+            MessageService messages,
+            PaperPlatform platform,
+            Supplier<AiChatConfig> config,
+            ChatBridge chatBridge,
+            AiUsageService usage) {
         this.scheduler = scheduler;
         this.messages = messages;
         this.platform = platform;
         this.config = config;
         this.chatBridge = chatBridge;
+        this.usage = usage;
 
         this.chatHistory = new ArrayDeque<>();
-        this.openRouterClient = new OpenRouterClient(config.get().apiKey());
+        this.openRouterClient = new OpenRouterClient(() -> config.get().apiKey());
     }
 
     @Override
@@ -66,7 +78,7 @@ public final class DefaultAiChatService implements AiChatService {
     @Override
     public void aiRequest(MinecraftChatMessage request) {
         scheduler.runAsync(() -> {
-            String response = generateReponse(formatMessage(request));
+            String response = generateResponse(request, formatMessage(request));
             scheduler.runOnMain(() -> sendResponse(response));
         });
     }
@@ -91,19 +103,33 @@ public final class DefaultAiChatService implements AiChatService {
                 .collect(Collectors.joining("\n"));
     }
 
-    private String generateReponse(String userPrompt) {
+    private String generateResponse(MinecraftChatMessage request, String userPrompt) {
         String systemPrompt = systemPrompt();
         String response = "";
         try {
-            response = openRouterClient.sendPrompt(config.get().model(), userPrompt, systemPrompt);
+            OpenRouterResponse openRouterResponse =
+                    openRouterClient.sendPrompt(config.get().apiKey(), config.get().model(),
+                            userPrompt, systemPrompt);
+            response = openRouterResponse.content();
+            if (usage != null && request.senderId() != null) {
+                usage.recordSuccess(request.senderId(), request.senderName(), openRouterResponse);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.log(Level.WARNING, "AI request interrupted", e);
+            recordFailure(request);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "AI request failed", e);
+            recordFailure(request);
         }
 
         return response;
+    }
+
+    private void recordFailure(MinecraftChatMessage request) {
+        if (usage != null && request.senderId() != null) {
+            usage.recordFailure(request.senderId(), request.senderName());
+        }
     }
 
     String systemPrompt() {

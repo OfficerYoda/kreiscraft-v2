@@ -1,10 +1,12 @@
 package de.kreiscraft.modules.aichat;
 
+import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
+import java.io.IOException;
 import java.util.Objects;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -24,16 +26,27 @@ public final class AiChatModule implements Module {
     public void enable(ModuleContext ctx) {
         onConfigReload(ctx.moduleConfig());
 
+        AiUsageData usageData = new AiUsageData(ctx.plugin().getDataFolder().toPath());
+        try {
+            usageData.load();
+        } catch (IOException e) {
+            throw new ModuleException("failed to load AI chat usage data", e);
+        }
+        ctx.services().get(ConfigService.class).register(usageData);
+        AiUsageService usage = new AiUsageService(usageData);
+
         ChatBridge chatBridge = ctx.services().get(ChatBridge.class);
         service = new DefaultAiChatService(
                 ctx.scheduler(),
                 ctx.messages(),
                 ctx.services().get(de.kreiscraft.platform.PaperPlatform.class),
                 () -> config,
-                chatBridge);
+                chatBridge,
+                usage);
         chatSubscription = chatBridge.subscribe(this::recordChatMessage);
 
         ctx.events().register(new AiChatListener(() -> config, service));
+        ctx.commands().register(AiStatsCommand.build(usage, ctx.messages()), "View AI chat usage statistics");
     }
 
     @Override

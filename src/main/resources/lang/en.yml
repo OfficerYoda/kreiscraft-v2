@@ -141,6 +141,16 @@ api:
   link-prompt-decline: "<red>Decline"
   chat-format-from-web: "<gray>[<green>WEB</green>]</gray> <content>"
   unlinked: "<prefix> <yellow>Your website link has been removed."
+ai-chat:
+    stats:
+      player: "<prefix> <gray>AI usage for <gold><player></gold><gray>: <aqua><requests></aqua> successful, <aqua><failed></aqua> failed, <aqua><tokens></aqua> tokens (<aqua><prompt-tokens></aqua> prompt, <aqua><completion-tokens></aqua> completion), <green>$<cost></green>."
+      total: "<prefix> <gray>AI usage total: <aqua><requests></aqua> successful, <aqua><failed></aqua> failed, <aqua><tokens></aqua> tokens (<aqua><prompt-tokens></aqua> prompt, <aqua><completion-tokens></aqua> completion), <green>$<cost></green>."
+      not-found: "<prefix> <yellow>No AI usage found for <gold><player></gold><yellow>."
+      invalid-metric: "<prefix> <red>Unknown metric '<metric>'. Use cost, requests, or tokens."
+      invalid-page: "<prefix> <red>Page <page> does not exist. Choose 1–<pages>."
+      top-header: "<prefix> <gray>AI usage by <aqua><metric></aqua> — page <aqua><page></aqua>/<aqua><pages></aqua>:"
+      top-empty: "<gray>(No AI usage recorded yet.)"
+      top-entry: "<gray>#<rank> <gold><player></gold><gray>: <aqua><requests></aqua> requests, <aqua><tokens></aqua> tokens, <green>$<cost></green>"
 anti-cheat:
   cheat-kick: "<red>Please remove your cheat client (<detail>)."
   xray-kick: "<red>X-Ray detected. Please remove it."
