@@ -59,7 +59,7 @@ src/main/java/de/kreiscraft/
 | Module ID | Summary |
 |---|---|
 | `admin` | 12 operator commands (item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, help) |
-| `ai-chat` | Chat-triggered AI replies via OpenRouter, with configurable trigger, model, and system prompt |
+| `ai-chat` | Chat-triggered AI replies via OpenRouter, with configurable trigger, model, and system prompt; `/aistats` usage statistics |
 | `anti-cheat` | Client-brand-based cheat detection with hacker log storage and `/hackerlogs` command |
 | `api` | Javalin HTTP + WebSocket bridge serving player/status data and bidirectional chat to web frontends |
 | `bedrock` | Bedrock player tracking, `/bedrocklist` command, and Java-only whitelist enforcement |
