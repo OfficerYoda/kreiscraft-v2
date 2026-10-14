@@ -49,7 +49,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ inputs.model != '' && inputs.model || vars.OPENROUTER_MODEL }}
           OPENROUTER_APP: kreiscraft-docs-ci
-          OPENROUTER_REFERER: https://github.com/${{ github.repository }}
+          OPENROUTER_REFERER: ${{ github.server_url }}/${{ github.repository }}
         run: |
           if [ -z "$OPENROUTER_MODEL" ]; then
             echo "::error::no model specified: set repository variable OPENROUTER_MODEL or provide the 'model' workflow input"
@@ -61,15 +61,9 @@ jobs:
           fi
           python .github/scripts/update_docs.py --mode=rebuild $extra
 
-      - name: Commit changes
+      - name: Commit and push changes
         if: inputs.dry_run != 'true'
         run: |
-          git config user.name  "kreiscraft-docs-bot"
-          git config user.email "docs-bot@users.noreply.github.com"
-          if git diff --quiet -- README.md docs/; then
-            echo "no doc changes"
-            exit 0
-          fi
-          git add README.md docs/
-          git commit -m "docs: full rebuild via workflow_dispatch"
-          git push
+          bash .github/scripts/push_docs.sh \
+            "docs: full rebuild via workflow_dispatch" \
+            "${{ github.ref_name }}"

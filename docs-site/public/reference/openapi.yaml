@@ -1,0 +1,386 @@
+openapi: 3.1.1
+info:
+  title: Kreiscraft HTTP API
+  version: 0.1.0-SNAPSHOT
+  description: |
+    REST API exposed by Kreiscraft's optional `api` module.
+    The `/chat` WebSocket protocol is documented separately in the
+    [HTTP and WebSocket API reference](/reference/http-api/#websocket-endpoint-get-chat).
+servers:
+  - url: http://{host}:{port}
+    variables:
+      host:
+        default: localhost
+        description: Reachable API host. The module binds to `0.0.0.0` by default.
+      port:
+        default: '8080'
+        description: '`modules.api.port`.'
+paths:
+  /status:
+    get:
+      operationId: getStatus
+      summary: Get current server metrics
+      security: []
+      responses:
+        '200':
+          description: Current metrics snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+  /players:
+    get:
+      operationId: getPlayers
+      summary: List online players
+      security: []
+      responses:
+        '200':
+          description: Current online player data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayerData'
+  /initialize:
+    get:
+      operationId: initializeSession
+      summary: Initialize or resume a browser session
+      security: []
+      responses:
+        '200':
+          description: Session initialized. A session cookie is issued when needed.
+          headers:
+            Set-Cookie:
+              description: Set for a new or malformed browser session cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitializationData'
+  /link-player:
+    post:
+      operationId: linkPlayer
+      summary: Request an in-game confirmation to link a player
+      security:
+        - BrowserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+      responses:
+        '202':
+          description: Confirmation prompt opened for the online player.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationSent'
+        '400':
+          $ref: '#/components/responses/InvalidLinkRequest'
+        '401':
+          $ref: '#/components/responses/MissingSession'
+        '409':
+          description: A verification request is already pending for this browser session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlreadyPending'
+        '422':
+          $ref: '#/components/responses/PlayerOffline'
+        '500':
+          $ref: '#/components/responses/UnexpectedResult'
+  /linked-player:
+    get:
+      operationId: getLinkedPlayer
+      summary: Get the current player-link status
+      security:
+        - BrowserSession: []
+      responses:
+        '200':
+          description: Current link status. `playerData` is included only when an accepted player is online.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkedPlayerResponse'
+        '401':
+          $ref: '#/components/responses/MissingSession'
+  /unlink-player:
+    post:
+      operationId: unlinkPlayer
+      summary: Remove an accepted player link
+      security:
+        - BrowserSession: []
+      responses:
+        '200':
+          description: Player link removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unlinked'
+        '400':
+          $ref: '#/components/responses/NotLinked'
+        '401':
+          $ref: '#/components/responses/MissingSession'
+  /whitelist:
+    get:
+      operationId: getWhitelist
+      summary: List whitelisted Java player names
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Sorted whitelist entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '401':
+          description: Missing or invalid admin API key.
+        '503':
+          $ref: '#/components/responses/AdminApiDisabled'
+    post:
+      operationId: addWhitelistEntry
+      summary: Add a Java player to the whitelist
+      security:
+        - AdminApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhitelistRequest'
+      responses:
+        '202':
+          description: Player added to the whitelist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelisted'
+        '400':
+          $ref: '#/components/responses/InvalidWhitelistRequest'
+        '401':
+          description: Missing or invalid admin API key.
+        '503':
+          $ref: '#/components/responses/AdminApiDisabled'
+components:
+  securitySchemes:
+    BrowserSession:
+      type: apiKey
+      in: cookie
+      name: website_user_uuid
+      description: Browser-session UUID cookie. Its name is configurable through `modules.api.session-cookie.name`.
+    AdminApiKey:
+      type: apiKey
+      in: header
+      name: X-Kreiscraft-Api-Key
+      description: Value of `modules.api.admin-api-key`. A blank configuration disables whitelist endpoints.
+  responses:
+    MissingSession:
+      description: Browser session cookie is absent or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MissingSessionError'
+    PlayerOffline:
+      description: No online player exactly matches the requested username.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PlayerOfflineError'
+    UnexpectedResult:
+      description: An unexpected verification result occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnexpectedResultError'
+    NotLinked:
+      description: The session has no accepted player link.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotLinkedError'
+    AdminApiDisabled:
+      description: Whitelist administration is disabled because no admin API key is configured.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AdminApiDisabledError'
+    InvalidLinkRequest:
+      description: Request JSON is invalid or `username` is missing or blank.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/InvalidBodyError'
+              - $ref: '#/components/schemas/MissingUsernameError'
+    InvalidWhitelistRequest:
+      description: Request JSON is invalid or `playerName` is not a valid Java username.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/InvalidBodyError'
+              - $ref: '#/components/schemas/InvalidNameError'
+  schemas:
+    Metrics:
+      type: object
+      required: [status, tps, onlinePlayerCount, memoryUsedMB, memoryMaxMB, cpuUsage]
+      properties:
+        status:
+          type: string
+          example: Online
+        tps:
+          type: number
+          format: double
+        onlinePlayerCount:
+          type: integer
+        memoryUsedMB:
+          type: integer
+          format: int64
+        memoryMaxMB:
+          type: integer
+          format: int64
+        cpuUsage:
+          type: number
+          format: double
+          description: Process CPU usage from 0 to 100, or -1 when unavailable.
+    PlayerData:
+      type: object
+      required: [name, uuid, health, deaths, playerKills, playtimeSeconds]
+      properties:
+        name:
+          type: string
+        uuid:
+          type: string
+          format: uuid
+        health:
+          type: integer
+        deaths:
+          type: integer
+        playerKills:
+          type: integer
+        playtimeSeconds:
+          type: integer
+          format: int64
+    InitializationData:
+      type: object
+      required: [status, userId]
+      properties:
+        status:
+          type: string
+          enum: [new, existing]
+        userId:
+          type: string
+          format: uuid
+    LinkRequest:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+          description: Exact name of an online player.
+    LinkedPlayerResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [not_linked, pending, declined, accepted]
+        playerData:
+          $ref: '#/components/schemas/PlayerData'
+    WhitelistRequest:
+      type: object
+      required: [playerName]
+      properties:
+        playerName:
+          type: string
+          pattern: '^[a-zA-Z0-9_]{1,16}$'
+    VerificationSent:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: verification_sent
+    AlreadyPending:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: already_pending
+    Unlinked:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: unlinked
+    Whitelisted:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: whitelisted
+    MissingSessionError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: missing_session
+    InvalidBodyError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: invalid_body
+    MissingUsernameError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: missing_username
+    PlayerOfflineError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: player_offline
+    UnexpectedResultError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: unexpected_result
+    NotLinkedError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: not_linked
+    AdminApiDisabledError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: admin_api_disabled
+    InvalidNameError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: invalid_name

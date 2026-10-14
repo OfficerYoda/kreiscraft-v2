@@ -13,6 +13,11 @@ on:
       - "docs-site/**"
       - ".github/workflows/docs-deploy.yml"
 
+concurrency:
+  # Serialise deploys so two builds never write the site directory at once.
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   docs:
     runs-on: ubuntu-latest
@@ -33,6 +38,9 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Lint OpenAPI specification
+        run: bun run lint:openapi
 
       - name: Deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

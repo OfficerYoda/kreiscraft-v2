@@ -89,6 +89,10 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 - `kreiscraft.admin.sudo` — **(op)** — Force a player to run chat/command.
 - `kreiscraft.admin.help` — **(true)** — Open Kreiscraft help links.
 
+### `ai-chat` module
+
+- `kreiscraft.ai-chat.use` — **(true)** — Trigger an AI request from a chat message.
+
 ### `anti-cheat` module
 
 - `kreiscraft.anticheat.view` — **(op)** — View hack logs.

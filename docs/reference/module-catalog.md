@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -11,6 +11,7 @@ Catalog of all 23 Kreiscraft modules: purpose, dependencies, services, and event
 | Module ID | Package | Status | Depends On | Commands | Brief Description |
 |-----------|---------|--------|------------|----------|-------------------|
 | `admin` | `de.kreiscraft.modules.admin` | stable | none | item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (item spawning, player info, TPS). |
+| `ai-chat` | `de.kreiscraft.modules.aichat` | stable | none | — | Chat-triggered AI replies via the OpenRouter chat-completions API. |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
 | `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
@@ -64,6 +65,26 @@ For config keys and defaults, see [Configuration](/reference/configuration/).
 ### Description
 
 Provides a collection of general-purpose admin utility commands: item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links. The module also blocks the vanilla `/seed` and `/minecraft:seed` commands: a player who runs either is told that `/seed` is disabled (`admin.seed-blocked`).
+
+---
+
+## `ai-chat`
+
+**Package:** `de.kreiscraft.modules.aichat`
+**Depends on:** none
+**Default enabled:** true
+
+### Description
+
+Answers chat messages that contain the configured trigger string (default `@claude`). A player with
+`kreiscraft.ai-chat.use` who sends a matching message causes the module to send the prompt, together
+with the most recent `context-msg-count` chat lines recorded from `ChatBridge`, to the OpenRouter
+chat-completions API on a background thread. Each chat line is formatted as
+`[timestamp] [source] sender: content`. The system prompt is a configurable MiniMessage template
+whose `<ai-trigger>`, `<always-supported-players>` and `<chat-history>` placeholders are expanded to
+literal text before the request; the reply is rendered through the configured `response-format`
+before it is broadcast to the server and published to `ChatBridge` as a line whose source is `AI`.
+The module needs `modules.ai-chat.api-key` to be set; requests are sent with the configured `model`.
 
 ---
 

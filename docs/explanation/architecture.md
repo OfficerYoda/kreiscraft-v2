@@ -38,7 +38,7 @@ de.kreiscraft/
 ├── platform/          — thin Paper/NMS wrappers (no game logic)
 ├── core/              — module registry, config, events, scheduler, commands, messages
 ├── shared/            — cross-cutting services used by multiple modules (ChatBridge, UserService, …)
-└── modules/           — 23 independently opt-in feature modules
+└── modules/           — 24 independently opt-in feature modules
 ```
 
 **Platform layer** (`platform/`)  
@@ -65,7 +65,7 @@ published by the root rather than by a module so preferences stay available even
 preference-editing module is disabled.
 
 **Feature layer** (`modules/`)  
-Contains 23 feature modules, one package per feature. Each module keeps its feature-specific code
+Contains 24 feature modules, one package per feature. Each module keeps its feature-specific code
 together and registers its Bukkit listeners, Brigadier commands, and data files through the
 handles provided by `ModuleContext`. Modules that need services from other modules declare that
 dependency explicitly via `dependsOn()`, which both enforces initialization order and documents
@@ -88,7 +88,7 @@ instantiated and every dependency is wired. The full wiring sequence in `start()
 5. Publish global services (`MessageService`, `ConfigService`, `PlaceholderResolver`, `PlayerPreferencesService`) to the registry.
 6. Construct platform-layer objects and publish them.
 7. Construct shared-layer objects (`UserService`, `ChatBridge`, `GuiRegistry`, etc.) and publish them.
-8. Create `ModuleRegistry`, register all 23 module instances, call `enableAll()`.
+8. Create `ModuleRegistry`, register all 24 module instances, call `enableAll()`.
 9. Start `AutoSaveTask`.
 10. Register the `/kreiscraft reload` command.
 
@@ -110,7 +110,7 @@ receives, you trace from the call site in `KreiscraftBootstrap.start()` to the m
 
 ### Registration and enable ordering
 
-After all 23 module instances are registered with `ModuleRegistry.register()`, a single call to
+After all 24 module instances are registered with `ModuleRegistry.register()`, a single call to
 `enableAll()` processes them:
 
 1. Iterate all registered modules; collect those with `enabled: true` into a candidate list.
