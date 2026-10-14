@@ -4,6 +4,8 @@ title: HTTP and WebSocket API Reference
 
 Complete reference for the embedded Javalin HTTP/WebSocket server provided by the `api` module.
 
+The REST contract is also available as [OpenAPI YAML](/reference/openapi.yaml).
+
 ---
 
 ## Overview

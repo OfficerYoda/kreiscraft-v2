@@ -46,6 +46,7 @@ Precise, complete descriptions of the system's components.
 | [Commands and Permissions](/reference/commands-and-permissions/) | Every command, alias, permission node, and default |
 | [Configuration](/reference/configuration/) | Every `config.yml` key — core and per-module — with types and defaults |
 | [HTTP and WebSocket API](/reference/http-api/) | All 8 HTTP endpoints, the `/chat` WebSocket protocol, the account-linking flow |
+| [OpenAPI specification](/reference/openapi.yaml) | Machine-readable contract for the HTTP API |
 | [SDK Reference](/reference/sdk/) | `Module`, `ModuleContext`, `ServiceRegistry`, `EventBus`, `CommandRegistrar`, `Scheduler`, `MessageService`, `DataFile`, and more |
 | [Module Template](/reference/module-template/) | Copy-paste scaffold: module class, config, data file, listener, command, snippets for config/plugin.yml/lang |
 

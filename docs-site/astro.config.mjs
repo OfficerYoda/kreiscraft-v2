@@ -44,6 +44,7 @@ export default defineConfig({
             { label: 'Commands and Permissions', link: 'reference/commands-and-permissions' },
             { label: 'Configuration', link: 'reference/configuration' },
             { label: 'HTTP and WebSocket API', link: 'reference/http-api' },
+            { label: 'OpenAPI specification', link: '/reference/openapi.yaml' },
             { label: 'SDK', link: 'reference/sdk' },
             { label: 'Module Template', link: 'reference/module-template' },
           ],
