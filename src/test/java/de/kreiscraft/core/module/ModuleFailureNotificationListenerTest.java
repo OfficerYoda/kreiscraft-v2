@@ -50,7 +50,7 @@ class ModuleFailureNotificationListenerTest {
                         "count",
                         2,
                         "modules",
-                        "  - api\n  - bedrock");
+                        "   - api\n   - bedrock");
     }
 
     @Test
