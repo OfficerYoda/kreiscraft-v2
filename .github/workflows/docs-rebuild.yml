@@ -26,6 +26,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   rebuild:
     runs-on: ubuntu-latest
@@ -64,8 +68,16 @@ jobs:
           python .github/scripts/update_docs.py --mode=rebuild $extra
 
       - name: Commit and push changes
+        id: push_docs
         if: inputs.dry_run != 'true'
         run: |
           bash .github/scripts/push_docs.sh \
             "docs: full rebuild via workflow_dispatch" \
             "${{ github.ref_name }}"
+
+      # Actions-token pushes do not trigger docs-deploy.yml; deploy directly.
+      - name: Build and deploy generated docs
+        if: steps.push_docs.outputs.docs_changed == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/build-docs
+        with:
+          deploy: "true"

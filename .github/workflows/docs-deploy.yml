@@ -5,12 +5,14 @@ on:
     paths:
       - "docs/**"
       - "docs-site/**"
+      - ".github/actions/build-docs/**"
       - ".github/workflows/docs-deploy.yml"
   push:
     branches: [main]
     paths:
       - "docs/**"
       - "docs-site/**"
+      - ".github/actions/build-docs/**"
       - ".github/workflows/docs-deploy.yml"
 
 concurrency:
@@ -21,30 +23,15 @@ concurrency:
 jobs:
   docs:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: docs-site
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.4.0"
+          # Queued pushes build the latest branch, not an older event SHA that
+          # could overwrite a newer generated-docs deployment. PRs keep their SHA.
+          ref: ${{ github.event_name == 'push' && github.ref || github.sha }}
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-
-      - name: Lint OpenAPI specification
-        run: bun run lint:openapi
-
-      - name: Deploy
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: curl -fsSL https://forgejo.officeryoda.dev/OfficerYoda/site-deploy/raw/branch/main/deploy.sh | bash
-        env:
-          SRC: dist
-          SITE: docs.kreiscraft
+      - name: Build and deploy docs
+        uses: ./.github/actions/build-docs
+        with:
+          deploy: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

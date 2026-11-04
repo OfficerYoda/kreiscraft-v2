@@ -22,12 +22,19 @@
 #   push_docs.sh <commit-message> [branch]
 #
 # Credentials come from the checkout's persisted git config.
+# When GITHUB_OUTPUT is set, docs_changed is true after a successful push of
+# site documentation. Built-in Actions-token pushes do not trigger workflows,
+# so callers use this output to deploy directly instead of waiting for on.push.
 
 set -euo pipefail
 
 commit_message="${1:-docs: sync}"
 branch="${2:-main}"
 max_attempts="${PUSH_MAX_ATTEMPTS:-5}"
+
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "docs_changed=false" >> "$GITHUB_OUTPUT"
+fi
 
 git config user.name  "kreiscraft-docs-bot"
 git config user.email "docs-bot@forgejo.officeryoda.dev"
@@ -45,7 +52,11 @@ trap 'rm -rf "$snapshot"' EXIT
 mapfile -t changed_files < <(
   git diff-tree --no-commit-id --name-only -r HEAD -- README.md docs/
 )
+docs_changed=false
 for file in "${changed_files[@]}"; do
+  if [[ "$file" == docs/* ]]; then
+    docs_changed=true
+  fi
   mkdir -p "$snapshot/$(dirname "$file")"
   cp "$file" "$snapshot/$file"
 done
@@ -74,6 +85,9 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
 
   if git push origin "HEAD:refs/heads/$branch"; then
     echo "pushed docs to $branch on attempt $attempt"
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then
+      echo "docs_changed=$docs_changed" >> "$GITHUB_OUTPUT"
+    fi
     exit 0
   fi
   sleep $((attempt * 2))

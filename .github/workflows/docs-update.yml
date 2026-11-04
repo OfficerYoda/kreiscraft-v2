@@ -1,8 +1,9 @@
 name: Sync docs (incremental)
 
 # Runs on every push to the default branch. Reads the diff, asks the LLM to
-# update any affected docs, and commits the result back. The docs-only commit
-# does not retrigger this workflow because of the path filter below.
+# update any affected docs, commits the result back, and deploys site changes.
+# Forgejo suppresses workflow triggers for built-in Actions-token pushes, so
+# deployment must happen here rather than relying on the docs commit's on.push.
 # Returns targeted edits, with at most one correction call for failed anchors.
 #
 # Path filter: skips runs when only docs, workflow files, or the root README
@@ -17,7 +18,8 @@ on:
       - "README.md"
 
 concurrency:
-  group: docs-update-${{ github.ref }}
+  # Share the deploy lock with manual rebuilds and ordinary docs pushes.
+  group: docs-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -73,7 +75,14 @@ jobs:
             --head-ref="${{ github.sha }}"
 
       - name: Commit and push changes
+        id: push_docs
         run: |
           bash .github/scripts/push_docs.sh \
             "docs: sync with $(git rev-parse --short "${{ github.sha }}")" \
             "${{ github.ref_name }}"
+
+      - name: Build and deploy generated docs
+        if: steps.push_docs.outputs.docs_changed == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/build-docs
+        with:
+          deploy: "true"
