@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -79,9 +80,9 @@ public final class TpsBar implements PriorityListener {
         Health msptHealth = atMost(mspt, settings.msptGreenMax(), settings.msptYellowMax());
         Health pingHealth = atMost(ping, settings.pingGreenMax(), settings.pingYellowMax());
         Component title = messages.renderFor(player, "admin.tps-bar.title",
-                "tps", Component.text(String.format(Locale.ROOT, "%.2f", tps), tpsHealth.textColor),
-                "mspt", Component.text(String.format(Locale.ROOT, "%.2f", mspt), msptHealth.textColor),
-                "ping", Component.text(String.valueOf(ping), pingHealth.textColor));
+                "tps", tpsHealth.decimal(tps),
+                "mspt", msptHealth.decimal(mspt),
+                "ping", pingHealth.gradient(String.valueOf(ping)));
         double fill = (mspt - settings.msptEmpty()) / (settings.msptFull() - settings.msptEmpty());
         return new Display(title, msptHealth.barColor, (float) Math.clamp(fill, 0.0, 1.0));
     }
@@ -95,15 +96,39 @@ public final class TpsBar implements PriorityListener {
     }
 
     private enum Health {
-        GREEN(NamedTextColor.GREEN, BossBar.Color.GREEN), YELLOW(NamedTextColor.YELLOW,
-                BossBar.Color.YELLOW), RED(NamedTextColor.RED, BossBar.Color.RED);
+        GREEN(NamedTextColor.GREEN, NamedTextColor.DARK_GREEN, BossBar.Color.GREEN), YELLOW(NamedTextColor.YELLOW,
+                TextColor.color(0xFFAA00),
+                BossBar.Color.YELLOW), RED(NamedTextColor.RED, NamedTextColor.DARK_RED, BossBar.Color.RED);
 
         private final NamedTextColor textColor;
+        private final TextColor darkColor;
         private final BossBar.Color barColor;
 
-        Health(NamedTextColor textColor, BossBar.Color barColor) {
+        Health(NamedTextColor textColor, TextColor darkColor, BossBar.Color barColor) {
             this.textColor = textColor;
+            this.darkColor = darkColor;
             this.barColor = barColor;
+        }
+
+        private Component decimal(double value) {
+            String formatted = String.format(Locale.ROOT, "%.2f", value);
+            int dot = formatted.indexOf('.');
+            if (dot < 0) {
+                return Component.text(formatted, textColor);
+            }
+            return Component.text(formatted.substring(0, dot), textColor)
+                    .append(gradient(formatted.substring(dot)));
+        }
+
+        /** Inclusive light-to-dark endpoints; a single digit keeps the light color. */
+        private Component gradient(String text) {
+            var result = Component.text().color(textColor);
+            for (int i = 0; i < text.length(); i++) {
+                float fraction = text.length() == 1 ? 0.0f : (float) i / (text.length() - 1);
+                result.append(
+                        Component.text(String.valueOf(text.charAt(i)), TextColor.lerp(fraction, textColor, darkColor)));
+            }
+            return result.build();
         }
     }
 

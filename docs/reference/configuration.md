@@ -157,6 +157,8 @@ All eight TPS bar numbers are editable in `/settings admin` → **Admin** and ho
 
 Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar has 20 notches; its color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
 
+TPS/MSPT whole-number digits stay in the light health color; the decimal point and two decimal digits fade from that color to dark green, orange (`#ffaa00`), or dark red. Ping fades across all its digits, with a single digit staying light. Labels and units keep their localized styling.
+
 GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresholds are limited to 0–20; other values are limited to 100,000. `mspt-full` must be at least 0.1 and strictly greater than `mspt-empty`. Invalid YAML is rejected on load/reload rather than applying unusable fill endpoints.
 
 ---

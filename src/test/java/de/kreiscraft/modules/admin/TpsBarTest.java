@@ -13,11 +13,14 @@ import static org.mockito.Mockito.when;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.ConfigurateMessageService;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -209,6 +212,12 @@ class TpsBarTest {
         assertThat(bar.name().children().get(0).color()).isEqualTo(NamedTextColor.GREEN);
         assertThat(bar.name().children().get(2).color()).isEqualTo(NamedTextColor.YELLOW);
         assertThat(bar.name().children().get(4).color()).isEqualTo(NamedTextColor.YELLOW);
+        assertGradient(characterColors(bar.name().children().get(0)), "18.50", 2,
+                NamedTextColor.GREEN, NamedTextColor.DARK_GREEN);
+        assertGradient(characterColors(bar.name().children().get(2)), "12.35", 2,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertGradient(characterColors(bar.name().children().get(4)), "42", 0,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
         verify(player).showBossBar(bar);
     }
 
@@ -234,16 +243,99 @@ class TpsBarTest {
         BossBar bar = shownBar(player);
 
         assertThat(plain(bar)).isEqualTo("TPS: 20.00 | MSPT: 60.00 ms | Ping: 100 ms");
-        assertThat(containsColoredText(bar.name(), "20.00", NamedTextColor.GREEN)).isTrue();
-        assertThat(containsColoredText(bar.name(), "60.00", NamedTextColor.RED)).isTrue();
-        assertThat(containsColoredText(bar.name(), "100", NamedTextColor.YELLOW)).isTrue();
+        List<TextColor> colors = characterColors(bar.name());
+        assertGradient(colors.subList(5, 10), "20.00", 2, NamedTextColor.GREEN, NamedTextColor.DARK_GREEN);
+        assertGradient(colors.subList(19, 24), "60.00", 2, NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertGradient(colors.subList(36, 39), "100", 0, NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertThat(colors.get(0)).isEqualTo(NamedTextColor.GRAY);
+        assertThat(colors.get(25)).isEqualTo(NamedTextColor.GRAY);
         assertThat(bar.color()).isEqualTo(BossBar.Color.RED);
         assertThat(bar.progress()).isEqualTo(1.0f);
     }
 
-    private static boolean containsColoredText(Component component, String text, NamedTextColor color) {
-        return (component instanceof TextComponent tc && tc.content().equals(text) && color.equals(tc.color()))
-                || component.children().stream().anyMatch(child -> containsColoredText(child, text, color));
+    @ParameterizedTest
+    @CsvSource({"20, 40, GREEN, #00aa00", "18, 45, YELLOW, #ffaa00", "14, 60, RED, #aa0000"})
+    void decimals_gradientOnlyFromDotToLastDecimalDigit(double tps, double mspt, String light, String dark) {
+        when(server.getTPS()).thenReturn(new double[] {tps});
+        when(server.getAverageTickTime()).thenReturn(mspt);
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        TextColor start = NamedTextColor.NAMES.value(light.toLowerCase(java.util.Locale.ROOT));
+        TextColor end = TextColor.fromHexString(dark);
+        for (int index : new int[] {0, 2}) {
+            Component metric = bar.name().children().get(index);
+            String text = PlainTextComponentSerializer.plainText().serialize(metric);
+            assertGradient(characterColors(metric), text, text.indexOf('.'), start, end);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0, GREEN, #00aa00", "7, GREEN, #00aa00", "42, GREEN, #00aa00",
+            "99, YELLOW, #ffaa00", "100, YELLOW, #ffaa00", "150, RED, #aa0000",
+            "1234, RED, #aa0000"
+    })
+    void ping_gradientSpansAllDigitsIncludingSingleDigitValues(int ping, String light, String dark) {
+        Player player = player(ping);
+        service.toggle(player);
+        Component metric = shownBar(player).name().children().get(4);
+        assertGradient(characterColors(metric), String.valueOf(ping), 0,
+                NamedTextColor.NAMES.value(light.toLowerCase(java.util.Locale.ROOT)), TextColor.fromHexString(dark));
+    }
+
+    @Test
+    void tick_updatesGradientEndpointsWhenHealthChanges() {
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        when(server.getTPS()).thenReturn(new double[] {14.0});
+        when(server.getAverageTickTime()).thenReturn(45.0);
+        when(player.getPing()).thenReturn(150);
+
+        service.tick();
+
+        assertGradient(characterColors(bar.name().children().get(0)), "14.00", 2,
+                NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertGradient(characterColors(bar.name().children().get(2)), "45.00", 2,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertGradient(characterColors(bar.name().children().get(4)), "150", 0,
+                NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertThat(bar.color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        verify(player).showBossBar(bar);
+    }
+
+    private static void assertGradient(List<TextColor> colors, String text, int start, TextColor light,
+            TextColor dark) {
+        assertThat(colors).hasSize(text.length());
+        for (int i = 0; i < start; i++) {
+            assertThat(colors.get(i)).isEqualTo(light);
+        }
+        int length = text.length() - start;
+        assertThat(colors.get(start)).isEqualTo(light);
+        if (length > 1) {
+            assertThat(colors.getLast()).isEqualTo(dark);
+        }
+        for (int i = 1; i < length - 1; i++) {
+            assertThat(colors.get(start + i)).isEqualTo(TextColor.lerp((float) i / (length - 1), light, dark));
+        }
+    }
+
+    private static List<TextColor> characterColors(Component component) {
+        List<TextColor> colors = new ArrayList<>();
+        collectCharacterColors(component, null, colors);
+        return colors;
+    }
+
+    private static void collectCharacterColors(Component component, TextColor inherited, List<TextColor> colors) {
+        TextColor color = component.color() == null ? inherited : component.color();
+        if (component instanceof TextComponent text) {
+            for (int i = 0; i < text.content().length(); i++) {
+                colors.add(color);
+            }
+        }
+        component.children().forEach(child -> collectCharacterColors(child, color, colors));
     }
 
     private static String plain(BossBar bar) {
