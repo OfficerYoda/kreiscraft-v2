@@ -45,7 +45,7 @@ public final class SpawnMobCommand {
                                     type.name().toLowerCase());
                             return Command.SINGLE_SUCCESS;
                         })
-                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 50))
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1024))
                                 .executes(ctx -> {
                                     Player player = (Player) ctx.getSource().getSender();
                                     String typeName =
