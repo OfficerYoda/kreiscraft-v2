@@ -36,7 +36,6 @@ class YamlConfigServiceEditTest {
     void appliedEdit_updatesLiveTreeAndDurableFile(@TempDir Path tmp) throws IOException {
         Files.writeString(tmp.resolve("config.yml"), CUSTOM_CONFIG);
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
-
         ConfigEditResult result = cfg.edit(new ConfigEdit(combatEnabled(cfg), false));
 
         assertThat(result).isInstanceOf(ConfigEditResult.Applied.class);
@@ -53,6 +52,11 @@ class YamlConfigServiceEditTest {
     void appliedEdit_onBundledConfig_preservesUnrelatedValues(@TempDir Path tmp)
             throws IOException {
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
+        String language = cfg.root().node("core", "language").getString();
+        int spawnRadius = cfg.root().node("modules", "spawn", "spawn-radius").getInt();
+        String jailWorld = cfg.root().node("modules", "jail", "location", "world").getString();
+        int rebootChatSecondsCount =
+                cfg.root().node("modules", "reboot", "chat-seconds").childrenList().size();
 
         ConfigEditResult result = cfg.edit(new ConfigEdit(combatEnabled(cfg), false));
 
@@ -61,12 +65,13 @@ class YamlConfigServiceEditTest {
         assertThat(after).doesNotContainPattern("(?m)(?:^|\\s)#");
         ConfigurationNode reloaded = load(tmp.resolve("config.yml"));
         assertThat(reloaded.node("modules", "combat", "enabled").getBoolean()).isFalse();
-        assertThat(reloaded.node("core", "language").getString()).isEqualTo("de");
+        assertThat(reloaded.node("core", "language").getString()).isEqualTo(language);
         assertThat(reloaded.node("modules", "spawn", "spawn-radius").getInt())
-                .isEqualTo(50);
+                .isEqualTo(spawnRadius);
         assertThat(reloaded.node("modules", "jail", "location", "world").getString())
-                .isEqualTo("world");
-        assertThat(reloaded.node("modules", "reboot", "chat-seconds").childrenList()).hasSize(10);
+                .isEqualTo(jailWorld);
+        assertThat(reloaded.node("modules", "reboot", "chat-seconds").childrenList())
+                .hasSize(rebootChatSecondsCount);
     }
 
     @Test

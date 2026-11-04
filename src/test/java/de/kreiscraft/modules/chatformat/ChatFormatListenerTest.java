@@ -144,7 +144,11 @@ class ChatFormatListenerTest {
         List<ChatBridgeEvent> captured = new ArrayList<>();
         chatBridge.subscribe(captured::add);
 
-        listenerWith(new ChatFormatConfig()).onChat(event);
+        ChatFormatConfig config = new ChatFormatConfig(
+                org.bukkit.event.EventPriority.LOWEST,
+                false,
+                "<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
+        listenerWith(config).onChat(event);
 
         assertThat(captured).hasSize(1);
         String plain = PlainTextComponentSerializer.plainText()

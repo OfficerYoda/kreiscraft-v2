@@ -14,10 +14,14 @@ import org.spongepowered.configurate.ConfigurationNode;
 class YamlConfigServiceTest {
 
     @Test
-    void firstRun_copiesDefaultsFromClasspath(@TempDir Path tmp) throws IOException {
+    void firstRun_copiesBundledConfigFromClasspath(@TempDir Path tmp) throws IOException {
         YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
         assertThat(Files.exists(tmp.resolve("config.yml"))).isTrue();
-        assertThat(cfg.root().node("core", "language").getString()).isEqualTo("de");
+        try (var bundled = getClass().getClassLoader().getResourceAsStream("config.yml")) {
+            assertThat(bundled).isNotNull();
+            assertThat(Files.readAllBytes(tmp.resolve("config.yml")))
+                    .isEqualTo(bundled.readAllBytes());
+        }
     }
 
     @Test
