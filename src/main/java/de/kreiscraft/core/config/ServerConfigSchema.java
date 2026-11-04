@@ -127,8 +127,6 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.HOT_RELOAD));
 
         // ── chat-format ─────────────────────────────────────────────────────
-        // `event-priority` is bound when the listener is registered and is not applied on reload, so
-        // it stays YAML-only rather than claiming a live control it does not have.
         fields.add(field(
                 path("modules", "chat-format", "allow-mini-message-in-body"),
                 ConfigFieldType.BOOLEAN,

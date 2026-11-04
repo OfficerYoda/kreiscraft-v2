@@ -125,8 +125,7 @@ class ServerConfigSchemaTest {
                                 || path.contains("debug")
                                 || path.contains("auto-save-interval")
                                 || path.contains("active")
-                                || path.contains("has-started")
-                                || path.contains("event-priority"));
+                                || path.contains("has-started"));
     }
 
     @Test

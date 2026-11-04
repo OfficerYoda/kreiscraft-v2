@@ -124,7 +124,6 @@ operator-owned runtime state written by commands stay out of the GUI:
 | `modules.api.host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` | Networking / infrastructure. |
 | `modules.anti-cheat.channel` | Plugin-messaging channel (networking). |
 | `modules.tablist.header`, `modules.tablist.footer` | Tab-list header/footer. |
-| `modules.chat-format.event-priority` | Listener priority is bound at registration and is not applied on reload. |
 | `core.timezone`, `core.auto-save-interval` | Low-level infrastructure / timezone and persistence settings. |
 | `modules.update-mode.active`, `modules.start-sequence.has-started` | Operator-owned state written by commands whose side effects the GUI must not bypass. |
 
@@ -203,7 +202,6 @@ Modules with no settings beyond `enabled` are not listed here: `invsee`, `settin
 
 | Key (relative to `modules.chat-format`) | Type | Default | Description |
 |---|---|---|---|
-| `event-priority` | EventPriority | `LOWEST` | Bukkit `AsyncChatEvent` priority at which the formatter registers. Values: `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, `MONITOR`. |
 | `allow-mini-message-in-body` | boolean | `false` | Whether players can use MiniMessage tags in their message body. |
 | `format` | String | `<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, `<body>`. Present player prefixes include one trailing space; present suffixes include one leading space. Empty affixes add no whitespace. |
 

@@ -64,7 +64,7 @@ public final class PlaceholderResolver {
             case "ping" -> context == null ? null : String.valueOf(context.getPing());
             case "playtime" -> context == null ? null
                     : formatPlaytime(context.getStatistic(Statistic.PLAY_ONE_MINUTE));
-            case "plugin_prefix" -> "[Kreiscraft]";
+            case "mspt" -> String.format("%.2f", server.getAverageTickTime());
             default -> null;
         };
     }
@@ -74,7 +74,7 @@ public final class PlaceholderResolver {
      * decimal places (e.g. {@code "20.0"}, {@code "19.87"}).
      */
     private static String formatTps(double tps) {
-        return String.valueOf(Math.min(20.0, Math.round(tps * 100.0) / 100.0));
+        return String.format("%.2f", Math.min(20.0, tps));
     }
 
     /**

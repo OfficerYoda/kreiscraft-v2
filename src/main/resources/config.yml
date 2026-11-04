@@ -58,7 +58,6 @@ modules:
     prefix: "."
   chat-format:
     enabled: true
-    event-priority: LOWEST
     allow-mini-message-in-body: false
     format: "<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>"
   clickthrough:
