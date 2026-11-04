@@ -155,7 +155,7 @@ Modules with no settings beyond `enabled` are not listed here: `invsee`, `settin
 
 All eight TPS bar numbers are editable in `/settings admin` → **Admin** and hot-reload on closing Server Configuration (or `/kreiscraft reload`). Existing installations without this section use and display the defaults without rewriting configuration just to read them. Open bars update on their next one-second refresh; no retoggle is needed.
 
-Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar's color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
+Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar has 20 notches; its color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
 
 GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresholds are limited to 0–20; other values are limited to 100,000. `mspt-full` must be at least 0.1 and strictly greater than `mspt-empty`. Invalid YAML is rejected on load/reload rather than applying unusable fill endpoints.
 

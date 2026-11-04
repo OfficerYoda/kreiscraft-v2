@@ -37,7 +37,7 @@ public final class TpsBar implements PriorityListener {
             return false;
         }
         Display display = display(player);
-        BossBar bar = BossBar.bossBar(display.title(), display.progress(), display.color(), BossBar.Overlay.PROGRESS);
+        BossBar bar = BossBar.bossBar(display.title(), display.progress(), display.color(), BossBar.Overlay.NOTCHED_20);
         views.put(player.getUniqueId(), new View(player, bar));
         player.showBossBar(bar);
         return true;

@@ -60,6 +60,7 @@ class TpsBarTest {
         BossBar bar = shownBar(player);
         assertThat(plain(bar)).isEqualTo("20.00 / 12.35 / 42");
         assertThat(bar.color()).isEqualTo(BossBar.Color.GREEN);
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
         assertThat(bar.progress()).isCloseTo(12.345f / 50.0f, org.assertj.core.data.Offset.offset(0.00001f));
         assertThat(service.toggle(player)).isFalse();
         verify(player).hideBossBar(bar);
@@ -86,6 +87,8 @@ class TpsBarTest {
         assertThat(plain(aliceBar)).isEqualTo("19.88 / 45.68 / 50");
         assertThat(plain(bobBar)).isEqualTo("19.88 / 45.68 / 99");
         assertThat(aliceBar.color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(aliceBar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(bobBar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
         assertThat(aliceBar.progress()).isCloseTo(45.678f / 50.0f, org.assertj.core.data.Offset.offset(0.00001f));
         service.toggle(alice);
         verify(bob, never()).hideBossBar(any());
