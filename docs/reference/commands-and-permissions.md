@@ -14,7 +14,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |
-| `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 50). | `kreiscraft.admin.spawnmob` | op |
+| `/spawnmob <entityType> [count]` | `sm` | `admin` | Spawn mobs at your location (up to 1 024). | `kreiscraft.admin.spawnmob` | op |
 | `/ip [player]` | — | `admin` | Show a player's IP address. | `kreiscraft.admin.ip` | op |
 | `/uuid [player]` | — | `admin` | Show a player's UUID. | `kreiscraft.admin.uuid` | op |
 | `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
