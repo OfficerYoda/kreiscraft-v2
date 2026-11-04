@@ -27,6 +27,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
+| `sit` | `de.kreiscraft.modules.sit` | stable | none | sit | Toggle sitting through `/sit` or the cushion in `/settings`. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
 | `start-sequence` | `de.kreiscraft.modules.startsequence` | stable | none | start | Triggers the season-start sequence: countdown, then one continuous world border expansion. |
 | `status` | `de.kreiscraft.modules.status` | stable | none | status | Stores per-player MiniMessage prefix/suffix and color, applied to chat, the Bukkit display name, the scoreboard/overhead name, and the tab list. |
@@ -337,6 +338,22 @@ None. The GUI is a client of the shared `PlayerPreferencesService` and the valid
 ### Description
 
 Parses MiniMessage tags, legacy ampersand colour/decoration codes, and established Kreiscraft `%placeholder%` tokens in sign lines when a player with `kreiscraft.signcolor.use` edits a sign, and in anvil rename fields when the player has `kreiscraft.signcolor.anvil`. MiniMessage is restricted to colour, decoration, rainbow, reset, and gradient tags so players cannot inject interactive or client-affecting tags. No commands are provided.
+
+---
+
+## `sit`
+
+**Package:** `de.kreiscraft.modules.sit`
+
+**Depends on:** none
+
+`/sit` toggles sitting on an invisible, temporary seat. Sneaking also stands up. The cushion
+(white carpet) in `/settings` closes the menu and runs the same command. Both require
+`kreiscraft.sit.use` (default: true); the cushion is hidden when the module is disabled or
+the player lacks permission. Seats are removed on dismount, quit, death, teleport, and module
+disable. Sitting is not persisted and does not change combat rules. Existing vehicles are left alone.
+
+Enable or disable with `modules.sit.enabled` (default: true; restart required).
 
 ---
 

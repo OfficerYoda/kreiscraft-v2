@@ -20,6 +20,7 @@ import de.kreiscraft.modules.positions.PositionsModule;
 import de.kreiscraft.modules.reboot.RebootModule;
 import de.kreiscraft.modules.settingsgui.SettingsGuiModule;
 import de.kreiscraft.modules.signcolor.SignColorModule;
+import de.kreiscraft.modules.sit.SitModule;
 import de.kreiscraft.modules.spawn.SpawnModule;
 import de.kreiscraft.modules.startsequence.StartSequenceModule;
 import de.kreiscraft.modules.status.StatusModule;
@@ -35,7 +36,7 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 class KreiscraftBootstrapTest {
 
     /** Mirror of KreiscraftBootstrap.start() — sole source of truth for the registered set. */
-    private static final int MODULE_COUNT = 23;
+    private static final int MODULE_COUNT = 24;
 
     private static List<Module> allModules() {
         return List.of(
@@ -55,6 +56,7 @@ class KreiscraftBootstrapTest {
                 new RebootModule(),
                 new SettingsGuiModule(),
                 new SignColorModule(),
+                new SitModule(),
                 new SpawnModule(),
                 new StartSequenceModule(),
                 new StatusModule(),

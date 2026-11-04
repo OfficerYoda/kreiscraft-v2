@@ -47,6 +47,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/reboot cancel` | `restart` | `reboot` | Cancel an active restart countdown. | `kreiscraft.reboot.admin` | op |
 | `/settings` | — | `settings-gui` | Open the per-player settings GUI. | `kreiscraft.settingsgui.use` | true |
 | `/settings admin` | — | `settings-gui` | Open the authorized Server Configuration editor (categories, typed controls, immediate saves). | `kreiscraft.settingsgui.admin` | op |
+| `/sit` | — | `sit` | Sit down or stand up; sneaking also stands up. Also available via the cushion in `/settings`. | `kreiscraft.sit.use` | true |
 | `/spawn` | — | `spawn` | Teleport to the server spawn when inside the horizontal Spawn Access Zone (overworld only). | `kreiscraft.spawn.use` | true |
 | `/setspawn` | — | `spawn` | Set the server spawn to your current location. | `kreiscraft.spawn.set` | op |
 | `/start` | — | `start-sequence` | Trigger the season start sequence for your world. | `kreiscraft.startsequence.admin` | op |
@@ -146,6 +147,10 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 - `kreiscraft.signcolor.use` — **(true)** — Format sign lines with legacy ampersand codes, Kreiscraft placeholders, and safe MiniMessage.
 - `kreiscraft.signcolor.anvil` — **(true)** — Format anvil rename text with legacy ampersand codes, Kreiscraft placeholders, and safe MiniMessage.
+
+### `sit` module
+
+- `kreiscraft.sit.use` — **(true)** — Sit down or stand up through `/sit` or the cushion in `/settings`.
 
 ### `spawn` module
 

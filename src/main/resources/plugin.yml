@@ -102,6 +102,9 @@ permissions:
     description:
       Use legacy colours, placeholders and MiniMessage in anvil rename
     default: true
+  kreiscraft.sit.use:
+    description: Sit down or stand up
+    default: true
   kreiscraft.spawn.use:
     description: Teleport to spawn
     default: true

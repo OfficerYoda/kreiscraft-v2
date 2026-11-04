@@ -51,7 +51,7 @@ class YamlConfigServiceTest {
     private static final List<String> DEFAULT_ENABLED = List.of(
             "admin", "api", "ai-chat", "anti-cheat", "bedrock", "chat-format", "clickthrough",
             "combat", "effects", "glow", "invsee", "jail", "reboot", "settings-gui",
-            "sign-color", "spawn", "start-sequence", "status", "tablist", "update-mode",
+            "sign-color", "sit", "spawn", "start-sequence", "status", "tablist", "update-mode",
             "wither", "world-mgmt");
 
     /**

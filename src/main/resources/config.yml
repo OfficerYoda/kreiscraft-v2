@@ -101,6 +101,8 @@ modules:
     enabled: true
   sign-color:
     enabled: true
+  sit:
+    enabled: true
   spawn:
     enabled: true
     spawn-radius: 50

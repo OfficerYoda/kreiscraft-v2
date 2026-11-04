@@ -37,6 +37,7 @@ server-config:
     reboot: "Reboot"
     settings-gui: "Player Settings"
     sign-color: "Sign Colors"
+    sit: "Sitting"
     spawn: "Spawn"
     start-sequence: "Start Sequence"
     status: "Status"
@@ -249,6 +250,7 @@ reboot:
     <aqua>Restart
     <gray>==================================="
 settings-gui:
+  sit: "<gray>Cushion <dark_gray>(click to sit / stand)"
   gui-title: "<gray>Settings"
   effects-title: "<gray>Effects Settings"
   language: "<gray>Language: <aqua><language>"
@@ -266,6 +268,10 @@ settings-gui:
   glow-on: "<green>Glow: On"
   glow-off: "<red>Glow: Off"
   back: "<gray>Back"
+sit:
+  sat: "<prefix> <green>You sat down. Sneak or use /sit to stand up."
+  stood: "<prefix> <yellow>You stood up."
+  unavailable: "<prefix> <red>You cannot sit right now."
 spawn:
   teleported: "<prefix> <green>Teleported to spawn."
   out-of-range: "<prefix> <red>You are too far from spawn."

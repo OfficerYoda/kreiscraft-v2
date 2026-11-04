@@ -134,7 +134,7 @@ operator-owned runtime state written by commands stay out of the GUI:
 
 Each module's config is deserialized via Configurate's `@ConfigSerializable` object mapping. Field names follow camelCase → kebab-case conversion automatically (e.g., `tagDuration` → `tag-duration`). Fields annotated with `@Setting("explicit-key")` use the given key verbatim.
 
-Modules whose `XxxConfig` record has no fields beyond `enabled` are not listed here: `glow`, `invsee`, `settings-gui`, `sign-color`, `status`, `world-mgmt`.
+Modules with no settings beyond `enabled` are not listed here: `glow`, `invsee`, `settings-gui`, `sign-color`, `sit`, `status`, `world-mgmt`.
 
 ---
 

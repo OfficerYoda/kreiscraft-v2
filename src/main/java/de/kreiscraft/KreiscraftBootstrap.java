@@ -158,6 +158,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.reboot.RebootModule());
         modules.register(new de.kreiscraft.modules.settingsgui.SettingsGuiModule());
         modules.register(new de.kreiscraft.modules.signcolor.SignColorModule());
+        modules.register(new de.kreiscraft.modules.sit.SitModule());
         modules.register(new de.kreiscraft.modules.spawn.SpawnModule());
         modules.register(new de.kreiscraft.modules.startsequence.StartSequenceModule());
         modules.register(new de.kreiscraft.modules.status.StatusModule());

@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.settingsgui;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -96,6 +97,7 @@ class SettingsGuiTest {
         assertThat(gui.getItem(SettingsGui.SLOT_COMBAT_DISPLAY)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_GLOW)).isNull();
+        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
     }
 
     @Test
@@ -115,6 +117,44 @@ class SettingsGuiTest {
 
         assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNotNull();
         assertThat(gui.getItem(SettingsGui.SLOT_GLOW)).isNotNull();
+    }
+
+    @Test
+    void sit_showsCushionOnlyWithModuleAndPermission() {
+        assertThat(rootWith(id -> id.equals("sit")).getItem(SettingsGui.SLOT_SIT)).isNull();
+        player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
+
+        Gui gui = rootWith(id -> id.equals("sit"));
+
+        assertThat(stackAt(gui, SettingsGui.SLOT_SIT).getType()).isEqualTo(Material.WHITE_CARPET);
+        assertThat(plain(stackAt(gui, SettingsGui.SLOT_SIT).getItemMeta().displayName()))
+                .isEqualTo("settings-gui.sit");
+        assertThat(rootWith(id -> false).getItem(SettingsGui.SLOT_SIT)).isNull();
+    }
+
+    @Test
+    void sit_clickClosesMenuAndRunsCommand() {
+        player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
+        PlayerMock actor = spy(player);
+        doReturn(true).when(actor).performCommand("sit");
+        Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, actor, navigator);
+
+        gui.handleClick(SettingsGui.SLOT_SIT, new Click(actor, ClickType.LEFT));
+
+        verify(actor).closeInventory();
+        verify(actor).performCommand("sit");
+    }
+
+    @Test
+    void sit_clickRechecksPermission() {
+        var attachment = player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
+        PlayerMock actor = spy(player);
+        Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, actor, navigator);
+        attachment.setPermission("kreiscraft.sit.use", false);
+
+        gui.handleClick(SettingsGui.SLOT_SIT, new Click(actor, ClickType.LEFT));
+
+        verify(actor, org.mockito.Mockito.never()).performCommand("sit");
     }
 
     // ------------------------------------------------------------------

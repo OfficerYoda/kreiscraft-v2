@@ -4,6 +4,7 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.ModuleEnablement;
+import de.kreiscraft.modules.sit.commands.SitCommand;
 import de.kreiscraft.shared.preferences.CombatDisplay;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +42,7 @@ import xyz.xenondevs.invui.item.ItemWrapper;
  * slot 12  Combat display            slot 22  Back
  * slot 14  Effects (opens page)
  * slot 16  Glow
+ * slot 22  Sit (cushion)
  * slot 26  Language (bottom-right, flag head)
  * </pre>
  */
@@ -65,6 +67,7 @@ public final class SettingsGui {
     static final int SLOT_COMBAT_DISPLAY = 12;
     static final int SLOT_EFFECTS = 14;
     static final int SLOT_GLOW = 16;
+    static final int SLOT_SIT = 22;
 
     /** Permission that reveals and opens the authorized Server Configuration editor. */
     public static final String SERVER_CONFIG_PERMISSION = "kreiscraft.settingsgui.admin";
@@ -143,6 +146,9 @@ public final class SettingsGui {
         }
         if (SettingsControl.GLOW.isAvailable(modules)) {
             gui.setItem(SLOT_GLOW, glowItem(settings, messages));
+        }
+        if (modules.isEnabled("sit") && player.hasPermission(SitCommand.PERMISSION)) {
+            gui.setItem(SLOT_SIT, sitItem(messages));
         }
         return gui;
     }
@@ -283,6 +289,24 @@ public final class SettingsGui {
                 UUID id = player.getUniqueId();
                 settings.setGlowEnabled(id, !settings.glowEnabled(id));
                 notifyWindows();
+            }
+        };
+    }
+
+    private static AbstractItem sitItem(MessageService messages) {
+        return new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                // A soft, flat cushion represented with a vanilla carpet item.
+                return new ItemWrapper(named(Material.WHITE_CARPET, messages.renderFor(viewer, "settings-gui.sit")));
+            }
+
+            @Override
+            public void handleClick(ClickType clickType, Player player, Click click) {
+                if (player.hasPermission(SitCommand.PERMISSION)) {
+                    player.closeInventory();
+                    player.performCommand("sit");
+                }
             }
         };
     }

@@ -37,6 +37,7 @@ server-config:
     reboot: "Neustart"
     settings-gui: "Spielereinstellungen"
     sign-color: "Sign Colors"
+    sit: "Sitzen"
     spawn: "Spawn"
     start-sequence: "Start-Sequenz"
     status: "Status"
@@ -249,6 +250,7 @@ reboot:
     <aqua>Neustart
     <gray>==================================="
 settings-gui:
+  sit: "<gray>Sitzkissen <dark_gray>(klicken zum Hinsetzen / Aufstehen)"
   gui-title: "<gray>Einstellungen"
   effects-title: "<gray>Effekt-Einstellungen"
   language: "<gray>Sprache: <aqua><language>"
@@ -266,6 +268,10 @@ settings-gui:
   glow-on: "<green>Leuchten: An"
   glow-off: "<red>Leuchten: Aus"
   back: "<gray>Zurück"
+sit:
+  sat: "<prefix> <green>Du sitzt jetzt. Schleiche oder nutze /sit zum Aufstehen."
+  stood: "<prefix> <yellow>Du bist aufgestanden."
+  unavailable: "<prefix> <red>Du kannst dich gerade nicht hinsetzen."
 spawn:
   teleported: "<prefix> <green>Zum Spawn teleportiert."
   out-of-range: "<prefix> <red>Du bist zu weit vom Spawn entfernt."
