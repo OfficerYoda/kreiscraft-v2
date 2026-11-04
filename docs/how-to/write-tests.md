@@ -186,4 +186,4 @@ Scans every `.java` file under `src/main/java/de/kreiscraft/` for string-literal
 
 ## 5. Smoke test
 
-`KreiscraftBootstrapTest` verifies that all registered module IDs are unique and follow the kebab-case naming convention. It does not start a server. If you add a new module, add it to the `allModules()` list there and increment `MODULE_COUNT`.
+`KreiscraftBootstrapTest` discovers every production `Module` implementation by scanning the compiled classes under `de/kreiscraft/modules`, so a new module is covered automatically — there is no fixture list to update. It verifies that all registered module IDs are unique and follow the kebab-case naming convention, and that every module has a working no-arg constructor. It does not start a server.
