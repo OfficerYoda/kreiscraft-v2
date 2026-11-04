@@ -359,11 +359,11 @@ class TpsBarTest {
         service.toggle(player);
         BossBar bar = shownBar(player);
 
-        assertThat(plain(bar)).isEqualTo("TPS: 20.00 | MSPT: 60.00 ms | Ping: 100 ms");
+        assertThat(plain(bar)).isEqualTo("TPS: 20.00 MSPT: 60.00 Ping: 100ms");
         List<TextColor> colors = characterColors(bar.name());
         assertGradient(colors.subList(5, 10), "20.00", 2, NamedTextColor.GREEN, NamedTextColor.DARK_GREEN);
-        assertGradient(colors.subList(19, 24), "60.00", 2, NamedTextColor.RED, NamedTextColor.DARK_RED);
-        assertGradient(colors.subList(36, 39), "100", 0, NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertGradient(colors.subList(17, 22), "60.00", 2, NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertGradient(colors.subList(29, 32), "100", 0, NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
         assertThat(colors.get(0)).isEqualTo(NamedTextColor.GRAY);
         assertThat(colors.get(25)).isEqualTo(NamedTextColor.GRAY);
         assertThat(bar.color()).isEqualTo(BossBar.Color.RED);

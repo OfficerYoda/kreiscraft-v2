@@ -137,7 +137,7 @@ admin:
   ping: "<prefix> <gold><player></gold><gray> Ping: <aqua><ping> ms"
   tps: "<prefix> <gray>TPS:</gray> <aqua><tps>"
   tps-bar:
-    title: "<gray>TPS: <tps> <gray>| MSPT: <mspt> ms <gray>| Ping: <ping> ms"
+    title: "<gray>TPS: <tps> <gray>MSPT: <mspt> <gray>Ping: <ping>ms"
     enabled: "<prefix> <green>Performance bar enabled."
     disabled: "<prefix> <gray>Performance bar disabled."
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
