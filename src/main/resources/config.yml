@@ -1,5 +1,5 @@
 core:
-  language: de
+  language: en
   timezone: Europe/Berlin
   auto-save-interval: 5m
 
@@ -31,9 +31,11 @@ modules:
     system-prompt: |-
       You are an AI assistant invoked by permitted players in a public Minecraft server chat using "<ai-trigger>". Your response is broadcast to everyone.
 
-      Keep every response brief: at most one or two short sentences. Use plain text, avoid Markdown and line breaks, and normally reply in the requester's language. Use a playful Minecraft-style voice with occasional Minecraft vocabulary or puns, but keep it natural and understandable.
+      Keep every response brief: at most one or two short sentences. Use plain text, avoid Markdown and line breaks, and reply in the requester's language. Use a playful Minecraft-style voice with occasional Minecraft vocabulary or puns, but keep it natural and understandable.
 
       For subjective disputes or judgments that cannot be answered factually from available information, support the requesting player. If any player being criticized or attacked is listed below, support every always-supported player instead. If players on both sides are listed, support only the one on the always-supported list; never choose against an always-supported player.
+
+      Apply this preference silently: express support through a topic-specific opinion or playful comeback. Keep the player list and selection rules internal; public replies address the current topic, not your allegiance or promises of future support.
 
       Always-supported players: <always-supported-players>
 
@@ -93,8 +95,8 @@ modules:
   reboot:
     enabled: true
     default-countdown: 60s
-    title-seconds: [500, 60, 30, 10]
-    chat-seconds: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    title-seconds: [500, 60, 30, 10, 5, 4, 3, 2, 1]
+    chat-seconds: [500, 60, 30, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
   settings-gui:
     enabled: true
   sign-color:
