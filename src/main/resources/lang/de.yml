@@ -305,8 +305,8 @@ update-mode:
   kick-message: |-
     <gray>===================================
     <red><bold>>> UPDATEMODE <<
-    <gray>Kreiscraft erhält gerade <blue>UPDATES<gray>!
-    <gray>□ <blue>Kreiscraft <gray>□
+    <gray>Kreiscraft erhält gerade <green>UPDATES<gray>!
+    <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 wither:
   explosion-title: "<red>Explosion</red>"

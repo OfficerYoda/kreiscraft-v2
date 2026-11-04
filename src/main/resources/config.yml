@@ -133,12 +133,12 @@ modules:
     enabled: true
     update-interval: 20t
     header:
-      "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime:
-      <blue>%playtime%\n"
+      "<gray><st>                <reset><gray>[<gold><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime:
+      <gold>%playtime%\n"
     footer:
-      "\n<gray>Uhrzeit: <blue>%system_time%\n\n<gray>Ping:
-      <blue>%ping%   <gray>Tps:
-      <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
+      "\n<gray>Uhrzeit: <gold>%system_time%\n\n<gray>Ping:
+      <gold>%ping%   <gray>Tps:
+      <gold>%tps%\n\n<gray><st>                <reset><gray>[<gold><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
     active: false

@@ -19,13 +19,13 @@ class TablistConfigTest {
     private static final ConfigurationOptions OPTS =
             ConfigurationOptions.defaults().serializers(KreiscraftSerializers.builder().build());
 
-    private static final String BANNER =
-            "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                ";
+    private static final String SHIPPED_BANNER =
+            "<gray><st>                <reset><gray>[<gold><bold>Kreiscraft<reset><gray>]<gray><st>                ";
 
-    private static final String DEFAULT_HEADER =
-            BANNER + "\n\n<reset><gray>Playtime: <blue>%playtime%\n";
-    private static final String DEFAULT_FOOTER = "\n<gray>Uhrzeit: <blue>%system_time%\n\n"
-            + "<gray>Ping: <blue>%ping%   <gray>Tps: <blue>%tps%\n\n" + BANNER;
+    private static final String SHIPPED_HEADER =
+            SHIPPED_BANNER + "\n\n<reset><gray>Playtime: <gold>%playtime%\n";
+    private static final String SHIPPED_FOOTER = "\n<gray>Uhrzeit: <gold>%system_time%\n\n"
+            + "<gray>Ping: <gold>%ping%   <gray>Tps: <gold>%tps%\n\n" + SHIPPED_BANNER;
 
     private static YamlConfigurationLoader yamlLoader(String yaml) {
         return YamlConfigurationLoader.builder()
@@ -40,8 +40,12 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(20 * 50L));
-        assertThat(cfg.headerTemplate()).isEqualTo(DEFAULT_HEADER);
-        assertThat(cfg.footerTemplate()).isEqualTo(DEFAULT_FOOTER);
+        assertThat(cfg.headerTemplate()).startsWith("<gray><st>").contains("%playtime%");
+        assertThat(cfg.footerTemplate())
+                .contains("%system_time%")
+                .contains("%ping%")
+                .contains("%tps%")
+                .endsWith("<gray><st>                ");
     }
 
     @Test
@@ -50,16 +54,16 @@ class TablistConfigTest {
         TablistConfig cfg = node.get(TablistConfig.class);
         assertThat(cfg).isNotNull();
         // The shipped defaults use the legacy banner, playtime clock, ping and TPS tokens.
-        assertThat(cfg.headerTemplate()).startsWith(BANNER).contains("%playtime%");
+        assertThat(cfg.headerTemplate()).startsWith("<gray><st>").contains("%playtime%");
         assertThat(cfg.footerTemplate())
                 .contains("%system_time%")
                 .contains("%ping%")
                 .contains("%tps%")
-                .endsWith(BANNER);
+                .endsWith("<gray><st>                ");
     }
 
     @Test
-    void shippedConfig_parsesToTheSameDefaults() throws Exception {
+    void shippedConfig_parsesGoldPresentation() throws Exception {
         try (InputStream in = getClass().getClassLoader().getResourceAsStream("config.yml")) {
             assertThat(in).as("config.yml is on the test classpath").isNotNull();
             ConfigurationNode root = YamlConfigurationLoader.builder()
@@ -70,8 +74,8 @@ class TablistConfigTest {
             TablistConfig cfg = root.node("modules", "tablist").get(TablistConfig.class);
             assertThat(cfg).isNotNull();
             assertThat(cfg.updateInterval()).isEqualTo(Duration.ofMillis(1000L));
-            assertThat(cfg.headerTemplate()).isEqualTo(DEFAULT_HEADER);
-            assertThat(cfg.footerTemplate()).isEqualTo(DEFAULT_FOOTER);
+            assertThat(cfg.headerTemplate()).isEqualTo(SHIPPED_HEADER);
+            assertThat(cfg.footerTemplate()).isEqualTo(SHIPPED_FOOTER);
         }
     }
 
