@@ -130,7 +130,7 @@ class SettingsGuiTest {
         List<Material> materials = List.of(
                 Material.LIME_DYE, Material.DIAMOND_SWORD, Material.NETHER_STAR, Material.WHITE_CARPET);
         List<List<Integer>> layouts = List.of(
-                List.of(), List.of(13), List.of(11, 17), List.of(10, 13, 16), List.of(10, 12, 14, 16));
+                List.of(), List.of(13), List.of(11, 15), List.of(10, 13, 16), List.of(10, 12, 14, 16));
         var permission = player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", false);
 
         for (boolean canSit : List.of(false, true)) {

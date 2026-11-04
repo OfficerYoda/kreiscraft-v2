@@ -142,7 +142,7 @@ public final class SettingsGui {
         List<Integer> slots = switch (controls.size()) {
             case 0 -> List.of();
             case 1 -> List.of(13);
-            case 2 -> List.of(11, 17);
+            case 2 -> List.of(11, 15);
             case 3 -> List.of(10, 13, 16);
             case 4 -> List.of(10, 12, 14, 16);
             default -> throw new IllegalStateException("Too many settings controls");
