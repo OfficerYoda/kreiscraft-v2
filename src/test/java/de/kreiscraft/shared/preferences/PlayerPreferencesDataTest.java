@@ -42,6 +42,8 @@ class PlayerPreferencesDataTest {
         service.setClickThrough(ALICE, false);
         service.setEffectsEnabled(ALICE, true);
         service.setEffectsParticle(ALICE, Particle.FLAME);
+        service.setTpsBarEnabled(ALICE, true);
+        service.setTpsBarEnabled(BOB, false);
 
         Map<UUID, CombatDisplay> displays = new HashMap<>();
         for (CombatDisplay display : CombatDisplay.values()) {
@@ -62,6 +64,8 @@ class PlayerPreferencesDataTest {
         assertThat(alice.clickThrough()).contains(false);
         assertThat(alice.effectsEnabled()).contains(true);
         assertThat(alice.effectsParticle()).contains(Particle.FLAME);
+        assertThat(alice.tpsBarEnabled()).contains(true);
+        assertThat(afterReconnect.preferences(BOB).tpsBarEnabled()).contains(false);
 
         for (Map.Entry<UUID, CombatDisplay> entry : displays.entrySet()) {
             assertThat(afterReconnect.preferences(entry.getKey()).combatDisplay())
@@ -152,6 +156,40 @@ class PlayerPreferencesDataTest {
         data.load();
 
         assertThat(data.get().get(BOB)).isNull();
+    }
+
+    @Test
+    void existingFileWithoutTpsBarPreference_keepsItAbsentWithoutRewriting(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("data/settings.yml");
+        Files.createDirectories(file.getParent());
+        String original = ALICE + ":\n  language: en\n  click-through: false\n";
+        Files.writeString(file, original);
+        PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+        data.load();
+        DefaultPlayerPreferencesService service = new DefaultPlayerPreferencesService(data);
+
+        assertThat(service.preferences(ALICE).tpsBarEnabled()).isEmpty();
+        data.flushIfDirty();
+        assertThat(Files.readString(file)).isEqualTo(original);
+        service.setEffectsEnabled(ALICE, true);
+        data.flushIfDirty();
+        assertThat(Files.readString(file)).doesNotContain("tps-bar-enabled");
+    }
+
+    @Test
+    void turningTpsBarOff_overwritesStoredOnState(@TempDir Path tmp) throws IOException {
+        PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+        data.load();
+        DefaultPlayerPreferencesService service = new DefaultPlayerPreferencesService(data);
+        service.setTpsBarEnabled(ALICE, true);
+        data.flushIfDirty();
+        service.setTpsBarEnabled(ALICE, false);
+        data.flushIfDirty();
+
+        PlayerPreferencesData reloaded = new PlayerPreferencesData(tmp);
+        reloaded.load();
+        assertThat(reloaded.get().get(ALICE).tpsBarEnabled()).contains(false);
+        assertThat(Files.readString(tmp.resolve("data/settings.yml"))).contains("tps-bar-enabled: false");
     }
 
     @Test

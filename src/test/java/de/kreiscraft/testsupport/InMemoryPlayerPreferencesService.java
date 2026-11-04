@@ -48,6 +48,11 @@ public final class InMemoryPlayerPreferencesService implements PlayerPreferences
         update(playerId, prefs -> prefs.withEffectsParticle(particle));
     }
 
+    @Override
+    public void setTpsBarEnabled(UUID playerId, boolean enabled) {
+        update(playerId, prefs -> prefs.withTpsBarEnabled(enabled));
+    }
+
     private void update(UUID playerId, UnaryOperator<PlayerPreferences> mutator) {
         store.put(playerId, mutator.apply(preferences(playerId)));
     }

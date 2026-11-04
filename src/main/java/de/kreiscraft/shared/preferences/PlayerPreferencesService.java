@@ -26,6 +26,8 @@ public interface PlayerPreferencesService {
 
     void setEffectsParticle(UUID playerId, Particle particle);
 
+    void setTpsBarEnabled(UUID playerId, boolean enabled);
+
     /** Returns the stored click-through preference, or {@code fallback} when unavailable. */
     default boolean clickThrough(UUID playerId, boolean fallback) {
         return preferences(playerId).clickThrough().orElse(fallback);
