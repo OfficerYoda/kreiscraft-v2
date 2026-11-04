@@ -5,9 +5,10 @@ Update Kreiscraft documentation via an OpenRouter LLM.
 Two modes:
   --mode=incremental   Given a git diff of the last push, ask the model to
                        update only the docs affected by the change. One API
-                       call per run.
+                       call per run, plus at most one edit-correction call.
   --mode=rebuild       Rebuild every doc from scratch against the current
-                       source of truth. One API call for all docs combined.
+                       source of truth. One API call for all docs combined,
+                       plus at most one edit-correction call.
 
 Environment variables:
   OPENROUTER_API_KEY   Required.
@@ -22,13 +23,14 @@ path emitted by the model is rejected.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import requests
 
@@ -83,12 +85,6 @@ REBUILD_EXPLICIT_FILES: tuple[str, ...] = (
     "src/main/java/de/kreiscraft/core/scheduler/Scheduler.java",
     "src/main/java/de/kreiscraft/core/service/ServiceNotFoundException.java",
     "src/main/java/de/kreiscraft/core/service/ServiceRegistry.java",
-)
-
-# Regex for parsing model output. Non-greedy body match, dot-matches-newline.
-FILE_BLOCK_RE = re.compile(
-    r"<<<FILE:\s*(?P<path>[^\n>]+?)\s*>>>\n(?P<body>.*?)\n<<<END>>>",
-    re.DOTALL,
 )
 
 MAX_INPUT_CHARS_WARN = 480_000  # ~100k tokens — near DeepSeek V4 Flash's 128k context ceiling
@@ -243,9 +239,8 @@ def build_incremental_user_prompt(diff: str, docs: dict[str, str]) -> str:
         "excluded from the diff so that automated doc updates do not feed back "
         "into themselves).\n\n"
         "Your task: read the diff, decide which documentation files (if any) "
-        "must be updated to stay accurate and consistent, and emit the updated "
-        "content for those files only, using the <<<FILE:...>>><<<END>>> "
-        "format from the system prompt.\n\n"
+        "must be updated to stay accurate and consistent, and emit targeted "
+        "JSON edits using the format from the system prompt.\n\n"
         "If the diff has no user-visible effect on documentation (internal "
         "refactor, test change, formatting, etc.), emit `NO_CHANGES`.\n\n"
         "===== GIT DIFF =====\n"
@@ -262,9 +257,9 @@ def build_rebuild_user_prompt(docs: dict[str, str], source_bundle: str) -> str:
     return (
         "MODE: rebuild (bulk)\n\n"
         "Review every documentation file listed below against the current "
-        "source of truth and emit updated content only for files that are "
+        "source of truth and emit targeted edits only for files that are "
         "inaccurate, incomplete, or out of date. Use the "
-        "<<<FILE:...>>><<<END>>> format from the system prompt.\n\n"
+        "JSON edit format from the system prompt.\n\n"
         "If a file is already accurate and needs no changes, do not emit it. "
         "Only emit files you are actually changing.\n\n"
         "Constraints:\n"
@@ -359,7 +354,7 @@ def call_openrouter(
                 f"out={usage.get('completion_tokens', '?')}"
             )
             if finish_reason == "length":
-                log("WARNING: response hit max_tokens — output may be truncated")
+                raise SystemExit("response hit max_tokens — refusing truncated edits")
             if content is None:
                 # Some providers return null content when a reasoning model
                 # was cut off mid-reasoning, or when the assistant produced no
@@ -384,41 +379,164 @@ def call_openrouter(
 ALLOWED_PATH_RE = re.compile(r"^(README\.md|docs/[A-Za-z0-9_./-]+\.md)$")
 
 
-def parse_response(text: str | None) -> dict[str, str]:
-    """Return {path: content} from the model output.
+@dataclass(frozen=True)
+class DocEdit:
+    path: str
+    old: str | None  # None is a full-file write, reserved for new files/rewrites.
+    new: str
+    id: int | None = None  # Used only to associate corrections with failed edits.
 
-    Returns an empty dict if the model signalled NO_CHANGES, returned an
-    empty/null response, or emitted no valid file blocks.
-    """
-    if not text:
-        log("empty response — no changes")
-        return {}
-    stripped = text.strip()
-    if stripped == "NO_CHANGES" or stripped.startswith("NO_CHANGES\n"):
-        return {}
 
-    blocks: dict[str, str] = {}
-    for match in FILE_BLOCK_RE.finditer(text):
-        path = match.group("path").strip()
-        body = match.group("body")
-        if not ALLOWED_PATH_RE.match(path):
-            log(f"REJECTED path outside allow-list: {path!r}")
+@dataclass(frozen=True)
+class FailedEdit:
+    id: int
+    edit: DocEdit
+    error: str
+
+
+def validate_path(path: str) -> None:
+    if (
+        not ALLOWED_PATH_RE.fullmatch(path)
+        or ".." in Path(path).parts
+        or Path(path).as_posix() != path
+    ):
+        raise ValueError(f"path outside allow-list: {path!r}")
+    target = REPO_ROOT.resolve() / path
+    if target.resolve() != target:
+        raise ValueError(f"symlinked documentation path: {path!r}")
+
+
+def parse_response(text: str | None, *, correction: bool = False) -> list[DocEdit]:
+    """Parse a complete JSON response; malformed/unsafe output fails closed."""
+    if text and text.strip() == "NO_CHANGES" and not correction:
+        return []
+    if not text or not text.strip():
+        raise ValueError("empty model response")
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON response: {exc}") from exc
+    allowed = {"edits"} if correction else {"edits", "files"}
+    if not isinstance(payload, dict) or not payload or set(payload) - allowed:
+        raise ValueError("response must contain only edits and optional files")
+
+    edits: list[DocEdit] = []
+    for kind in ("edits", "files"):
+        items = payload.get(kind, [])
+        if not isinstance(items, list):
+            raise ValueError(f"{kind} must be an array")
+        fields = {"path", "old", "new"} if kind == "edits" else {"path", "content"}
+        if correction:
+            fields = fields | {"id"}
+        for item in items:
+            if not isinstance(item, dict) or set(item) != fields:
+                raise ValueError(f"invalid {kind} entry: expected {sorted(fields)}")
+            if any(not isinstance(item[key], str) for key in fields - {"id"}):
+                raise ValueError(f"{kind} fields must be strings")
+            validate_path(item["path"])
+            if kind == "edits" and not item["old"]:
+                raise ValueError("old must be nonempty; anchor insertions to existing text")
+            if correction and (type(item["id"]) is not int or item["id"] < 0):
+                raise ValueError("correction id must be a nonnegative integer")
+            edits.append(DocEdit(
+                path=item["path"],
+                old=item.get("old"),
+                new=item["new"] if kind == "edits" else item["content"],
+                id=item.get("id"),
+            ))
+
+    written = [edit.path for edit in edits if edit.old is None]
+    if any(sum(edit.path == path for edit in edits) != 1 for path in written):
+        raise ValueError("full-file writes cannot be repeated or mixed with edits to that file")
+    return edits
+
+
+def stage_edits(
+    edits: list[DocEdit], docs: dict[str, str],
+) -> tuple[dict[str, str], list[FailedEdit]]:
+    """Apply exact, unique replacements sequentially in memory, never on disk."""
+    staged = docs.copy()
+    failures: list[FailedEdit] = []
+    for index, edit in enumerate(edits):
+        validate_path(edit.path)
+        if edit.old is None:
+            if edit.path not in docs and (REPO_ROOT / edit.path).exists():
+                raise ValueError(f"full-file target not in supplied docs: {edit.path}")
+            staged[edit.path] = edit.new
             continue
-        # Guard against traversal
-        if ".." in Path(path).parts:
-            log(f"REJECTED path traversal: {path!r}")
-            continue
-        blocks[path] = body
+        current = staged.get(edit.path)
+        if current is None:
+            error = "document is missing; replacements require an existing document"
+        else:
+            # Count overlapping occurrences too: any ambiguous anchor is rejected.
+            count = sum(1 for _ in re.finditer(f"(?={re.escape(edit.old)})", current))
+            if count == 1:
+                staged[edit.path] = current.replace(edit.old, edit.new, 1)
+                continue
+            error = f"old matched {count} times; expected exactly once"
+        failure = FailedEdit(edit.id if edit.id is not None else index, edit, error)
+        log(f"edit {failure.id} failed in {edit.path}: {error}")
+        failures.append(failure)
+    return staged, failures
 
-    if not blocks:
-        log("no valid <<<FILE:...>>> blocks parsed from response")
-        # Dump first 500 chars for post-mortem
-        log(f"response preview: {text[:500]!r}")
-    return blocks
+
+def build_correction_prompt(failures: list[FailedEdit], staged: dict[str, str]) -> str:
+    failed = [
+        {"id": failure.id, "path": failure.edit.path, "old": failure.edit.old,
+         "new": failure.edit.new, "error": failure.error}
+        for failure in failures
+    ]
+    relevant = {failure.edit.path: staged.get(failure.edit.path, "") for failure in failures}
+    return (
+        "MODE: correct failed edits\n\n"
+        "Successful edits are already applied in memory. Repair only the failed "
+        "edits below, preserving their intended changes. Return JSON with an edits "
+        "array containing exactly one replacement per failed id, in the listed order. "
+        "Each entry must contain id, path, old, new. Keep each id and path unchanged. "
+        "Copy old exactly from the CURRENT staged documents, adding surrounding "
+        "text if the previous anchor was ambiguous. Apply corrections sequentially. "
+        "Return replacements only, not full files or NO_CHANGES.\n\n"
+        f"===== FAILED EDITS =====\n{json.dumps(failed, ensure_ascii=False)}\n\n"
+        f"===== CURRENT STAGED DOCUMENTS =====\n{format_docs_block(relevant)}"
+    )
 
 
-def apply_updates(updates: dict[str, str], *, dry_run: bool) -> list[str]:
+def generate_updates(
+    args: argparse.Namespace, docs: dict[str, str], system_prompt: str, user_prompt: str,
+) -> dict[str, str]:
+    response = call_openrouter(
+        args.model, system_prompt, user_prompt,
+        max_tokens=args.max_tokens, temperature=args.temperature,
+    )
+    staged, failures = stage_edits(parse_response(response), docs)
+    if failures:
+        log(f"requesting one correction attempt for {len(failures)} failed edit(s)")
+        response = call_openrouter(
+            args.model, system_prompt, build_correction_prompt(failures, staged),
+            max_tokens=args.max_tokens, temperature=args.temperature,
+        )
+        corrected = parse_response(response, correction=True)
+        if [(edit.id, edit.path) for edit in corrected] != [
+            (failure.id, failure.edit.path) for failure in failures
+        ]:
+            raise ValueError("correction must cover exactly the failed ids/paths in order")
+        staged, remaining = stage_edits(corrected, staged)
+        if remaining:
+            raise ValueError("edit correction failed; no documentation will be written")
+    return {path: content for path, content in staged.items() if docs.get(path) != content}
+
+
+def apply_updates(
+    updates: dict[str, str], *, dry_run: bool, originals: dict[str, str],
+) -> list[str]:
     """Write files to disk. Return list of paths whose content actually changed."""
+    # Preflight every target before writing, including concurrent modifications.
+    for rel_path in updates:
+        validate_path(rel_path)
+        path = REPO_ROOT / rel_path
+        current = read_file(path) if path.is_file() else None
+        if current != originals.get(rel_path):
+            raise ValueError(f"documentation changed during generation: {rel_path}")
     changed: list[str] = []
     for rel_path, new_content in updates.items():
         abs_path = REPO_ROOT / rel_path
@@ -456,35 +574,21 @@ def run_incremental(args: argparse.Namespace) -> list[str]:
     system_prompt = load_system_prompt()
     user_prompt = build_incremental_user_prompt(diff, docs)
 
-    response = call_openrouter(
-        args.model,
-        system_prompt,
-        user_prompt,
-        max_tokens=args.max_tokens,
-        temperature=args.temperature,
-    )
-    updates = parse_response(response)
+    updates = generate_updates(args, docs, system_prompt, user_prompt)
     if not updates:
         return []
-    return apply_updates(updates, dry_run=args.dry_run)
+    return apply_updates(updates, dry_run=args.dry_run, originals=docs)
 
 
 def run_rebuild(args: argparse.Namespace) -> list[str]:
     docs = gather_docs()
-    log(f"rebuilding {len(docs)} doc files in a single API call")
+    log(f"reviewing {len(docs)} doc files in one call (plus one correction if needed)")
 
     source_bundle = gather_source_bundle()
     system_prompt = load_system_prompt()
     user_prompt = build_rebuild_user_prompt(docs, source_bundle)
 
-    response = call_openrouter(
-        args.model,
-        system_prompt,
-        user_prompt,
-        max_tokens=args.max_tokens,
-        temperature=args.temperature,
-    )
-    updates = parse_response(response)
+    updates = generate_updates(args, docs, system_prompt, user_prompt)
     if not updates:
         return []
     # Log a summary of what the model decided to skip.
@@ -493,15 +597,13 @@ def run_rebuild(args: argparse.Namespace) -> list[str]:
         log(f"model skipped {len(skipped)} unchanged doc(s):")
         for path in skipped:
             log(f"  - {path}")
-    # And warn about any unknown paths (already filtered by parse_response, but
-    # this catches the case where the model emitted a valid path we didn't ask
-    # for).
+    # New documentation files are allowed, but noteworthy in a full review.
     unexpected = [p for p in updates if p not in docs]
     if unexpected:
         log(f"WARNING: model emitted {len(unexpected)} unexpected doc path(s):")
         for path in unexpected:
             log(f"  - {path}")
-    return apply_updates(updates, dry_run=args.dry_run)
+    return apply_updates(updates, dry_run=args.dry_run, originals=docs)
 
 
 # ---------------------------------------------------------------------------
@@ -547,10 +649,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if args.mode == "incremental":
-        changed = run_incremental(args)
-    else:
-        changed = run_rebuild(args)
+    try:
+        if args.mode == "incremental":
+            changed = run_incremental(args)
+        else:
+            changed = run_rebuild(args)
+    except ValueError as exc:
+        log(f"ERROR: {exc}")
+        return 1
 
     if not changed:
         log("no doc changes")

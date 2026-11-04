@@ -48,20 +48,25 @@ Do not blur the quadrants. Never turn a reference doc into a tutorial. Never tur
 
 ## Output format
 
-Emit only files you are changing. For each changed file, use exactly this format:
+Return one JSON object with targeted search-and-replace edits:
 
 ```
-<<<FILE: path/relative/to/repo-root.md>>>
-[full new file content]
-<<<END>>>
+{"edits": [{"path": "docs/reference/configuration.md", "old": "exact existing text", "new": "replacement text"}]}
 ```
 
 Rules:
 - The path must be either `README.md` or under `docs/`. Any other path will be rejected.
-- Emit the **complete** new file content between the delimiters, not a patch or diff.
+- Copy `old` exactly from the supplied document, including whitespace and newlines. It must be nonempty and occur exactly once. Include just enough surrounding text to make it unique.
+- Keep edits small: emit changed paragraphs or table rows, preserving any surrounding text used as an anchor. For insertion, replace an existing anchor with itself plus the new text; for deletion, use an empty `new` string.
+- Edits apply sequentially in array order. Later edits must match the document after earlier edits. Prefer separate, non-overlapping anchors.
+- For a new document or a genuinely necessary complete rewrite only, add `"files": [{"path": "docs/how-to/new-guide.md", "content": "complete file content"}]` to the object. Each full-file target must appear once and must not also have replacement edits.
+- Use standard JSON escaping for strings (`\n` for newlines, `\"` for quotes). Each edit contains exactly `path`, `old`, `new`; each full-file entry contains exactly `path`, `content`.
 - If no doc changes are warranted, output exactly the single line: `NO_CHANGES`
-- Do not wrap the output in Markdown code fences. Do not add commentary before or after the delimited blocks.
-- Do not include any explanation, preamble, or postscript. Only the delimited file blocks or `NO_CHANGES`.
+- Return only JSON or `NO_CHANGES`, without Markdown fences or commentary.
+
+### Correction requests
+
+When MODE is `correct failed edits`, use the current staged documents in that request. Return exactly one corrected replacement per failed edit, in the listed order, adding its supplied `id` to the normal edit fields. Preserve each `id`, path, and intended change. Successful edits are already applied; return only the failed edits, using exact, unique anchors from the staged content. Every failure must be corrected; full-file writes and `NO_CHANGES` are not valid correction responses.
 
 ## When in doubt
 

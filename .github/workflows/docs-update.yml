@@ -3,6 +3,7 @@ name: Sync docs (incremental)
 # Runs on every push to the default branch. Reads the diff, asks the LLM to
 # update any affected docs, and commits the result back. The docs-only commit
 # does not retrigger this workflow because of the path filter below.
+# Returns targeted edits, with at most one correction call for failed anchors.
 #
 # Path filter: skips runs when only docs, workflow files, or the root README
 # changed. That covers both the auto-doc commit itself and pure-doc PRs.
@@ -43,6 +44,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r .github/scripts/requirements.txt
+
+      - name: Test documentation editor
+        run: python -B -m unittest discover -s .github/scripts -p 'test_*.py'
 
       - name: Update docs
         env:

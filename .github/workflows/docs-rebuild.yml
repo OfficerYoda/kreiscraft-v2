@@ -1,11 +1,10 @@
 name: Rebuild docs (manual)
 
-# Manually triggered full rebuild. Iterates every doc file, calling the model
-# once per doc against the current source of truth. Use this after major
+# Manually triggered full review of all docs against the current source of
+# truth, returning targeted edits. Use this after major
 # refactors or when the incremental pipeline has fallen behind.
 #
-# Cost: 1 API call per run (single bulk request). Expect significant diffs
-# across most docs.
+# Cost: 1 bulk API call, plus at most 1 correction call for failed edit anchors.
 
 on:
   workflow_dispatch:
@@ -43,6 +42,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r .github/scripts/requirements.txt
+
+      - name: Test documentation editor
+        run: python -B -m unittest discover -s .github/scripts -p 'test_*.py'
 
       - name: Rebuild docs
         env:
