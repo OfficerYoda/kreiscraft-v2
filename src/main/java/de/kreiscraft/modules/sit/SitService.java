@@ -1,14 +1,13 @@
 package de.kreiscraft.modules.sit;
 
-import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.core.scheduler.Scheduler;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -19,18 +18,16 @@ import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import de.kreiscraft.core.message.MessageService;
 
 /** Temporary seats; sitting is an action, not a persisted player preference. */
 public final class SitService implements Listener {
 
     private final MessageService messages;
-    private final Scheduler scheduler;
     private final Map<UUID, Seat> seats = new HashMap<>();
-    private final Map<UUID, Seat> pendingStand = new HashMap<>();
 
-    public SitService(MessageService messages, Scheduler scheduler) {
+    public SitService(MessageService messages) {
         this.messages = messages;
-        this.scheduler = scheduler;
     }
 
     public void toggle(Player player) {
@@ -40,12 +37,15 @@ public final class SitService implements Listener {
             messages.send(player, "sit.stood");
             return;
         }
-        pendingStand.remove(player.getUniqueId());
-        if (player.isInsideVehicle()) {
+        if (player.isInsideVehicle() || !isOnGround(player)) {
             messages.send(player, "sit.unavailable");
             return;
         }
 
+        sit(player);
+    }
+
+    private void sit(Player player) {
         Location standing = player.getLocation();
         ArmorStand seat = player.getWorld().spawn(standing, ArmorStand.class, stand -> {
             stand.setVisible(false);
@@ -67,7 +67,6 @@ public final class SitService implements Listener {
     }
 
     private Seat stand(Player player) {
-        pendingStand.remove(player.getUniqueId());
         Seat seat = seats.remove(player.getUniqueId());
         if (seat != null) {
             seat.entity().remove();
@@ -93,13 +92,24 @@ public final class SitService implements Listener {
     public void standAll() {
         // Remove tracking first: removing a seat can fire another dismount event.
         List<Seat> remaining = new ArrayList<>(seats.values());
-        remaining.addAll(pendingStand.values());
         seats.clear();
-        pendingStand.clear();
         remaining.forEach(seat -> {
             seat.entity().remove();
             restorePosition(seat);
         });
+    }
+
+    public boolean isOnGround(Player player) {
+        Location loc = player.getLocation();
+
+        if (Math.abs(loc.getY() - loc.getBlockY()) < 0.3) {
+            loc.setY(loc.getBlockY() - 1);
+            Block block = player.getWorld().getBlockAt(loc);
+
+            return !block.isLiquid() && !block.isEmpty() && block.getType() != Material.AIR;
+        }
+
+        return false;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -110,13 +120,7 @@ public final class SitService implements Listener {
                 return;
             }
             stand(player);
-            pendingStand.put(player.getUniqueId(), seat);
-            // Vanilla finishes dismount positioning after this event. Correct it next tick.
-            scheduler.runLater(Duration.ofMillis(50), () -> {
-                if (pendingStand.remove(player.getUniqueId(), seat)) {
-                    restorePosition(seat);
-                }
-            });
+            restorePosition(seat);
         }
     }
 

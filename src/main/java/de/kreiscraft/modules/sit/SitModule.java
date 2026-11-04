@@ -15,7 +15,7 @@ public final class SitModule implements Module {
 
     @Override
     public void enable(ModuleContext ctx) {
-        service = new SitService(ctx.messages(), ctx.scheduler());
+        service = new SitService(ctx.messages());
         ctx.events().register(service);
         ctx.commands().register(SitCommand.build(service, ctx.messages()), "Sit down or stand up");
     }
