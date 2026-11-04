@@ -90,6 +90,26 @@ public final class ServerConfigSchema {
                 ConfigFieldType.STRING,
                 ConfigValidators.uri(),
                 ConfigLifecycle.HOT_RELOAD));
+        for (String key : List.of("mspt-green-max", "mspt-yellow-max")) {
+            fields.add(tpsBarNumber(key, ConfigFieldType.DOUBLE, ConfigValidators.orderedNumbers(
+                    ConfigValidators.decimalRange(0.0, 100_000.0),
+                    "mspt-green-max", 40.0, "mspt-yellow-max", 50.0, false)));
+        }
+        for (String key : List.of("tps-green-min", "tps-yellow-min")) {
+            fields.add(tpsBarNumber(key, ConfigFieldType.DOUBLE, ConfigValidators.orderedNumbers(
+                    ConfigValidators.decimalRange(0.0, 20.0),
+                    "tps-yellow-min", 15.0, "tps-green-min", 19.0, false)));
+        }
+        for (String key : List.of("ping-green-max", "ping-yellow-max")) {
+            fields.add(tpsBarNumber(key, ConfigFieldType.INTEGER, ConfigValidators.orderedNumbers(
+                    ConfigValidators.integerRange(0, 100_000),
+                    "ping-green-max", 50.0, "ping-yellow-max", 120.0, false)));
+        }
+        for (String key : List.of("mspt-empty", "mspt-full")) {
+            fields.add(tpsBarNumber(key, ConfigFieldType.DOUBLE, ConfigValidators.orderedNumbers(
+                    ConfigValidators.decimalRange(key.equals("mspt-full") ? 0.1 : 0.0, 100_000.0),
+                    "mspt-empty", 0.0, "mspt-full", 50.0, true)));
+        }
 
         // ── ai-chat───────────────────────────────────────────────────────────
         fields.add(field(
@@ -349,6 +369,10 @@ public final class ServerConfigSchema {
                 ConfigLifecycle.HOT_RELOAD));
 
         return fields;
+    }
+
+    private static ConfigField tpsBarNumber(String key, ConfigFieldType type, ConfigValidator validator) {
+        return field(path("modules", "admin", "tps-bar", key), type, validator, ConfigLifecycle.HOT_RELOAD);
     }
 
     /** The three independent explosion tunables for one Wither lifecycle phase. */

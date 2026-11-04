@@ -288,6 +288,30 @@ class ServerConfigGuiTest {
         assertThat(editor.current(deathPower)).isEqualTo(deathBefore + 0.1);
     }
 
+    @Test
+    void performanceBarControls_shareAnAdminRowAndPersistHotReloadableEdits() {
+        var fields = ServerConfigGui.fieldsIn(editor.schema(), "admin").stream()
+                .filter(field -> field.path().contains("tps-bar")).toList();
+        assertThat(fields).hasSize(8);
+        Gui gui = category("admin");
+        int row = slotOf("admin", fields.getFirst()) / 9;
+
+        for (ConfigField field : fields) {
+            assertThat(slotOf("admin", field) / 9).isEqualTo(row);
+            assertThat(field.hotReloadable()).isTrue();
+            assertThat(stackAt(gui, slotOf("admin", field))).isNotNull();
+            double before = ((Number) editor.current(field)).doubleValue();
+            click(gui, slotOf("admin", field));
+            double step = field.type() == ConfigFieldType.INTEGER ? 1.0 : 0.1;
+            assertThat(((Number) editor.current(field)).doubleValue()).isCloseTo(before + step,
+                    org.assertj.core.data.Offset.offset(0.00001));
+            click(gui, slotOf("admin", field), ClickType.RIGHT);
+            assertThat(((Number) editor.current(field)).doubleValue()).isEqualTo(before);
+        }
+        assertThat(session.hotReloadCount()).isEqualTo(8);
+        assertThat(session.hasRestartRequired()).isFalse();
+    }
+
     // ------------------------------------------------------------------
     // Typed controls persist immediately
     // ------------------------------------------------------------------

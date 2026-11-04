@@ -10,6 +10,15 @@ modules:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"
       youtube: "https://youtube.com/@example"
+    tps-bar:
+      mspt-green-max: 40.0
+      mspt-yellow-max: 50.0
+      tps-green-min: 19.0
+      tps-yellow-min: 15.0
+      ping-green-max: 50
+      ping-yellow-max: 120
+      mspt-empty: 0.0
+      mspt-full: 50.0
   api:
     enabled: true
     host: "0.0.0.0"

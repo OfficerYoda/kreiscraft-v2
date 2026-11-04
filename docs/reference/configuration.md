@@ -144,6 +144,20 @@ Modules with no settings beyond `enabled` are not listed here: `invsee`, `settin
 | `links.website` | URI | `https://kreiscraft.de` | Server website URL, displayed in admin-facing output. |
 | `links.discord` | URI | `https://discord.gg/example` | Discord invite URL. |
 | `links.youtube` | URI | `https://youtube.com/@example` | YouTube channel URL. |
+| `tps-bar.mspt-green-max` | double | `40.0` | Highest green MSPT value (ms). |
+| `tps-bar.mspt-yellow-max` | double | `50.0` | Highest yellow MSPT value (ms); higher values are red. |
+| `tps-bar.tps-green-min` | double | `19.0` | Lowest green TPS value. |
+| `tps-bar.tps-yellow-min` | double | `15.0` | Lowest yellow TPS value; lower values are red. |
+| `tps-bar.ping-green-max` | int | `50` | Highest green ping (ms). |
+| `tps-bar.ping-yellow-max` | int | `120` | Highest yellow ping (ms); higher values are red. |
+| `tps-bar.mspt-empty` | double | `0.0` | MSPT at which the boss bar is empty. |
+| `tps-bar.mspt-full` | double | `50.0` | MSPT at which the boss bar is full. |
+
+All eight TPS bar numbers are editable in `/settings admin` → **Admin** and hot-reload on closing Server Configuration (or `/kreiscraft reload`). Existing installations without this section use and display the defaults without rewriting configuration just to read them. Open bars update on their next one-second refresh; no retoggle is needed.
+
+Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar's color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
+
+GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresholds are limited to 0–20; other values are limited to 100,000. `mspt-full` must be at least 0.1 and strictly greater than `mspt-empty`. Invalid YAML is rejected on load/reload rather than applying unusable fill endpoints.
 
 ---
 

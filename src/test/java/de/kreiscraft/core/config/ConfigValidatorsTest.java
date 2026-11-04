@@ -69,6 +69,34 @@ class ConfigValidatorsTest {
     }
 
     @Test
+    void orderedNumbers_checksDetachedSiblingsAndMissingSiblingDefaults() throws Exception {
+        var parent = CommentedConfigurationNode.root();
+        var value = parent.node("lower");
+        var validator = ConfigValidators.orderedNumbers(ConfigValidators.decimalRange(0, 100),
+                "lower", 0, "upper", 50, false);
+        value.set(50);
+        assertThat(validator.validate(value)).isEmpty();
+        value.set(51);
+        assertThat(validator.validate(value)).isPresent();
+        parent.node("upper").set(60);
+        assertThat(validator.validate(value)).isEmpty();
+        value.set(Double.NaN);
+        assertThat(validator.validate(value)).isPresent();
+    }
+
+    @Test
+    void orderedNumbers_strictModeRejectsEqualFillEndpoints() throws Exception {
+        var parent = CommentedConfigurationNode.root();
+        var value = parent.node("full");
+        value.set(0);
+        var validator = ConfigValidators.orderedNumbers(ConfigValidators.decimalRange(0, 100),
+                "empty", 0, "full", 50, true);
+        assertThat(validator.validate(value)).isPresent();
+        value.set(50);
+        assertThat(validator.validate(value)).isEmpty();
+    }
+
+    @Test
     void duration_usesRegisteredSerializer() {
         assertThat(ConfigValidators.duration().validate(node("5s"))).isEmpty();
         assertThat(ConfigValidators.duration().validate(node("not-a-duration"))).isPresent();

@@ -12,7 +12,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
  * Ready-made {@link ConfigValidator} factories for the field types the Server Configuration GUI
  * exposes.
  *
- * <p>Every factory returns a validator that only reads the detached candidate value, so a rejected
+ * <p>Every factory returns a validator that only reads the detached candidate tree, so a rejected
  * edit never mutates live state. Error messages are operator-facing and intentionally terse; the
  * GUI wraps them in localized framing.
  */
@@ -58,6 +58,29 @@ public final class ConfigValidators {
             double asDouble = number.doubleValue();
             if (!Double.isFinite(asDouble) || asDouble < min || asDouble > max) {
                 return Optional.of("must be between " + min + " and " + max);
+            }
+            return Optional.empty();
+        };
+    }
+
+    /** Applies numeric bounds and requires two sibling settings to remain in ascending order. */
+    public static ConfigValidator orderedNumbers(
+            ConfigValidator bounds, String lowerKey, double lowerDefault,
+            String upperKey, double upperDefault, boolean strictlyIncreasing) {
+        return value -> {
+            Optional<String> invalid = bounds.validate(value);
+            if (invalid.isPresent()) {
+                return invalid;
+            }
+            if (value.parent() == null) {
+                return Optional.of("must belong to a configuration section");
+            }
+            double lower = value.parent().node(lowerKey).getDouble(lowerDefault);
+            double upper = value.parent().node(upperKey).getDouble(upperDefault);
+            if (!Double.isFinite(lower) || !Double.isFinite(upper)
+                    || (strictlyIncreasing ? lower >= upper : lower > upper)) {
+                return Optional.of(lowerKey + " must be "
+                        + (strictlyIncreasing ? "less than " : "at most ") + upperKey);
             }
             return Optional.empty();
         };

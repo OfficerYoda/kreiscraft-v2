@@ -22,6 +22,8 @@ import java.util.UUID;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
+import org.bukkit.Server;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,18 +62,22 @@ class AdminModuleTest {
     }
 
     @Test
-    void performanceBar_schedulesUpdatesAndCleansUpOnDisable() {
+    void performanceBar_schedulesUpdatesAndCleansUpOnDisable() throws Exception {
         Scheduler scheduler = mock(Scheduler.class);
         Scheduler.Task task = mock(Scheduler.Task.class);
         when(scheduler.runRepeating(any(), any(), any())).thenReturn(task);
         EventBus events = mock(EventBus.class);
+        JavaPlugin modulePlugin = mock(JavaPlugin.class);
+        Server metricServer = mock(Server.class);
+        when(modulePlugin.getServer()).thenReturn(metricServer);
+        when(metricServer.getTPS()).thenReturn(new double[] {18.5});
+        when(metricServer.getAverageTickTime()).thenReturn(42.0);
         ServiceRegistry services = new ServiceRegistry();
         PlaceholderResolver resolver = mock(PlaceholderResolver.class);
-        when(resolver.resolveString(any(), any())).thenReturn("20.00");
         services.publish(PlaceholderResolver.class, resolver);
         CapturingMessageService messages = new CapturingMessageService();
         AdminModule module = new AdminModule();
-        module.enable(new ModuleContext(plugin, CommentedConfigurationNode.root(), messages, services,
+        module.enable(new ModuleContext(modulePlugin, CommentedConfigurationNode.root(), messages, services,
                 scheduler, new CapturingCommandRegistrar(), events));
         ArgumentCaptor<Runnable> tick = ArgumentCaptor.forClass(Runnable.class);
         verify(scheduler).runRepeating(eq(Duration.ofSeconds(1)), eq(Duration.ofSeconds(1)), tick.capture());
@@ -83,12 +89,20 @@ class AdminModuleTest {
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(player.isOnline()).thenReturn(true);
         when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        when(player.getPing()).thenReturn(100);
         bar.toggle(player);
         ArgumentCaptor<BossBar> shown = ArgumentCaptor.forClass(BossBar.class);
         verify(player).showBossBar(shown.capture());
 
-        module.onConfigReload(CommentedConfigurationNode.root());
+        assertThat(shown.getValue().color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(shown.getValue().progress()).isEqualTo(0.84f);
+        var reloaded = CommentedConfigurationNode.root();
+        reloaded.node("tps-bar", "mspt-green-max").set(43.0);
+        reloaded.node("tps-bar", "mspt-full").set(100.0);
+        module.onConfigReload(reloaded);
         tick.getValue().run();
+        assertThat(shown.getValue().color()).isEqualTo(BossBar.Color.GREEN);
+        assertThat(shown.getValue().progress()).isEqualTo(0.42f);
         assertThat(messages.renderedKeys).containsExactly("admin.tps-bar.title", "admin.tps-bar.title");
         module.disable();
         module.disable();

@@ -54,7 +54,7 @@ public final class AdminModule implements Module {
         Server server = ctx.plugin().getServer();
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
-        this.tpsBar = new TpsBar(messages, resolver);
+        this.tpsBar = new TpsBar(messages, server, () -> this.config.tpsBar());
         ctx.events().register(tpsBar);
         this.tpsBarTask = ctx.scheduler().runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), tpsBar::tick);
 
