@@ -128,6 +128,10 @@ admin:
   lastonline-never: "<prefix> <gold><player></gold><gray> war noch nie online."
   ping: "<prefix> <gold><player></gold><gray> Ping: <aqua><ping> ms"
   tps: "<prefix> <gray>TPS:</gray> <aqua><tps>"
+  tps-bar:
+    title: "<gray>TPS: <aqua><tps> <gray>| MSPT: <aqua><mspt> ms <gray>| Ping: <aqua><ping> ms"
+    enabled: "<prefix> <green>Performance-Leiste aktiviert."
+    disabled: "<prefix> <gray>Performance-Leiste deaktiviert."
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
   sudo-executed: "<prefix> <gray>sudo <gold><player></gold><gray>: <text>"
   help:

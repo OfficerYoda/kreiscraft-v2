@@ -1,7 +1,12 @@
 package de.kreiscraft.modules.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.event.EventBus;
 import de.kreiscraft.core.message.MessageService;
@@ -11,13 +16,19 @@ import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.testsupport.CapturingCommandRegistrar;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneId;
+import java.util.UUID;
+import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.plugin.PluginMock;
+import org.mockito.ArgumentCaptor;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 
 class AdminModuleTest {
@@ -46,6 +57,46 @@ class AdminModuleTest {
     void enable_registersExpectedProductionCommands() {
         CapturingCommandRegistrar registrar = enableAdminModule();
         assertThat(registrar.names()).contains("item", "skull", "ip", "uuid", "ping", "tps");
+    }
+
+    @Test
+    void performanceBar_schedulesUpdatesAndCleansUpOnDisable() {
+        Scheduler scheduler = mock(Scheduler.class);
+        Scheduler.Task task = mock(Scheduler.Task.class);
+        when(scheduler.runRepeating(any(), any(), any())).thenReturn(task);
+        EventBus events = mock(EventBus.class);
+        ServiceRegistry services = new ServiceRegistry();
+        PlaceholderResolver resolver = mock(PlaceholderResolver.class);
+        when(resolver.resolveString(any(), any())).thenReturn("20.00");
+        services.publish(PlaceholderResolver.class, resolver);
+        CapturingMessageService messages = new CapturingMessageService();
+        AdminModule module = new AdminModule();
+        module.enable(new ModuleContext(plugin, CommentedConfigurationNode.root(), messages, services,
+                scheduler, new CapturingCommandRegistrar(), events));
+        ArgumentCaptor<Runnable> tick = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runRepeating(eq(Duration.ofSeconds(1)), eq(Duration.ofSeconds(1)), tick.capture());
+        ArgumentCaptor<Listener> listeners = ArgumentCaptor.forClass(Listener.class);
+        verify(events, times(2)).register(listeners.capture());
+        TpsBar bar = listeners.getAllValues().stream().filter(TpsBar.class::isInstance)
+                .map(TpsBar.class::cast).findFirst().orElseThrow();
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.isOnline()).thenReturn(true);
+        when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        bar.toggle(player);
+        ArgumentCaptor<BossBar> shown = ArgumentCaptor.forClass(BossBar.class);
+        verify(player).showBossBar(shown.capture());
+
+        module.onConfigReload(CommentedConfigurationNode.root());
+        tick.getValue().run();
+        assertThat(messages.renderedKeys).containsExactly("admin.tps-bar.title", "admin.tps-bar.title");
+        module.disable();
+        module.disable();
+        tick.getValue().run();
+
+        verify(task).cancel();
+        verify(player).hideBossBar(shown.getValue());
+        assertThat(messages.renderedKeys).hasSize(2);
     }
 
     private CapturingCommandRegistrar enableAdminModule() {

@@ -66,6 +66,8 @@ For config keys and defaults, see [Configuration](/reference/configuration/).
 
 Provides a collection of general-purpose admin utility commands: item and mob spawning, player-info lookups (IP, UUID, last-online, ping, statistics), server TPS display, sudo, and Kreiscraft help links. The module also blocks the vanilla `/seed` and `/minecraft:seed` commands: a player who runs either is told that `/seed` is disabled (`admin.seed-blocked`).
 
+`/tps bar` toggles a personal boss bar showing TPS, average milliseconds per tick (MSPT), and the viewer's ping. The bar refreshes every second using recipient-localized messages and is removed on logout, permission loss, or module shutdown. Visibility is session-only; `/tps` still prints TPS in chat.
+
 ---
 
 ## `ai-chat`

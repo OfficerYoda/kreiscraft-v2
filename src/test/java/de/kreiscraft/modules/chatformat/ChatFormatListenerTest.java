@@ -149,7 +149,7 @@ class ChatFormatListenerTest {
         assertThat(captured).hasSize(1);
         String plain = PlainTextComponentSerializer.plainText()
                 .serialize(captured.getFirst().rendered());
-        assertThat(plain).isEqualTo("[Kreiscraft] [Owner] Dave [/Owner]: sup");
+        assertThat(plain).isEqualTo("[Kreiscraft] [Owner] Dave [/Owner] » sup");
     }
 
     @Test

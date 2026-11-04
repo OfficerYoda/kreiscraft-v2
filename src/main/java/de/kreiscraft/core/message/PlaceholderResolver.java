@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.Server;
@@ -64,17 +65,16 @@ public final class PlaceholderResolver {
             case "ping" -> context == null ? null : String.valueOf(context.getPing());
             case "playtime" -> context == null ? null
                     : formatPlaytime(context.getStatistic(Statistic.PLAY_ONE_MINUTE));
-            case "mspt" -> String.format("%.2f", server.getAverageTickTime());
+            case "mspt" -> String.format(Locale.ROOT, "%.2f", server.getAverageTickTime());
             default -> null;
         };
     }
 
     /**
-     * Formats TPS the way the original tab list did: capped at 20.0 and rounded to at most two
-     * decimal places (e.g. {@code "20.0"}, {@code "19.87"}).
+     * Formats TPS capped at 20.0 with exactly two decimal places (e.g. {@code "20.00"}).
      */
     private static String formatTps(double tps) {
-        return String.format("%.2f", Math.min(20.0, tps));
+        return String.format(Locale.ROOT, "%.2f", Math.min(20.0, tps));
     }
 
     /**

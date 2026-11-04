@@ -5,6 +5,7 @@ import de.kreiscraft.core.message.PlaceholderResolver;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
+import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.admin.commands.HeadCommand;
 import de.kreiscraft.modules.admin.commands.IpCommand;
 import de.kreiscraft.modules.admin.commands.ItemCommand;
@@ -17,6 +18,7 @@ import de.kreiscraft.modules.admin.commands.StatisticCommand;
 import de.kreiscraft.modules.admin.commands.SudoCommand;
 import de.kreiscraft.modules.admin.commands.TpsCommand;
 import de.kreiscraft.modules.admin.commands.UuidCommand;
+import java.time.Duration;
 import java.util.List;
 import org.bukkit.Server;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -24,6 +26,8 @@ import org.spongepowered.configurate.ConfigurationNode;
 public final class AdminModule implements Module {
 
     private AdminConfig config;
+    private TpsBar tpsBar;
+    private Scheduler.Task tpsBarTask;
 
     @Override
     public String id() {
@@ -50,6 +54,10 @@ public final class AdminModule implements Module {
         Server server = ctx.plugin().getServer();
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
+        this.tpsBar = new TpsBar(messages, resolver);
+        ctx.events().register(tpsBar);
+        this.tpsBarTask = ctx.scheduler().runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), tpsBar::tick);
+
         ctx.events().register(new AdminListener(messages));
         ctx.commands().register(ItemCommand.build(messages), "Spawn items");
         ctx.commands()
@@ -68,7 +76,8 @@ public final class AdminModule implements Module {
                         "Show when a player was last online");
         ctx.commands()
                 .register(PingCommand.build(messages, server), "Show a player's ping");
-        ctx.commands().register(TpsCommand.build(messages, resolver), "Show server TPS");
+        ctx.commands().register(TpsCommand.build(messages, resolver, tpsBar),
+                "Show server TPS or toggle a performance bar");
         ctx.commands()
                 .register(
                         StatisticCommand.build(messages, server),
@@ -79,6 +88,18 @@ public final class AdminModule implements Module {
                         KcHelpCommand.build(messages, () -> this.config),
                         "Show Kreiscraft help links",
                         "?", "kchelp");
+    }
+
+    @Override
+    public void disable() {
+        if (tpsBarTask != null) {
+            tpsBarTask.cancel();
+            tpsBarTask = null;
+        }
+        if (tpsBar != null) {
+            tpsBar.shutdown();
+            tpsBar = null;
+        }
     }
 
     @Override

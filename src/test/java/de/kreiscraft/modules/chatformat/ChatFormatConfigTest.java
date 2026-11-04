@@ -18,7 +18,7 @@ class ChatFormatConfigTest {
     void defaults_format_isExpectedString() {
         ChatFormatConfig cfg = new ChatFormatConfig();
         assertThat(cfg.format())
-                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>");
     }
 
     @Test
@@ -43,13 +43,13 @@ class ChatFormatConfigTest {
         assertThat(cfg).isNotNull();
         assertThat(cfg.allowMiniMessageInBody()).isFalse();
         assertThat(cfg.format())
-                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>");
     }
 
     @Test
     void compactConstructor_nullFormat_defaultsFormat() {
         ChatFormatConfig cfg = new ChatFormatConfig(false, null);
         assertThat(cfg.format())
-                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
+                .isEqualTo("<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>");
     }
 }
