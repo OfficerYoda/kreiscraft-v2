@@ -36,13 +36,23 @@ class ServerConfigServiceTest {
     }
 
     @Test
-    void current_readsBundledValues() {
-        assertThat(service.current(field("effects", "count"))).isEqualTo(25);
-        assertThat(service.current(field("combat", "tag-duration"))).isEqualTo("5s");
-        assertThat(service.current(field("combat", "default-display"))).isEqualTo("ACTIONBAR");
-        assertThat(service.current(field("combat", "disable-elytra"))).isEqualTo(true);
-        assertThat(service.current(field("combat", "excluded-worlds")))
-                .isEqualTo(List.of("Lobby"));
+    void current_readsExplicitlyConfiguredValues() {
+        ConfigField count = field("effects", "count");
+        ConfigField tagDuration = field("combat", "tag-duration");
+        ConfigField defaultDisplay = field("combat", "default-display");
+        ConfigField disableElytra = field("combat", "disable-elytra");
+        ConfigField excludedWorlds = field("combat", "excluded-worlds");
+        assertApplied(count, 23);
+        assertApplied(tagDuration, "7s");
+        assertApplied(defaultDisplay, "TITLE");
+        assertApplied(disableElytra, false);
+        assertApplied(excludedWorlds, List.of("TestWorld"));
+
+        assertThat(service.current(count)).isEqualTo(23);
+        assertThat(service.current(tagDuration)).isEqualTo("7s");
+        assertThat(service.current(defaultDisplay)).isEqualTo("TITLE");
+        assertThat(service.current(disableElytra)).isEqualTo(false);
+        assertThat(service.current(excludedWorlds)).isEqualTo(List.of("TestWorld"));
     }
 
     @Test
@@ -66,12 +76,14 @@ class ServerConfigServiceTest {
     @Test
     void rejectedEdit_reportsReasonAndLeavesConfiguration() throws IOException {
         ConfigField count = field("effects", "count");
+        Object originalValue = service.current(count);
+        String originalConfig = Files.readString(configFile);
 
         ConfigEditResult result = service.edit(count, 100_000);
 
         assertThat(result).isInstanceOf(ConfigEditResult.Rejected.class);
-        assertThat(service.current(count)).isEqualTo(25);
-        assertThat(Files.readString(configFile)).contains("count: 25");
+        assertThat(service.current(count)).isEqualTo(originalValue);
+        assertThat(Files.readString(configFile)).isEqualTo(originalConfig);
     }
 
     @Test
@@ -87,5 +99,9 @@ class ServerConfigServiceTest {
                         ConfigFieldType.LOCATION,
                         ConfigFieldType.STRING,
                         ConfigFieldType.STRING_LIST);
+    }
+
+    private void assertApplied(ConfigField field, Object value) {
+        assertThat(service.edit(field, value)).isInstanceOf(ConfigEditResult.Applied.class);
     }
 }

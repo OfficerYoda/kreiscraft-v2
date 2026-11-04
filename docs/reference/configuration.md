@@ -27,7 +27,7 @@ Located at the top-level `core:` block. These keys are read directly from the ra
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `core.language` | String | `de` | Server language: selects the fallback language tree from `plugins/Kreiscraft/lang/<language>.yml` and is used for console output. Bundled options: `de`, `en`. A player's persisted language in `data/settings.yml` takes precedence for output addressed to them. |
+| `core.language` | String | `en` | Server language: selects the fallback language tree from `plugins/Kreiscraft/lang/<language>.yml` and is used for console output. Bundled options: `de`, `en`. A player's persisted language in `data/settings.yml` takes precedence for output addressed to them. |
 | `core.timezone` | String | `Europe/Berlin` | Canonical IANA timezone ID passed to `ZoneId.of()`. Used for every absolute timestamp and time-based placeholder across the plugin. |
 | `core.auto-save-interval` | Duration | `5m` | How often the auto-save task calls `flushIfDirty()` on every registered `DataFile`. Parsed by `Durations.parse`. |
 
@@ -277,8 +277,8 @@ jail location is set.
 | Key (relative to `modules.reboot`) | Type | Default | Description |
 |---|---|---|---|
 | `default-countdown` | Duration | `60s` | Default countdown duration when no argument is passed to `/reboot`. |
-| `title-seconds` | List\<Integer\> | `[500, 60, 30, 10]` | Seconds-remaining values at which a title is shown to all players. |
-| `chat-seconds` | List\<Integer\> | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | Seconds-remaining values at which a chat message is broadcast. |
+| `title-seconds` | List\<Integer\> | `[500, 60, 30, 10, 5, 4, 3, 2, 1]` | Seconds-remaining values at which a title is shown to all players. |
+| `chat-seconds` | List\<Integer\> | `[500, 60, 30, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | Seconds-remaining values at which a chat message is broadcast. |
 
 `title-seconds` and `chat-seconds` are hot-reloadable and editable through the Server Configuration
 GUI as integer lists.

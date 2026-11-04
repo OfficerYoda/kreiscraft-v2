@@ -441,6 +441,7 @@ class ServerConfigGuiTest {
     @Test
     void coreLanguage_usesGermanAndUkHeadsAndKeepsRestartLifecycle() {
         ConfigField language = coreField("language");
+        assertThat(editor.edit(language, "de")).isInstanceOf(ConfigEditResult.Applied.class);
         Gui gui = category("core");
         int slot = slotOf("core", language);
 
