@@ -17,7 +17,7 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist. The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
 
-Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, effects, and glow preferences persist even when the settings GUI or the consuming module is disabled.
+Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, and effects preferences persist even when the settings GUI or the consuming module is disabled.
 
 ---
 
@@ -134,7 +134,7 @@ operator-owned runtime state written by commands stay out of the GUI:
 
 Each module's config is deserialized via Configurate's `@ConfigSerializable` object mapping. Field names follow camelCase → kebab-case conversion automatically (e.g., `tagDuration` → `tag-duration`). Fields annotated with `@Setting("explicit-key")` use the given key verbatim.
 
-Modules with no settings beyond `enabled` are not listed here: `glow`, `invsee`, `settings-gui`, `sign-color`, `sit`, `status`, `world-mgmt`.
+Modules with no settings beyond `enabled` are not listed here: `invsee`, `settings-gui`, `sign-color`, `sit`, `status`, `world-mgmt`.
 
 ---
 

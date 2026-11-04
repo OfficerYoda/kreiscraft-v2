@@ -50,7 +50,7 @@ class YamlConfigServiceTest {
     /** Modules that ship active in the bundled config so a clean server works out of the box. */
     private static final List<String> DEFAULT_ENABLED = List.of(
             "admin", "api", "ai-chat", "anti-cheat", "bedrock", "chat-format", "clickthrough",
-            "combat", "effects", "glow", "invsee", "jail", "reboot", "settings-gui",
+            "combat", "effects", "invsee", "jail", "reboot", "settings-gui",
             "sign-color", "sit", "spawn", "start-sequence", "status", "tablist", "update-mode",
             "wither", "world-mgmt");
 

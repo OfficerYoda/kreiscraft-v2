@@ -360,7 +360,6 @@ public final class ServerConfigGui {
             case "combat" -> Material.IRON_SWORD;
             case "effects" -> Material.BLAZE_POWDER;
             case "firework" -> Material.FIREWORK_ROCKET;
-            case "glow" -> Material.GLOW_INK_SAC;
             case "invsee" -> Material.BARREL;
             case "jail" -> Material.IRON_BARS;
             case "positions" -> Material.COMPASS;

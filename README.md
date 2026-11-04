@@ -68,7 +68,6 @@ src/main/java/de/kreiscraft/
 | `combat` | Combat tag and elytra-block during combat, with a per-player display preference (module default when unset) |
 | `effects` | `/effects` — player-toggled particle trails |
 | `firework` | Custom firework rocket crafting recipe with configurable custom model data |
-| `glow` | `/glow` — toggle a player's glowing outline |
 | `invsee` | `/invsee` and `/enderchest` (`/ec`) — inspect online and offline players' inventories |
 | `jail` | `/jail` and `/kerker` — teleport-based jail toggle with an operator-owned location set by `/setjail` and configurable blocked commands |
 | `positions` | Named waypoint system with InvUI GUI; `/positions` (`/pos`) with persistent per-player storage |

@@ -96,7 +96,6 @@ class SettingsGuiTest {
         assertThat(gui.getItem(SettingsGui.SLOT_CLICK_THROUGH)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_COMBAT_DISPLAY)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_GLOW)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
     }
 
@@ -108,15 +107,15 @@ class SettingsGuiTest {
         assertThat(gui.getItem(SettingsGui.SLOT_COMBAT_DISPLAY)).isNotNull();
         assertThat(gui.getItem(SettingsGui.SLOT_CLICK_THROUGH)).isNull();
         assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_GLOW)).isNull();
+        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
     }
 
     @Test
-    void root_showsEffectsAndGlowWhenTheirModulesAreEnabled() {
-        Gui gui = rootWith(id -> id.equals("effects") || id.equals("glow"));
+    void root_showsEffectsWhenItsModuleIsEnabled() {
+        Gui gui = rootWith(id -> id.equals("effects"));
 
         assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNotNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_GLOW)).isNotNull();
+        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
     }
 
     @Test
@@ -126,6 +125,8 @@ class SettingsGuiTest {
 
         Gui gui = rootWith(id -> id.equals("sit"));
 
+        assertThat(SettingsGui.SLOT_SIT).isEqualTo(16);
+        assertThat(gui.getItem(22)).as("the former sit slot stays empty").isNull();
         assertThat(stackAt(gui, SettingsGui.SLOT_SIT).getType()).isEqualTo(Material.WHITE_CARPET);
         assertThat(plain(stackAt(gui, SettingsGui.SLOT_SIT).getItemMeta().displayName()))
                 .isEqualTo("settings-gui.sit");
@@ -211,15 +212,6 @@ class SettingsGuiTest {
         Gui reopened = root();
         ItemStack stack = stackAt(reopened, SettingsGui.SLOT_LANGUAGE);
         assertThat(plain(stack.getItemMeta().displayName())).contains("settings-gui.language-en");
-    }
-
-    @Test
-    void glow_click_persists() {
-        Gui gui = root();
-        click(gui, SettingsGui.SLOT_GLOW);
-
-        assertThat(settings.glowEnabled(playerId)).isTrue();
-        verify(preferences, times(1)).setGlowEnabled(playerId, true);
     }
 
     // ------------------------------------------------------------------

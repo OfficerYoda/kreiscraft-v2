@@ -42,7 +42,6 @@ class PlayerPreferencesDataTest {
         service.setClickThrough(ALICE, false);
         service.setEffectsEnabled(ALICE, true);
         service.setEffectsParticle(ALICE, Particle.FLAME);
-        service.setGlowEnabled(ALICE, true);
 
         Map<UUID, CombatDisplay> displays = new HashMap<>();
         for (CombatDisplay display : CombatDisplay.values()) {
@@ -63,7 +62,6 @@ class PlayerPreferencesDataTest {
         assertThat(alice.clickThrough()).contains(false);
         assertThat(alice.effectsEnabled()).contains(true);
         assertThat(alice.effectsParticle()).contains(Particle.FLAME);
-        assertThat(alice.glowEnabled()).contains(true);
 
         for (Map.Entry<UUID, CombatDisplay> entry : displays.entrySet()) {
             assertThat(afterReconnect.preferences(entry.getKey()).combatDisplay())
@@ -93,8 +91,7 @@ class PlayerPreferencesDataTest {
                 + "  click-through: false\n"
                 + "  language: fr\n"
                 + "  combat-display: LEGACY_ORB\n"
-                + "  effects-particle: NOT_A_PARTICLE\n"
-                + "  glow-enabled: true\n");
+                + "  effects-particle: NOT_A_PARTICLE\n");
 
         PlayerPreferencesData data = new PlayerPreferencesData(tmp);
         data.load();
@@ -105,10 +102,33 @@ class PlayerPreferencesDataTest {
         assertThat(stored.language()).isEmpty();
         assertThat(stored.combatDisplay()).isEmpty();
         assertThat(stored.effectsParticle()).isEmpty();
-        assertThat(stored.glowEnabled()).contains(true);
 
         // Reading the file must not repair or rewrite the malformed values.
         assertThat(Files.readString(file)).contains("LEGACY_ORB", "NOT_A_PARTICLE");
+    }
+
+    @Test
+    void removedGlowPreference_isIgnoredAndDroppedOnSave(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("data/settings.yml");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, ALICE + ":\n"
+                + "  language: en\n"
+                + "  click-through: false\n"
+                + "  glow-enabled: true\n");
+
+        PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+        data.load();
+        DefaultPlayerPreferencesService service = new DefaultPlayerPreferencesService(data);
+
+        assertThat(service.preferences(ALICE).language()).contains(PlayerLanguage.EN);
+        assertThat(service.preferences(ALICE).clickThrough()).contains(false);
+        service.setEffectsParticle(ALICE, Particle.HEART);
+        data.flushIfDirty();
+
+        assertThat(Files.readString(file)).doesNotContain("glow-enabled");
+        PlayerPreferencesData reloaded = new PlayerPreferencesData(tmp);
+        reloaded.load();
+        assertThat(reloaded.get().get(ALICE)).isEqualTo(service.preferences(ALICE));
     }
 
     @Test

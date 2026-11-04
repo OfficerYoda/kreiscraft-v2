@@ -155,7 +155,6 @@ class ServerConfigGuiTest {
                         "combat",
                         "effects",
                         "firework",
-                        "glow",
                         "invsee",
                         "jail",
                         "positions",

@@ -30,7 +30,6 @@ server-config:
     combat: "Combat"
     effects: "Effekte"
     firework: "Feuerwerk"
-    glow: "Glow"
     invsee: "Inventaransicht"
     jail: "Kerker"
     positions: "Positionen"
@@ -188,13 +187,6 @@ effects:
   completion-current: "<gray>aktuell"
   particle-set: "<prefix> <green>Partikel: <aqua><particle></aqua><green>."
   unknown-particle: "<prefix> <red>Unbekanntes Partikel: <aqua><particle></aqua><red>."
-glow:
-  enabled: "<prefix> <green>Glow aktiviert."
-  disabled: "<prefix> <yellow>Glow deaktiviert."
-  other-enabled: "<prefix> <green>Glow für <gold><player></gold><green> aktiviert."
-  other-disabled: "<prefix> <yellow>Glow für <gold><player></gold><yellow> deaktiviert."
-  target-enabled: "<prefix> <green><gold><player></gold><green> hat deinen Glow aktiviert."
-  target-disabled: "<prefix> <yellow><gold><player></gold><yellow> hat deinen Glow deaktiviert."
 invsee:
   gui-title-inv: "<gray>Inventar von <gold><player>"
   gui-title-ec: "<gray>Enderchest von <gold><player>"
@@ -265,8 +257,6 @@ settings-gui:
   effects-enabled-on: "<green>Effekte: An"
   effects-enabled-off: "<red>Effekte: Aus"
   effects-particle: "<gray>Partikel: <aqua><particle>"
-  glow-on: "<green>Leuchten: An"
-  glow-off: "<red>Leuchten: Aus"
   back: "<gray>Zurück"
 sit:
   sat: "<prefix> <green>Du sitzt jetzt. Schleiche oder nutze /sit zum Aufstehen."

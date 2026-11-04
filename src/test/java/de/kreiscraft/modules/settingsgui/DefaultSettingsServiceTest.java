@@ -45,11 +45,6 @@ class DefaultSettingsServiceTest {
     }
 
     @Test
-    void unknownPlayer_glowEnabled_returnsDefaultFalse() {
-        assertThat(service().glowEnabled(UUID.randomUUID())).isFalse();
-    }
-
-    @Test
     void setLanguage_persists() {
         DefaultSettingsService svc = service();
         UUID alice = UUID.randomUUID();
@@ -98,14 +93,6 @@ class DefaultSettingsServiceTest {
         svc.setEffectsParticle(alice, Particle.HEART);
         assertThat(svc.effectsParticle(alice)).isEqualTo(Particle.HEART);
         assertThat(svc.effectsEnabled(alice)).isFalse();
-    }
-
-    @Test
-    void setGlowEnabled_true_persists() {
-        DefaultSettingsService svc = service();
-        UUID alice = UUID.randomUUID();
-        svc.setGlowEnabled(alice, true);
-        assertThat(svc.glowEnabled(alice)).isTrue();
     }
 
     @Test

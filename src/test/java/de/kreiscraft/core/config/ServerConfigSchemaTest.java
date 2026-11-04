@@ -20,7 +20,7 @@ class ServerConfigSchemaTest {
 
     @Test
     void fromRoot_declaresEveryModuleEnableFlagAsRestartOnly() throws SerializationException {
-        ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "glow"));
+        ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat", "sit"));
 
         List<ConfigField> moduleFlags =
                 schema.fields().stream()
@@ -169,7 +169,7 @@ class ServerConfigSchemaTest {
         ServerConfigSchema schema = ServerConfigSchema.fromRoot(modulesRoot("combat"));
 
         assertThat(schema.find(List.of("modules", "combat", "enabled"))).isPresent();
-        assertThat(schema.find(List.of("modules", "glow", "enabled"))).isEmpty();
+        assertThat(schema.find(List.of("modules", "sit", "enabled"))).isEmpty();
     }
 
     @Test

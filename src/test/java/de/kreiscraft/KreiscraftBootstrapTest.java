@@ -13,7 +13,6 @@ import de.kreiscraft.modules.clickthrough.ClickthroughModule;
 import de.kreiscraft.modules.combat.CombatModule;
 import de.kreiscraft.modules.effects.EffectsModule;
 import de.kreiscraft.modules.firework.FireworkModule;
-import de.kreiscraft.modules.glow.GlowModule;
 import de.kreiscraft.modules.invsee.InvseeModule;
 import de.kreiscraft.modules.jail.JailModule;
 import de.kreiscraft.modules.positions.PositionsModule;
@@ -49,7 +48,6 @@ class KreiscraftBootstrapTest {
                 new CombatModule(),
                 new EffectsModule(),
                 new FireworkModule(),
-                new GlowModule(),
                 new InvseeModule(),
                 new JailModule(),
                 new PositionsModule(),

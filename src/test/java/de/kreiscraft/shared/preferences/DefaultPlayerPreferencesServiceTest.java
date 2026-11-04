@@ -72,14 +72,12 @@ class DefaultPlayerPreferencesServiceTest {
         service.setLanguage(alice, PlayerLanguage.EN);
         service.setEffectsEnabled(alice, true);
         service.setEffectsParticle(alice, Particle.FLAME);
-        service.setGlowEnabled(alice, true);
         service.setClickThrough(bob, false);
 
         PlayerPreferences a = service.preferences(alice);
         assertThat(a.language()).contains(PlayerLanguage.EN);
         assertThat(a.effectsEnabled()).contains(true);
         assertThat(a.effectsParticle()).contains(Particle.FLAME);
-        assertThat(a.glowEnabled()).contains(true);
         assertThat(a.clickThrough()).isEmpty();
 
         assertThat(service.preferences(bob).clickThrough()).contains(false);

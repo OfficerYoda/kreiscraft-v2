@@ -15,8 +15,7 @@ public record PlayerPreferences(
         Optional<Boolean> clickThrough,
         Optional<CombatDisplay> combatDisplay,
         Optional<Boolean> effectsEnabled,
-        Optional<Particle> effectsParticle,
-        Optional<Boolean> glowEnabled) {
+        Optional<Particle> effectsParticle) {
 
     /** Normalises null components to {@link Optional#empty()} so snapshots are always non-null. */
     public PlayerPreferences {
@@ -35,15 +34,11 @@ public record PlayerPreferences(
         if (effectsParticle == null) {
             effectsParticle = Optional.empty();
         }
-        if (glowEnabled == null) {
-            glowEnabled = Optional.empty();
-        }
     }
 
     /** A snapshot with no preference set. */
     public static PlayerPreferences empty() {
         return new PlayerPreferences(
-                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -54,36 +49,27 @@ public record PlayerPreferences(
     public PlayerPreferences withLanguage(PlayerLanguage value) {
         return new PlayerPreferences(
                 Optional.ofNullable(value), clickThrough, combatDisplay, effectsEnabled,
-                effectsParticle, glowEnabled);
+                effectsParticle);
     }
 
     public PlayerPreferences withClickThrough(boolean value) {
         return new PlayerPreferences(
-                language, Optional.of(value), combatDisplay, effectsEnabled, effectsParticle,
-                glowEnabled);
+                language, Optional.of(value), combatDisplay, effectsEnabled, effectsParticle);
     }
 
     public PlayerPreferences withCombatDisplay(CombatDisplay value) {
         return new PlayerPreferences(
                 language, clickThrough, Optional.ofNullable(value), effectsEnabled,
-                effectsParticle, glowEnabled);
+                effectsParticle);
     }
 
     public PlayerPreferences withEffectsEnabled(boolean value) {
         return new PlayerPreferences(
-                language, clickThrough, combatDisplay, Optional.of(value), effectsParticle,
-                glowEnabled);
+                language, clickThrough, combatDisplay, Optional.of(value), effectsParticle);
     }
 
     public PlayerPreferences withEffectsParticle(Particle value) {
         return new PlayerPreferences(
-                language, clickThrough, combatDisplay, effectsEnabled, Optional.ofNullable(value),
-                glowEnabled);
-    }
-
-    public PlayerPreferences withGlowEnabled(boolean value) {
-        return new PlayerPreferences(
-                language, clickThrough, combatDisplay, effectsEnabled, effectsParticle,
-                Optional.of(value));
+                language, clickThrough, combatDisplay, effectsEnabled, Optional.ofNullable(value));
     }
 }

@@ -29,9 +29,6 @@ public final class DefaultSettingsService implements SettingsService {
     /** Effects are opt-out once the effects module is enabled. */
     static final boolean EFFECTS_DEFAULT_ENABLED = true;
 
-    /** Glow is opt-in until the player enables it. */
-    static final boolean GLOW_DEFAULT_ENABLED = false;
-
     private final PlayerPreferencesService preferences;
     private final PlayerLanguage defaultLanguage;
     private final Particle defaultEffectsParticle;
@@ -99,15 +96,5 @@ public final class DefaultSettingsService implements SettingsService {
     @Override
     public void setEffectsParticle(UUID playerId, Particle particle) {
         preferences.setEffectsParticle(playerId, particle);
-    }
-
-    @Override
-    public boolean glowEnabled(UUID playerId) {
-        return preferences.preferences(playerId).glowEnabled().orElse(GLOW_DEFAULT_ENABLED);
-    }
-
-    @Override
-    public void setGlowEnabled(UUID playerId, boolean enabled) {
-        preferences.setGlowEnabled(playerId, enabled);
     }
 }

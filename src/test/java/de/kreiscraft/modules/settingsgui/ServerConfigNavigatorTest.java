@@ -157,7 +157,7 @@ class ServerConfigNavigatorTest {
         assertThat(itemLabel(SettingsGui.SLOT_CLICK_THROUGH)).isEqualTo("Click-Through: On");
         assertThat(itemLabel(SettingsGui.SLOT_COMBAT_DISPLAY)).isEqualTo("Combat Display: Action Bar");
         assertThat(itemLabel(SettingsGui.SLOT_EFFECTS)).isEqualTo("Effects (click to open)");
-        assertThat(itemLabel(SettingsGui.SLOT_GLOW)).isEqualTo("Glow: Off");
+        assertThat(lastGui.getItem(22)).isNull();
     }
 
     @Test

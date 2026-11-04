@@ -40,9 +40,4 @@ public interface SettingsService {
 
     /** Selects a particle without changing whether effects are enabled. */
     void setEffectsParticle(UUID playerId, Particle particle);
-
-    /** The player's effective glow state, defaulting to the module default when absent. */
-    boolean glowEnabled(UUID playerId);
-
-    void setGlowEnabled(UUID playerId, boolean enabled);
 }

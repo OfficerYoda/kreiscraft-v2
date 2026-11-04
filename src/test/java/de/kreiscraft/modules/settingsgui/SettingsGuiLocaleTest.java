@@ -73,13 +73,14 @@ class SettingsGuiLocaleTest {
     void labels_renderInEachPlayersLanguage() {
         PlayerMock alice = server.addPlayer("Alice"); // stored en
         PlayerMock bob = server.addPlayer("Bob"); // stored de
+        alice.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
         Gui gui = SettingsGui.buildRoot(settings, id -> true, messages, alice, (p, page) -> {
         });
 
         assertThat(label(alice, gui, SettingsGui.SLOT_COMBAT_DISPLAY)).contains("Combat Display");
         assertThat(label(bob, gui, SettingsGui.SLOT_COMBAT_DISPLAY)).contains("Combat-Anzeige");
-        assertThat(label(alice, gui, SettingsGui.SLOT_GLOW)).contains("Glow");
-        assertThat(label(bob, gui, SettingsGui.SLOT_GLOW)).contains("Leuchten");
+        assertThat(label(alice, gui, SettingsGui.SLOT_SIT)).contains("Cushion");
+        assertThat(label(bob, gui, SettingsGui.SLOT_SIT)).contains("Sitzkissen");
     }
 
     @Test

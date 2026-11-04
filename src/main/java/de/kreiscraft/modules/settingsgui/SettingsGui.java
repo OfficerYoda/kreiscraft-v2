@@ -41,8 +41,7 @@ import xyz.xenondevs.invui.item.ItemWrapper;
  * slot 10  Click-Through             slot 15  Particle
  * slot 12  Combat display            slot 22  Back
  * slot 14  Effects (opens page)
- * slot 16  Glow
- * slot 22  Sit (cushion)
+ * slot 16  Sit (cushion)
  * slot 26  Language (bottom-right, flag head)
  * </pre>
  */
@@ -66,8 +65,7 @@ public final class SettingsGui {
     static final int SLOT_CLICK_THROUGH = 10;
     static final int SLOT_COMBAT_DISPLAY = 12;
     static final int SLOT_EFFECTS = 14;
-    static final int SLOT_GLOW = 16;
-    static final int SLOT_SIT = 22;
+    static final int SLOT_SIT = 16;
 
     /** Permission that reveals and opens the authorized Server Configuration editor. */
     public static final String SERVER_CONFIG_PERMISSION = "kreiscraft.settingsgui.admin";
@@ -143,9 +141,6 @@ public final class SettingsGui {
         }
         if (SettingsControl.EFFECTS.isAvailable(modules)) {
             gui.setItem(SLOT_EFFECTS, effectsLinkItem(messages, navigator));
-        }
-        if (SettingsControl.GLOW.isAvailable(modules)) {
-            gui.setItem(SLOT_GLOW, glowItem(settings, messages));
         }
         if (modules.isEnabled("sit") && player.hasPermission(SitCommand.PERMISSION)) {
             gui.setItem(SLOT_SIT, sitItem(messages));
@@ -270,25 +265,6 @@ public final class SettingsGui {
             @Override
             public void handleClick(ClickType clickType, Player player, Click click) {
                 navigator.open(player, Page.EFFECTS);
-            }
-        };
-    }
-
-    private static AbstractItem glowItem(SettingsService settings, MessageService messages) {
-        return new AbstractItem() {
-            @Override
-            public ItemProvider getItemProvider(Player viewer) {
-                boolean on = settings.glowEnabled(viewer.getUniqueId());
-                String key = on ? "settings-gui.glow-on" : "settings-gui.glow-off";
-                Material material = on ? Material.GLOW_INK_SAC : Material.INK_SAC;
-                return new ItemWrapper(named(material, messages.renderFor(viewer, key)));
-            }
-
-            @Override
-            public void handleClick(ClickType clickType, Player player, Click click) {
-                UUID id = player.getUniqueId();
-                settings.setGlowEnabled(id, !settings.glowEnabled(id));
-                notifyWindows();
             }
         };
     }

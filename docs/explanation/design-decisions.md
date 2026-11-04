@@ -274,6 +274,8 @@ consumer, enabling `api` to clean up during `disable()` without affecting any ot
 
 **Status:** Superseded by ADR-0001
 
+**Historical note:** Glow has since been removed entirely. The decision below records the original module set, not the current feature catalog.
+
 **Context:**  
 `ModuleRegistry` treats a module as active only when `modules.<id>.enabled: true` is present in
 `config.yml`, and the bundled template controls what a fresh install looks like. Most modules are

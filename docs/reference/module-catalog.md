@@ -20,12 +20,11 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `combat` | `de.kreiscraft.modules.combat` | stable | none | combat | Tags players as in combat on damage; optionally removes elytra while tagged; combat display follows a player preference with a module default. |
 | `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players report, toggle, and choose a personal particle trail emitted on a configurable schedule (default 5 ticks) independent of movement; state and particle persist as player preferences. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
-| `glow` | `de.kreiscraft.modules.glow` | stable | none | glow | Lets players toggle a persistent glow (Glowing effect) on themselves. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
 | `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
-| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, glow). |
+| `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, sit). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `sit` | `de.kreiscraft.modules.sit` | stable | none | sit | Toggle sitting through `/sit` or the cushion in `/settings`. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
@@ -225,22 +224,6 @@ Registers a Bukkit shaped crafting recipe that yields a firework rocket with the
 
 ---
 
-## `glow`
-
-**Package:** `de.kreiscraft.modules.glow`
-**Depends on:** none
-**Default enabled:** true
-
-### Description
-
-Applies or removes the Bukkit `Glowing` effect for a player via `/glow`, and for another online player via `/glow <player>` (requires `kreiscraft.glow.other`). The entity's current glowing state is the toggle truth; the resulting value is persisted as the player's desired glow preference, which is reconciled onto the entity on join. When one player changes another's glow, both the actor and the target are notified in their own language. Active glow effects owned by this module are cleared on module disable.
-
-### Services published
-
-- `GlowService` — toggle, query, and reconcile the glow state of players.
-
----
-
 ## `invsee`
 
 **Package:** `de.kreiscraft.modules.invsee`
@@ -311,7 +294,7 @@ Schedules a server restart with a countdown. The start announcement is sent per 
 
 ### Description
 
-Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, effects (enabled state and particle), and glow preferences. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
+Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, and effects (enabled state and particle) preferences, plus a Sit cushion in root slot 16 that closes the menu and runs `/sit`. The cushion requires `kreiscraft.sit.use`. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
 
 The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
 

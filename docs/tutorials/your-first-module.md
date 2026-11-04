@@ -10,7 +10,7 @@ shared services, and events. For example, `chat-format` depends on `status`, whi
 `clickthrough` read the shared, always-available `PlayerPreferencesService`. See
 [Core Concepts](/explanation/architecture/#core-concepts) for the surrounding terminology.
 
-The patterns here match what you will find in existing modules such as `GlowModule` and `FireworkModule`. Read those alongside this tutorial to see the same ideas applied to different problems.
+The patterns here match what you will find in existing modules such as `EffectsModule` and `FireworkModule`. Read those alongside this tutorial to see the same ideas applied to different problems.
 
 ---
 

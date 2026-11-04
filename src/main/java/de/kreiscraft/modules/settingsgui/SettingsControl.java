@@ -18,9 +18,7 @@ public enum SettingsControl {
     /** Combat status display, consumed by the {@code combat} module. */
     COMBAT_DISPLAY("combat"),
     /** Particle-trail enablement, consumed by the {@code effects} module. */
-    EFFECTS("effects"),
-    /** Glow enablement, consumed by the {@code glow} module. */
-    GLOW("glow");
+    EFFECTS("effects");
 
     private final String moduleId;
 
