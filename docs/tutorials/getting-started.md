@@ -71,13 +71,13 @@ The `run-paper` Gradle plugin downloads a Paper server on first run and places e
 On first run you will see Paper bootstrap output followed by plugin startup. Look for the `[Kreiscraft]` prefix in the log. The last line from the plugin is the startup summary:
 
 ```
-[Kreiscraft] [INFO] 18 Module aktiv, 4 deaktiviert, 0 fehlgeschlagen.
-```
-
-If you have configured the language to `en` (in `config.yml` → `core.language: en`) it reads:
-
-```
 [Kreiscraft] [INFO] 21 modules enabled, 2 disabled, 0 failed.
+```
+
+If you have configured the language to `de` (in `config.yml` → `core.language: de`) it reads:
+
+```
+[Kreiscraft] [INFO] 18 Module aktiv, 4 deaktiviert, 0 fehlgeschlagen.
 ```
 
 The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. The bundled `config.yml` ships 21 modules enabled; only `firework` and `positions` are disabled by default, so a clean run reports 21 enabled and 2 disabled.
@@ -118,13 +118,11 @@ This command requires the `kreiscraft.admin` permission, which ops hold by defau
 2. `MessageService.reload()` — re-reads the active lang file.
 3. `ModuleRegistry.reloadConfigs()` — calls `onConfigReload()` on every enabled module.
 
-On success you will see:
+On success you will see the `core.reload.success` message in the configured server language. With `core.language: de` it reads:
 
 ```
 [Kreiscraft] Konfiguration neu geladen.
 ```
-
-(or the English variant if `core.language: en`).
 
 ---
 

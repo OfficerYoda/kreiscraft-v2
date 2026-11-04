@@ -69,4 +69,4 @@ Background reading. Useful when something feels surprising or when you need to m
 - Source entry point: `src/main/java/de/kreiscraft/Kreiscraft.java`
 - Composition root: `src/main/java/de/kreiscraft/KreiscraftBootstrap.java`
 - Default config: `src/main/resources/config.yml`
-- Default lang: `src/main/resources/lang/de.yml`
+- Default lang: `src/main/resources/lang/en.yml`

@@ -183,7 +183,7 @@ Nested interface returned by all scheduling methods.
 **Package:** `de.kreiscraft.core.message`
 **Type:** `interface`
 
-Recipient-aware, MiniMessage-based message service. Every bundled language tree lives in `src/main/resources/lang/<lang>.yml` and is loaded from `<dataFolder>/lang/<lang>.yml` at startup. The server language is configured under `core.language` in `config.yml` (default: `de`) and is used for console output and for any recipient without a stored preference.
+Recipient-aware, MiniMessage-based message service. Every bundled language tree lives in `src/main/resources/lang/<lang>.yml` and is loaded from `<dataFolder>/lang/<lang>.yml` at startup. The server language is configured under `core.language` in `config.yml` (default: `en`) and is used for console output and for any recipient without a stored preference.
 
 Messages support `<prefix>` as a built-in MiniMessage tag that expands to the value of the top-level `prefix:` key in the recipient's language tree. Additional `%token%` placeholders are resolved by `PlaceholderResolver`.
 
