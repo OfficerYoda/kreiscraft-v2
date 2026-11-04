@@ -109,6 +109,25 @@ tasks.test {
     classpath = classpath.filter { !it.path.contains("paperweight") }
 }
 
+// Exercise the version-specific player-data boundary with real NMS, not MockBukkit.
+val nmsTest = sourceSets.create("nmsTest") {
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    runtimeClasspath += output + compileClasspath
+}
+configurations[nmsTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[nmsTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+val testNms = tasks.register<Test>("testNms") {
+    group = "verification"
+    description = "Tests the offline player-data codec against the mapped Paper server."
+    testClassesDirs = nmsTest.output.classesDirs
+    // NMS redirects stdout/stderr through logging; use Paper's provider to avoid recursion.
+    classpath = nmsTest.runtimeClasspath.filter {
+        !it.name.contains("mockbukkit") && !it.name.contains("slf4j-simple")
+    }
+    workingDir = layout.buildDirectory.get().asFile
+    useJUnitPlatform()
+}
+
 tasks.compileJava {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
@@ -181,6 +200,7 @@ val verifyInvuiCompatibility = tasks.register("verifyInvuiCompatibility") {
 
 tasks.check {
     dependsOn(verifyInvuiCompatibility)
+    dependsOn(testNms)
 }
 
 spotless {

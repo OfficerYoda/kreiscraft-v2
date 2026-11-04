@@ -107,7 +107,8 @@ public final class KreiscraftBootstrap {
         NmsWhitelist nmsWhitelist = new NmsWhitelist(platform);
         OfflinePlayerDataStore offlineData =
                 new OfflinePlayerDataStore(
-                        PaperPlayerDataPaths.playerDataDirectory(platform), new NmsPlayerDataCodec());
+                        PaperPlayerDataPaths.playerDataDirectory(platform),
+                        new NmsPlayerDataCodec(platform));
 
         services.publish(PaperPlatform.class, platform);
         services.publish(PlayerBrandProvider.class, brands);

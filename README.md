@@ -18,6 +18,7 @@ A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single
 ./gradlew build              # compile + Spotless check + shadowJar + tests
 ./gradlew runServer          # spin up a local Paper server with the plugin loaded
 ./gradlew test               # tests only
+./gradlew testNms            # real Paper/NMS offline player-data tests (also included in build)
 ./gradlew spotlessApply      # auto-format all Java sources
 ```
 

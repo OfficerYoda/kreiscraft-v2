@@ -544,7 +544,8 @@ codec behind the store and publishes only the interface to the service registry.
 
 **Consequences:**
 - The file protocol — missing files, reading without writing, and decode failures — is tested
-  against real temporary files with a substitute codec; the NMS decode is a documented seam.
+  against real temporary files with a substitute codec. A separate `testNms` suite now exercises
+  the actual NMS codec with the mapped server's vanilla registries, tags, and item components.
 - The module never imports NMS and remains fully testable under MockBukkit.
 - Offline writes extend the same boundary (ADR-17) without leaking NMS into gameplay code or the
   commands.
@@ -568,7 +569,9 @@ opened. Committing is a two-phase protocol:
 
 1. **Stage** — the edited inventory and Ender Chest items are converted to compressed NBT by the
    version-specific `PlayerDataCodec.encode`, which deep-copies the complete source document and
-   replaces only `Inventory` and `EnderItems`. The result is written, flushed, and read back through
+   replaces only `Inventory`, the armor/offhand entries of `equipment`, and `EnderItems`. Item
+   conversion uses the server's registry-aware NBT operations; failed decoding aborts the open
+   rather than substituting air. The result is written, flushed, and read back through
    the codec before the source is touched.
 2. **Commit** — in one server-main-thread turn the session re-checks that the target is still offline
    and that the source digest still matches, creates a byte-for-byte backup, then performs an atomic
@@ -581,9 +584,9 @@ a write failure reports that the source was left unchanged.
 
 **Consequences:**
 - Unrelated root tags and item component metadata survive because `encode` copies the whole source
-  document; only the two editable lists are replaced.
+  document; only the editable inventory, equipment, and Ender Chest entries are replaced.
 - The offline/digest check and the atomic replace run in one main-thread turn, so a join event cannot
   interleave between them.
 - The file protocol — staging, read-back verification, backup, abort on login/stale source, and
-  atomic replace — is tested against real temporary files with a substitute codec; the NMS
-  encode/decode remains a documented seam (ADR-16).
+  atomic replace — is tested against real temporary files with a substitute codec; `testNms`
+  additionally checks the real NMS format and a staged/committed file round trip (ADR-16).
