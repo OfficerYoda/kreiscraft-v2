@@ -5,6 +5,7 @@ import de.kreiscraft.core.config.ConfigEditResult;
 import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.config.ServerConfigSchema;
+import de.kreiscraft.modules.admin.TpsBarConfig;
 import org.bukkit.Location;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -32,10 +33,18 @@ public final class DefaultServerConfigService implements ServerConfigService {
     @Override
     public Object current(ConfigField field) {
         ConfigurationNode node = config.root().node(field.pathArray());
-        if (node.virtual() || node.isNull()) {
-            return null;
-        }
         try {
+            if (node.virtual() || node.isNull()) {
+                if (field.path().size() != 4
+                        || !field.path().subList(0, 3).equals(java.util.List.of("modules", "admin", "tps-bar"))) {
+                    return null;
+                }
+                // Existing installations may not have the new section yet. Display and step the
+                // same defaults the admin module uses, without writing defaults into live config.
+                ConfigurationNode defaults = node.copy();
+                defaults.set(TpsBarConfig.class, new TpsBarConfig());
+                node = defaults.node(field.path().getLast());
+            }
             return switch (field.type()) {
                 case BOOLEAN -> node.getBoolean();
                 case INTEGER -> node.getInt();

@@ -1,0 +1,482 @@
+package de.kreiscraft.modules.admin;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.core.message.ConfigurateMessageService;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
+import de.kreiscraft.core.config.AutoSaveTask;
+import de.kreiscraft.core.scheduler.Scheduler;
+import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesData;
+import java.time.Duration;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Server;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+
+class TpsBarTest {
+
+    private Server server;
+    private MessageService messages;
+    private TpsBar service;
+    private TpsBarConfig settings;
+    private InMemoryPlayerPreferencesService preferences;
+
+    @BeforeEach
+    void setUp() {
+        server = mock(Server.class);
+        messages = mock(MessageService.class);
+        when(server.getTPS()).thenReturn(new double[] {21.0});
+        when(server.getAverageTickTime()).thenReturn(12.345);
+        when(messages.renderFor(any(), eq("admin.tps-bar.title"), any(Object[].class)))
+                .thenAnswer(invocation -> Component.empty()
+                        .append(invocation.getArgument(3, Component.class)).append(Component.text(" / "))
+                        .append(invocation.getArgument(5, Component.class)).append(Component.text(" / "))
+                        .append(invocation.getArgument(7, Component.class)));
+        settings = new TpsBarConfig();
+        preferences = new InMemoryPlayerPreferencesService();
+        service = new TpsBar(messages, server, () -> settings, preferences);
+    }
+
+    @Test
+    void toggle_showsLiveMetricsImmediatelyAndHidesSameBar() {
+        Player player = player(42);
+
+        assertThat(service.toggle(player)).isTrue();
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+        BossBar bar = shownBar(player);
+        assertThat(plain(bar)).isEqualTo("20.00 / 12.35 / 42");
+        assertThat(bar.color()).isEqualTo(BossBar.Color.GREEN);
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(bar.progress()).isCloseTo(12.345f / 50.0f, org.assertj.core.data.Offset.offset(0.00001f));
+        assertThat(service.toggle(player)).isFalse();
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(false);
+        verify(player).hideBossBar(bar);
+        clearInvocations(messages, server);
+        service.tick();
+        verifyNoInteractions(messages, server);
+    }
+
+    @Test
+    void tick_refreshesEachPlayersOwnPingOnSeparateBars() {
+        Player alice = player(42);
+        Player bob = player(99);
+        service.toggle(alice);
+        service.toggle(bob);
+        BossBar aliceBar = shownBar(alice);
+        BossBar bobBar = shownBar(bob);
+        assertThat(aliceBar).isNotSameAs(bobBar);
+        when(server.getTPS()).thenReturn(new double[] {19.876});
+        when(server.getAverageTickTime()).thenReturn(45.678);
+        when(alice.getPing()).thenReturn(50);
+
+        service.tick();
+
+        assertThat(plain(aliceBar)).isEqualTo("19.88 / 45.68 / 50");
+        assertThat(plain(bobBar)).isEqualTo("19.88 / 45.68 / 99");
+        assertThat(aliceBar.color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(aliceBar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(bobBar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(aliceBar.progress()).isCloseTo(45.678f / 50.0f, org.assertj.core.data.Offset.offset(0.00001f));
+        service.toggle(alice);
+        verify(bob, never()).hideBossBar(any());
+    }
+
+    @Test
+    void quit_hidesBarButNextLoginRestoresSavedChoice() {
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+
+        PlayerQuitEvent event = mock(PlayerQuitEvent.class);
+        when(event.getPlayer()).thenReturn(player);
+        service.onQuit(event);
+        verify(player).hideBossBar(bar);
+        clearInvocations(messages, server);
+        service.tick();
+        verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+        Player reconnected = player(99);
+        UUID playerId = player.getUniqueId();
+        when(reconnected.getUniqueId()).thenReturn(playerId);
+        join(reconnected);
+        BossBar restored = shownBar(reconnected);
+        assertThat(restored).isNotSameAs(bar);
+        assertThat(plain(restored)).isEqualTo("20.00 / 12.35 / 99");
+        assertThat(service.toggle(reconnected)).isFalse();
+        verify(reconnected).hideBossBar(restored);
+    }
+
+    @Test
+    void join_keepsUnsetAndExplicitlyDisabledBarsOff() {
+        Player unset = player(42);
+        Player disabled = player(99);
+        preferences.setTpsBarEnabled(disabled.getUniqueId(), false);
+
+        join(unset);
+        join(disabled);
+
+        verify(unset, never()).showBossBar(any());
+        verify(disabled, never()).showBossBar(any());
+        assertThat(preferences.preferences(unset.getUniqueId()).tpsBarEnabled()).isEmpty();
+        assertThat(preferences.preferences(disabled.getUniqueId()).tpsBarEnabled()).contains(false);
+        verifyNoInteractions(messages, server);
+    }
+
+    @Test
+    void join_isIdempotentAndRestoresOnlyTheEnabledPlayer() {
+        Player alice = player(42);
+        Player bob = player(99);
+        preferences.setTpsBarEnabled(alice.getUniqueId(), true);
+
+        join(alice);
+        join(alice);
+        join(bob);
+
+        BossBar bar = shownBar(alice);
+        verify(bob, never()).showBossBar(any());
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(preferences.preferences(alice.getUniqueId()).tpsBarEnabled()).contains(true);
+    }
+
+    @Test
+    void join_doesNotShowSavedBarWithoutPermissionOrWhileOffline() {
+        Player denied = player(42);
+        Player offline = player(99);
+        preferences.setTpsBarEnabled(denied.getUniqueId(), true);
+        preferences.setTpsBarEnabled(offline.getUniqueId(), true);
+        when(denied.hasPermission("kreiscraft.admin.tps")).thenReturn(false);
+        when(offline.isOnline()).thenReturn(false);
+
+        join(denied);
+        service.restore(offline);
+
+        verify(denied, never()).showBossBar(any());
+        verify(offline, never()).showBossBar(any());
+        assertThat(preferences.preferences(denied.getUniqueId()).tpsBarEnabled()).contains(true);
+        assertThat(preferences.preferences(offline.getUniqueId()).tpsBarEnabled()).contains(true);
+        verifyNoInteractions(messages, server);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void restart_restoresSavedOnAndOffStatesFromDisk(boolean enabled, @TempDir Path tmp) throws Exception {
+        PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+        data.load();
+        var stored = new DefaultPlayerPreferencesService(data);
+        service = new TpsBar(messages, server, () -> settings, stored);
+        Player original = player(42);
+        service.toggle(original);
+        if (!enabled) {
+            service.toggle(original);
+        }
+        // The bootstrap flushes registered data files on shutdown before disabling modules.
+        new AutoSaveTask(mock(Scheduler.class), Duration.ofMinutes(5), () -> List.of(data)).stop();
+        service.shutdown();
+
+        PlayerPreferencesData reloaded = new PlayerPreferencesData(tmp);
+        reloaded.load();
+        var afterRestart = new DefaultPlayerPreferencesService(reloaded);
+        service = new TpsBar(messages, server, () -> settings, afterRestart);
+        Player returning = player(150);
+        UUID playerId = original.getUniqueId();
+        when(returning.getUniqueId()).thenReturn(playerId);
+        join(returning);
+
+        assertThat(afterRestart.preferences(returning.getUniqueId()).tpsBarEnabled()).contains(enabled);
+        if (enabled) {
+            BossBar bar = shownBar(returning);
+            assertThat(plain(bar)).isEqualTo("20.00 / 12.35 / 150");
+            assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+            assertGradient(characterColors(bar.name().children().get(4)), "150", 0,
+                    NamedTextColor.RED, NamedTextColor.DARK_RED);
+            assertThat(service.toggle(returning)).isFalse();
+        } else {
+            verify(returning, never()).showBossBar(any());
+            assertThat(service.toggle(returning)).isTrue();
+        }
+    }
+
+    @Test
+    void tick_removesDisconnectedPlayersEvenIfQuitWasMissed() {
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        when(player.isOnline()).thenReturn(false);
+        clearInvocations(messages, server);
+
+        service.tick();
+        service.tick();
+
+        verify(player).hideBossBar(bar);
+        verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+    }
+
+    @Test
+    void tick_removesBarWhenPermissionIsRevoked() {
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(false);
+        clearInvocations(messages, server);
+
+        service.tick();
+
+        verify(player).hideBossBar(bar);
+        verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+        when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        join(player);
+        assertThat(service.toggle(player)).isFalse();
+    }
+
+    @Test
+    void shutdown_hidesAllBarsAndIsIdempotent() {
+        Player alice = player(42);
+        Player bob = player(99);
+        service.toggle(alice);
+        service.toggle(bob);
+        BossBar aliceBar = shownBar(alice);
+        BossBar bobBar = shownBar(bob);
+        clearInvocations(messages, server);
+
+        service.shutdown();
+        service.shutdown();
+        service.tick();
+
+        verify(alice).hideBossBar(aliceBar);
+        verify(bob).hideBossBar(bobBar);
+        verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(alice.getUniqueId()).tpsBarEnabled()).contains(true);
+        assertThat(preferences.preferences(bob.getUniqueId()).tpsBarEnabled()).contains(true);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "19, 40, 50, GREEN, GREEN, GREEN",
+            "18.999, 40.001, 51, YELLOW, YELLOW, YELLOW",
+            "15, 50, 120, YELLOW, YELLOW, YELLOW",
+            "14.999, 50.001, 121, RED, RED, RED",
+            "20, 60, 100, GREEN, RED, YELLOW",
+            "16, 35, 150, YELLOW, GREEN, RED"
+    })
+    void display_colorsEachMetricIndependentlyAtExactRawThresholds(
+            double tps, double mspt, int ping, String tpsColor, String msptColor, String pingColor) {
+        when(server.getTPS()).thenReturn(new double[] {tps});
+        when(server.getAverageTickTime()).thenReturn(mspt);
+        Player player = player(ping);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+
+        assertThat(bar.name().children().get(0).color())
+                .isEqualTo(NamedTextColor.NAMES.value(tpsColor.toLowerCase(java.util.Locale.ROOT)));
+        assertThat(bar.name().children().get(2).color())
+                .isEqualTo(NamedTextColor.NAMES.value(msptColor.toLowerCase(java.util.Locale.ROOT)));
+        assertThat(bar.name().children().get(4).color())
+                .isEqualTo(NamedTextColor.NAMES.value(pingColor.toLowerCase(java.util.Locale.ROOT)));
+        assertThat(bar.color()).isEqualTo(BossBar.Color.valueOf(msptColor));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-1, 0", "0, 0", "25, 0.5", "50, 1", "100, 1"})
+    void progress_isProportionalToMsptAndClamped(double mspt, float progress) {
+        when(server.getAverageTickTime()).thenReturn(mspt);
+        Player player = player(42);
+        service.toggle(player);
+        assertThat(shownBar(player).progress()).isEqualTo(progress);
+    }
+
+    @Test
+    void tick_appliesReloadedThresholdsAndFillEndpointsWithoutReplacingBar() {
+        when(server.getTPS()).thenReturn(new double[] {18.5});
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        assertThat(bar.name().children().get(0).color()).isEqualTo(NamedTextColor.YELLOW);
+        settings = new TpsBarConfig(10.0, 20.0, 18.0, 15.0, 40, 90, 10.0, 20.0);
+
+        service.tick();
+
+        assertThat(bar.color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(bar.progress()).isCloseTo(0.2345f, org.assertj.core.data.Offset.offset(0.00001f));
+        assertThat(bar.name().children().get(0).color()).isEqualTo(NamedTextColor.GREEN);
+        assertThat(bar.name().children().get(2).color()).isEqualTo(NamedTextColor.YELLOW);
+        assertThat(bar.name().children().get(4).color()).isEqualTo(NamedTextColor.YELLOW);
+        assertGradient(characterColors(bar.name().children().get(0)), "18.50", 2,
+                NamedTextColor.GREEN, NamedTextColor.DARK_GREEN);
+        assertGradient(characterColors(bar.name().children().get(2)), "12.35", 2,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertGradient(characterColors(bar.name().children().get(4)), "42", 0,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        verify(player).showBossBar(bar);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"5, 0", "10, 0", "15, 0.5", "20, 1", "25, 1"})
+    void progress_usesBothConfiguredEndpoints(double mspt, float progress) {
+        settings = new TpsBarConfig(null, null, null, null, null, null, 10.0, 20.0);
+        when(server.getAverageTickTime()).thenReturn(mspt);
+        Player player = player(42);
+        service.toggle(player);
+        assertThat(shownBar(player).progress()).isEqualTo(progress);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"en", "de"})
+    void localizedTitle_preservesIndependentNumberColors(String language, @TempDir Path tmp) throws Exception {
+        when(server.getTPS()).thenReturn(new double[] {20.0});
+        when(server.getAverageTickTime()).thenReturn(60.0);
+        service = new TpsBar(new ConfigurateMessageService(tmp, getClass().getClassLoader(), language, server),
+                server, () -> settings, preferences);
+        Player player = player(100);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+
+        assertThat(plain(bar)).isEqualTo("TPS: 20.00 MSPT: 60.00 Ping: 100ms");
+        List<TextColor> colors = characterColors(bar.name());
+        assertGradient(colors.subList(5, 10), "20.00", 2, NamedTextColor.GREEN, NamedTextColor.DARK_GREEN);
+        assertGradient(colors.subList(17, 22), "60.00", 2, NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertGradient(colors.subList(29, 32), "100", 0, NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertThat(colors.get(0)).isEqualTo(NamedTextColor.GRAY);
+        assertThat(colors.get(25)).isEqualTo(NamedTextColor.GRAY);
+        assertThat(bar.color()).isEqualTo(BossBar.Color.RED);
+        assertThat(bar.progress()).isEqualTo(1.0f);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"20, 40, GREEN, #00aa00", "18, 45, YELLOW, #ffaa00", "14, 60, RED, #aa0000"})
+    void decimals_gradientOnlyFromDotToLastDecimalDigit(double tps, double mspt, String light, String dark) {
+        when(server.getTPS()).thenReturn(new double[] {tps});
+        when(server.getAverageTickTime()).thenReturn(mspt);
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        TextColor start = NamedTextColor.NAMES.value(light.toLowerCase(java.util.Locale.ROOT));
+        TextColor end = TextColor.fromHexString(dark);
+        for (int index : new int[] {0, 2}) {
+            Component metric = bar.name().children().get(index);
+            String text = PlainTextComponentSerializer.plainText().serialize(metric);
+            assertGradient(characterColors(metric), text, text.indexOf('.'), start, end);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0, GREEN, #00aa00", "7, GREEN, #00aa00", "42, GREEN, #00aa00",
+            "99, YELLOW, #ffaa00", "100, YELLOW, #ffaa00", "150, RED, #aa0000",
+            "1234, RED, #aa0000"
+    })
+    void ping_gradientSpansAllDigitsIncludingSingleDigitValues(int ping, String light, String dark) {
+        Player player = player(ping);
+        service.toggle(player);
+        Component metric = shownBar(player).name().children().get(4);
+        assertGradient(characterColors(metric), String.valueOf(ping), 0,
+                NamedTextColor.NAMES.value(light.toLowerCase(java.util.Locale.ROOT)), TextColor.fromHexString(dark));
+    }
+
+    @Test
+    void tick_updatesGradientEndpointsWhenHealthChanges() {
+        Player player = player(42);
+        service.toggle(player);
+        BossBar bar = shownBar(player);
+        when(server.getTPS()).thenReturn(new double[] {14.0});
+        when(server.getAverageTickTime()).thenReturn(45.0);
+        when(player.getPing()).thenReturn(150);
+
+        service.tick();
+
+        assertGradient(characterColors(bar.name().children().get(0)), "14.00", 2,
+                NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertGradient(characterColors(bar.name().children().get(2)), "45.00", 2,
+                NamedTextColor.YELLOW, TextColor.color(0xFFAA00));
+        assertGradient(characterColors(bar.name().children().get(4)), "150", 0,
+                NamedTextColor.RED, NamedTextColor.DARK_RED);
+        assertThat(bar.color()).isEqualTo(BossBar.Color.YELLOW);
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        verify(player).showBossBar(bar);
+    }
+
+    private static void assertGradient(List<TextColor> colors, String text, int start, TextColor light,
+            TextColor dark) {
+        assertThat(colors).hasSize(text.length());
+        for (int i = 0; i < start; i++) {
+            assertThat(colors.get(i)).isEqualTo(light);
+        }
+        int length = text.length() - start;
+        assertThat(colors.get(start)).isEqualTo(light);
+        if (length > 1) {
+            assertThat(colors.getLast()).isEqualTo(dark);
+        }
+        for (int i = 1; i < length - 1; i++) {
+            assertThat(colors.get(start + i)).isEqualTo(TextColor.lerp((float) i / (length - 1), light, dark));
+        }
+    }
+
+    private static List<TextColor> characterColors(Component component) {
+        List<TextColor> colors = new ArrayList<>();
+        collectCharacterColors(component, null, colors);
+        return colors;
+    }
+
+    private static void collectCharacterColors(Component component, TextColor inherited, List<TextColor> colors) {
+        TextColor color = component.color() == null ? inherited : component.color();
+        if (component instanceof TextComponent text) {
+            for (int i = 0; i < text.content().length(); i++) {
+                colors.add(color);
+            }
+        }
+        component.children().forEach(child -> collectCharacterColors(child, color, colors));
+    }
+
+    private static String plain(BossBar bar) {
+        return PlainTextComponentSerializer.plainText().serialize(bar.name());
+    }
+
+    private void join(Player player) {
+        PlayerJoinEvent event = mock(PlayerJoinEvent.class);
+        when(event.getPlayer()).thenReturn(player);
+        service.onJoin(event);
+    }
+
+    private Player player(int ping) {
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.getPing()).thenReturn(ping);
+        when(player.isOnline()).thenReturn(true);
+        when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        return player;
+    }
+
+    private BossBar shownBar(Player player) {
+        ArgumentCaptor<BossBar> captor = ArgumentCaptor.forClass(BossBar.class);
+        verify(player).showBossBar(captor.capture());
+        return captor.getValue();
+    }
+}

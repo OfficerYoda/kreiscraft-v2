@@ -145,7 +145,6 @@ class ChatFormatListenerTest {
         chatBridge.subscribe(captured::add);
 
         ChatFormatConfig config = new ChatFormatConfig(
-                org.bukkit.event.EventPriority.LOWEST,
                 false,
                 "<kc-prefix> <player-prefix><name-colored><player-suffix><gray>: <reset><body>");
         listenerWith(config).onChat(event);
@@ -166,7 +165,6 @@ class ChatFormatListenerTest {
         chatBridge.subscribe(captured::add);
 
         ChatFormatConfig config = new ChatFormatConfig(
-                null,
                 false,
                 "<kc-prefix> <player-prefix><name-colored><player-suffix>: <body>");
         listenerWith(config).onChat(event);
@@ -216,7 +214,7 @@ class ChatFormatListenerTest {
         List<ChatBridgeEvent> captured = new ArrayList<>();
         chatBridge.subscribe(captured::add);
 
-        ChatFormatConfig config = new ChatFormatConfig(null, false, null);
+        ChatFormatConfig config = new ChatFormatConfig(false, null);
         listenerWith(config).onChat(event);
 
         assertThat(captured).hasSize(1);
@@ -237,7 +235,7 @@ class ChatFormatListenerTest {
         List<ChatBridgeEvent> captured = new ArrayList<>();
         chatBridge.subscribe(captured::add);
 
-        ChatFormatConfig config = new ChatFormatConfig(null, true, null);
+        ChatFormatConfig config = new ChatFormatConfig(true, null);
         listenerWith(config).onChat(event);
 
         assertThat(captured).hasSize(1);

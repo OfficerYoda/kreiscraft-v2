@@ -20,7 +20,7 @@ server-config:
   category:
     modules: "Modules"
     core: "Core"
-    admin: "Links"
+    admin: "Admin"
     ai-chat: "AI Chat"
     api: "HTTP API"
     anti-cheat: "Anti-Cheat"
@@ -50,6 +50,14 @@ server-config:
     admin-links-website: "Website"
     admin-links-discord: "Discord"
     admin-links-youtube: "YouTube"
+    admin-tps-bar-mspt-green-max: "MSPT green maximum"
+    admin-tps-bar-mspt-yellow-max: "MSPT yellow maximum"
+    admin-tps-bar-tps-green-min: "TPS green minimum"
+    admin-tps-bar-tps-yellow-min: "TPS yellow minimum"
+    admin-tps-bar-ping-green-max: "Ping green maximum"
+    admin-tps-bar-ping-yellow-max: "Ping yellow maximum"
+    admin-tps-bar-mspt-empty: "MSPT at empty bar"
+    admin-tps-bar-mspt-full: "MSPT at full bar"
     ai-chat-ai-trigger: "AI Trigger"
     ai-chat-context-msg-count: "Context Messages Count"
     ai-chat-always-supported-players: "Always supported players"
@@ -128,6 +136,10 @@ admin:
   lastonline-never: "<prefix> <gold><player></gold><gray> has never been online."
   ping: "<prefix> <gold><player></gold><gray> Ping: <aqua><ping> ms"
   tps: "<prefix> <gray>TPS:</gray> <aqua><tps>"
+  tps-bar:
+    title: "<gray>TPS: <tps> <gray>MSPT: <mspt> <gray>Ping: <ping>ms"
+    enabled: "<prefix> <green>Performance bar enabled."
+    disabled: "<prefix> <gray>Performance bar disabled."
   statistic: "<prefix> <gold><player></gold><gray> <aqua><stat>: <value>"
   sudo-executed: "<prefix> <gray>sudo <gold><player></gold><gray>: <text>"
   help:
@@ -293,8 +305,8 @@ update-mode:
   kick-message: |-
     <gray>===================================
     <red><bold>>> UPDATEMODE <<
-    <gray>Kreiscraft is currently receiving <blue>UPDATES<gray>!
-    <gray>□ <blue>Kreiscraft <gray>□
+    <gray>Kreiscraft is currently receiving <green>UPDATES<gray>!
+    <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 wither:
   explosion-title: "<red>Explosion</red>"

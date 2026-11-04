@@ -48,6 +48,11 @@ public final class DefaultPlayerPreferencesService implements PlayerPreferencesS
         update(playerId, prefs -> prefs.withEffectsParticle(particle));
     }
 
+    @Override
+    public void setTpsBarEnabled(UUID playerId, boolean enabled) {
+        update(playerId, prefs -> prefs.withTpsBarEnabled(enabled));
+    }
+
     private void update(UUID playerId, UnaryOperator<PlayerPreferences> mutator) {
         data.update(map -> map.put(
                 playerId, mutator.apply(map.getOrDefault(playerId, PlayerPreferences.empty()))));

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Locale;
 import org.bukkit.Server;
 import org.bukkit.Statistic;
 import org.mockbukkit.mockbukkit.MockBukkit;
@@ -81,15 +82,38 @@ class PlaceholderResolverTest {
         when(mockServer.getTPS()).thenReturn(new double[] {21.5});
         PlaceholderResolver r =
                 new PlaceholderResolver(mockServer, ZoneId.of("UTC"), Clock.systemUTC());
-        assertThat(r.resolveString("%tps%", null)).isEqualTo("20.0");
+        assertThat(r.resolveString("%tps%", null)).isEqualTo("20.00");
     }
 
     @Test
-    void resolvesTpsRoundedToAtMostTwoDecimals() {
+    void resolvesTpsRoundedToTwoDecimals() {
         Server mockServer = mock(Server.class);
         when(mockServer.getTPS()).thenReturn(new double[] {19.876});
         PlaceholderResolver r =
                 new PlaceholderResolver(mockServer, ZoneId.of("UTC"), Clock.systemUTC());
         assertThat(r.resolveString("%tps%", null)).isEqualTo("19.88");
+    }
+
+    @Test
+    void resolvesMsptWithoutPlayerContext() {
+        Server mockServer = mock(Server.class);
+        when(mockServer.getAverageTickTime()).thenReturn(12.345);
+        PlaceholderResolver r = new PlaceholderResolver(mockServer, ZoneId.of("UTC"), Clock.systemUTC());
+        assertThat(r.resolveString("%mspt%", null)).isEqualTo("12.35");
+    }
+
+    @Test
+    void performanceValues_useStableDecimalSeparatorUnderGermanLocale() {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.GERMANY);
+            Server mockServer = mock(Server.class);
+            when(mockServer.getTPS()).thenReturn(new double[] {20.0});
+            when(mockServer.getAverageTickTime()).thenReturn(5.0);
+            PlaceholderResolver r = new PlaceholderResolver(mockServer, ZoneId.of("UTC"), Clock.systemUTC());
+            assertThat(r.resolveString("%tps% / %mspt%", null)).isEqualTo("20.00 / 5.00");
+        } finally {
+            Locale.setDefault(previous);
+        }
     }
 }

@@ -13,6 +13,8 @@ import de.kreiscraft.modules.admin.AdminModule;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
 import de.kreiscraft.testsupport.CapturingCommandRegistrar;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -132,6 +134,7 @@ class RemovedStylePreviewTest {
     private CapturingCommandRegistrar enableAdminModule() {
         CapturingCommandRegistrar registrar = new CapturingCommandRegistrar();
         ServiceRegistry services = new ServiceRegistry();
+        services.publish(PlayerPreferencesService.class, new InMemoryPlayerPreferencesService());
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));

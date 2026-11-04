@@ -125,8 +125,7 @@ class ServerConfigSchemaTest {
                                 || path.contains("debug")
                                 || path.contains("auto-save-interval")
                                 || path.contains("active")
-                                || path.contains("has-started")
-                                || path.contains("event-priority"));
+                                || path.contains("has-started"));
     }
 
     @Test
@@ -145,6 +144,25 @@ class ServerConfigSchemaTest {
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
         assertThat(lifecycle(schema, "modules", "wither", "death-explosion-power"))
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+    }
+
+    @Test
+    void performanceBar_exposesAllThresholdsAndFillEndpointsAsHotReloadableNumbers() {
+        var fields = ServerConfigSchema.editableFields().stream()
+                .filter(field -> field.path().size() == 4 && field.path().get(1).equals("admin")
+                        && field.path().get(2).equals("tps-bar"))
+                .toList();
+
+        assertThat(fields).extracting(field -> field.path().get(3)).containsExactly(
+                "mspt-green-max", "mspt-yellow-max", "tps-green-min", "tps-yellow-min",
+                "ping-green-max", "ping-yellow-max", "mspt-empty", "mspt-full");
+        for (ConfigField field : fields) {
+            assertThat(field.guiExposed()).isTrue();
+            assertThat(field.hotReloadable()).isTrue();
+            assertThat(field.type()).isEqualTo(field.path().get(3).toString().startsWith("ping-")
+                    ? ConfigFieldType.INTEGER
+                    : ConfigFieldType.DOUBLE);
+        }
     }
 
     @Test

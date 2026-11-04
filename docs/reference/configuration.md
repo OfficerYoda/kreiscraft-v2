@@ -17,7 +17,7 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist. The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
 
-Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, and effects preferences persist even when the settings GUI or the consuming module is disabled.
+Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, effects, and TPS bar preferences persist even when the settings GUI or the consuming module is disabled.
 
 ---
 
@@ -124,7 +124,6 @@ operator-owned runtime state written by commands stay out of the GUI:
 | `modules.api.host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` | Networking / infrastructure. |
 | `modules.anti-cheat.channel` | Plugin-messaging channel (networking). |
 | `modules.tablist.header`, `modules.tablist.footer` | Tab-list header/footer. |
-| `modules.chat-format.event-priority` | Listener priority is bound at registration and is not applied on reload. |
 | `core.timezone`, `core.auto-save-interval` | Low-level infrastructure / timezone and persistence settings. |
 | `modules.update-mode.active`, `modules.start-sequence.has-started` | Operator-owned state written by commands whose side effects the GUI must not bypass. |
 
@@ -145,6 +144,24 @@ Modules with no settings beyond `enabled` are not listed here: `invsee`, `settin
 | `links.website` | URI | `https://kreiscraft.de` | Server website URL, displayed in admin-facing output. |
 | `links.discord` | URI | `https://discord.gg/example` | Discord invite URL. |
 | `links.youtube` | URI | `https://youtube.com/@example` | YouTube channel URL. |
+| `tps-bar.mspt-green-max` | double | `40.0` | Highest green MSPT value (ms). |
+| `tps-bar.mspt-yellow-max` | double | `50.0` | Highest yellow MSPT value (ms); higher values are red. |
+| `tps-bar.tps-green-min` | double | `19.0` | Lowest green TPS value. |
+| `tps-bar.tps-yellow-min` | double | `15.0` | Lowest yellow TPS value; lower values are red. |
+| `tps-bar.ping-green-max` | int | `50` | Highest green ping (ms). |
+| `tps-bar.ping-yellow-max` | int | `120` | Highest yellow ping (ms); higher values are red. |
+| `tps-bar.mspt-empty` | double | `0.0` | MSPT at which the boss bar is empty. |
+| `tps-bar.mspt-full` | double | `50.0` | MSPT at which the boss bar is full. |
+
+All eight TPS bar numbers are editable in `/settings admin` → **Admin** and hot-reload on closing Server Configuration (or `/kreiscraft reload`). Existing installations without this section use and display the defaults without rewriting configuration just to read them. Open bars update on their next one-second refresh; no retoggle is needed.
+
+Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar has 20 notches; its color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
+
+TPS/MSPT whole-number digits stay in the light health color; the decimal point and two decimal digits fade from that color to dark green, orange (`#ffaa00`), or dark red. Ping fades across all its digits, with a single digit staying light. Labels and units keep their localized styling.
+
+`/tps bar` stores the player's on/off choice as `tps-bar-enabled` under their UUID in `data/settings.yml`, independent of the settings GUI module. The existing preferences auto-save and clean-shutdown flush persist it across server restarts. Missing keys default to off without a read-time write. Logout, permission loss, and module shutdown hide the live bar but preserve the preference; join and module startup restore enabled bars only for online players with `kreiscraft.admin.tps`.
+
+GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresholds are limited to 0–20; other values are limited to 100,000. `mspt-full` must be at least 0.1 and strictly greater than `mspt-empty`. Invalid YAML is rejected on load/reload rather than applying unusable fill endpoints.
 
 ---
 
@@ -203,7 +220,6 @@ Modules with no settings beyond `enabled` are not listed here: `invsee`, `settin
 
 | Key (relative to `modules.chat-format`) | Type | Default | Description |
 |---|---|---|---|
-| `event-priority` | EventPriority | `LOWEST` | Bukkit `AsyncChatEvent` priority at which the formatter registers. Values: `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, `MONITOR`. |
 | `allow-mini-message-in-body` | boolean | `false` | Whether players can use MiniMessage tags in their message body. |
 | `format` | String | `<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, `<body>`. Present player prefixes include one trailing space; present suffixes include one leading space. Empty affixes add no whitespace. |
 

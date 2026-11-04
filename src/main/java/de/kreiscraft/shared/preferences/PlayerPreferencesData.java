@@ -43,7 +43,8 @@ public final class PlayerPreferencesData extends DataFile<Map<UUID, PlayerPrefer
                     Optional.ofNullable(readBoolean(n.node("click-through"))),
                     Optional.ofNullable(readCombatDisplay(n.node("combat-display"))),
                     Optional.ofNullable(readBoolean(n.node("effects-enabled"))),
-                    Optional.ofNullable(readParticle(n.node("effects-particle")))));
+                    Optional.ofNullable(readParticle(n.node("effects-particle"))),
+                    Optional.ofNullable(readBoolean(n.node("tps-bar-enabled")))));
         }
         return map;
     }
@@ -71,6 +72,9 @@ public final class PlayerPreferencesData extends DataFile<Map<UUID, PlayerPrefer
             }
             if (prefs.effectsParticle().isPresent()) {
                 n.node("effects-particle").set(prefs.effectsParticle().get().name());
+            }
+            if (prefs.tpsBarEnabled().isPresent()) {
+                n.node("tps-bar-enabled").set(prefs.tpsBarEnabled().get());
             }
         }
     }

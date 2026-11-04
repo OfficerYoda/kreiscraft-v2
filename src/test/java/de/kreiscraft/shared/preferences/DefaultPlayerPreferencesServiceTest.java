@@ -83,4 +83,26 @@ class DefaultPlayerPreferencesServiceTest {
         assertThat(service.preferences(bob).clickThrough()).contains(false);
         assertThat(service.preferences(bob).language()).isEmpty();
     }
+
+    @Test
+    void tpsBarPreference_isIndependentAndPreservedByAllOtherSetters() {
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        assertThat(service.preferences(alice).tpsBarEnabled()).isEmpty();
+        service.setTpsBarEnabled(alice, true);
+        service.setLanguage(alice, PlayerLanguage.DE);
+        service.setClickThrough(alice, false);
+        service.setCombatDisplay(alice, CombatDisplay.CHAT);
+        service.setEffectsEnabled(alice, true);
+        service.setEffectsParticle(alice, Particle.FLAME);
+        PlayerPreferences before = service.preferences(alice);
+
+        assertThat(before.tpsBarEnabled()).contains(true);
+        assertThat(service.preferences(bob).tpsBarEnabled()).isEmpty();
+        service.setTpsBarEnabled(alice, false);
+        assertThat(service.preferences(alice)).isEqualTo(before.withTpsBarEnabled(false));
+        service.setTpsBarEnabled(bob, true);
+        assertThat(service.preferences(alice).tpsBarEnabled()).contains(false);
+        assertThat(service.preferences(bob).tpsBarEnabled()).contains(true);
+    }
 }

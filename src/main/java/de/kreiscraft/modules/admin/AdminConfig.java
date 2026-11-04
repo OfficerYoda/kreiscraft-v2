@@ -10,13 +10,20 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
  * longer owns a timezone of its own.
  */
 @ConfigSerializable
-public record AdminConfig(Links links) {
+public record AdminConfig(Links links, TpsBarConfig tpsBar) {
 
     public AdminConfig {
         if (links == null) {
             links = new Links(URI.create("https://kreiscraft.de"), URI.create("https://discord.gg/example"),
                     URI.create("https://youtube.com/@example"));
         }
+        if (tpsBar == null) {
+            tpsBar = new TpsBarConfig();
+        }
+    }
+
+    public AdminConfig(Links links) {
+        this(links, null);
     }
 
     @ConfigSerializable

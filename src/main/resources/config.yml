@@ -10,6 +10,15 @@ modules:
       website: "https://kreiscraft.de"
       discord: "https://discord.gg/example"
       youtube: "https://youtube.com/@example"
+    tps-bar:
+      mspt-green-max: 40.0
+      mspt-yellow-max: 50.0
+      tps-green-min: 19.0
+      tps-yellow-min: 15.0
+      ping-green-max: 50
+      ping-yellow-max: 120
+      mspt-empty: 0.0
+      mspt-full: 50.0
   api:
     enabled: true
     host: "0.0.0.0"
@@ -58,7 +67,6 @@ modules:
     prefix: "."
   chat-format:
     enabled: true
-    event-priority: LOWEST
     allow-mini-message-in-body: false
     format: "<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>"
   clickthrough:
@@ -125,12 +133,12 @@ modules:
     enabled: true
     update-interval: 20t
     header:
-      "<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime:
-      <blue>%playtime%\n"
+      "<gray><st>                <reset><gray>[<gold><bold>Kreiscraft<reset><gray>]<gray><st>                \n\n<reset><gray>Playtime:
+      <gold>%playtime%\n"
     footer:
-      "\n<gray>Uhrzeit: <blue>%system_time%\n\n<gray>Ping:
-      <blue>%ping%   <gray>Tps:
-      <blue>%tps%\n\n<gray><st>                <reset><gray>[<blue><bold>Kreiscraft<reset><gray>]<gray><st>                "
+      "\n<gray>Uhrzeit: <gold>%system_time%\n\n<gray>Ping:
+      <gold>%ping%   <gray>Tps:
+      <gold>%tps%\n\n<gray><st>                <reset><gray>[<gold><bold>Kreiscraft<reset><gray>]<gray><st>                "
   update-mode:
     enabled: true
     active: false
