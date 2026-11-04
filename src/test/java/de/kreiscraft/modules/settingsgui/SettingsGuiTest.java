@@ -65,6 +65,7 @@ class SettingsGuiTest {
     }
 
     private Gui root() {
+        player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
         return SettingsGui.buildRoot(settings, allEnabled(), messages, player, navigator);
     }
 
@@ -84,6 +85,16 @@ class SettingsGuiTest {
         gui.handleClick(slot, new Click(player, ClickType.LEFT));
     }
 
+    private static List<Integer> occupiedSlots(Gui gui) {
+        List<Integer> occupied = new ArrayList<>();
+        for (int slot = 0; slot < 27; slot++) {
+            if (gui.getItem(slot) != null) {
+                occupied.add(slot);
+            }
+        }
+        return occupied;
+    }
+
     // ------------------------------------------------------------------
     // Module awareness
     // ------------------------------------------------------------------
@@ -93,10 +104,7 @@ class SettingsGuiTest {
         Gui gui = rootWith(id -> false);
 
         assertThat(gui.getItem(SettingsGui.SLOT_LANGUAGE)).isNotNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_CLICK_THROUGH)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_COMBAT_DISPLAY)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
+        assertThat(occupiedSlots(gui)).containsExactly(26);
     }
 
     @Test
@@ -104,33 +112,87 @@ class SettingsGuiTest {
         Gui gui = rootWith(id -> id.equals("combat"));
 
         assertThat(gui.getItem(SettingsGui.SLOT_LANGUAGE)).as("language is always available").isNotNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_COMBAT_DISPLAY)).isNotNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_CLICK_THROUGH)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
+        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.DIAMOND_SWORD);
+        assertThat(occupiedSlots(gui)).containsExactly(13, 26);
     }
 
     @Test
     void root_showsEffectsWhenItsModuleIsEnabled() {
         Gui gui = rootWith(id -> id.equals("effects"));
 
-        assertThat(gui.getItem(SettingsGui.SLOT_EFFECTS)).isNotNull();
-        assertThat(gui.getItem(SettingsGui.SLOT_SIT)).isNull();
+        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.NETHER_STAR);
+        assertThat(occupiedSlots(gui)).containsExactly(13, 26);
+    }
+
+    @Test
+    void root_allModuleCombinations_useRequestedSlotsAndStableOrder() {
+        List<String> moduleIds = List.of("clickthrough", "combat", "effects", "sit");
+        List<Material> materials = List.of(
+                Material.LIME_DYE, Material.DIAMOND_SWORD, Material.NETHER_STAR, Material.WHITE_CARPET);
+        List<List<Integer>> layouts = List.of(
+                List.of(), List.of(13), List.of(11, 17), List.of(10, 13, 16), List.of(10, 12, 14, 16));
+        var permission = player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", false);
+
+        for (boolean canSit : List.of(false, true)) {
+            permission.setPermission("kreiscraft.sit.use", canSit);
+            for (int mask = 0; mask < 16; mask++) {
+                List<String> enabled = new ArrayList<>();
+                List<Material> expectedMaterials = new ArrayList<>();
+                for (int i = 0; i < moduleIds.size(); i++) {
+                    if ((mask & (1 << i)) != 0) {
+                        enabled.add(moduleIds.get(i));
+                        if (i != 3 || canSit) {
+                            expectedMaterials.add(materials.get(i));
+                        }
+                    }
+                }
+                Gui gui = SettingsGui.buildRoot(
+                        settings, enabled::contains, messages, player, navigator, true);
+                List<Integer> slots = layouts.get(expectedMaterials.size());
+                List<Integer> expectedOccupied = new ArrayList<>();
+                expectedOccupied.add(8);
+                expectedOccupied.addAll(slots);
+                expectedOccupied.add(26);
+
+                assertThat(occupiedSlots(gui)).as("mask %s, sit permission %s", mask, canSit)
+                        .containsExactlyElementsOf(expectedOccupied);
+                assertThat(stackAt(gui, 8).getType()).isEqualTo(Material.COMMAND_BLOCK);
+                assertThat(stackAt(gui, 26).getType()).isEqualTo(Material.PLAYER_HEAD);
+                for (int i = 0; i < slots.size(); i++) {
+                    assertThat(stackAt(gui, slots.get(i)).getType())
+                            .as("mask %s, sit permission %s, slot %s", mask, canSit, slots.get(i))
+                            .isEqualTo(expectedMaterials.get(i));
+                }
+            }
+        }
+    }
+
+    @Test
+    void clickThrough_centeredControl_stillTogglesAndKeepsItsLore() {
+        Gui gui = rootWith(id -> id.equals("clickthrough"));
+
+        assertThat(stackAt(gui, 13).getItemMeta().lore()).extracting(SettingsGuiTest::plain)
+                .containsExactly("settings-gui.click-through-lore");
+        click(gui, 13);
+
+        assertThat(settings.clickThrough(playerId)).isFalse();
+        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.RED_DYE);
+        assertThat(stackAt(gui, 13).getItemMeta().lore()).hasSize(1);
+        verify(preferences).setClickThrough(playerId, false);
     }
 
     @Test
     void sit_showsCushionOnlyWithModuleAndPermission() {
-        assertThat(rootWith(id -> id.equals("sit")).getItem(SettingsGui.SLOT_SIT)).isNull();
+        assertThat(occupiedSlots(rootWith(id -> id.equals("sit")))).containsExactly(26);
         player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", true);
 
         Gui gui = rootWith(id -> id.equals("sit"));
 
-        assertThat(SettingsGui.SLOT_SIT).isEqualTo(16);
         assertThat(gui.getItem(22)).as("the former sit slot stays empty").isNull();
-        assertThat(stackAt(gui, SettingsGui.SLOT_SIT).getType()).isEqualTo(Material.WHITE_CARPET);
-        assertThat(plain(stackAt(gui, SettingsGui.SLOT_SIT).getItemMeta().displayName()))
+        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.WHITE_CARPET);
+        assertThat(plain(stackAt(gui, 13).getItemMeta().displayName()))
                 .isEqualTo("settings-gui.sit");
-        assertThat(rootWith(id -> false).getItem(SettingsGui.SLOT_SIT)).isNull();
+        assertThat(occupiedSlots(rootWith(id -> false))).containsExactly(26);
     }
 
     @Test
@@ -140,7 +202,7 @@ class SettingsGuiTest {
         doReturn(true).when(actor).performCommand("sit");
         Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, actor, navigator);
 
-        gui.handleClick(SettingsGui.SLOT_SIT, new Click(actor, ClickType.LEFT));
+        gui.handleClick(16, new Click(actor, ClickType.LEFT));
 
         verify(actor).closeInventory();
         verify(actor).performCommand("sit");
@@ -153,7 +215,7 @@ class SettingsGuiTest {
         Gui gui = SettingsGui.buildRoot(settings, allEnabled(), messages, actor, navigator);
         attachment.setPermission("kreiscraft.sit.use", false);
 
-        gui.handleClick(SettingsGui.SLOT_SIT, new Click(actor, ClickType.LEFT));
+        gui.handleClick(16, new Click(actor, ClickType.LEFT));
 
         verify(actor, org.mockito.Mockito.never()).performCommand("sit");
     }
@@ -166,7 +228,7 @@ class SettingsGuiTest {
     void clickThrough_oneClick_mutatesExactlyOnce() {
         Gui gui = root();
 
-        click(gui, SettingsGui.SLOT_CLICK_THROUGH);
+        click(gui, 10);
 
         assertThat(settings.clickThrough(playerId)).isFalse();
         verify(preferences, times(1)).setClickThrough(playerId, false);
@@ -176,8 +238,8 @@ class SettingsGuiTest {
     void clickThrough_twoClicks_mutateTwice_withoutDebounce() {
         Gui gui = root();
 
-        click(gui, SettingsGui.SLOT_CLICK_THROUGH);
-        click(gui, SettingsGui.SLOT_CLICK_THROUGH);
+        click(gui, 10);
+        click(gui, 10);
 
         assertThat(settings.clickThrough(playerId)).isTrue();
         verify(preferences, times(2))
@@ -190,12 +252,12 @@ class SettingsGuiTest {
     @Test
     void combatDisplay_click_persistsAndIsReflectedOnReopen() {
         Gui first = root();
-        click(first, SettingsGui.SLOT_COMBAT_DISPLAY);
+        click(first, 12);
 
         assertThat(settings.combatDisplay(playerId)).isEqualTo(CombatDisplay.TITLE);
 
         Gui reopened = root();
-        ItemStack stack = stackAt(reopened, SettingsGui.SLOT_COMBAT_DISPLAY);
+        ItemStack stack = stackAt(reopened, 12);
         assertThat(stack.getType()).isEqualTo(Material.NETHERITE_SWORD);
         assertThat(plain(stack.getItemMeta().displayName()))
                 .isEqualTo("settings-gui.combat-display-title");
@@ -267,7 +329,7 @@ class SettingsGuiTest {
     void effectsControl_opensEffectsPage() {
         Gui gui = root();
 
-        click(gui, SettingsGui.SLOT_EFFECTS);
+        click(gui, 14);
 
         assertThat(navigator.pages).containsExactly(Page.EFFECTS);
     }

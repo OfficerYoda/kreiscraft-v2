@@ -8,9 +8,13 @@ import de.kreiscraft.modules.sit.commands.SitCommand;
 import de.kreiscraft.shared.preferences.CombatDisplay;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -33,17 +37,10 @@ import xyz.xenondevs.invui.item.ItemWrapper;
  * written through {@link SettingsService}; there is no time-based debounce, because InvUI dispatches
  * exactly one click to exactly one item.
  *
- * <p>Layout is intentionally fixed so tests (and players) can rely on stable slots:
- *
- * <pre>
- * Root page (3 rows)                 Effects page (3 rows)
- * slot  8  Server Config             slot 11  Effects on/off
- * slot 10  Click-Through             slot 15  Particle
- * slot 12  Combat display            slot 22  Back
- * slot 14  Effects (opens page)
- * slot 16  Sit (cushion)
- * slot 26  Language (bottom-right, flag head)
- * </pre>
+ * <p>The root feature row is laid out dynamically in this order: Click-Through, Combat display,
+ * Effects, Sit. Only visible controls count, including Sit's permission requirement. Slots are
+ * 13 for one control, 11/17 for two, 10/13/16 for three, and 10/12/14/16 for four.
+ * Language and Server Config remain in fixed corners; the Effects page is also fixed:
  */
 public final class SettingsGui {
 
@@ -62,10 +59,6 @@ public final class SettingsGui {
     // ---- Root-page slots (package-private for tests) ----
     static final int SLOT_LANGUAGE = 26;
     static final int SLOT_SERVER_CONFIG = 8;
-    static final int SLOT_CLICK_THROUGH = 10;
-    static final int SLOT_COMBAT_DISPLAY = 12;
-    static final int SLOT_EFFECTS = 14;
-    static final int SLOT_SIT = 16;
 
     /** Permission that reveals and opens the authorized Server Configuration editor. */
     public static final String SERVER_CONFIG_PERMISSION = "kreiscraft.settingsgui.admin";
@@ -133,17 +126,29 @@ public final class SettingsGui {
         if (serverConfig) {
             gui.setItem(SLOT_SERVER_CONFIG, serverConfigItem(messages, navigator));
         }
+        List<AbstractItem> controls = new ArrayList<>();
         if (SettingsControl.CLICK_THROUGH.isAvailable(modules)) {
-            gui.setItem(SLOT_CLICK_THROUGH, clickThroughItem(settings, messages));
+            controls.add(clickThroughItem(settings, messages));
         }
         if (SettingsControl.COMBAT_DISPLAY.isAvailable(modules)) {
-            gui.setItem(SLOT_COMBAT_DISPLAY, combatDisplayItem(settings, messages));
+            controls.add(combatDisplayItem(settings, messages));
         }
         if (SettingsControl.EFFECTS.isAvailable(modules)) {
-            gui.setItem(SLOT_EFFECTS, effectsLinkItem(messages, navigator));
+            controls.add(effectsLinkItem(messages, navigator));
         }
         if (modules.isEnabled("sit") && player.hasPermission(SitCommand.PERMISSION)) {
-            gui.setItem(SLOT_SIT, sitItem(messages));
+            controls.add(sitItem(messages));
+        }
+        List<Integer> slots = switch (controls.size()) {
+            case 0 -> List.of();
+            case 1 -> List.of(13);
+            case 2 -> List.of(11, 17);
+            case 3 -> List.of(10, 13, 16);
+            case 4 -> List.of(10, 12, 14, 16);
+            default -> throw new IllegalStateException("Too many settings controls");
+        };
+        for (int i = 0; i < controls.size(); i++) {
+            gui.setItem(slots.get(i), controls.get(i));
         }
         return gui;
     }
@@ -223,7 +228,10 @@ public final class SettingsGui {
                 String key =
                         on ? "settings-gui.click-through-on" : "settings-gui.click-through-off";
                 Material material = on ? Material.LIME_DYE : Material.RED_DYE;
-                return new ItemWrapper(named(material, messages.renderFor(viewer, key)));
+                ItemStack stack = named(material, messages.renderFor(viewer, key));
+                stack.editMeta(meta -> meta.lore(loreLines(
+                        messages.renderFor(viewer, "settings-gui.click-through-lore"))));
+                return new ItemWrapper(stack);
             }
 
             @Override
@@ -387,6 +395,36 @@ public final class SettingsGui {
             case ACTIONBAR -> Material.DIAMOND_SWORD;
             case TITLE -> Material.NETHERITE_SWORD;
         };
+    }
+
+    /** Splits rendered lore at line breaks without losing inherited MiniMessage formatting. */
+    static List<Component> loreLines(Component message) {
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.empty());
+        appendLoreLines(message, Style.empty(), lines);
+        return List.copyOf(lines);
+    }
+
+    private static void appendLoreLines(Component component, Style inherited, List<Component> lines) {
+        Style style = component.style().merge(inherited, Style.Merge.Strategy.IF_ABSENT_ON_TARGET);
+        if (component instanceof TextComponent text) {
+            String[] parts = text.content().split("\\R", -1);
+            for (int i = 0; i < parts.length; i++) {
+                if (i > 0) {
+                    lines.add(Component.empty());
+                }
+                if (!parts[i].isEmpty()) {
+                    int last = lines.size() - 1;
+                    lines.set(last, lines.get(last).append(Component.text(parts[i], style)));
+                }
+            }
+        } else {
+            int last = lines.size() - 1;
+            lines.set(last, lines.get(last).append(component.children(List.of()).style(style)));
+        }
+        for (Component child : component.children()) {
+            appendLoreLines(child, style, lines);
+        }
     }
 
     private static ItemStack named(Material material, Component displayName) {

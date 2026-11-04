@@ -164,7 +164,7 @@ Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoi
 
 ### Description
 
-Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign or a filled item frame. Target acquisition uses a fixed-distance ray-cast, matching the original behaviour; the per-player toggle is read from the always-available `PlayerPreferencesService`, falling back to the module default (enabled) when no preference is stored.
+Allows players with the clickthrough setting enabled to open containers and Ender Chests by right-clicking an adjacent wall sign (including wall hanging signs) or a filled item frame while not sneaking. Signs target the adjacent block opposite the clicked face; item frames use a ray-cast with a fixed maximum distance of six blocks. Empty frames and non-container targets are ignored. The per-player toggle is read from the always-available `PlayerPreferencesService`, falling back to the module default (enabled) when no preference is stored.
 
 ---
 
@@ -294,9 +294,11 @@ Schedules a server restart with a countdown. The start announcement is sent per 
 
 ### Description
 
-Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, and effects (enabled state and particle) preferences, plus a Sit cushion in root slot 16 that closes the menu and runs `/sit`. The cushion requires `kreiscraft.sit.use`. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Effects has its own page.
+Opens an InvUI-backed Player Settings GUI for the invoking player. It exposes language, click-through, combat display, and effects (enabled state and particle) preferences, plus a Sit cushion that closes the menu and runs `/sit`. The cushion requires `kreiscraft.sit.use`. Every control is module-aware: a control is shown only when the module that consumes it is enabled, so a player never sees a setting for a feature the server does not run; language belongs to the always-available preferences boundary and is always present. Visible feature controls retain the order click-through, combat display, effects, sit. One control uses slot 13; two use 11/17; three use 10/13/16; four use 10/12/14/16. Language stays at slot 26 and the authorized Server Config entry stays at slot 8, neither counting toward the feature layout. Effects has its own page. Click-through's localized lore explains its supported obstacles and the sneaking exception.
 
 The GUI owns no persistence of its own: it reads and writes the always-available `PlayerPreferencesService`, which stores preferences in `data/settings.yml`. This means combat and click-through keep working from stored preferences even when `settings-gui` is disabled. Each click is applied to the preferences boundary immediately; there is no time-based debounce, because InvUI dispatches one click to one item, so one physical click produces one logical mutation.
+
+Click-through lore uses one `settings-gui.click-through-lore` translation entry. A YAML literal block (`|-`) renders one lore line per line of text, preserving blank lines and inherited MiniMessage formatting.
 
 #### Server Configuration editor
 

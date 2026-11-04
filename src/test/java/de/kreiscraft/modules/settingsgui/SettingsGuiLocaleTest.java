@@ -8,6 +8,7 @@ import de.kreiscraft.modules.settingsgui.SettingsGui.Page;
 import de.kreiscraft.shared.preferences.PlayerLanguage;
 import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,10 +78,63 @@ class SettingsGuiLocaleTest {
         Gui gui = SettingsGui.buildRoot(settings, id -> true, messages, alice, (p, page) -> {
         });
 
-        assertThat(label(alice, gui, SettingsGui.SLOT_COMBAT_DISPLAY)).contains("Combat Display");
-        assertThat(label(bob, gui, SettingsGui.SLOT_COMBAT_DISPLAY)).contains("Combat-Anzeige");
-        assertThat(label(alice, gui, SettingsGui.SLOT_SIT)).contains("Cushion");
-        assertThat(label(bob, gui, SettingsGui.SLOT_SIT)).contains("Sitzkissen");
+        assertThat(label(alice, gui, 12)).contains("Combat Display");
+        assertThat(label(bob, gui, 12)).contains("Combat-Anzeige");
+        assertThat(label(alice, gui, 16)).contains("Cushion");
+        assertThat(label(bob, gui, 16)).contains("Sitzkissen");
+    }
+
+    @Test
+    void clickThroughLore_isLocalisedAndDescribesSupportedInteractions() {
+        PlayerMock alice = server.addPlayer("Alice");
+        PlayerMock bob = server.addPlayer("Bob");
+        Gui gui = SettingsGui.buildRoot(settings, id -> id.equals("clickthrough"), messages, alice, (p, page) -> {
+        });
+
+        assertThat(gui.getItem(13).getItemProvider(alice).get().getItemMeta().lore())
+                .extracting(SettingsGuiLocaleTest::plain)
+                .containsExactly(
+                        "Open chests and other containers through",
+                        "signs and item frames.",
+                        "Sneaking keeps the normal interaction.");
+        assertThat(gui.getItem(13).getItemProvider(bob).get().getItemMeta().lore())
+                .extracting(SettingsGuiLocaleTest::plain)
+                .containsExactly(
+                        "Öffne Truhen und andere Behälter durch",
+                        "Schilder und Rahmen.",
+                        "Beim Schleichen bleibt die normale Interaktion.");
+        for (Component line : gui.getItem(13).getItemProvider(alice).get().getItemMeta().lore()) {
+            assertThat(textRunColors(line)).containsExactly(NamedTextColor.GRAY);
+        }
+    }
+
+    @Test
+    void clickThroughLore_preservesCustomLineCountBlankLinesAndFormatting(@TempDir Path tmp) throws IOException {
+        Files.createDirectories(tmp.resolve("lang"));
+        Files.writeString(tmp.resolve("lang/en.yml"), """
+                settings-gui:
+                  click-through-on: "<green>Click-Through: On"
+                  click-through-lore: |-
+                    <gray>First
+                    <bold>Second
+
+                    Fourth</bold>
+                    <red>Fifth
+                """);
+        MessageService customMessages = new ConfigurateMessageService(
+                tmp, getClass().getClassLoader(), "en", server);
+        PlayerMock alice = server.addPlayer("Alice");
+        Gui gui = SettingsGui.buildRoot(settings, id -> id.equals("clickthrough"), customMessages, alice, (p, page) -> {
+        });
+
+        List<Component> lore = gui.getItem(13).getItemProvider(alice).get().getItemMeta().lore();
+        assertThat(lore).extracting(SettingsGuiLocaleTest::plain)
+                .containsExactly("First", "Second", "", "Fourth", "Fifth");
+        assertThat(textRunColors(lore.get(1))).containsExactly(NamedTextColor.GRAY);
+        assertThat(textRunColors(lore.get(3))).containsExactly(NamedTextColor.GRAY);
+        assertThat(lore.get(1).children().getFirst().decoration(net.kyori.adventure.text.format.TextDecoration.BOLD))
+                .isEqualTo(net.kyori.adventure.text.format.TextDecoration.State.TRUE);
+        assertThat(textRunColors(lore.get(4))).containsExactly(NamedTextColor.RED);
     }
 
     @Test

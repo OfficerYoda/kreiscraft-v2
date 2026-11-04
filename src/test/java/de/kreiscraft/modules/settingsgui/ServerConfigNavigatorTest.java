@@ -154,9 +154,9 @@ class ServerConfigNavigatorTest {
 
         assertThat(plain(lastTitle)).isEqualTo("Settings");
         assertThat(itemLabel(SettingsGui.SLOT_LANGUAGE)).isEqualTo("Language: English");
-        assertThat(itemLabel(SettingsGui.SLOT_CLICK_THROUGH)).isEqualTo("Click-Through: On");
-        assertThat(itemLabel(SettingsGui.SLOT_COMBAT_DISPLAY)).isEqualTo("Combat Display: Action Bar");
-        assertThat(itemLabel(SettingsGui.SLOT_EFFECTS)).isEqualTo("Effects (click to open)");
+        assertThat(itemLabel(10)).isEqualTo("Click-Through: On");
+        assertThat(itemLabel(13)).isEqualTo("Combat Display: Action Bar");
+        assertThat(itemLabel(16)).isEqualTo("Effects (click to open)");
         assertThat(lastGui.getItem(22)).isNull();
     }
 

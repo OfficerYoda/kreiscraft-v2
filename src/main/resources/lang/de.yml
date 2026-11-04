@@ -248,8 +248,12 @@ settings-gui:
   language: "<gray>Sprache: <aqua><language>"
   language-de: "Deutsch"
   language-en: "Englisch"
-  click-through-on: "<green>Click-Through: An"
-  click-through-off: "<red>Click-Through: Aus"
+  click-through-on: "<gray>Click-Through: <green>An"
+  click-through-off: "<gray>Click-Through: <red>Aus"
+  click-through-lore: |-
+    <gray>Öffne Truhen und andere Behälter durch
+    Schilder und Rahmen.
+    Beim Schleichen bleibt die normale Interaktion.
   combat-display-chat: "<gray>Combat-Anzeige: <aqua>Chat"
   combat-display-actionbar: "<gray>Combat-Anzeige: <aqua>Actionbar"
   combat-display-title: "<gray>Combat-Anzeige: <aqua>Titel"

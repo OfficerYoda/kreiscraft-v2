@@ -248,8 +248,12 @@ settings-gui:
   language: "<gray>Language: <aqua><language>"
   language-de: "German"
   language-en: "English"
-  click-through-on: "<green>Click-Through: On"
-  click-through-off: "<red>Click-Through: Off"
+  click-through-on: "<gray>Click-Through: <green>On"
+  click-through-off: "<gray>Click-Through: <red>Off"
+  click-through-lore: |-
+    <gray>Open chests and other containers through
+    signs and item frames.
+    Sneaking keeps the normal interaction.
   combat-display-chat: "<gray>Combat Display: <aqua>Chat"
   combat-display-actionbar: "<gray>Combat Display: <aqua>Action Bar"
   combat-display-title: "<gray>Combat Display: <aqua>Title"
