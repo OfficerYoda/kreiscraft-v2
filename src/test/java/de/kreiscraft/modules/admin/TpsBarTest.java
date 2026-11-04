@@ -12,6 +12,12 @@ import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.ConfigurateMessageService;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
+import de.kreiscraft.core.config.AutoSaveTask;
+import de.kreiscraft.core.scheduler.Scheduler;
+import de.kreiscraft.shared.preferences.DefaultPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesData;
+import java.time.Duration;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +31,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -39,6 +46,7 @@ class TpsBarTest {
     private MessageService messages;
     private TpsBar service;
     private TpsBarConfig settings;
+    private InMemoryPlayerPreferencesService preferences;
 
     @BeforeEach
     void setUp() {
@@ -52,7 +60,8 @@ class TpsBarTest {
                         .append(invocation.getArgument(5, Component.class)).append(Component.text(" / "))
                         .append(invocation.getArgument(7, Component.class)));
         settings = new TpsBarConfig();
-        service = new TpsBar(messages, server, () -> settings);
+        preferences = new InMemoryPlayerPreferencesService();
+        service = new TpsBar(messages, server, () -> settings, preferences);
     }
 
     @Test
@@ -60,12 +69,14 @@ class TpsBarTest {
         Player player = player(42);
 
         assertThat(service.toggle(player)).isTrue();
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
         BossBar bar = shownBar(player);
         assertThat(plain(bar)).isEqualTo("20.00 / 12.35 / 42");
         assertThat(bar.color()).isEqualTo(BossBar.Color.GREEN);
         assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
         assertThat(bar.progress()).isCloseTo(12.345f / 50.0f, org.assertj.core.data.Offset.offset(0.00001f));
         assertThat(service.toggle(player)).isFalse();
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(false);
         verify(player).hideBossBar(bar);
         clearInvocations(messages, server);
         service.tick();
@@ -98,7 +109,7 @@ class TpsBarTest {
     }
 
     @Test
-    void quit_clearsSessionAndNextLoginStartsWithBarOff() {
+    void quit_hidesBarButNextLoginRestoresSavedChoice() {
         Player player = player(42);
         service.toggle(player);
         BossBar bar = shownBar(player);
@@ -110,7 +121,106 @@ class TpsBarTest {
         clearInvocations(messages, server);
         service.tick();
         verifyNoInteractions(messages, server);
-        assertThat(service.toggle(player)).isTrue();
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+        Player reconnected = player(99);
+        UUID playerId = player.getUniqueId();
+        when(reconnected.getUniqueId()).thenReturn(playerId);
+        join(reconnected);
+        BossBar restored = shownBar(reconnected);
+        assertThat(restored).isNotSameAs(bar);
+        assertThat(plain(restored)).isEqualTo("20.00 / 12.35 / 99");
+        assertThat(service.toggle(reconnected)).isFalse();
+        verify(reconnected).hideBossBar(restored);
+    }
+
+    @Test
+    void join_keepsUnsetAndExplicitlyDisabledBarsOff() {
+        Player unset = player(42);
+        Player disabled = player(99);
+        preferences.setTpsBarEnabled(disabled.getUniqueId(), false);
+
+        join(unset);
+        join(disabled);
+
+        verify(unset, never()).showBossBar(any());
+        verify(disabled, never()).showBossBar(any());
+        assertThat(preferences.preferences(unset.getUniqueId()).tpsBarEnabled()).isEmpty();
+        assertThat(preferences.preferences(disabled.getUniqueId()).tpsBarEnabled()).contains(false);
+        verifyNoInteractions(messages, server);
+    }
+
+    @Test
+    void join_isIdempotentAndRestoresOnlyTheEnabledPlayer() {
+        Player alice = player(42);
+        Player bob = player(99);
+        preferences.setTpsBarEnabled(alice.getUniqueId(), true);
+
+        join(alice);
+        join(alice);
+        join(bob);
+
+        BossBar bar = shownBar(alice);
+        verify(bob, never()).showBossBar(any());
+        assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        assertThat(preferences.preferences(alice.getUniqueId()).tpsBarEnabled()).contains(true);
+    }
+
+    @Test
+    void join_doesNotShowSavedBarWithoutPermissionOrWhileOffline() {
+        Player denied = player(42);
+        Player offline = player(99);
+        preferences.setTpsBarEnabled(denied.getUniqueId(), true);
+        preferences.setTpsBarEnabled(offline.getUniqueId(), true);
+        when(denied.hasPermission("kreiscraft.admin.tps")).thenReturn(false);
+        when(offline.isOnline()).thenReturn(false);
+
+        join(denied);
+        service.restore(offline);
+
+        verify(denied, never()).showBossBar(any());
+        verify(offline, never()).showBossBar(any());
+        assertThat(preferences.preferences(denied.getUniqueId()).tpsBarEnabled()).contains(true);
+        assertThat(preferences.preferences(offline.getUniqueId()).tpsBarEnabled()).contains(true);
+        verifyNoInteractions(messages, server);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void restart_restoresSavedOnAndOffStatesFromDisk(boolean enabled, @TempDir Path tmp) throws Exception {
+        PlayerPreferencesData data = new PlayerPreferencesData(tmp);
+        data.load();
+        var stored = new DefaultPlayerPreferencesService(data);
+        service = new TpsBar(messages, server, () -> settings, stored);
+        Player original = player(42);
+        service.toggle(original);
+        if (!enabled) {
+            service.toggle(original);
+        }
+        // The bootstrap flushes registered data files on shutdown before disabling modules.
+        new AutoSaveTask(mock(Scheduler.class), Duration.ofMinutes(5), () -> List.of(data)).stop();
+        service.shutdown();
+
+        PlayerPreferencesData reloaded = new PlayerPreferencesData(tmp);
+        reloaded.load();
+        var afterRestart = new DefaultPlayerPreferencesService(reloaded);
+        service = new TpsBar(messages, server, () -> settings, afterRestart);
+        Player returning = player(150);
+        UUID playerId = original.getUniqueId();
+        when(returning.getUniqueId()).thenReturn(playerId);
+        join(returning);
+
+        assertThat(afterRestart.preferences(returning.getUniqueId()).tpsBarEnabled()).contains(enabled);
+        if (enabled) {
+            BossBar bar = shownBar(returning);
+            assertThat(plain(bar)).isEqualTo("20.00 / 12.35 / 150");
+            assertThat(bar.overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+            assertGradient(characterColors(bar.name().children().get(4)), "150", 0,
+                    NamedTextColor.RED, NamedTextColor.DARK_RED);
+            assertThat(service.toggle(returning)).isFalse();
+        } else {
+            verify(returning, never()).showBossBar(any());
+            assertThat(service.toggle(returning)).isTrue();
+        }
     }
 
     @Test
@@ -126,6 +236,7 @@ class TpsBarTest {
 
         verify(player).hideBossBar(bar);
         verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
     }
 
     @Test
@@ -140,6 +251,10 @@ class TpsBarTest {
 
         verify(player).hideBossBar(bar);
         verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(player.getUniqueId()).tpsBarEnabled()).contains(true);
+        when(player.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        join(player);
+        assertThat(service.toggle(player)).isFalse();
     }
 
     @Test
@@ -159,6 +274,8 @@ class TpsBarTest {
         verify(alice).hideBossBar(aliceBar);
         verify(bob).hideBossBar(bobBar);
         verifyNoInteractions(messages, server);
+        assertThat(preferences.preferences(alice.getUniqueId()).tpsBarEnabled()).contains(true);
+        assertThat(preferences.preferences(bob.getUniqueId()).tpsBarEnabled()).contains(true);
     }
 
     @ParameterizedTest
@@ -237,7 +354,7 @@ class TpsBarTest {
         when(server.getTPS()).thenReturn(new double[] {20.0});
         when(server.getAverageTickTime()).thenReturn(60.0);
         service = new TpsBar(new ConfigurateMessageService(tmp, getClass().getClassLoader(), language, server),
-                server, () -> settings);
+                server, () -> settings, preferences);
         Player player = player(100);
         service.toggle(player);
         BossBar bar = shownBar(player);
@@ -340,6 +457,12 @@ class TpsBarTest {
 
     private static String plain(BossBar bar) {
         return PlainTextComponentSerializer.plainText().serialize(bar.name());
+    }
+
+    private void join(Player player) {
+        PlayerJoinEvent event = mock(PlayerJoinEvent.class);
+        when(event.getPlayer()).thenReturn(player);
+        service.onJoin(event);
     }
 
     private Player player(int ping) {

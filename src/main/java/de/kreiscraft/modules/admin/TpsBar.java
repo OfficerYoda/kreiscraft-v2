@@ -2,6 +2,7 @@ package de.kreiscraft.modules.admin;
 
 import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -15,33 +16,50 @@ import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 
-/** Session-only, per-player performance bars. All access happens on the server thread. */
+/** Per-player performance bars with persisted visibility. All access happens on the server thread. */
 public final class TpsBar implements PriorityListener {
 
     private final MessageService messages;
     private final Server server;
     private final Supplier<TpsBarConfig> config;
+    private final PlayerPreferencesService preferences;
     private final Map<UUID, View> views = new HashMap<>();
 
-    public TpsBar(MessageService messages, Server server, Supplier<TpsBarConfig> config) {
+    public TpsBar(MessageService messages, Server server, Supplier<TpsBarConfig> config,
+            PlayerPreferencesService preferences) {
         this.messages = messages;
         this.server = server;
         this.config = config;
+        this.preferences = preferences;
     }
 
-    /** Toggles the player's bar and returns whether it is now visible. */
+    /** Toggles the player's saved choice and returns whether the bar is now enabled. */
     public boolean toggle(Player player) {
+        boolean enabled = !preferences.preferences(player.getUniqueId()).tpsBarEnabled().orElse(false);
+        preferences.setTpsBarEnabled(player.getUniqueId(), enabled);
         View previous = views.remove(player.getUniqueId());
         if (previous != null) {
             previous.hide();
-            return false;
+        }
+        if (enabled) {
+            restore(player);
+        }
+        return enabled;
+    }
+
+    /** Restores a saved choice without toggling or writing it; safe to call more than once. */
+    void restore(Player player) {
+        if (!player.isOnline() || !player.hasPermission("kreiscraft.admin.tps")
+                || views.containsKey(player.getUniqueId())
+                || !preferences.preferences(player.getUniqueId()).tpsBarEnabled().orElse(false)) {
+            return;
         }
         Display display = display(player);
         BossBar bar = BossBar.bossBar(display.title(), display.progress(), display.color(), BossBar.Overlay.NOTCHED_20);
         views.put(player.getUniqueId(), new View(player, bar));
         player.showBossBar(bar);
-        return true;
     }
 
     public void tick() {
@@ -56,6 +74,11 @@ public final class TpsBar implements PriorityListener {
                 view.bar().name(display.title()).color(display.color()).progress(display.progress());
             }
         }
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        restore(event.getPlayer());
     }
 
     @EventHandler

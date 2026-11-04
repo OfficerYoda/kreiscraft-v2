@@ -15,6 +15,8 @@ import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.testsupport.CapturingCommandRegistrar;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -75,6 +77,7 @@ class AdminModuleTest {
         ServiceRegistry services = new ServiceRegistry();
         PlaceholderResolver resolver = mock(PlaceholderResolver.class);
         services.publish(PlaceholderResolver.class, resolver);
+        services.publish(PlayerPreferencesService.class, new InMemoryPlayerPreferencesService());
         CapturingMessageService messages = new CapturingMessageService();
         AdminModule module = new AdminModule();
         module.enable(new ModuleContext(modulePlugin, CommentedConfigurationNode.root(), messages, services,
@@ -113,9 +116,52 @@ class AdminModuleTest {
         assertThat(messages.renderedKeys).hasSize(2);
     }
 
+    @Test
+    void enable_restoresSavedBarsForAlreadyOnlinePlayersAndDisablePreservesChoice() {
+        Server metricServer = mock(Server.class);
+        JavaPlugin modulePlugin = mock(JavaPlugin.class);
+        when(modulePlugin.getServer()).thenReturn(metricServer);
+        when(metricServer.getTPS()).thenReturn(new double[] {20.0});
+        when(metricServer.getAverageTickTime()).thenReturn(25.0);
+        Player enabled = mock(Player.class);
+        Player disabled = mock(Player.class);
+        Player denied = mock(Player.class);
+        for (Player player : java.util.List.of(enabled, disabled, denied)) {
+            when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+            when(player.isOnline()).thenReturn(true);
+        }
+        when(enabled.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        when(disabled.hasPermission("kreiscraft.admin.tps")).thenReturn(true);
+        when(metricServer.getOnlinePlayers()).thenAnswer(invocation -> java.util.List.of(enabled, disabled, denied));
+        var preferences = new InMemoryPlayerPreferencesService();
+        preferences.setTpsBarEnabled(enabled.getUniqueId(), true);
+        preferences.setTpsBarEnabled(disabled.getUniqueId(), false);
+        preferences.setTpsBarEnabled(denied.getUniqueId(), true);
+        ServiceRegistry services = new ServiceRegistry();
+        services.publish(PlayerPreferencesService.class, preferences);
+        services.publish(PlaceholderResolver.class, mock(PlaceholderResolver.class));
+        var messages = new CapturingMessageService();
+        AdminModule module = new AdminModule();
+
+        module.enable(new ModuleContext(modulePlugin, CommentedConfigurationNode.root(), messages, services,
+                mock(Scheduler.class), new CapturingCommandRegistrar(), mock(EventBus.class)));
+
+        ArgumentCaptor<BossBar> shown = ArgumentCaptor.forClass(BossBar.class);
+        verify(enabled).showBossBar(shown.capture());
+        verify(disabled, org.mockito.Mockito.never()).showBossBar(any());
+        verify(denied, org.mockito.Mockito.never()).showBossBar(any());
+        assertThat(shown.getValue().progress()).isEqualTo(0.5f);
+        assertThat(shown.getValue().overlay()).isEqualTo(BossBar.Overlay.NOTCHED_20);
+        module.disable();
+        verify(enabled).hideBossBar(shown.getValue());
+        assertThat(preferences.preferences(enabled.getUniqueId()).tpsBarEnabled()).contains(true);
+        assertThat(preferences.preferences(denied.getUniqueId()).tpsBarEnabled()).contains(true);
+    }
+
     private CapturingCommandRegistrar enableAdminModule() {
         CapturingCommandRegistrar registrar = new CapturingCommandRegistrar();
         ServiceRegistry services = new ServiceRegistry();
+        services.publish(PlayerPreferencesService.class, new InMemoryPlayerPreferencesService());
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));

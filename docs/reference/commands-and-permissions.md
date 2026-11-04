@@ -20,7 +20,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/lastonline <player>` | — | `admin` | Show when a player was last online as a localized Europe/Berlin timestamp plus a localized relative duration. | `kreiscraft.admin.lastonline` | op |
 | `/ping [player]` | — | `admin` | Show a player's ping in milliseconds. | `kreiscraft.admin.ping` | true |
 | `/tps` | — | `admin` | Show server TPS. | `kreiscraft.admin.tps` | true |
-| `/tps bar` | — | `admin` | Toggle your TPS, MSPT and ping boss bar (players only). Updates every second; resets on logout or restart. | `kreiscraft.admin.tps` | true |
+| `/tps bar` | — | `admin` | Toggle your TPS, MSPT and ping boss bar (players only). Updates every second; remembers your choice across logout and server restarts. | `kreiscraft.admin.tps` | true |
 | `/statistic <player> <stat>` | — | `admin` | Show a player's Bukkit `Statistic` value. | `kreiscraft.admin.statistic` | op |
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |

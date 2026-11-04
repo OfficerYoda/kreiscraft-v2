@@ -18,6 +18,7 @@ import de.kreiscraft.modules.admin.commands.StatisticCommand;
 import de.kreiscraft.modules.admin.commands.SudoCommand;
 import de.kreiscraft.modules.admin.commands.TpsCommand;
 import de.kreiscraft.modules.admin.commands.UuidCommand;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
 import java.time.Duration;
 import java.util.List;
 import org.bukkit.Server;
@@ -54,9 +55,11 @@ public final class AdminModule implements Module {
         Server server = ctx.plugin().getServer();
         PlaceholderResolver resolver = ctx.services().get(PlaceholderResolver.class);
 
-        this.tpsBar = new TpsBar(messages, server, () -> this.config.tpsBar());
+        this.tpsBar = new TpsBar(messages, server, () -> this.config.tpsBar(),
+                ctx.services().get(PlayerPreferencesService.class));
         ctx.events().register(tpsBar);
         this.tpsBarTask = ctx.scheduler().runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), tpsBar::tick);
+        server.getOnlinePlayers().forEach(tpsBar::restore);
 
         ctx.events().register(new AdminListener(messages));
         ctx.commands().register(ItemCommand.build(messages), "Spawn items");

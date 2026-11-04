@@ -17,7 +17,7 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 On first start, `YamlConfigService` copies `config.yml` from the JAR into the data folder if the file does not yet exist. The lang files follow the same pattern: if the file is absent it is copied from the JAR resources.
 
-Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, and effects preferences persist even when the settings GUI or the consuming module is disabled.
+Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, effects, and TPS bar preferences persist even when the settings GUI or the consuming module is disabled.
 
 ---
 
@@ -158,6 +158,8 @@ All eight TPS bar numbers are editable in `/settings admin` → **Admin** and ho
 Each number has its own green/yellow/red color, decided from the unrounded metric. Green takes precedence at inclusive boundaries. The boss bar has 20 notches; its color follows MSPT, and its fill is `(MSPT - mspt-empty) / (mspt-full - mspt-empty)`, clamped to 0–100%. With the defaults, 0 ms is empty, 25 ms is half full, and 50 ms or more is full.
 
 TPS/MSPT whole-number digits stay in the light health color; the decimal point and two decimal digits fade from that color to dark green, orange (`#ffaa00`), or dark red. Ping fades across all its digits, with a single digit staying light. Labels and units keep their localized styling.
+
+`/tps bar` stores the player's on/off choice as `tps-bar-enabled` under their UUID in `data/settings.yml`, independent of the settings GUI module. The existing preferences auto-save and clean-shutdown flush persist it across server restarts. Missing keys default to off without a read-time write. Logout, permission loss, and module shutdown hide the live bar but preserve the preference; join and module startup restore enabled bars only for online players with `kreiscraft.admin.tps`.
 
 GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresholds are limited to 0–20; other values are limited to 100,000. `mspt-full` must be at least 0.1 and strictly greater than `mspt-empty`. Invalid YAML is rejected on load/reload rather than applying unusable fill endpoints.
 

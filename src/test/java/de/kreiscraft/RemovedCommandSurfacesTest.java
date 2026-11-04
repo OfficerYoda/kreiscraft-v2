@@ -22,6 +22,8 @@ import de.kreiscraft.platform.PaperPlatform;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.gui.GuiRegistry;
 import de.kreiscraft.testsupport.CapturingCommandRegistrar;
+import de.kreiscraft.shared.preferences.PlayerPreferencesService;
+import de.kreiscraft.testsupport.InMemoryPlayerPreferencesService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.io.IOException;
 import java.net.URL;
@@ -223,6 +225,7 @@ class RemovedCommandSurfacesTest {
     private CapturingCommandRegistrar enableAdminModule() {
         CapturingCommandRegistrar registrar = new CapturingCommandRegistrar();
         ServiceRegistry services = new ServiceRegistry();
+        services.publish(PlayerPreferencesService.class, new InMemoryPlayerPreferencesService());
         services.publish(
                 PlaceholderResolver.class,
                 new PlaceholderResolver(server, ZoneId.of("Europe/Berlin"), Clock.systemUTC()));
