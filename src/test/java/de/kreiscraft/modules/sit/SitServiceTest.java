@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.MessageService;
-import de.kreiscraft.core.scheduler.BukkitScheduler;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.ArmorStand;
@@ -37,7 +36,7 @@ class SitServiceTest {
         player = server.addPlayer();
         messages = mock(MessageService.class);
         var plugin = MockBukkit.createMockPlugin();
-        service = new SitService(messages, new BukkitScheduler(plugin));
+        service = new SitService(messages);
         server.getPluginManager().registerEvents(service, plugin);
     }
 
@@ -79,25 +78,25 @@ class SitServiceTest {
     }
 
     @Test
-    void sneakDismount_returnsPlayerAboveTheBlockAfterVanillaPositionsThem() {
+    void sneakDismount_restoresOriginalFeetPositionImmediately() {
         Location standing = new Location(player.getWorld(), 0.5, 65.0, 0.5);
         player.getWorld().getBlockAt(0, 64, 0).setType(Material.STONE);
         player.setLocation(standing);
         service.toggle(player);
+        assertThat(player.getVehicle()).isNotNull();
+        // MockBukkit has no passenger physics; simulate the seated position before dismounting.
+        player.setLocation(standing.clone().subtract(0, 0.35, 0));
 
         assertThat(player.leaveVehicle()).isTrue();
-        // MockBukkit has no passenger physics. Replay the reported vanilla exit position,
-        // applied after EntityDismountEvent, with the player's feet inside the supporting block.
-        player.setLocation(standing.clone().subtract(0, 0.35, 0));
-        server.getScheduler().performOneTick();
 
-        assertThat(player.getLocation().getY()).isGreaterThanOrEqualTo(standing.getY());
+        assertThat(player.getLocation()).isEqualTo(standing);
         assertThat(player.getLocation().getBlock().getType()).isEqualTo(Material.AIR);
     }
 
     @Test
     void commandStand_restoresOriginalFeetPositionAndPreservesCurrentView() {
         Location standing = new Location(player.getWorld(), 0.5, 65.0, 0.5);
+        player.getWorld().getBlockAt(0, 64, 0).setType(Material.STONE);
         player.setLocation(standing);
         service.toggle(player);
         Location sitting = standing.clone().subtract(0, 0.35, 0);
@@ -111,7 +110,7 @@ class SitServiceTest {
     }
 
     @Test
-    void teleportAfterDismount_isNotUndoneByPendingRestore() {
+    void teleportAfterDismount_isNotUndoneByLaterRestore() {
         service.toggle(player);
         player.leaveVehicle();
         Location destination = new Location(player.getWorld(), 10.5, 80.0, 10.5);
@@ -158,7 +157,7 @@ class SitServiceTest {
     }
 
     @Test
-    void newSeatBeforePendingRestore_isNotDismountedByOldTask() {
+    void newSeatAfterDismount_isNotDismountedByLaterCleanup() {
         service.toggle(player);
         player.leaveVehicle();
         service.toggle(player);
@@ -171,18 +170,43 @@ class SitServiceTest {
     }
 
     @Test
-    void disableWhileRestorePending_restoresImmediatelyAndLeavesNoDeferredTeleport() {
+    void disableWhileSitting_restoresImmediatelyAndLeavesNoDeferredTeleport() {
         Location standing = new Location(player.getWorld(), 0.5, 65.0, 0.5);
+        player.getWorld().getBlockAt(0, 64, 0).setType(Material.STONE);
         player.setLocation(standing);
         service.toggle(player);
-        player.leaveVehicle();
+        ArmorStand seat = (ArmorStand) player.getVehicle();
+        assertThat(seat).isNotNull();
         player.setLocation(standing.clone().subtract(0, 0.35, 0));
 
         service.standAll();
 
+        assertThat(seat.isValid()).isFalse();
+        assertThat(player.getVehicle()).isNull();
         assertThat(player.getLocation()).isEqualTo(standing);
         Location moved = standing.clone().add(5, 0, 0);
         player.setLocation(moved);
+        server.getScheduler().performOneTick();
+        assertThat(player.getLocation()).isEqualTo(moved);
+    }
+
+    @Test
+    void disableAfterDismount_doesNotRestoreAgain() {
+        Location standing = new Location(player.getWorld(), 0.5, 65.0, 0.5);
+        player.getWorld().getBlockAt(0, 64, 0).setType(Material.STONE);
+        player.setLocation(standing);
+        service.toggle(player);
+        assertThat(player.getVehicle()).isNotNull();
+        player.setLocation(standing.clone().subtract(0, 0.35, 0));
+
+        assertThat(player.leaveVehicle()).isTrue();
+        assertThat(player.getLocation()).isEqualTo(standing);
+        Location moved = standing.clone().add(5, 0, 0);
+        player.setLocation(moved);
+
+        service.standAll();
+
+        assertThat(player.getLocation()).isEqualTo(moved);
         server.getScheduler().performOneTick();
         assertThat(player.getLocation()).isEqualTo(moved);
     }

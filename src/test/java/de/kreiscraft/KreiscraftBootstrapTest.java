@@ -4,29 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleRegistry;
-import de.kreiscraft.modules.admin.AdminModule;
-import de.kreiscraft.modules.api.ApiModule;
-import de.kreiscraft.modules.anticheat.AntiCheatModule;
-import de.kreiscraft.modules.bedrock.BedrockModule;
-import de.kreiscraft.modules.chatformat.ChatFormatModule;
-import de.kreiscraft.modules.clickthrough.ClickthroughModule;
-import de.kreiscraft.modules.combat.CombatModule;
-import de.kreiscraft.modules.effects.EffectsModule;
-import de.kreiscraft.modules.firework.FireworkModule;
-import de.kreiscraft.modules.invsee.InvseeModule;
-import de.kreiscraft.modules.jail.JailModule;
-import de.kreiscraft.modules.positions.PositionsModule;
-import de.kreiscraft.modules.reboot.RebootModule;
-import de.kreiscraft.modules.settingsgui.SettingsGuiModule;
-import de.kreiscraft.modules.signcolor.SignColorModule;
-import de.kreiscraft.modules.sit.SitModule;
-import de.kreiscraft.modules.spawn.SpawnModule;
-import de.kreiscraft.modules.startsequence.StartSequenceModule;
-import de.kreiscraft.modules.status.StatusModule;
-import de.kreiscraft.modules.tablist.TablistModule;
-import de.kreiscraft.modules.updatemode.UpdateModeModule;
-import de.kreiscraft.modules.wither.WitherModule;
-import de.kreiscraft.modules.worldmgmt.WorldMgmtModule;
+import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
@@ -34,40 +15,29 @@ import org.spongepowered.configurate.CommentedConfigurationNode;
 
 class KreiscraftBootstrapTest {
 
-    /** Mirror of KreiscraftBootstrap.start() — sole source of truth for the registered set. */
-    private static final int MODULE_COUNT = 24;
-
-    private static List<Module> allModules() {
-        return List.of(
-                new AdminModule(),
-                new ApiModule(),
-                new AntiCheatModule(),
-                new BedrockModule(),
-                new ChatFormatModule(),
-                new ClickthroughModule(),
-                new CombatModule(),
-                new EffectsModule(),
-                new FireworkModule(),
-                new InvseeModule(),
-                new JailModule(),
-                new PositionsModule(),
-                new RebootModule(),
-                new SettingsGuiModule(),
-                new SignColorModule(),
-                new SitModule(),
-                new SpawnModule(),
-                new StartSequenceModule(),
-                new StatusModule(),
-                new TablistModule(),
-                new UpdateModeModule(),
-                new WitherModule(),
-                new WorldMgmtModule());
+    /** Discover production implementations so new modules are covered without updating a fixture. */
+    private static List<Module> allModules() throws Exception {
+        Path classes = Path.of(Module.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        List<Module> modules = new ArrayList<>();
+        try (var files = Files.walk(classes.resolve("de/kreiscraft/modules"))) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".class")).sorted().toList()) {
+                String relative = classes.relativize(file).toString();
+                String className = relative.substring(0, relative.length() - ".class".length())
+                        .replace(file.getFileSystem().getSeparator(), ".");
+                Class<?> type = Class.forName(className, false, Module.class.getClassLoader());
+                if (Module.class.isAssignableFrom(type) && !type.isInterface()
+                        && !Modifier.isAbstract(type.getModifiers())) {
+                    modules.add(type.asSubclass(Module.class).getConstructor().newInstance());
+                }
+            }
+        }
+        assertThat(modules).as("discovered production modules").isNotEmpty();
+        return modules;
     }
 
     @Test
-    void moduleRegistry_registersAllModulesWithoutDuplicates() {
-        // Mirrors KreiscraftBootstrap.start(): build a registry, register every module,
-        // verify no duplicates and the expected total count.
+    void moduleRegistry_registersAllModulesWithoutDuplicates() throws Exception {
+        List<Module> modules = allModules();
         ModuleRegistry registry =
                 new ModuleRegistry(
                         m -> {
@@ -77,15 +47,16 @@ class KreiscraftBootstrapTest {
                         CommentedConfigurationNode.root(),
                         Logger.getLogger("test"));
 
-        for (Module m : allModules()) {
+        for (Module m : modules) {
             registry.register(m);
         }
 
-        assertThat(registry.registeredIds()).hasSize(MODULE_COUNT);
+        assertThat(registry.registeredIds())
+                .containsExactlyInAnyOrderElementsOf(modules.stream().map(Module::id).toList());
     }
 
     @Test
-    void everyRegisteredModule_hasKebabCaseId() {
+    void everyRegisteredModule_hasKebabCaseId() throws Exception {
         // Every module id must be non-blank and match the kebab-case pattern enforced by the
         // module template. This also verifies that every module has a working no-arg constructor.
         for (Module m : allModules()) {
