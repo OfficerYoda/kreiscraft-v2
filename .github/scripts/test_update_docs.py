@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -246,6 +247,76 @@ class UpdateDocsTest(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "truncated"):
                 update_docs.call_openrouter("test", "system", "prompt", max_tokens=10, temperature=0.1)
         self.assertEqual(post.call_count, 1)
+
+    def test_generation_budget_and_usage(self):
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "id": "test-generation",
+            "choices": [{"message": {"content": "NO_CHANGES"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 40,
+                      "completion_tokens_details": {"reasoning_tokens": 32}, "cost": 0.001},
+        }
+        for mode in ("incremental", "rebuild"):
+            with self.subTest(mode=mode), \
+                 patch("sys.argv", ["update_docs", "--mode", mode, "--model", "test"]), \
+                 patch.dict("os.environ", {"OPENROUTER_API_KEY": "test"}), \
+                 patch.object(update_docs.requests, "post", return_value=response) as post, \
+                 patch.object(update_docs, "log") as log:
+                args = update_docs.parse_args()
+                self.assertEqual(update_docs.call_openrouter(
+                    args.model, "system", "prompt", max_tokens=args.max_tokens,
+                    temperature=args.temperature,
+                ), "NO_CHANGES")
+                self.assertEqual(post.call_args.kwargs["json"]["max_tokens"], 131072)
+                self.assertNotIn("reasoning", post.call_args.kwargs["json"])
+                self.assertIn("reasoning=32 cost=0.001 id=test-generation", log.call_args.args[0])
+
+
+@unittest.skipUnless(os.environ.get("DOCS_LIVE_MODEL"), "set DOCS_LIVE_MODEL for paid OpenRouter checks")
+class LiveDocsPromptTest(unittest.TestCase):
+    """Opt-in semantic check: real model, in-memory docs, no generated file writes."""
+
+    def test_fully_partially_and_not_yet_updated_docs(self):
+        diff = """diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
+--- a/src/main/resources/plugin.yml
++++ b/src/main/resources/plugin.yml
+@@ -1,3 +1,3 @@
+ commands:
+   tps:
+-    description: Show TPS in chat.
++    description: Show TPS in chat; /tps bar toggles a personal performance boss bar.
+diff --git a/src/main/java/de/kreiscraft/core/message/PlaceholderResolver.java b/src/main/java/de/kreiscraft/core/message/PlaceholderResolver.java
+--- a/src/main/java/de/kreiscraft/core/message/PlaceholderResolver.java
++++ b/src/main/java/de/kreiscraft/core/message/PlaceholderResolver.java
+@@ -1,1 +1,2 @@
+ case "tps" -> formatTps(server.getTPS()[0]);
++case "mspt" -> String.format(Locale.ROOT, "%.2f", server.getAverageTickTime());
+"""
+        original = ("# Commands and placeholders\n\n`/tps` shows TPS in chat.\n\n"
+                    "`%tps%` gives the server TPS.\n")
+        bar = "\n`/tps bar` toggles a personal performance boss bar.\n"
+        mspt = "\n`%mspt%` gives average server tick time in milliseconds with two decimal places.\n"
+        args = argparse.Namespace(
+            model=os.environ["DOCS_LIVE_MODEL"], max_tokens=8192, temperature=0.1,
+        )
+        for state, content in (("complete", original + bar + mspt),
+                               ("partial", original + bar), ("outdated", original)):
+            with self.subTest(state=state):
+                docs = {"README.md": content}
+                updates = update_docs.generate_updates(
+                    args, docs, update_docs.load_system_prompt(),
+                    update_docs.build_incremental_user_prompt(diff, docs),
+                )
+                if state == "complete":
+                    self.assertEqual(updates, {})
+                else:
+                    updated = updates["README.md"]
+                    self.assertIn("/tps bar", updated)
+                    self.assertIn("%mspt%", updated)
+                    self.assertIn("`/tps` shows TPS in chat", updated)
+                    self.assertIn("`%tps%` gives the server TPS.", updated)
+                    if state == "partial":
+                        self.assertIn(bar.strip(), updated)
 
 
 if __name__ == "__main__":

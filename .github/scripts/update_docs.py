@@ -87,7 +87,7 @@ REBUILD_EXPLICIT_FILES: tuple[str, ...] = (
     "src/main/java/de/kreiscraft/core/service/ServiceRegistry.java",
 )
 
-MAX_INPUT_CHARS_WARN = 480_000  # ~100k tokens — near DeepSeek V4 Flash's 128k context ceiling
+MAX_INPUT_CHARS_WARN = 480_000  # Input-size warning only; context limits vary by model.
 
 
 # ---------------------------------------------------------------------------
@@ -233,16 +233,27 @@ def format_docs_block(docs: dict[str, str]) -> str:
 def build_incremental_user_prompt(diff: str, docs: dict[str, str]) -> str:
     return (
         "MODE: incremental\n\n"
-        "A commit has just landed on the main branch. The git diff below shows "
-        "every change to source code and configuration since the previous "
-        "commit (doc-only paths, workflow files, and the root README are "
+        "A push has just landed on the main branch. The git diff below shows "
+        "changes to source code and configuration across that push "
+        "(documentation paths, workflow files, and the root README are "
         "excluded from the diff so that automated doc updates do not feed back "
         "into themselves).\n\n"
         "Your task: read the diff, decide which documentation files (if any) "
         "must be updated to stay accurate and consistent, and emit targeted "
         "JSON edits using the format from the system prompt.\n\n"
-        "If the diff has no user-visible effect on documentation (internal "
-        "refactor, test change, formatting, etc.), emit `NO_CHANGES`.\n\n"
+        "The supplied documentation is the post-change snapshot and may already "
+        "reflect some or all source changes, including documentation updated in "
+        "the same push. This is expected. Check each documentation-relevant "
+        "change against it, including all affected cross-references. Preserve "
+        "accurate content and edit remaining omissions or contradictions. "
+        "A fact already stated accurately in the relevant section is covered; "
+        "do not repeat it in another sentence or rewrite it to mirror the diff. "
+        "An already-updated section does not mean the other sections are complete. "
+        "You do not need to determine when or why the documentation was updated. "
+        "Once each relevant change has been checked, return the remaining edits "
+        "or `NO_CHANGES` if none are needed, even when the diff adds user-visible "
+        "features. Internal refactors, test changes, and formatting may also "
+        "require no documentation edits.\n\n"
         "===== GIT DIFF =====\n"
         f"{diff}\n"
         "===== END GIT DIFF =====\n\n"
@@ -351,7 +362,10 @@ def call_openrouter(
             log(
                 f"response: finish={finish_reason} "
                 f"in={usage.get('prompt_tokens', '?')} "
-                f"out={usage.get('completion_tokens', '?')}"
+                f"out={usage.get('completion_tokens', '?')} "
+                f"reasoning={(usage.get('completion_tokens_details') or {}).get('reasoning_tokens', '?')} "
+                f"cost={usage.get('cost', '?')} "
+                f"id={data.get('id', '?')}"
             )
             if finish_reason == "length":
                 raise SystemExit("response hit max_tokens — refusing truncated edits")
@@ -637,13 +651,15 @@ def parse_args() -> argparse.Namespace:
         "--max-tokens",
         type=int,
         default=131072,
-        help="Max output tokens (default: 131072). Raise for very large rebuilds.",
+        help="Max output tokens including reasoning (default: 131072).",
     )
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if not args.model:
         parser.error("no model specified: set OPENROUTER_MODEL or pass --model <slug>")
+    if args.max_tokens <= 0:
+        parser.error("--max-tokens must be positive")
     return args
 
 
