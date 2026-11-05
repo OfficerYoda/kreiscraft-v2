@@ -237,25 +237,39 @@ class UpdateDocsTest(unittest.TestCase):
         self.assertOriginalsUnchanged()
 
     def test_truncated_openrouter_response_is_not_accepted_or_retried(self):
-        response = Mock(status_code=200)
-        response.json.return_value = {
-            "choices": [{"message": {"content": self.response(self.edit())},
+        response = self.stream({
+            "choices": [{"delta": {"content": self.response(self.edit())},
                          "finish_reason": "length"}],
-        }
+        })
         with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test"}), \
              patch.object(update_docs.requests, "post", return_value=response) as post:
             with self.assertRaisesRegex(SystemExit, "truncated"):
                 update_docs.call_openrouter("test", "system", "prompt", max_tokens=10, temperature=0.1)
         self.assertEqual(post.call_count, 1)
+        response.close.assert_called_once()
+
+    def stream(self, *chunks, done=True):
+        response = Mock(status_code=200, headers={})
+        lines = [": OPENROUTER PROCESSING", ""]
+        for chunk in chunks:
+            lines.extend(["data: " + json.dumps(chunk), ""])
+        if done:
+            lines.extend(["data: [DONE]", ""])
+        response.iter_lines.return_value = lines
+        return response
 
     def test_generation_budget_and_usage(self):
-        response = Mock(status_code=200)
-        response.json.return_value = {
+        response = self.stream({
             "id": "test-generation",
-            "choices": [{"message": {"content": "NO_CHANGES"}, "finish_reason": "stop"}],
+            "provider": "test-provider",
+            "choices": [{"delta": {"content": "NO_"}}],
+        }, {
+            "choices": [{"delta": {"content": "CHANGES"}, "finish_reason": "stop"}],
+        }, {
+            "choices": [],
             "usage": {"prompt_tokens": 100, "completion_tokens": 40,
                       "completion_tokens_details": {"reasoning_tokens": 32}, "cost": 0.001},
-        }
+        })
         for mode in ("incremental", "rebuild"):
             with self.subTest(mode=mode), \
                  patch("sys.argv", ["update_docs", "--mode", mode, "--model", "test"]), \
@@ -268,8 +282,77 @@ class UpdateDocsTest(unittest.TestCase):
                     temperature=args.temperature,
                 ), "NO_CHANGES")
                 self.assertEqual(post.call_args.kwargs["json"]["max_tokens"], 131072)
-                self.assertNotIn("reasoning", post.call_args.kwargs["json"])
+                self.assertEqual(post.call_args.kwargs["json"]["reasoning"], {"effort": "low"})
+                self.assertTrue(post.call_args.kwargs["stream"])
+                self.assertTrue(post.call_args.kwargs["json"]["stream"])
                 self.assertIn("reasoning=32 cost=0.001 id=test-generation", log.call_args.args[0])
+                self.assertIn("provider=test-provider", log.call_args.args[0])
+
+    def test_repetitive_stream_is_closed_early_without_retry_or_writes(self):
+        # The two-paragraph cycle from the failed generation, split at arbitrary boundaries.
+        cycle = (
+            "Now, is there anything about the `admin` module's `tps-bar` being a new "
+            "nested config that needs to be added to the module-catalog's `admin` "
+            "section? It's already there.\n\n"
+            'Let me check `docs/reference/configuration.md` "Hot Reload" section — '
+            'does it mention tps-bar? It says "Every field the Server Configuration '
+            'GUI marks hot-reloadable". The tps-bar fields are hot-reloadable. Fine.\n\n'
+        )
+        text = cycle * 100
+        for channel in ("reasoning", "reasoning_details", "content"):
+            with self.subTest(channel=channel):
+                response = Mock(status_code=200, headers={"X-Generation-Id": "loop"})
+                consumed = []
+
+                def lines(**kwargs):
+                    for start in range(0, len(text), 37):
+                        consumed.append(start)
+                        value = text[start:start + 37]
+                        if channel == "reasoning_details":
+                            value = [{"type": "reasoning.text", "text": value}]
+                        yield "data: " + json.dumps({"choices": [{"delta": {channel: value}}]})
+                        yield ""
+                    self.fail("loop was consumed in full")
+
+                response.iter_lines.side_effect = lines
+                with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test"}), \
+                     patch.object(update_docs.requests, "post", return_value=response) as post:
+                    with self.assertRaisesRegex(ValueError, "repetitive"):
+                        update_docs.generate_updates(self.args, self.docs, "system", "prompt")
+                self.assertLess(consumed[-1], len(text) // 4)
+                self.assertEqual(post.call_count, 1)
+                response.close.assert_called_once()
+                self.assertOriginalsUnchanged()
+
+    def test_incomplete_and_error_streams_fail_without_retry(self):
+        valid = {"choices": [{"delta": {"content": self.response(self.edit())}}]}
+        responses = [
+            self.stream(valid, done=False),
+            self.stream(valid),  # [DONE] alone does not imply a successful finish.
+            self.stream(valid, {"error": {"message": "provider failed"}}),
+            self.stream(valid, {"choices": [{"finish_reason": "error"}]}),
+        ]
+        disconnected = self.stream()
+        disconnected.iter_lines.side_effect = update_docs.requests.ConnectionError("disconnected")
+        responses.append(disconnected)
+        for response in responses:
+            with self.subTest(response=response), \
+                 patch.dict("os.environ", {"OPENROUTER_API_KEY": "test"}), \
+                 patch.object(update_docs.requests, "post", return_value=response) as post:
+                with self.assertRaises(ValueError):
+                    update_docs.generate_updates(self.args, self.docs, "system", "prompt")
+                self.assertEqual(post.call_count, 1)
+                response.close.assert_called_once()
+                self.assertOriginalsUnchanged()
+
+    def test_reasoning_aliases_are_not_double_counted_or_returned_as_content(self):
+        # Three repeats are fine; counting both aliases would falsely turn them into six.
+        thought = ("Check documented defaults, commands, permissions, and reload behavior. " * 5 + "\n") * 3
+        response = self.stream({"choices": [{"delta": {
+            "reasoning": thought,
+            "reasoning_details": [{"type": "reasoning.text", "text": thought}],
+        }}]}, {"choices": [{"delta": {"content": "NO_CHANGES"}, "finish_reason": "stop"}]})
+        self.assertEqual(update_docs.read_openrouter_stream(response), "NO_CHANGES")
 
 
 @unittest.skipUnless(os.environ.get("DOCS_LIVE_MODEL"), "set DOCS_LIVE_MODEL for paid OpenRouter checks")

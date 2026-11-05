@@ -18,17 +18,23 @@ Environment variables:
 
 Only files matching README.md or docs/**/*.md may be written. Any other
 path emitted by the model is rejected.
+
+Requests use low reasoning effort. Repetitive streams are cancelled without
+retrying or applying partial edits. Provider support determines whether closing
+the stream also stops upstream generation and billing.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -302,6 +308,77 @@ def build_rebuild_user_prompt(docs: dict[str, str], source_bundle: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+class RepetitionGuard:
+    def __init__(self) -> None:
+        self.tail = ""
+        self.unchecked = 0
+
+    def feed(self, text: str) -> None:
+        self.tail = (self.tail + text)[-65_536:]
+        self.unchecked += len(text)
+        if self.unchecked < 256:
+            return
+        self.unchecked = 0
+        # ponytail: six exact 256-character repeats in 64 KiB; fuzzy loops need another detector.
+        sample = self.tail[-256:]
+        if len(sample.strip()) >= 128 and self.tail.count(sample) >= 6:
+            raise ValueError("repetitive model output — cancelling stream; no edits accepted")
+
+
+def read_openrouter_stream(resp: requests.Response) -> str:
+    """Accept only a complete, successful SSE response; never return partial edits."""
+    content: list[str] = []
+    guards = {name: RepetitionGuard() for name in ("content", "reasoning")}
+    fields: list[str] = []
+    finish = None
+    usage: dict = {}
+    generation_id = resp.headers.get("X-Generation-Id", "?")
+    provider = "?"
+    announced = False
+    resp.encoding = "utf-8"
+    for line in resp.iter_lines(decode_unicode=True):
+        if line.startswith("data:"):
+            fields.append(line[5:].lstrip(" "))
+        if line or not fields:
+            continue
+        event = "\n".join(fields)
+        fields.clear()
+        if event == "[DONE]":
+            log(
+                f"response: finish={finish} in={usage.get('prompt_tokens', '?')} "
+                f"out={usage.get('completion_tokens', '?')} "
+                f"reasoning={(usage.get('completion_tokens_details') or {}).get('reasoning_tokens', '?')} "
+                f"cost={usage.get('cost', '?')} id={generation_id} provider={provider}"
+            )
+            if finish == "length":
+                raise SystemExit("response hit max_tokens — refusing truncated edits")
+            if finish != "stop":
+                raise ValueError(f"unsuccessful stream: finish={finish}, id={generation_id}")
+            return "".join(content)
+        data = json.loads(event)
+        generation_id = data.get("id") or generation_id
+        provider = data.get("provider") or provider
+        if not announced:
+            log(f"stream: id={generation_id} provider={provider}")
+            announced = True
+        if data.get("error"):
+            raise ValueError(f"OpenRouter stream error: id={generation_id}; no edits accepted")
+        usage = data.get("usage") or usage
+        for choice in data.get("choices", []):
+            finish = choice.get("finish_reason") or finish
+            delta = choice.get("delta") or {}
+            # Some providers expose reasoning only through reasoning_details.
+            reasoning = delta.get("reasoning") or "".join(
+                (detail.get("text") or "") for detail in (delta.get("reasoning_details") or [])
+                if detail.get("type") == "reasoning.text"
+            )
+            guards["reasoning"].feed(reasoning)
+            text = delta.get("content") or ""
+            guards["content"].feed(text)
+            content.append(text)
+    raise ValueError(f"stream ended without [DONE]: id={generation_id}; no edits accepted")
+
+
 def call_openrouter(
     model: str,
     system_prompt: str,
@@ -328,6 +405,9 @@ def call_openrouter(
         "model": model,
         "temperature": temperature,
         "max_tokens": max_tokens,
+        "reasoning": {"effort": "low"},
+        "stream": True,
+        "stream_options": {"include_usage": True},
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -335,49 +415,33 @@ def call_openrouter(
     }
 
     input_chars = len(system_prompt) + len(user_prompt)
+    prompt_hash = hashlib.sha256(json.dumps(payload["messages"]).encode()).hexdigest()
     log(
         f"calling {model} — input {input_chars:,} chars, "
-        f"max_tokens={max_tokens}, temp={temperature}"
+        f"max_tokens={max_tokens}, reasoning=low, temp={temperature}, prompt_sha256={prompt_hash}"
     )
     if input_chars > MAX_INPUT_CHARS_WARN:
         log(f"WARNING: input size {input_chars:,} chars may exceed model context")
 
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
+        streaming = False
         try:
-            resp = requests.post(
+            with closing(requests.post(
                 OPENROUTER_URL,
                 headers=headers,
                 json=payload,
                 timeout=180,
-            )
-            if resp.status_code == 429 or resp.status_code >= 500:
-                raise RuntimeError(f"openrouter {resp.status_code}: {resp.text[:400]}")
-            resp.raise_for_status()
-            data = resp.json()
-            choice = data["choices"][0]
-            content = choice["message"].get("content")
-            finish_reason = choice.get("finish_reason", "?")
-            usage = data.get("usage", {})
-            log(
-                f"response: finish={finish_reason} "
-                f"in={usage.get('prompt_tokens', '?')} "
-                f"out={usage.get('completion_tokens', '?')} "
-                f"reasoning={(usage.get('completion_tokens_details') or {}).get('reasoning_tokens', '?')} "
-                f"cost={usage.get('cost', '?')} "
-                f"id={data.get('id', '?')}"
-            )
-            if finish_reason == "length":
-                raise SystemExit("response hit max_tokens — refusing truncated edits")
-            if content is None:
-                # Some providers return null content when a reasoning model
-                # was cut off mid-reasoning, or when the assistant produced no
-                # visible tokens. Treat as an empty string so the caller can
-                # log and decide.
-                log("WARNING: response content was null")
-                content = ""
-            return content
+                stream=True,
+            )) as resp:
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    raise RuntimeError(f"openrouter {resp.status_code}: {resp.text[:400]}")
+                resp.raise_for_status()
+                streaming = True
+                return read_openrouter_stream(resp)
         except (requests.RequestException, RuntimeError, KeyError) as exc:
+            if streaming:
+                raise ValueError("stream interrupted; no edits accepted or automatic retry") from exc
             last_error = exc
             wait = 2**attempt
             log(f"attempt {attempt}/{retries} failed: {exc} — retrying in {wait}s")
