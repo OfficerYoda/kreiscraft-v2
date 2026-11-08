@@ -60,7 +60,6 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
 | `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
 | `/dimension` | — | `world-mgmt` | Show whether portal travel into the Nether and End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
-| `/dimension status` | — | `world-mgmt` | Same as `/dimension`; show both dimensions' status. | `kreiscraft.worldmgmt.dimension` | op |
 | `/dimension nether` | — | `world-mgmt` | Show whether portal travel into the Nether is enabled. | `kreiscraft.worldmgmt.dimension` | op |
 | `/dimension end` | — | `world-mgmt` | Show whether portal travel into the End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
 | `/dimension nether enable\|disable` | — | `world-mgmt` | Allow or block new portal travel into the Nether. | `kreiscraft.worldmgmt.dimension` | op |

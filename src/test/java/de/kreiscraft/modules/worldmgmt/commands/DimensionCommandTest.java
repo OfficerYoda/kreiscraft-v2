@@ -1,5 +1,6 @@
 package de.kreiscraft.modules.worldmgmt.commands;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -49,13 +50,9 @@ class DimensionCommandTest {
     }
 
     @Test
-    void statusSubcommand_reportsBothDimensions() throws Exception {
-        dispatcher.execute("dimension status", source);
-
-        verify(messages).send(
-                sender, "world-mgmt.dimension-status", "dimension", "Nether", "state", Component.empty());
-        verify(messages).send(
-                sender, "world-mgmt.dimension-status", "dimension", "End", "state", Component.empty());
+    void statusSubcommand_isNotRegistered() {
+        assertThatThrownBy(() -> dispatcher.execute("dimension status", source))
+                .isInstanceOf(com.mojang.brigadier.exceptions.CommandSyntaxException.class);
     }
 
     @Test
@@ -69,35 +66,40 @@ class DimensionCommandTest {
     }
 
     @Test
-    void disable_persistsAndConfirms() throws Exception {
+    void disable_persistsAndReportsTheSameStatusOutput() throws Exception {
         when(dimensions.setAllowed(Dimension.NETHER, false)).thenReturn(true);
+        when(dimensions.isAllowed(Dimension.NETHER)).thenReturn(false);
 
         dispatcher.execute("dimension nether disable", source);
 
         verify(dimensions).setAllowed(Dimension.NETHER, false);
+        verify(messages).renderFor(sender, "world-mgmt.dimension-state-disabled");
         verify(messages).send(
-                sender, "world-mgmt.dimension-disabled", "dimension", "Nether");
+                sender, "world-mgmt.dimension-status", "dimension", "Nether", "state", Component.empty());
     }
 
     @Test
-    void enable_persistsAndConfirms() throws Exception {
+    void enable_persistsAndReportsTheSameStatusOutput() throws Exception {
         when(dimensions.setAllowed(Dimension.END, true)).thenReturn(true);
+        when(dimensions.isAllowed(Dimension.END)).thenReturn(true);
 
         dispatcher.execute("dimension end enable", source);
 
         verify(dimensions).setAllowed(Dimension.END, true);
-        verify(messages).send(sender, "world-mgmt.dimension-enabled", "dimension", "End");
+        verify(messages).renderFor(sender, "world-mgmt.dimension-state-enabled");
+        verify(messages).send(
+                sender, "world-mgmt.dimension-status", "dimension", "End", "state", Component.empty());
     }
 
     @Test
-    void failedWrite_reportsFailureInsteadOfSuccess() throws Exception {
+    void failedWrite_reportsFailureInsteadOfStatus() throws Exception {
         when(dimensions.setAllowed(Dimension.NETHER, false)).thenReturn(false);
 
         dispatcher.execute("dimension nether disable", source);
 
         verify(messages).send(sender, "world-mgmt.dimension-update-failed");
         verify(messages, never()).send(
-                sender, "world-mgmt.dimension-disabled", "dimension", "Nether");
+                sender, "world-mgmt.dimension-status", "dimension", "Nether", "state", Component.empty());
     }
 
     @Test

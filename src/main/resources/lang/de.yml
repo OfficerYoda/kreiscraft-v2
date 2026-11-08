@@ -322,8 +322,6 @@ world-mgmt:
   dimension-status: "<prefix> <gray><dimension>-Zugang: <state>"
   dimension-state-enabled: "<green>aktiviert"
   dimension-state-disabled: "<red>deaktiviert"
-  dimension-enabled: "<prefix> <green><dimension>-Zugang aktiviert."
-  dimension-disabled: "<prefix> <yellow><dimension>-Zugang deaktiviert."
   dimension-update-failed: "<prefix> <red>Die Änderung des Dimensionszugangs konnte nicht gespeichert werden."
 time:
   relative:

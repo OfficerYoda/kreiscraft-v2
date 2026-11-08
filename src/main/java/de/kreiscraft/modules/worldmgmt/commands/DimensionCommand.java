@@ -15,7 +15,6 @@ import org.bukkit.command.CommandSender;
  *
  * <pre>
  * /dimension                      status of both dimensions
- * /dimension status               status of both dimensions
  * /dimension nether               Nether status
  * /dimension nether enable|disable
  * /dimension end                  End status
@@ -34,9 +33,6 @@ public final class DimensionCommand {
         return Commands.literal("dimension")
                 .requires(src -> src.getSender().hasPermission(PERMISSION))
                 .executes(ctx -> statusAll(ctx.getSource().getSender(), dimensions, messages))
-                .then(Commands.literal("status")
-                        .executes(ctx -> statusAll(
-                                ctx.getSource().getSender(), dimensions, messages)))
                 .then(dimensionNode(Dimension.NETHER, dimensions, messages))
                 .then(dimensionNode(Dimension.END, dimensions, messages))
                 .build();
@@ -104,13 +100,6 @@ public final class DimensionCommand {
             messages.send(sender, "world-mgmt.dimension-update-failed");
             return Command.SINGLE_SUCCESS;
         }
-        messages.send(
-                sender,
-                allowed
-                        ? "world-mgmt.dimension-enabled"
-                        : "world-mgmt.dimension-disabled",
-                "dimension",
-                dimension.displayName());
-        return Command.SINGLE_SUCCESS;
+        return status(sender, dimension, dimensions, messages);
     }
 }
