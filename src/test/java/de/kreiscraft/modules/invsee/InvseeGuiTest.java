@@ -96,19 +96,20 @@ class InvseeGuiTest {
     }
 
     @Test
-    void buildOfflineInventory_fillerSlotsAreImmovableBarriers() {
+    void buildOfflineInventory_fillerSlotsAreImmovableUnnamedGrayPanes() {
         xyz.xenondevs.invui.gui.Gui gui =
                 InvseeGui.buildOfflineInventory(OfflinePlayerSnapshot.empty());
 
         for (int i = InvseeGui.OFFLINE_FILLER_FIRST; i <= InvseeGui.OFFLINE_FILLER_LAST; i++) {
-            assertThat(stackAt(gui, i)).as("GUI slot %d should hold a barrier", i).isNotNull();
-            assertThat(stackAt(gui, i).getType()).as("GUI slot %d", i).isEqualTo(Material.BARRIER);
+            assertThat(stackAt(gui, i)).as("GUI slot %d should hold a gray pane", i).isNotNull();
+            assertThat(stackAt(gui, i).getType()).as("GUI slot %d", i).isEqualTo(Material.GRAY_STAINED_GLASS_PANE);
+            assertThat(plain(stackAt(gui, i).getItemMeta().displayName())).isEqualTo(" ");
             assertThat(gui.getSlotElement(i)).isNotInstanceOf(SlotElement.InventoryLink.class);
         }
     }
 
     @Test
-    void buildOfflineInventory_barriersCannotBeMovedByClicking() {
+    void buildOfflineInventory_fillerPanesCannotBeMovedByClicking() {
         xyz.xenondevs.invui.gui.Gui gui =
                 InvseeGui.buildOfflineInventory(OfflinePlayerSnapshot.empty());
 
@@ -117,7 +118,7 @@ class InvseeGuiTest {
                 new xyz.xenondevs.invui.Click(player, ClickType.LEFT));
 
         assertThat(stackAt(gui, InvseeGui.OFFLINE_FILLER_FIRST).getType())
-                .isEqualTo(Material.BARRIER);
+                .isEqualTo(Material.GRAY_STAINED_GLASS_PANE);
     }
 
     @Test
@@ -158,7 +159,7 @@ class InvseeGuiTest {
         assertThat(gui.getSize()).isEqualTo(45);
         for (int i = 0; i <= InvseeGui.OFFLINE_FILLER_LAST; i++) {
             if (i >= InvseeGui.OFFLINE_FILLER_FIRST) {
-                assertThat(stackAt(gui, i).getType()).isEqualTo(Material.BARRIER);
+                assertThat(stackAt(gui, i).getType()).isEqualTo(Material.GRAY_STAINED_GLASS_PANE);
             } else {
                 assertThat(stackAt(gui, i)).isNull();
             }
@@ -277,8 +278,10 @@ class InvseeGuiTest {
         for (int guiSlot = 0; guiSlot < expectedBukkitSlots.length; guiSlot++) {
             Integer expectedBukkitSlot = expectedBukkitSlots[guiSlot];
             if (expectedBukkitSlot == null) {
-                assertThat(stackAt(live, guiSlot).getType()).isEqualTo(Material.BARRIER);
-                assertThat(stackAt(offline, guiSlot).getType()).isEqualTo(Material.BARRIER);
+                assertThat(stackAt(live, guiSlot).getType()).isEqualTo(Material.GRAY_STAINED_GLASS_PANE);
+                assertThat(stackAt(offline, guiSlot).getType()).isEqualTo(Material.GRAY_STAINED_GLASS_PANE);
+                assertThat(plain(stackAt(live, guiSlot).getItemMeta().displayName())).isEqualTo(" ");
+                assertThat(plain(stackAt(offline, guiSlot).getItemMeta().displayName())).isEqualTo(" ");
             } else {
                 assertThat(((SlotElement.InventoryLink) live.getSlotElement(guiSlot)).slot())
                         .as("live GUI slot %d", guiSlot)
