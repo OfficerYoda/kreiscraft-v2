@@ -133,7 +133,7 @@ operator-owned runtime state written by commands stay out of the GUI:
 
 Each module's config is deserialized via Configurate's `@ConfigSerializable` object mapping. Field names follow camelCase → kebab-case conversion automatically (e.g., `tagDuration` → `tag-duration`). Fields annotated with `@Setting("explicit-key")` use the given key verbatim.
 
-Modules with no settings beyond `enabled` are not listed here: `invsee`, `settings-gui`, `sign-color`, `sit`, `status`, `world-mgmt`.
+Modules with no settings beyond `enabled` are not listed here: `invsee`, `settings-gui`, `sign-color`, `sit`, `status`.
 
 ---
 
@@ -376,6 +376,22 @@ only `update-interval` needs a restart because the shared repeating task is not 
 | `death-explosion-fire` | boolean | `true` | Whether the death explosion sets fire to nearby blocks. |
 | `death-explosion-block-damage` | boolean | `true` | Whether the death explosion breaks blocks. |
 | `death-boss-bar-radius` | int | `50` | Block radius within which players see the death boss bar. |
+
+---
+
+### `world-mgmt`
+
+| Key (relative to `modules.world-mgmt`) | Type | Default | Description |
+|---|---|---|---|
+| `allow-nether` | boolean | `true` | Whether portal travel into the Nether is allowed. |
+| `allow-end` | boolean | `true` | Whether portal travel into the End is allowed. |
+
+Both flags are editable under **World Management** in the Server Configuration GUI and hot-reload
+immediately: they are read from the live configuration root, so `/dimension` toggles also take
+effect without a reload. Disabling a dimension cancels new portal travel into it and leaves players
+already inside untouched. Command and plugin teleports (including `/world`) are not intercepted.
+Existing installations that do not yet contain these keys behave as if both are `true`, and the GUI
+displays that default without rewriting `config.yml`.
 
 ---
 

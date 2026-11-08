@@ -368,7 +368,36 @@ public final class ServerConfigSchema {
                 ConfigValidators.integerRange(1, 1_000),
                 ConfigLifecycle.HOT_RELOAD));
 
+        // ── world-mgmt ──────────────────────────────────────────────────────
+        fields.add(netherAccess());
+        fields.add(endAccess());
+
         return fields;
+    }
+
+    /**
+     * Operator-owned flag controlling portal travel into the Nether. Read live so that a command
+     * toggle takes effect immediately and a reload observes direct YAML changes.
+     */
+    public static ConfigField netherAccess() {
+        return dimensionAccess("allow-nether");
+    }
+
+    /**
+     * Operator-owned flag controlling portal travel into the End. Read live so that a command
+     * toggle takes effect immediately and a reload observes direct YAML changes.
+     */
+    public static ConfigField endAccess() {
+        return dimensionAccess("allow-end");
+    }
+
+    private static ConfigField dimensionAccess(String key) {
+        return new ConfigField(
+                List.of("modules", "world-mgmt", key),
+                ConfigFieldType.BOOLEAN,
+                ConfigValidators.booleanValue(),
+                true,
+                ConfigLifecycle.HOT_RELOAD);
     }
 
     private static ConfigField tpsBarNumber(String key, ConfigFieldType type, ConfigValidator validator) {

@@ -124,6 +124,17 @@ class ServerConfigServiceTest {
     }
 
     @Test
+    void missingWorldMgmtAccessKeys_showEnabledDefaultsWithoutMutatingConfiguration() throws Exception {
+        config.root().node("modules", "world-mgmt", "allow-nether").set(null);
+        config.root().node("modules", "world-mgmt", "allow-end").set(null);
+        String before = Files.readString(configFile);
+
+        assertThat(service.current(field("world-mgmt", "allow-nether"))).isEqualTo(true);
+        assertThat(service.current(field("world-mgmt", "allow-end"))).isEqualTo(true);
+        assertThat(Files.readString(configFile)).isEqualTo(before);
+    }
+
+    @Test
     void missingPerformanceBarSection_showsRuntimeDefaultsWithoutMutatingConfiguration() throws Exception {
         var section = config.root().node("modules", "admin", "tps-bar");
         section.set(null);

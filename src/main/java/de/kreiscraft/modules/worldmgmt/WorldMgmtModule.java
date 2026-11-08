@@ -1,9 +1,11 @@
 package de.kreiscraft.modules.worldmgmt;
 
+import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
+import de.kreiscraft.modules.worldmgmt.commands.DimensionCommand;
 import de.kreiscraft.modules.worldmgmt.commands.PortalCommand;
 import de.kreiscraft.modules.worldmgmt.commands.WorldCommand;
 import de.kreiscraft.platform.PaperPlatform;
@@ -37,6 +39,11 @@ public final class WorldMgmtModule implements Module {
 
         MessageService messages = ctx.messages();
         PaperPlatform platform = ctx.services().get(PaperPlatform.class);
+        ConfigService configService = ctx.services().get(ConfigService.class);
+
+        DimensionAccessService dimensions =
+                new DefaultDimensionAccessService(configService, ctx.plugin().getLogger());
+        ctx.events().register(new DimensionAccessListener(dimensions, messages));
 
         ctx.commands().register(
                 WorldCommand.build(messages, platform),
@@ -44,6 +51,9 @@ public final class WorldMgmtModule implements Module {
         ctx.commands().register(
                 PortalCommand.build(messages),
                 "Compute portal coordinate translations");
+        ctx.commands().register(
+                DimensionCommand.build(dimensions, messages),
+                "Enable or disable Nether and End portal access");
     }
 
     @Override

@@ -49,3 +49,9 @@ _Avoid_: Server configuration
 The one-time ceremony that shows a full countdown and then begins one continuous world-border
 expansion.
 _Avoid_: Border phases
+
+**Dimension Access**:
+Whether portal travel into the Nether or End is currently allowed. It is operator-owned Server
+Configuration, editable through `/dimension` and the Server Configuration GUI, and it blocks only
+new portal travel.
+_Avoid_: World access, world enabled

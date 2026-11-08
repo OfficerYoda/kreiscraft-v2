@@ -184,6 +184,22 @@ class ServerConfigGuiTest {
     }
 
     @Test
+    void worldMgmtAccessTogglesAreEditableBooleans() {
+        ConfigField allowNether = field("world-mgmt", "allow-nether");
+        Gui gui = category("world-mgmt");
+
+        assertThat(plain(stackAt(gui, slotOf("world-mgmt", allowNether))))
+                .contains("server-config.field.world-mgmt-allow-nether")
+                .contains("server-config.value-on");
+
+        click(gui, slotOf("world-mgmt", allowNether));
+
+        assertThat(editor.current(allowNether)).isEqualTo(false);
+        assertThat(plain(stackAt(category("world-mgmt"), slotOf("world-mgmt", allowNether))))
+                .contains("server-config.value-off");
+    }
+
+    @Test
     void categoryEntry_marksDisabledModule() {
         Gui gui = ServerConfigGui.buildRoot(editor, messages, player, navigator);
         int firework = ServerConfigGui.categories(editor.schema()).indexOf("firework");

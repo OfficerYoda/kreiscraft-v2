@@ -163,3 +163,5 @@ modules:
     death-boss-bar-radius: 50
   world-mgmt:
     enabled: true
+    allow-nether: true
+    allow-end: true
