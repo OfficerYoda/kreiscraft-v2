@@ -18,7 +18,9 @@ The version-specific offline player-data tests live separately under `src/nmsTes
 
 These tests load the mapped Paper server's vanilla registries, tags, and item components without
 starting a listening server or using MockBukkit. They cover real compressed-NBT decoding, equipment
-slot mapping, enchanted-item round trips, and staged file commits. The HTML report is
+slot mapping, enchanted-item round trips, and staged file commits. They also exercise the production
+directory resolver against Paper's player-data resource path, including a custom world container,
+so a server-saved file cannot be mistaken for missing data because of a hardcoded layout. The HTML report is
 `build/reports/tests/testNms/index.html`. `check` (and therefore `build`) runs both suites.
 
 ---

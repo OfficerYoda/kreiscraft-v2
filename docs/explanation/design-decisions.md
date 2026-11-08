@@ -541,6 +541,9 @@ items. File access (`OfflinePlayerDataStore`) is plain Java over a player-data d
 `PlayerDataCodec`; the NMS decode (`NmsPlayerDataCodec`) and the world-directory lookup
 (`PaperPlayerDataPaths`) are the only version-specific classes. The composition root wires the NMS
 codec behind the store and publishes only the interface to the service registry.
+The directory lookup delegates to the server's storage API with `LevelResource.PLAYER_DATA_DIR`,
+rather than constructing a path from the working directory and level name. This respects the
+configured world container and Paper's player-data layout (`players/data` in Paper 26.2).
 
 **Consequences:**
 - The file protocol — missing files, reading without writing, and decode failures — is tested

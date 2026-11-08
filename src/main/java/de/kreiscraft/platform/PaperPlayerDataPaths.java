@@ -2,22 +2,22 @@ package de.kreiscraft.platform;
 
 import java.nio.file.Path;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.bukkit.craftbukkit.CraftServer;
 
 /**
  * Resolves the directory that holds {@code <uuid>.dat} player-data files.
  *
- * <p>Not unit-tested (NMS surface); it is the only piece of the offline-read boundary that needs
- * server internals.
+ * <p>Uses the server's storage path so the directory layout and configured world container are
+ * respected. The mapped-server tests cover this lookup together with offline file opening.
  */
 public final class PaperPlayerDataPaths {
 
     private PaperPlayerDataPaths() {}
 
-    /** @return {@code <world>/playerdata} for the server's default level */
+    /** @return the server's player-data directory for its default level */
     public static Path playerDataDirectory(PaperPlatform platform) {
         DedicatedServer server = ((CraftServer) platform.server()).getServer();
-        Path worldDir = server.getServerDirectory().resolve(server.getLevelIdName());
-        return worldDir.resolve("playerdata");
+        return server.getWorldPath(LevelResource.PLAYER_DATA_DIR);
     }
 }

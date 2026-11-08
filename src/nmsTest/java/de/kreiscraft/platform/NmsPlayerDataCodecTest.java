@@ -2,6 +2,9 @@ package de.kreiscraft.platform;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEvent;
 import java.io.ByteArrayInputStream;
@@ -25,6 +28,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
@@ -33,7 +37,9 @@ import net.minecraft.world.ItemStackWithSlot;
 import net.minecraft.world.entity.EntityEquipment;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.storage.LevelResource;
 import org.bukkit.Material;
+import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.BeforeAll;
@@ -62,6 +68,42 @@ class NmsPlayerDataCodecTest {
         }
         BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(registries)
                 .forEach(pending -> pending.apply());
+    }
+
+    @Test
+    void openForEdit_serverResolvedDirectory_findsInventoryAndEnderChest() throws Exception {
+        DedicatedServer server = mock(DedicatedServer.class);
+        CraftServer craftServer = mock(CraftServer.class);
+        when(craftServer.getServer()).thenReturn(server);
+        // The server's working directory need not be its configured world container.
+        when(server.getServerDirectory()).thenReturn(playerData);
+        when(server.getLevelIdName()).thenReturn("custom-world");
+        Path directory = playerData.resolve("world-container/custom-world")
+                .resolve(LevelResource.PLAYER_DATA_DIR.id());
+        when(server.getWorldPath(LevelResource.PLAYER_DATA_DIR)).thenReturn(directory);
+        Files.createDirectories(directory);
+        UUID playerId = UUID.randomUUID();
+        Path source = directory.resolve(playerId + ".dat");
+        CompoundTag root = new CompoundTag();
+        root.put("Inventory", ItemStackWithSlot.CODEC.listOf().encodeStart(ops(),
+                List.of(new ItemStackWithSlot(9, new net.minecraft.world.item.ItemStack(Items.DIAMOND, 3))))
+                .getOrThrow());
+        root.put("EnderItems", ItemStackWithSlot.CODEC.listOf().encodeStart(ops(),
+                List.of(new ItemStackWithSlot(26, new net.minecraft.world.item.ItemStack(Items.EMERALD, 8))))
+                .getOrThrow());
+        byte[] sourceBytes = compress(root);
+        Files.write(source, sourceBytes);
+        Path resolved = PaperPlayerDataPaths.playerDataDirectory(new PaperPlatform(null, craftServer));
+
+        var opened = new OfflinePlayerDataStore(resolved, codec()).openForEdit(playerId);
+
+        assertThat(opened).as("server-saved player data must not be reported as missing").isPresent();
+        OfflinePlayerEditSession session = opened.orElseThrow();
+        assertThat(session.source()).isEqualTo(source);
+        assertThat(session.snapshot().inventory().getFirst().stack().getType()).isEqualTo(Material.DIAMOND);
+        assertThat(session.snapshot().enderItems().getFirst().stack().getType()).isEqualTo(Material.EMERALD);
+        assertThat(Files.readAllBytes(source)).isEqualTo(sourceBytes);
+        verify(server).getWorldPath(LevelResource.PLAYER_DATA_DIR);
     }
 
     @Test
