@@ -123,3 +123,6 @@ permissions:
   kreiscraft.worldmgmt.portal:
     description: Compute portal coordinate translations
     default: true
+  kreiscraft.worldmgmt.dimension:
+    description: Enable or disable Nether and End portal access
+    default: op

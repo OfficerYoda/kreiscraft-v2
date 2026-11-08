@@ -6,6 +6,7 @@ import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.modules.admin.TpsBarConfig;
+import java.util.List;
 import org.bukkit.Location;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -30,11 +31,20 @@ public final class DefaultServerConfigService implements ServerConfigService {
         return config.configSchema();
     }
 
+    /** Access flags whose absent keys display as enabled without rewriting live configuration. */
+    private static final List<List<Object>> DEFAULT_ENABLED_PATHS =
+            List.of(
+                    List.of("modules", "world-mgmt", "allow-nether"),
+                    List.of("modules", "world-mgmt", "allow-end"));
+
     @Override
     public Object current(ConfigField field) {
         ConfigurationNode node = config.root().node(field.pathArray());
         try {
             if (node.virtual() || node.isNull()) {
+                if (DEFAULT_ENABLED_PATHS.contains(field.path())) {
+                    return true;
+                }
                 if (field.path().size() != 4
                         || !field.path().subList(0, 3).equals(java.util.List.of("modules", "admin", "tps-bar"))) {
                     return null;

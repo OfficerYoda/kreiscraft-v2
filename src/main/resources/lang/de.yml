@@ -114,6 +114,8 @@ server-config:
     wither-death-explosion-fire: "Todes-Explosion Feuer"
     wither-death-explosion-block-damage: "Todes-Explosion Block-Schaden"
     wither-death-boss-bar-radius: "Todes-Bossbar-Radius"
+    world-mgmt-allow-nether: "Nether-Zugang erlauben"
+    world-mgmt-allow-end: "End-Zugang erlauben"
   value-on: "<green>An"
   value-off: "<red>Aus"
   value-none: "<gray>nicht gesetzt"
@@ -316,6 +318,13 @@ world-mgmt:
   portal-converted: "<prefix> <gray>Portal-Koordinaten: X <x> Z <z></gray>"
   portal-not-overworld: "<prefix> <red>Du befindest dich nicht in der Overworld."
   portal-not-nether: "<prefix> <red>Du befindest dich nicht im Nether."
+  dimension-blocked: "<prefix> <red>Die Reise durch <dimension>-Portale ist derzeit deaktiviert."
+  dimension-status: "<prefix> <gray><dimension>-Zugang: <state>"
+  dimension-state-enabled: "<green>aktiviert"
+  dimension-state-disabled: "<red>deaktiviert"
+  dimension-enabled: "<prefix> <green><dimension>-Zugang aktiviert."
+  dimension-disabled: "<prefix> <yellow><dimension>-Zugang deaktiviert."
+  dimension-update-failed: "<prefix> <red>Die Änderung des Dimensionszugangs konnte nicht gespeichert werden."
 time:
   relative:
     just-now: "gerade eben"

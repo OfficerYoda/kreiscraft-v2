@@ -81,7 +81,7 @@ src/main/java/de/kreiscraft/
 | `tablist` | Original Kreiscraft tab-list banner, playtime, clock, ping and TPS with MiniMessage templates and `%placeholder%` tokens |
 | `update-mode` | `/updatemode` — maintenance mode that kicks non-bypass players on activation and login |
 | `wither` | Configurable Wither stats (health, damage, minions, explosion) |
-| `world-mgmt` | `/world`, `/portal` — multi-world navigation |
+| `world-mgmt` | `/world`, `/portal`, `/dimension` — multi-world navigation and dimension access |
 
 ## Tech stack
 

@@ -59,6 +59,12 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
 | `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
 | `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
+| `/dimension` | — | `world-mgmt` | Show whether portal travel into the Nether and End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension status` | — | `world-mgmt` | Same as `/dimension`; show both dimensions' status. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension nether` | — | `world-mgmt` | Show whether portal travel into the Nether is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension end` | — | `world-mgmt` | Show whether portal travel into the End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension nether enable\|disable` | — | `world-mgmt` | Allow or block new portal travel into the Nether. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension end enable\|disable` | — | `world-mgmt` | Allow or block new portal travel into the End. | `kreiscraft.worldmgmt.dimension` | op |
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 
@@ -168,6 +174,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 
 - `kreiscraft.worldmgmt.world` — **(op)** — Teleport between worlds.
 - `kreiscraft.worldmgmt.portal` — **(true)** — Compute portal coordinate translations.
+- `kreiscraft.worldmgmt.dimension` — **(op)** — Show and toggle Nether/End portal access.
 
 ---
 

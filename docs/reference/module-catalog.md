@@ -33,7 +33,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `tablist` | `de.kreiscraft.modules.tablist` | stable | none | — | Refreshes the tab list header and footer on a configurable tick interval using PlaceholderResolver. |
 | `update-mode` | `de.kreiscraft.modules.updatemode` | stable | none | updatemode | Maintenance mode that kicks non-bypassed players on login. |
 | `wither` | `de.kreiscraft.modules.wither` | stable | none | — | Enhances the Wither boss with custom health, damage, armour, independently configurable spawn, half-health, and death explosions, and minion spawning. |
-| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, portal | Commands for teleporting between worlds and computing Nether/Overworld portal coordinates. |
+| `world-mgmt` | `de.kreiscraft.modules.worldmgmt` | stable | none | world, portal, dimension | Commands for teleporting between worlds, computing Nether/Overworld portal coordinates, and enabling or disabling Nether/End portal travel. |
 
 ### Default-off modules
 
@@ -444,4 +444,8 @@ Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour
 
 ### Description
 
-Provides two world-management commands: teleport to any loaded world's spawn and compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8).
+Provides three world-management commands: teleport to any loaded world's spawn, compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8), and enable or disable portal travel into the Nether and End. `/dimension` reports both dimensions, `/dimension <nether|end>` reports one, and `/dimension <nether|end> enable|disable` toggles access. The `allow-nether` and `allow-end` flags are also editable under **World Management** in the Server Configuration GUI and hot-reload immediately. Blocking a dimension cancels new portal travel into it; players already inside are not moved, and non-portal teleports such as `/world` remain available.
+
+### Services published
+
+None.

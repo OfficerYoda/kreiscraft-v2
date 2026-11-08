@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
+import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.event.EventBus;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.message.PlaceholderResolver;
@@ -132,7 +133,7 @@ class RemovedCommandSurfacesTest {
 
         assertThat(registrar.names()).doesNotContain("setworldspawn");
         assertThat(registrar.aliases()).doesNotContain("sws");
-        assertThat(registrar.names()).contains("world", "portal");
+        assertThat(registrar.names()).contains("world", "portal", "dimension");
     }
 
     @Test
@@ -247,6 +248,7 @@ class RemovedCommandSurfacesTest {
         CapturingCommandRegistrar registrar = new CapturingCommandRegistrar();
         ServiceRegistry services = new ServiceRegistry();
         services.publish(PaperPlatform.class, new PaperPlatform(plugin, server));
+        services.publish(ConfigService.class, mock(ConfigService.class));
         new WorldMgmtModule()
                 .enable(
                         new ModuleContext(

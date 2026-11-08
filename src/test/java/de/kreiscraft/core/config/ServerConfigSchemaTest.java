@@ -102,7 +102,9 @@ class ServerConfigSchemaTest {
                         List.of("modules", "update-mode", "bypass-names"),
                         List.of("modules", "wither", "spawn-explosion-power"),
                         List.of("modules", "wither", "half-health-explosion-block-damage"),
-                        List.of("modules", "wither", "death-boss-bar-radius"));
+                        List.of("modules", "wither", "death-boss-bar-radius"),
+                        List.of("modules", "world-mgmt", "allow-nether"),
+                        List.of("modules", "world-mgmt", "allow-end"));
     }
 
     @Test
@@ -144,6 +146,24 @@ class ServerConfigSchemaTest {
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
         assertThat(lifecycle(schema, "modules", "wither", "death-explosion-power"))
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "world-mgmt", "allow-nether"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "world-mgmt", "allow-end"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+    }
+
+    @Test
+    void worldMgmtAccessFlags_areGuiExposedBooleans() {
+        ConfigField nether = ServerConfigSchema.netherAccess();
+        ConfigField end = ServerConfigSchema.endAccess();
+
+        assertThat(nether.path()).containsExactly("modules", "world-mgmt", "allow-nether");
+        assertThat(end.path()).containsExactly("modules", "world-mgmt", "allow-end");
+        for (ConfigField field : List.of(nether, end)) {
+            assertThat(field.type()).isEqualTo(ConfigFieldType.BOOLEAN);
+            assertThat(field.guiExposed()).isTrue();
+            assertThat(field.hotReloadable()).isTrue();
+        }
     }
 
     @Test
