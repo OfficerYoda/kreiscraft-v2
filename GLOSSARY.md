@@ -51,7 +51,7 @@ expansion.
 _Avoid_: Border phases
 
 **Dimension Access**:
-Whether portal travel into the Nether or End is currently allowed. It is operator-owned Server
-Configuration, editable through `/dimension` and the Server Configuration GUI, and it blocks only
-new portal travel.
+Whether portal travel into or out of the Nether or End is currently allowed. It is operator-owned
+Server Configuration, editable through `/dimension` and the Server Configuration GUI, and it blocks
+only portal travel.
 _Avoid_: World access, world enabled
