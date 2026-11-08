@@ -26,14 +26,15 @@ public interface PlayerDataCodec {
      * Encodes edited inventory and Ender Chest items as compressed player-data NBT, preserving
      * every unrelated root tag and item component from {@code sourceNbtBytes}.
      *
-     * <p>Only the {@code Inventory} and {@code EnderItems} lists are replaced; the complete source
+     * <p>Only {@code Inventory}, the editable armor/offhand entries in {@code equipment}, and
+     * {@code EnderItems} are replaced; the complete source
      * document is otherwise copied through untouched, so no unrelated player data or item metadata
      * is lost.
      *
      * @param sourceNbtBytes the compressed {@code <uuid>.dat} contents the edits were made against
      * @param inventory the ordinary inventory slots to write (Bukkit slots 0–40)
      * @param enderItems the Ender Chest slots to write (0–26)
-     * @return compressed player-data NBT with the two edited lists replaced
+     * @return compressed player-data NBT with the edited inventory, equipment, and Ender Chest
      * @throws IOException if the source bytes are not valid player-data NBT or encoding fails
      */
     byte[] encode(

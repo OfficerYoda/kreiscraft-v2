@@ -4,10 +4,12 @@ import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.platform.SlottedItem;
 import java.util.ArrayList;
 import java.util.List;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.gui.SlotElement;
 import xyz.xenondevs.invui.inventory.ReferencingInventory;
@@ -21,7 +23,7 @@ import xyz.xenondevs.invui.item.Item;
  *
  * <ul>
  *   <li>Row 1 (GUI 0–4): helmet, chestplate, leggings, boots, offhand (Bukkit 39, 38, 37, 36, 40);
- *       GUI slots 5–8 are immovable {@link Material#BARRIER} placeholders.
+ *       GUI slots 5–8 are immovable {@link Material#GRAY_STAINED_GLASS_PANE} placeholders.
  *   <li>Rows 2–4 (GUI 9–35): main inventory (Bukkit slots 9–35) — GUI index equals the Bukkit slot.
  *   <li>Row 5 (GUI 36–44): hotbar (Bukkit slots 0–8).
  * </ul>
@@ -107,9 +109,13 @@ public final class InvseeGui {
         gui.setSlotElement(2, new SlotElement.InventoryLink(contents, 37)); // leggings
         gui.setSlotElement(3, new SlotElement.InventoryLink(contents, 36)); // boots
         gui.setSlotElement(4, new SlotElement.InventoryLink(contents, 40)); // offhand
-        // No inventory position exists for GUI 5-8: render immovable barriers.
+        // No inventory position exists for GUI 5-8: render immovable, unnamed glass panes.
+        ItemStack filler = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta meta = filler.getItemMeta();
+        meta.displayName(Component.text(" "));
+        filler.setItemMeta(meta);
         for (int i = OFFLINE_FILLER_FIRST; i <= OFFLINE_FILLER_LAST; i++) {
-            gui.setItem(i, Item.simple(new ItemStack(Material.BARRIER)));
+            gui.setItem(i, Item.simple(filler));
         }
         // Main inventory: GUI index equals the Bukkit slot (9-35).
         for (int slot = 9; slot <= 35; slot++) {

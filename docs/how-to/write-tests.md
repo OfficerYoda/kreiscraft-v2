@@ -10,6 +10,19 @@ Tests live under `src/test/java/de/kreiscraft/`. Run them all with:
 
 HTML report: `build/reports/tests/test/index.html`.
 
+The version-specific offline player-data tests live separately under `src/nmsTest/java/`:
+
+```
+./gradlew testNms
+```
+
+These tests load the mapped Paper server's vanilla registries, tags, and item components without
+starting a listening server or using MockBukkit. They cover real compressed-NBT decoding, equipment
+slot mapping, enchanted-item round trips, and staged file commits. They also exercise the production
+directory resolver against Paper's player-data resource path, including a custom world container,
+so a server-saved file cannot be mistaken for missing data because of a hardcoded layout. The HTML report is
+`build/reports/tests/testNms/index.html`. `check` (and therefore `build`) runs both suites.
+
 ---
 
 ## 1. Unit-testing pure logic (no Bukkit)
