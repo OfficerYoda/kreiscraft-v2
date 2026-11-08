@@ -59,11 +59,11 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/world <name>` | — | `world-mgmt` | Teleport to a loaded world's spawn. | `kreiscraft.worldmgmt.world` | op |
 | `/portal nether [x z]` | — | `world-mgmt` | Compute and display Nether coords (÷8) for given/current position; the no-args form requires you to be in the Overworld. | `kreiscraft.worldmgmt.portal` | true |
 | `/portal overworld [x z]` | — | `world-mgmt` | Compute and display Overworld coords (×8) for given/current position; the no-args form requires you to be in the Nether. | `kreiscraft.worldmgmt.portal` | true |
-| `/dimension` | — | `world-mgmt` | Show whether portal travel into the Nether and End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
-| `/dimension nether` | — | `world-mgmt` | Show whether portal travel into the Nether is enabled. | `kreiscraft.worldmgmt.dimension` | op |
-| `/dimension end` | — | `world-mgmt` | Show whether portal travel into the End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
-| `/dimension nether enable\|disable` | — | `world-mgmt` | Allow or block new portal travel into the Nether. | `kreiscraft.worldmgmt.dimension` | op |
-| `/dimension end enable\|disable` | — | `world-mgmt` | Allow or block new portal travel into the End. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension` | — | `world-mgmt` | Show whether portal travel into or out of the Nether and End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension nether` | — | `world-mgmt` | Show whether portal travel into or out of the Nether is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension end` | — | `world-mgmt` | Show whether portal travel into or out of the End is enabled. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension nether enable\|disable` | — | `world-mgmt` | Allow or block portal travel into or out of the Nether. | `kreiscraft.worldmgmt.dimension` | op |
+| `/dimension end enable\|disable` | — | `world-mgmt` | Allow or block portal travel into or out of the End. | `kreiscraft.worldmgmt.dimension` | op |
 
 > ¹ `kreiscraft.admin` is used by `ReloadCommand` but is **not declared** in `plugin.yml`. Bukkit treats undeclared permissions as `op` by default.
 

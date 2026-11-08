@@ -383,12 +383,12 @@ only `update-interval` needs a restart because the shared repeating task is not 
 
 | Key (relative to `modules.world-mgmt`) | Type | Default | Description |
 |---|---|---|---|
-| `allow-nether` | boolean | `true` | Whether portal travel into the Nether is allowed. |
-| `allow-end` | boolean | `true` | Whether portal travel into the End is allowed. |
+| `allow-nether` | boolean | `true` | Whether portal travel into or out of the Nether is allowed. |
+| `allow-end` | boolean | `true` | Whether portal travel into or out of the End is allowed. |
 
 Both flags are editable under **World Management** in the Server Configuration GUI and hot-reload
 immediately: they are read from the live configuration root, so `/dimension` toggles also take
-effect without a reload. Disabling a dimension cancels new portal travel into it and leaves players
+effect without a reload. Disabling a dimension cancels portal travel into or out of it and leaves players
 already inside untouched. Command and plugin teleports (including `/world`) are not intercepted.
 Existing installations that do not yet contain these keys behave as if both are `true`, and the GUI
 displays that default without rewriting `config.yml`.

@@ -444,7 +444,7 @@ Enhances the vanilla Wither boss. On spawn its health, attack damage, and armour
 
 ### Description
 
-Provides three world-management commands: teleport to any loaded world's spawn, compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8), and enable or disable portal travel into the Nether and End. `/dimension` reports both dimensions, `/dimension <nether|end>` reports one, and `/dimension <nether|end> enable|disable` toggles access. The `allow-nether` and `allow-end` flags are also editable under **World Management** in the Server Configuration GUI and hot-reload immediately. Blocking a dimension cancels new portal travel into it; players already inside are not moved, and non-portal teleports such as `/world` remain available.
+Provides three world-management commands: teleport to any loaded world's spawn, compute Overworld ↔ Nether portal coordinate translations (÷8 / ×8), and enable or disable portal travel into or out of the Nether and End. `/dimension` reports both dimensions, `/dimension <nether|end>` reports one, and `/dimension <nether|end> enable|disable` toggles access. The `allow-nether` and `allow-end` flags are also editable under **World Management** in the Server Configuration GUI and hot-reload immediately. Blocking a dimension cancels portal travel into or out of it; players already inside are not moved, and non-portal teleports such as `/world` remain available.
 
 ### Services published
 
