@@ -1,10 +1,10 @@
 # Kreiscraft
 
-A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 24 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
+A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single JAR that replaces several standalone plugins with 25 opt-in feature modules and an embedded HTTP + WebSocket API for the web frontend.
 
 ## Highlights
 
-- **Runtime module system.** 24 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
+- **Runtime module system.** 25 opt-in feature modules toggled from `config.yml`. Startup uses topological sorting on declared dependencies.
 - **Modern Paper APIs.** Brigadier commands via `LifecycleEvents.COMMANDS`, Adventure + MiniMessage everywhere, no legacy `CommandExecutor` / `§`-code strings.
 - **Clean lifecycle.** Every module registers through a `ModuleContext` dependency bag; teardown is tracked so `disable()` cleans up listeners, commands, scheduled tasks, and GUIs.
 - **Config vs. state.** Admin-managed settings live in `config.yml`; runtime state lives in dirty-tracked `DataFile<T>` YAMLs under `data/` with periodic auto-save.
@@ -44,7 +44,7 @@ src/main/java/de/kreiscraft/
 │                                scheduler, events, commands, services
 ├── platform/                    Paper-specific adapters
 ├── shared/                      cross-module services (ChatBridge, GUI, user, whitelist)
-└── modules/                     the 24 feature modules
+└── modules/                     the 25 feature modules
 ```
 
 - `src/main/resources/config.yml` — default config template
@@ -55,7 +55,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-24 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; only `firework` and `positions` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `firework`, `positions`, and `shattered-crown` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
 
 | Module ID | Summary |
 |---|---|
@@ -74,6 +74,7 @@ src/main/java/de/kreiscraft/
 | `positions` | Named waypoint system with InvUI GUI; `/positions` (`/pos`) with persistent per-player storage |
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |
+| `shattered-crown` | Opt-in cooperative main-End dragon encounter; [operator profile and validation limits](docs/shattered-crown.md) |
 | `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
 | `sit` | `/sit` — toggle sitting; also available via the cushion in `/settings` |
 | `spawn` | `/setspawn`, `/spawn`, spawn glide zone, swap-hand boost, sneak glide boost |

@@ -45,14 +45,20 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following two are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following three are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
+| `shattered-crown` | Cooperative main-End encounter; required live combat and multiplayer balance validation remains outstanding. |
 
-Enabling any of these activates its existing implementation; no additional configuration is required.
+Enable and restart to activate these modules. Before enabling Shattered Crown, verify the designated
+world, actual arrival platform, and usable objective terrain against its
+[validated Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
+documented in the [hunt guide](/shattered-crown-hunt/); reload/restart behavior is documented in the
+[lifecycle guide](/shattered-crown-lifecycle/). Balance remains unvalidated until representative live
+playtesting.
 
 ---
 
@@ -67,7 +73,8 @@ nothing changes unless the complete candidate is valid and durably written.
 - A successful edit preserves existing comments and unrelated keys, writes a flushed temporary
   file, and replaces `config.yml` using an atomic move where the filesystem supports it.
 - Every editable field declares its value type, validator, GUI exposure, and reload lifecycle.
-  Module `enabled` flags are **restart-only**: `/kreiscraft reload` does not start or stop modules.
+  Module `enabled` flags are **restart-only** for activation. Shattered Crown additionally aborts
+  immediately when reloaded with `enabled: false`; re-enabling it still requires a restart.
 
 The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
 Fields that are not declared there remain YAML-only.
