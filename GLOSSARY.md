@@ -55,3 +55,16 @@ Whether portal travel into or out of the Nether or End is currently allowed. It 
 Server Configuration, editable through `/dimension` and the Server Configuration GUI, and it blocks
 only portal travel.
 _Avoid_: World access, world enabled
+
+**Encounter**:
+One attempt at The Shattered Crown dragon fight, ending in victory or reset.
+_Avoid_: Raid instance, fight session
+
+**Anchor**:
+A destructible crystal objective whose survival shields the dragon and whose defenders must be
+defeated before it can be destroyed.
+_Avoid_: Shield generator, pylon
+
+**Attack Warning**:
+A visible cue identifying an impending Encounter attack before it deals damage.
+_Avoid_: Telegraph, attack notification
