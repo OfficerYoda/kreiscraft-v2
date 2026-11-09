@@ -161,6 +161,97 @@ final class EncounterArena {
         return true;
     }
 
+    boolean laneSafe(BreathLane lane, List<BreathLane> existing, List<Player> participants) {
+        Location arrival = new Location(center.getWorld(), center.getX() + config.arrivalX(), lane.center.getY(),
+                center.getZ() + config.arrivalZ());
+        if (Math.abs(lane.center.getY() - config.arrivalY()) <= config.arrivalHeight() / 2 + 3
+                && lane.contains(arrival, config.arrivalRadius())) {
+            return false;
+        }
+        // Sample the whole footprint: void, protection or an unusable raised surface is not an arena.
+        int lengthSteps = (int) Math.ceil(lane.length);
+        int widthSteps = (int) Math.ceil(lane.width);
+        for (int x = 0; x <= lengthSteps; x++) {
+            double along = -lane.length / 2 + x * lane.length / lengthSteps;
+            for (int z = 0; z <= widthSteps; z++) {
+                double across = -lane.width / 2 + z * lane.width / widthSteps;
+                if (!walkable(lane.point(along, across))) {
+                    return false;
+                }
+            }
+        }
+        double search = lane.length + config.laneWarningSeconds() * 3 + 32;
+        var clouds = lane.center.getWorld().getNearbyEntities(lane.center, search, 6, search).stream()
+                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
+                        && cloud.getParticle() == Particle.DRAGON_BREATH)
+                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
+                || cloud.getRadius() > 32 || lane.contains(cloud.getLocation(), cloud.getRadius() + 1))
+                || existing.stream().anyMatch(other -> rectanglesOverlap(lane, other))) {
+            return false;
+        }
+        // Do not add pressure while somebody is already escaping existing danger.
+        if (participants.stream()
+                .anyMatch(player -> existing.stream().anyMatch(other -> other.contains(player.getLocation(), 1))
+                        || clouds.stream().anyMatch(cloud -> overlaps(player.getLocation(), 0.5, cloud)))) {
+            return false;
+        }
+        return participants.stream().filter(player -> lane.contains(player.getLocation(), 1))
+                .allMatch(player -> laneEscape(player.getLocation(), lane, existing, clouds));
+    }
+
+    boolean landingSafe() {
+        // Native landing uses the real podium. Require ground-level melee approaches, not a void perch.
+        int distance = (int) Math.min(8, config.landingRadius() - 3);
+        for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance}, new int[] {-distance, 0},
+                new int[] {0, -distance})) {
+            Location approach = anchorGround(center.getBlockX() + offset[0], center.getBlockZ() + offset[1], List.of());
+            if (approach == null || Math.sqrt(horizontalSquared(approach, center.getX(), center.getZ())) + 3 > config
+                    .landingRadius()) {
+                return false;
+            }
+        }
+        double reach = config.landingRadius() + 32;
+        var clouds = center.getWorld().getNearbyEntities(center, reach, 32, reach).stream()
+                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
+                        && cloud.getParticle() == Particle.DRAGON_BREATH)
+                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        return clouds.size() <= 32 && clouds.stream().noneMatch(cloud -> !Float.isFinite(cloud.getRadius())
+                || cloud.getRadius() > 32 || horizontalSquared(cloud.getLocation(), center.getX(),
+                        center.getZ()) <= Math.pow(config.landingRadius() + cloud.getRadius(), 2));
+    }
+
+    boolean atPodium(Location dragon) {
+        return contains(dragon) && horizontalSquared(dragon, center.getX(), center.getZ()) <= 64
+                && Math.abs(dragon.getY() - center.getY()) <= 8;
+    }
+
+    private boolean rectanglesOverlap(BreathLane lane, BreathLane other) {
+        return Math.abs(lane.center.getY() - other.center.getY()) <= 6
+                && Math.abs(lane.center.getX() - other.center.getX()) <= (lane.eastWest ? lane.length : lane.width) / 2
+                        + (other.eastWest ? other.length : other.width) / 2 + 1
+                && Math.abs(lane.center.getZ() - other.center.getZ()) <= (lane.eastWest ? lane.width : lane.length) / 2
+                        + (other.eastWest ? other.width : other.length) / 2 + 1;
+    }
+
+    private boolean laneEscape(Location start, BreathLane lane, List<BreathLane> existing,
+            List<AreaEffectCloud> clouds) {
+        for (int direction = 0; direction < 16; direction++) {
+            double angle = direction * Math.PI * 2 / 16;
+            for (double distance = 0; distance <= config.laneWarningSeconds() * 3; distance += 0.5) {
+                Location step = start.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+                if (!walkable(step) || existing.stream().anyMatch(other -> other.contains(step, 0.5))
+                        || clouds.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
+                    break;
+                }
+                if (!lane.contains(step, 1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static double horizontalSquared(Location location, double x, double z) {
         double dx = location.getX() - x;
         double dz = location.getZ() - z;

@@ -12,7 +12,11 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double arrivalHeight, Double anchorDistance, Integer groundSearchRadius, Double groundMaxY,
         String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash,
         Double bombardmentWarningSeconds, Double bombardmentCadenceSeconds,
-        Double bombardmentDamage, Double bombardmentRadius) {
+        Double bombardmentDamage, Double bombardmentRadius,
+        Double laneLength, Double laneWidth, Double laneWarningSeconds, Double laneLifetimeSeconds,
+        Double laneCadenceSeconds, Double laneDamage, Double laneDamageCadenceSeconds,
+        Double landingCadenceSeconds, Double landingWindowSeconds, Double landingApproachSeconds,
+        Double landingRadius) {
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {
@@ -49,6 +53,32 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bombardmentCadenceSeconds = bombardmentCadenceSeconds == null ? 8.0 : bombardmentCadenceSeconds;
         bombardmentDamage = bombardmentDamage == null ? 6.0 : bombardmentDamage;
         bombardmentRadius = bombardmentRadius == null ? 4.0 : bombardmentRadius;
+        laneLength = laneLength == null ? 24.0 : laneLength;
+        laneWidth = laneWidth == null ? 6.0 : laneWidth;
+        laneWarningSeconds = laneWarningSeconds == null ? 3.0 : laneWarningSeconds;
+        laneLifetimeSeconds = laneLifetimeSeconds == null ? 6.0 : laneLifetimeSeconds;
+        laneCadenceSeconds = laneCadenceSeconds == null ? 10.0 : laneCadenceSeconds;
+        laneDamage = laneDamage == null ? 4.0 : laneDamage;
+        laneDamageCadenceSeconds = laneDamageCadenceSeconds == null ? 1.0 : laneDamageCadenceSeconds;
+        landingCadenceSeconds = landingCadenceSeconds == null ? 30.0 : landingCadenceSeconds;
+        landingWindowSeconds = landingWindowSeconds == null ? 12.0 : landingWindowSeconds;
+        landingApproachSeconds = landingApproachSeconds == null ? 20.0 : landingApproachSeconds;
+        landingRadius = landingRadius == null ? 12.0 : landingRadius;
+        bounded("landing-cadence-seconds", landingCadenceSeconds, 10, 120);
+        bounded("landing-window-seconds", landingWindowSeconds, 8, 30);
+        bounded("landing-approach-seconds", landingApproachSeconds, 5, 45);
+        bounded("landing-radius", landingRadius, 8, 24);
+        bounded("lane-length", laneLength, 8, 40);
+        bounded("lane-width", laneWidth, 2, 12);
+        bounded("lane-warning-seconds", laneWarningSeconds, 1, 15);
+        bounded("lane-lifetime-seconds", laneLifetimeSeconds, 1, 20);
+        bounded("lane-cadence-seconds", laneCadenceSeconds, 2, 120);
+        bounded("lane-damage", laneDamage, 0, 100);
+        bounded("lane-damage-cadence-seconds", laneDamageCadenceSeconds, 0.5, 5);
+        if (laneCadenceSeconds < laneWarningSeconds + 0.5 || laneWidth / 2 + 2 > laneWarningSeconds * 3) {
+            throw new IllegalArgumentException(
+                    "shattered-crown lanes require time to walk clear and serialized warnings");
+        }
         if (NamespacedKey.fromString(worldKey) == null) {
             throw new IllegalArgumentException("shattered-crown.world-key must be a namespaced world key");
         }

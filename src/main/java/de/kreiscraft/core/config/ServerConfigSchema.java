@@ -361,6 +361,17 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("bombardment-cadence-seconds", 2, 120));
         fields.add(crownNumber("bombardment-damage", 0, 100));
         fields.add(crownNumber("bombardment-radius", 1, 12));
+        fields.add(crownNumber("lane-length", 8, 40));
+        fields.add(crownNumber("lane-width", 2, 12));
+        fields.add(crownNumber("lane-warning-seconds", 1, 15));
+        fields.add(crownNumber("lane-lifetime-seconds", 1, 20));
+        fields.add(crownNumber("lane-cadence-seconds", 2, 120));
+        fields.add(crownNumber("lane-damage", 0, 100));
+        fields.add(crownNumber("lane-damage-cadence-seconds", 0.5, 5));
+        fields.add(crownNumber("landing-cadence-seconds", 10, 120));
+        fields.add(crownNumber("landing-window-seconds", 8, 30));
+        fields.add(crownNumber("landing-approach-seconds", 5, 45));
+        fields.add(crownNumber("landing-radius", 8, 24));
         fields.add(crownNumber("arena-radius", 16, 256));
         for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));

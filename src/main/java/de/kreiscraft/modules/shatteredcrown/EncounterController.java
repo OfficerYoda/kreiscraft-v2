@@ -75,6 +75,15 @@ public final class EncounterController implements Listener, AutoCloseable {
     private Scheduler.Task bombardmentImpact;
     private TextDisplay bombardmentIndicator;
     private int targetCursor;
+    private final List<BreathLane> lanes = new ArrayList<>();
+    private boolean hunting;
+    private boolean landingRequested;
+    private boolean landingDue;
+    private Scheduler.Task landingDeferral;
+    private boolean landingWindow;
+    private Scheduler.Task landingMonitor;
+    private Scheduler.Task landingDeadline;
+    private Scheduler.Task landingEnd;
 
     private static final class Anchor {
         private EnderCrystal crystal;
@@ -191,6 +200,217 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private static Duration seconds(double value) {
         return Duration.ofMillis(Math.round(value * 1000));
+    }
+
+    private void startHunt() {
+        if (hunting) {
+            return;
+        }
+        hunting = true;
+        Duration cadence = seconds(config.laneCadenceSeconds());
+        Duration landingCadence = seconds(config.landingCadenceSeconds());
+        runRepeating(landingCadence, landingCadence, () -> {
+            if (!landingRequested && !landingDue) {
+                landingDue = true;
+                landingDeferral = runLater(seconds(config.laneWarningSeconds() + config.laneLifetimeSeconds()
+                        + config.landingApproachSeconds()), () -> landingDue = false);
+                requestLanding();
+            }
+        });
+        runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            if (landingDue && !landingRequested) {
+                requestLanding();
+            }
+        });
+        runRepeating(cadence, cadence, this::warnLane);
+    }
+
+    private static boolean sitting(EnderDragon.Phase phase) {
+        return phase == EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET
+                || phase == EnderDragon.Phase.ROAR_BEFORE_ATTACK || phase == EnderDragon.Phase.BREATH_ATTACK;
+    }
+
+    private void requestLanding() {
+        if (!hunting || dragon == null || !anchors.isEmpty() || landingRequested || !lanes.isEmpty()
+                || dragon.getWorld().getPlayers().stream().noneMatch(arena::participant) || !arena.landingSafe()
+                || dragon.getPhase() == EnderDragon.Phase.DYING) {
+            return;
+        }
+        ownDragonPhase();
+        landingDue = false;
+        if (landingDeferral != null) {
+            landingDeferral.cancel();
+            landingDeferral = null;
+        }
+        landingRequested = true;
+        announce("shattered-crown.landing-approach");
+        dragon.setPhase(EnderDragon.Phase.FLY_TO_PORTAL);
+        if (dragon == null || !hunting) {
+            return;
+        }
+        landingDeadline = runLater(seconds(config.landingApproachSeconds()), this::endLanding);
+        landingMonitor = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            if (!arena.landingSafe() || dragon.getWorld().getPlayers().stream().noneMatch(arena::participant)) {
+                endLanding();
+            } else if (!landingWindow && sitting(dragon.getPhase()) && arena.atPodium(dragon.getLocation())) {
+                landingWindow = true;
+                landingDeadline.cancel();
+                dragon.setPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+                if (dragon == null || !hunting) {
+                    return;
+                }
+                announce("shattered-crown.landing-window");
+                landingEnd = runLater(seconds(config.landingWindowSeconds()), this::endLanding);
+            }
+        });
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDragonPhase(org.bukkit.event.entity.EnderDragonChangePhaseEvent event) {
+        if (!event.getEntity().equals(dragon) || !landingRequested || event.getNewPhase() == EnderDragon.Phase.DYING) {
+            return;
+        }
+        if (sitting(event.getNewPhase()) || landingWindow) {
+            event.setNewPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        } else if (event.getNewPhase() != EnderDragon.Phase.FLY_TO_PORTAL
+                && event.getNewPhase() != EnderDragon.Phase.LAND_ON_PORTAL) {
+            event.setCancelled(true);
+        }
+    }
+
+    private void endLanding() {
+        boolean wasSitting = dragon != null && sitting(dragon.getPhase());
+        landingRequested = false;
+        landingDue = false;
+        if (landingDeferral != null) {
+            landingDeferral.cancel();
+            landingDeferral = null;
+        }
+        landingWindow = false;
+        if (landingMonitor != null) {
+            landingMonitor.cancel();
+            landingMonitor = null;
+        }
+        if (landingDeadline != null) {
+            landingDeadline.cancel();
+            landingDeadline = null;
+        }
+        if (landingEnd != null) {
+            landingEnd.cancel();
+            landingEnd = null;
+        }
+        if (dragon != null && hunting && dragon.getPhase() != EnderDragon.Phase.DYING) {
+            dragon.setPhase(wasSitting ? EnderDragon.Phase.LEAVE_PORTAL : EnderDragon.Phase.CIRCLING);
+        }
+    }
+
+    private void warnLane() {
+        if (!hunting || landingRequested || landingDue || dragon == null || !anchors.isEmpty() || lanes.size() >= 2
+                || lanes.stream().anyMatch(lane -> !lane.active)) {
+            return;
+        }
+        var targets = dragon.getWorld().getPlayers().stream().filter(arena::participant)
+                .sorted(java.util.Comparator.comparing(Player::getUniqueId)).toList();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
+        var candidate =
+                new BreathLane(target.getLocation(), config.laneLength(), config.laneWidth(), targetCursor % 2 == 1);
+        if (!arena.laneSafe(candidate, lanes, targets)) {
+            candidate =
+                    new BreathLane(target.getLocation(), config.laneLength(), config.laneWidth(), !candidate.eastWest);
+            if (!arena.laneSafe(candidate, lanes, targets)) {
+                return;
+            }
+        }
+        final BreathLane lane = candidate;
+        EnderDragon source = dragon;
+        lane.indicator = lane.center.getWorld().spawn(lane.center.clone().add(0, 1.5, 0), TextDisplay.class);
+        if (dragon != source || !hunting || !lane.indicator.isValid()) {
+            lane.indicator.remove();
+            return;
+        }
+        own(lane.indicator, "lane");
+        battles.faceWarningToViewer(lane.indicator);
+        lanes.add(lane);
+        targets.forEach(player -> {
+            player.sendActionBar(messages.renderFor(player, "shattered-crown.lane-warning", "seconds",
+                    config.laneWarningSeconds()));
+            player.playSound(lane.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
+        });
+        drawLane(lane);
+        final Scheduler.Task[] refresh = new Scheduler.Task[1];
+        refresh[0] = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            lane.age += 0.25;
+            if (!lane.indicator.isValid() || !lane.active && !isParticipant(target)) {
+                lane.indicator.remove();
+                lanes.remove(lane);
+                refresh[0].cancel();
+                return;
+            }
+            drawLane(lane);
+        });
+        runLater(seconds(config.laneWarningSeconds()), () -> {
+            if (!lane.indicator.isValid() || !lanes.contains(lane) || !isParticipant(target)) {
+                return;
+            }
+            if (!arena.laneSafe(lane, lanes.stream().filter(other -> other != lane).toList(),
+                    source.getWorld().getPlayers().stream().filter(arena::participant).toList())) {
+                lane.indicator.remove();
+                lanes.remove(lane);
+                refresh[0].cancel();
+                return;
+            }
+            lane.active = true;
+            lane.age = 0;
+            drawLane(lane);
+            final Scheduler.Task[] damage = new Scheduler.Task[1];
+            // Expiry wins over a cadence pulse on the same server tick: the lifetime is [start, end).
+            runLater(seconds(config.laneLifetimeSeconds()), () -> {
+                damage[0].cancel();
+                refresh[0].cancel();
+                lane.indicator.remove();
+                lanes.remove(lane);
+            });
+            damage[0] = runRepeating(Duration.ZERO, seconds(config.laneDamageCadenceSeconds()), () -> {
+                if (!lane.indicator.isValid() || !lanes.contains(lane)) {
+                    damage[0].cancel();
+                    return;
+                }
+                for (Player player : source.getWorld().getPlayers()) {
+                    if (dragon != source || !hunting) {
+                        break;
+                    }
+                    if (isParticipant(player) && lane.contains(player.getLocation(), 0)) {
+                        battles.bombardmentDamage(player, source, config.laneDamage());
+                    }
+                }
+            });
+        });
+    }
+
+    private void drawLane(BreathLane lane) {
+        double remaining =
+                Math.max(0, (lane.active ? config.laneLifetimeSeconds() : config.laneWarningSeconds()) - lane.age);
+        lane.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs", remaining),
+                lane.active ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.GOLD));
+        dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
+            for (int point = 0; point <= 16; point++) {
+                double along = -lane.length / 2 + lane.length * point / 16;
+                for (double side : new double[] {-lane.width / 2, lane.width / 2}) {
+                    player.spawnParticle(lane.active ? Particle.DRAGON_BREATH : Particle.FLAME,
+                            lane.point(along, side).add(0, 0.15, 0), 1, 0, 0, 0, 0);
+                }
+            }
+            for (int point = 0; point <= 4; point++) {
+                double across = -lane.width / 2 + lane.width * point / 4;
+                for (double end : new double[] {-lane.length / 2, lane.length / 2}) {
+                    player.spawnParticle(lane.active ? Particle.DRAGON_BREATH : Particle.FLAME,
+                            lane.point(end, across).add(0, 0.15, 0), 1, 0, 0, 0, 0);
+                }
+            }
+        });
     }
 
     private void warnBombardment() {
@@ -493,6 +713,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 if (anchors.isEmpty()) {
                     stopBombardments();
                     announce("shattered-crown.unshielded");
+                    startHunt();
                 }
                 showStatus();
             }
@@ -646,6 +867,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void cleanup(boolean reset) {
+        hunting = false;
+        endLanding();
+        lanes.clear();
         stopBombardments();
         if (work != null) {
             work.close();

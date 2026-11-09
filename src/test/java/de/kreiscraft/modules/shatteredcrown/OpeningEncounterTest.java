@@ -312,7 +312,8 @@ class OpeningEncounterTest {
         objectives.forEach(this::hit);
         assertThat(warning.isValid()).isFalse();
         assertThat(hit(dragon).isCancelled()).isFalse();
-        scheduler.advance(Duration.ofSeconds(120));
+        // Hunt now has its own attacks; only the pending opening impact must be cancelled here.
+        scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(20);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         assertThat(drainMessages(player).stream().filter(message -> message.contains("Weather the Hunt"))).hasSize(1);
