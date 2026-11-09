@@ -136,6 +136,38 @@ class EncounterTest {
         assertThat(dragon.isValid()).isTrue(); // Completion remains owned by vanilla, never remove/kill it.
     }
 
+    @Test
+    void ownedDefenderProjectilesAndAttributedCloudsCannotHitArrivalsButUnrelatedProjectilesRemainNative()
+            throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        var defender = defenders().getFirst();
+        var arrow = end.spawn(defender.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(defender);
+        player.teleport(new Location(end, 100, 50, 0));
+        var incoming = new EntityDamageByEntityEvent(arrow, player, EntityDamageEvent.DamageCause.PROJECTILE,
+                DamageSource.builder(org.bukkit.damage.DamageType.ARROW).withDirectEntity(arrow)
+                        .withCausingEntity(defender).build(),
+                10);
+        server.getPluginManager().callEvent(incoming);
+        assertThat(incoming.isCancelled()).isTrue();
+        var cloud = end.spawn(defender.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(defender);
+        var indirect = new EntityDamageByEntityEvent(cloud, player, EntityDamageEvent.DamageCause.MAGIC,
+                DamageSource.builder(org.bukkit.damage.DamageType.MAGIC).withDirectEntity(cloud).build(), 10);
+        server.getPluginManager().callEvent(indirect);
+        assertThat(indirect.isCancelled()).isTrue();
+        var outsider = server.addPlayer();
+        var unrelated = end.spawn(defender.getLocation(), org.bukkit.entity.Arrow.class);
+        unrelated.setShooter(outsider);
+        var nativeHit = new EntityDamageByEntityEvent(unrelated, player, EntityDamageEvent.DamageCause.PROJECTILE,
+                DamageSource.builder(org.bukkit.damage.DamageType.ARROW).withDirectEntity(unrelated)
+                        .withCausingEntity(outsider).build(),
+                10);
+        server.getPluginManager().callEvent(nativeHit);
+        assertThat(nativeHit.isCancelled()).isFalse();
+    }
+
     private void enable() throws Exception {
         enable(true);
     }

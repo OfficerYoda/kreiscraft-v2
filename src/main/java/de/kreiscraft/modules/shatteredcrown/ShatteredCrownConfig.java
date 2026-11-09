@@ -16,7 +16,10 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double laneLength, Double laneWidth, Double laneWarningSeconds, Double laneLifetimeSeconds,
         Double laneCadenceSeconds, Double laneDamage, Double laneDamageCadenceSeconds,
         Double landingCadenceSeconds, Double landingWindowSeconds, Double landingApproachSeconds,
-        Double landingRadius) {
+        Double landingRadius, Integer preyCount, Double preyCadenceSeconds, Double preyCountdownSeconds,
+        Double poolRadius, Double poolDamage, Double poolDamageCadenceSeconds, Double poolLifetimeSeconds,
+        Double sweepRadius, Double sweepAngle, Double sweepWarningSeconds, Double sweepCadenceSeconds,
+        Double sweepDamage, Double sweepKnockback) {
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {
@@ -64,6 +67,42 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         landingWindowSeconds = landingWindowSeconds == null ? 12.0 : landingWindowSeconds;
         landingApproachSeconds = landingApproachSeconds == null ? 20.0 : landingApproachSeconds;
         landingRadius = landingRadius == null ? 12.0 : landingRadius;
+        preyCount = preyCount == null ? 3 : preyCount;
+        preyCadenceSeconds = preyCadenceSeconds == null ? 20.0 : preyCadenceSeconds;
+        preyCountdownSeconds = preyCountdownSeconds == null ? 4.0 : preyCountdownSeconds;
+        poolRadius = poolRadius == null ? 3.0 : poolRadius;
+        poolDamage = poolDamage == null ? 3.0 : poolDamage;
+        poolDamageCadenceSeconds = poolDamageCadenceSeconds == null ? 1.0 : poolDamageCadenceSeconds;
+        poolLifetimeSeconds = poolLifetimeSeconds == null ? 6.0 : poolLifetimeSeconds;
+        sweepRadius = sweepRadius == null ? 12.0 : sweepRadius;
+        sweepAngle = sweepAngle == null ? 90.0 : sweepAngle;
+        sweepWarningSeconds = sweepWarningSeconds == null ? 4.0 : sweepWarningSeconds;
+        sweepCadenceSeconds = sweepCadenceSeconds == null ? 25.0 : sweepCadenceSeconds;
+        sweepDamage = sweepDamage == null ? 6.0 : sweepDamage;
+        sweepKnockback = sweepKnockback == null ? 1.2 : sweepKnockback;
+        bounded("sweep-radius", sweepRadius, 4, 16);
+        bounded("sweep-angle", sweepAngle, 30, 120);
+        bounded("sweep-warning-seconds", sweepWarningSeconds, 2, 15);
+        bounded("sweep-cadence-seconds", sweepCadenceSeconds, 5, 120);
+        bounded("sweep-damage", sweepDamage, 0, 100);
+        bounded("sweep-knockback", sweepKnockback, 0, 2);
+        if (sweepCadenceSeconds < sweepWarningSeconds + 0.5
+                || sweepRadius * Math.sin(Math.toRadians(sweepAngle / 2)) + 2 > sweepWarningSeconds * 3) {
+            throw new IllegalArgumentException(
+                    "shattered-crown sweeps require serialized warnings and walking escape time");
+        }
+        bounded("prey-count", preyCount, 1, 4);
+        bounded("prey-cadence-seconds", preyCadenceSeconds, 5, 120);
+        bounded("prey-countdown-seconds", preyCountdownSeconds, 2, 15);
+        bounded("pool-radius", poolRadius, 1, 6);
+        bounded("pool-damage", poolDamage, 0, 100);
+        bounded("pool-damage-cadence-seconds", poolDamageCadenceSeconds, 0.5, 5);
+        bounded("pool-lifetime-seconds", poolLifetimeSeconds, 1, 15);
+        if (preyCadenceSeconds < preyCountdownSeconds + poolLifetimeSeconds + 0.5
+                || poolRadius + 2 > preyCountdownSeconds * 3) {
+            throw new IllegalArgumentException(
+                    "shattered-crown prey requires serialized pools and walking escape time");
+        }
         bounded("landing-cadence-seconds", landingCadenceSeconds, 10, 120);
         bounded("landing-window-seconds", landingWindowSeconds, 8, 30);
         bounded("landing-approach-seconds", landingApproachSeconds, 5, 45);

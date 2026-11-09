@@ -4,12 +4,12 @@ title: The Shattered Crown
 
 # The Shattered Crown: opening and hunt
 
-Implementation of tickets #134–#136, following spec #132. **Break the Crown** creates four
+Implementation of tickets #134–#137, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
 immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt now adds
-warned temporary breath lanes and supported-Paper melee landing windows. See the
+warned temporary breath lanes, Marked Prey pools, fixed wing-sweep sectors and supported-Paper melee landing windows. See the
 [hunt geometry, tuning and verification contract](/shattered-crown-hunt/).
-Marked Prey, wing sweeps and the finale are subsequent slices; the dragon can currently be killed normally after the opening.
+The finale is a subsequent slice; the dragon can currently be killed normally after the opening.
 Numerical balance is **unvalidated**.
 
 ## Enable and tune

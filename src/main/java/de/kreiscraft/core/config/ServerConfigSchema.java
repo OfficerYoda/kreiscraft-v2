@@ -372,6 +372,20 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("landing-window-seconds", 8, 30));
         fields.add(crownNumber("landing-approach-seconds", 5, 45));
         fields.add(crownNumber("landing-radius", 8, 24));
+        fields.add(field(path("modules", "shattered-crown", "prey-count"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 4), ConfigLifecycle.HOT_RELOAD));
+        fields.add(crownNumber("prey-cadence-seconds", 5, 120));
+        fields.add(crownNumber("prey-countdown-seconds", 2, 15));
+        fields.add(crownNumber("pool-radius", 1, 6));
+        fields.add(crownNumber("pool-damage", 0, 100));
+        fields.add(crownNumber("pool-damage-cadence-seconds", 0.5, 5));
+        fields.add(crownNumber("pool-lifetime-seconds", 1, 15));
+        fields.add(crownNumber("sweep-radius", 4, 16));
+        fields.add(crownNumber("sweep-angle", 30, 120));
+        fields.add(crownNumber("sweep-warning-seconds", 2, 15));
+        fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
+        fields.add(crownNumber("sweep-damage", 0, 100));
+        fields.add(crownNumber("sweep-knockback", 0, 2));
         fields.add(crownNumber("arena-radius", 16, 256));
         for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));

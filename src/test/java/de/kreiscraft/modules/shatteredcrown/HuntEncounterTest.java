@@ -59,7 +59,7 @@ class HuntEncounterTest {
     private ConfigurationNode config;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         end = server.addSimpleWorld("arena");
@@ -100,6 +100,9 @@ class HuntEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        // Lane-focused scenarios defer the newly coordinated attacks; dedicated cases set their cadences.
+        config.node("prey-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(120);
     }
 
     @AfterEach
@@ -514,6 +517,22 @@ class HuntEncounterTest {
     @Test
     void representativeTwentyPlayerHuntsAndRepeatedResetsDoNotAccumulateEffectsOrForcedPhases() throws Exception {
         config.node("lane-damage").set(0);
+        config.node("pool-damage").set(0);
+        config.node("sweep-damage").set(0);
+        config.node("prey-count").set(4);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(25);
+        scheduler = org.mockito.Mockito.spy(scheduler);
+        var scheduled = new java.util.ArrayList<de.kreiscraft.core.scheduler.Scheduler.Task>();
+        org.mockito.stubbing.Answer<Object> track = invocation -> {
+            var task = (de.kreiscraft.core.scheduler.Scheduler.Task) invocation.callRealMethod();
+            scheduled.add(task);
+            return task;
+        };
+        org.mockito.Mockito.doAnswer(track).when(scheduler).runLater(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.doAnswer(track).when(scheduler).runRepeating(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         for (int count = 1; count < 20; count++) {
             var teammate = server.addPlayer();
             teammate.teleport(player.getLocation());
@@ -530,7 +549,8 @@ class HuntEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     nativePhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(2);
+                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(4);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(20);
                 assertThat(end.getPlayers())
                         .allSatisfy(participant -> assertThat(participant.getHealth()).isEqualTo(20));
             }
@@ -541,6 +561,7 @@ class HuntEncounterTest {
             assertThat(end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid))
                     .isEmpty();
             assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+            assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isEqualTo(1); // Discovery only.
             end.getPlayers().forEach(participant -> participant.teleport(new Location(end, 10.5, 64, 0.5)));
             scheduler.advance(Duration.ofSeconds(1));
             end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid)
@@ -612,5 +633,433 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(13));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @Test
+    void multiplePreyHaveVisibleMovingCountdownsThenPoolsAtTheirCurrentLocations() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(120);
+        var teammate = server.addPlayer();
+        teammate.teleport(new Location(end, -15.5, 64, 0.5));
+        hunt();
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).allSatisfy(mark -> {
+            var text = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(mark.text());
+            assertThat(text).contains("4.0s");
+        });
+        player.teleport(new Location(end, 18.5, 64, 10.5));
+        scheduler.advance(Duration.ofMillis(3999));
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).anySatisfy(pool -> {
+            assertThat(pool.getLocation().getX()).isEqualTo(18.5);
+            assertThat(pool.getLocation().getZ()).isEqualTo(10.5);
+        });
+        player.teleport(new Location(end, 25.5, 64, 10.5));
+        teammate.teleport(new Location(end, -25.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(player.getHealth()).isEqualTo(17);
+    }
+
+    @Test
+    void sweepWarnsAFixedSectorAndHitsWithKnockbackEvenIfTheDragonTurnsAndMoves() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(25);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        hunt();
+        scheduler.advance(Duration.ofSeconds(25));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        dragon.teleport(new Location(end, 30, 80, 30, 180, 0));
+        scheduler.advance(Duration.ofMillis(3999));
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(player.getVelocity().getZ()).isGreaterThan(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void protectedLingeringProjectileKeepsItsProvenanceAfterTheShooterAndCloudLeaveArrival() throws Exception {
+        hunt();
+        player.teleport(new Location(end, 100, 50, 0));
+        var potion = end.spawn(player.getLocation(), org.bukkit.entity.ThrownPotion.class);
+        potion.setShooter(player);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(potion));
+        player.teleport(new Location(end, 10.5, 64, 0.5));
+        potion.teleport(player.getLocation());
+        var cloud = end.spawn(player.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(player);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.LingeringPotionSplashEvent(potion,
+                null, null, null, cloud));
+        var damage = new EntityDamageByEntityEvent(cloud, dragon, EntityDamageEvent.DamageCause.MAGIC,
+                DamageSource.builder(DamageType.MAGIC).withCausingEntity(player).withDirectEntity(cloud).build(), 10);
+        server.getPluginManager().callEvent(damage);
+        assertThat(damage.isCancelled()).isTrue();
+        var ordinary = end.spawn(new Location(end, 12, 64, 0), Zombie.class);
+        var affected = new java.util.ArrayList<org.bukkit.entity.LivingEntity>(List.of(dragon, ordinary));
+        var apply = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud, affected);
+        server.getPluginManager().callEvent(apply);
+        assertThat(apply.getAffectedEntities()).containsExactly(ordinary);
+    }
+
+    private void prey() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(20);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(20));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"arrival", "world", "death", "quit", "arena",
+            "creative", "spectator", "arrival-return"})
+    void preyInvalidationPermanentlyCancelsOnlyThatPlayersPendingPool(String departure) throws Exception {
+        var teammate = server.addPlayer();
+        teammate.teleport(new Location(end, -15.5, 64, 0.5));
+        prey();
+        switch (departure) {
+            case "arrival", "arrival-return" -> player.teleport(new Location(end, 100, 50, 0));
+            case "world" -> player.teleport(new Location(server.addSimpleWorld("other"), 0, 64, 0));
+            case "death" -> player.setHealth(0);
+            case "quit" -> player.kick();
+            case "arena" -> player.teleport(new Location(end, 81, 64, 0));
+            case "creative" -> player.setGameMode(org.bukkit.GameMode.CREATIVE);
+            case "spectator" -> player.setGameMode(org.bukkit.GameMode.SPECTATOR);
+            default -> throw new AssertionError(departure);
+        }
+        if (departure.equals("arrival-return")) {
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+        }
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        if (!departure.equals("death")) {
+            assertThat(player.getHealth()).isEqualTo(20);
+        }
+    }
+
+    @Test
+    void stackedMarksCreateOnlyOneFinitePoolAndItsRadiusCadenceAndExpiryMatchTheWarning() throws Exception {
+        config.node("pool-lifetime-seconds").set(1);
+        var teammate = server.addPlayer();
+        teammate.teleport(player.getLocation());
+        prey();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        var edge = server.addPlayer();
+        edge.teleport(new Location(end, 13.5, 64, 0.5));
+        var outside = server.addPlayer();
+        outside.teleport(new Location(end, 13.51, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(edge.getHealth()).isEqualTo(20); // Exclusive expiry, no seventh/extra pulse.
+        assertThat(outside.getHealth()).isEqualTo(20);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void poolDamageHasInclusiveRadiusExclusiveBeyondAndBoundedHeight() throws Exception {
+        prey();
+        scheduler.advance(Duration.ofSeconds(4));
+        player.teleport(new Location(end, 13.5, 64, 0.5));
+        var outside = server.addPlayer();
+        outside.teleport(new Location(end, 13.51, 64, 0.5));
+        var above = server.addPlayer();
+        above.teleport(new Location(end, 10.5, 68, 0.5));
+        scheduler.advance(Duration.ofMillis(999));
+        assertThat(player.getHealth()).isEqualTo(17);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(outside.getHealth()).isEqualTo(20);
+        assertThat(above.getHealth()).isEqualTo(20);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"0,12,64,true", "0,12.01,64,false", "6,6,64,true",
+            "6.01,6,64,false", "0,-6,64,false", "0,6,68,false"})
+    void sweepHitMissBoundariesMatchTheFixedWarnedSector(double x, double z, double y, boolean hit) throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(25);
+        player.teleport(new Location(end, 0, 64, 6));
+        hunt();
+        scheduler.advance(Duration.ofSeconds(25));
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, x, y, z));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(probe.getHealth()).isEqualTo(hit ? 14 : 20);
+        assertThat(probe.getVelocity().lengthSquared()).isEqualTo(hit ? 1.6 : 0,
+                org.assertj.core.data.Offset.offset(0.00001));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"prey", "pool", "sweep"})
+    void combatCancellationVetoesNewDamageAndSweepKnockback(String attack) throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(attack.equals("sweep") ? 120 : 20);
+        config.node("sweep-cadence-seconds").set(attack.equals("sweep") ? 25 : 120);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        hunt();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void protect(EntityDamageEvent event) {
+                event.setCancelled(true);
+            }
+        }, plugin);
+        scheduler.advance(Duration.ofSeconds(29));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getVelocity().lengthSquared()).isZero();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"disable-prey", "disable-pool", "disable-sweep",
+            "reset-prey", "reset-pool", "reset-sweep", "unload-prey", "unload-pool", "unload-sweep",
+            "victory-prey", "victory-pool", "victory-sweep"})
+    void newAttackStagesCleanUpOnEveryTerminationWithoutDelayedDamage(String stage) throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(stage.endsWith("sweep") ? 120 : 20);
+        config.node("sweep-cadence-seconds").set(stage.endsWith("sweep") ? 25 : 120);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        hunt();
+        scheduler.advance(Duration.ofSeconds(stage.endsWith("prey") ? 20 : stage.endsWith("pool") ? 24 : 25));
+        double health = player.getHealth();
+        var unrelated = end.spawn(new Location(end, 35, 64, 35), TextDisplay.class);
+        if (stage.startsWith("disable")) {
+            module.disable();
+        } else if (stage.startsWith("reset")) {
+            player.teleport(new Location(end, 100, 50, 0));
+            scheduler.advance(Duration.ofSeconds(60));
+        } else if (stage.startsWith("unload")) {
+            server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+        } else {
+            server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
+        }
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).containsExactly(unrelated);
+        assertThat(player.getHealth()).isEqualTo(health);
+        assertThat(dragon.isValid()).isTrue();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"prey-count,5", "prey-cadence-seconds,10", "prey-countdown-seconds,1",
+            "pool-radius,7", "pool-damage,NaN", "pool-damage-cadence-seconds,0", "pool-lifetime-seconds,16",
+            "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-cadence-seconds,4",
+            "sweep-damage,Infinity", "sweep-knockback,3"})
+    void invalidNewTuningCannotPartiallyChangeAnAttempt(String key, double value) throws Exception {
+        prey();
+        var invalid = config.copy();
+        invalid.node(key).set(value);
+        invalid.node("pool-damage").set(key.equals("pool-damage") ? value : 1);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> module.onConfigReload(invalid))
+                .isInstanceOf(RuntimeException.class);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+    }
+
+    @Test
+    void completeCoordinatedHuntLeavesReachableRoutesAndAFullLandingWindowBetweenAllThreeAttacks() throws Exception {
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(25);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane.
+        player.teleport(new Location(end, 10.5, 64, 6.5)); // Real usable short-side escape.
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+        player.teleport(new Location(end, 20.5, 64, 10.5));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17); // Pool at the moved location, never at the lane.
+        player.teleport(new Location(end, 26.5, 64, 10.5));
+        scheduler.advance(Duration.ofMillis(6250));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        dragon.teleport(new Location(end, 0, 67, 0));
+        nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        scheduler.advance(Duration.ofMillis(250));
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        scheduler.advance(Duration.ofMillis(11999));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        scheduler.advance(Duration.ofMillis(7500)); // Hunt time 50 seconds.
+        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep"));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane postponed, not combined unsafely.
+        player.teleport(new Location(end, 10.5, 64, 0.5)); // Reachable sector-side escape.
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void validPoolReloadIsSnapshottedAndOnlyTheNextAttemptReceivesTheNewDamage() throws Exception {
+        prey();
+        var next = config.copy();
+        next.node("pool-damage").set(1);
+        module.onConfigReload(next);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        });
+        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+        player.setHealth(20);
+        scheduler.advance(Duration.ofSeconds(24));
+        assertThat(player.getHealth()).isEqualTo(19);
+    }
+
+    @Test
+    void marksAndSweepWarningsRespectRecipientLanguagesWithoutChatFlooding() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(25);
+        config.node("pool-damage").set(0);
+        var german = server.addPlayer("Deutsch");
+        german.teleport(new Location(end, -15.5, 64, 0.5));
+        hunt();
+        messages(player);
+        messages(german);
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey: 4.0s"));
+        assertThat(actionBars(german)).anyMatch(text -> text.contains("Markierte Beute: 4.0s"));
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
+        scheduler.advance(Duration.ofMillis(10250));
+        dragon.teleport(new Location(end, 0, 67, 0));
+        nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        scheduler.advance(Duration.ofMillis(250));
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        german.teleport(new Location(end, 0.5, 64, 10.5));
+        scheduler.advance(Duration.ofMillis(19500));
+        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
+        assertThat(actionBars(german)).anyMatch(text -> text.contains("Flügelschlag in 4.0s"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"void", "arrival-footprint", "native-pool", "no-route"})
+    void unsafeCurrentPreyFootprintsAreOmittedRatherThanRemovingEscapeRoutes(String obstruction) throws Exception {
+        if (obstruction.equals("arrival-footprint")) {
+            config.node("arrival-x").set(15);
+            config.node("arrival-y").set(64);
+            config.node("arrival-radius").set(3);
+        }
+        prey();
+        if (obstruction.equals("void")) {
+            end.getBlockAt(10, 63, 0).setType(Material.AIR);
+        } else if (obstruction.equals("native-pool")) {
+            var cloud = end.spawn(new Location(end, 15.5, 64, 0.5), org.bukkit.entity.AreaEffectCloud.class);
+            cloud.setParticle(org.bukkit.Particle.DRAGON_BREATH);
+            cloud.setRadius(3);
+        } else if (obstruction.equals("no-route")) {
+            // Leave the entire candidate disk usable, but remove every body-width path off it.
+            for (int x = -5; x <= 25; x++) {
+                for (int z = -15; z <= 15; z++) {
+                    if (Math.pow(x + 0.5 - 10.5, 2) + Math.pow(z + 0.5 - 0.5, 2) > 16) {
+                        end.getBlockAt(x, 63, z).setType(Material.AIR);
+                    }
+                }
+            }
+        }
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(
+            strings = {"prey-removed", "prey-refused", "pool-removed", "pool-refused",
+                    "sweep-removed", "sweep-refused"})
+    void absentIndicatorsCannotCauseInvisibleDamage(String failure) throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(failure.startsWith("sweep") ? 120 : 20);
+        config.node("sweep-cadence-seconds").set(failure.startsWith("sweep") ? 25 : 120);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        hunt();
+        if (failure.equals("pool-refused")) {
+            scheduler.advance(Duration.ofSeconds(20));
+        }
+        if (failure.endsWith("refused")) {
+            server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+                @org.bukkit.event.EventHandler
+                public void refuse(org.bukkit.event.entity.EntitySpawnEvent event) {
+                    if (event.getEntity() instanceof TextDisplay) {
+                        event.setCancelled(true);
+                    }
+                }
+            }, plugin);
+        } else {
+            scheduler.advance(
+                    Duration.ofSeconds(failure.startsWith("prey") ? 20 : failure.startsWith("pool") ? 24 : 25));
+            end.getEntitiesByClass(TextDisplay.class).forEach(org.bukkit.entity.Entity::remove);
+        }
+        double health = player.getHealth();
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(player.getHealth()).isEqualTo(health);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"pool", "sweep"})
+    void synchronousDisableFromNewCombatCannotResumeDamageOrKnockbackAfterCleanup(String attack) throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(attack.equals("pool") ? 20 : 120);
+        config.node("sweep-cadence-seconds").set(attack.equals("sweep") ? 25 : 120);
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        hunt();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void stop(EntityDamageEvent event) {
+                if (event.getEntity() instanceof org.bukkit.entity.Player) {
+                    event.setCancelled(true);
+                    module.disable();
+                }
+            }
+        }, plugin);
+        scheduler.advance(Duration.ofSeconds(60));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getVelocity().lengthSquared()).isZero();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void aSecondWarnedPoolCannotCutOffTheFirstPoolsOnlyReachableEscape() throws Exception {
+        config.node("pool-radius").set(1);
+        var teammate = server.addPlayer();
+        var ordered = List.of(player, teammate).stream()
+                .sorted(java.util.Comparator.comparing(PlayerMock::getUniqueId)).toList();
+        ordered.getFirst().teleport(new Location(end, 10.5, 64, 0.5));
+        ordered.getLast().teleport(new Location(end, 14, 64, 0.5));
+        prey();
+        // Two usable non-overlapping disks joined by one body-width eastward escape corridor.
+        for (int x = -40; x <= 40; x++) {
+            for (int z = -40; z <= 40; z++) {
+                boolean platform = (x >= 9 && x <= 11 || x >= 13 && x <= 15) && z >= -1 && z <= 1;
+                boolean corridor = x >= 9 && x <= 23 && z == 0;
+                if (!platform && !corridor) {
+                    end.getBlockAt(x, 63, z).setType(Material.AIR);
+                }
+            }
+        }
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
+        assertThat(ordered.getLast().getHealth()).isEqualTo(20);
+        ordered.getFirst().teleport(new Location(end, 13, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
     }
 }

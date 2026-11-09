@@ -200,6 +200,53 @@ final class EncounterArena {
                 .allMatch(player -> laneEscape(player.getLocation(), lane, existing, clouds));
     }
 
+    boolean areaSafe(HuntArea area, List<HuntArea> existing, List<BreathLane> lanes, List<Player> participants,
+            double warningSeconds) {
+        Location arrival = new Location(center.getWorld(), center.getX() + config.arrivalX(), area.center.getY(),
+                center.getZ() + config.arrivalZ());
+        if (Math.abs(area.center.getY() - config.arrivalY()) <= config.arrivalHeight() / 2 + 3
+                && area.contains(arrival, config.arrivalRadius())) {
+            return false;
+        }
+        double search = area.radius + warningSeconds * 3 + 32;
+        var clouds = area.center.getWorld().getNearbyEntities(area.center, search, 6, search).stream()
+                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
+                        && cloud.getParticle() == Particle.DRAGON_BREATH)
+                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
+                || cloud.getRadius() > 32 || overlaps(area.center, area.radius + 1, cloud))) {
+            return false;
+        }
+        for (double x = -area.radius; x <= area.radius; x += 0.5) {
+            for (double z = -area.radius; z <= area.radius; z += 0.5) {
+                Location spot = area.center.clone().add(x, 0, z);
+                if (area.contains(spot, 0) && (!walkable(spot)
+                        || existing.stream().anyMatch(other -> other.contains(spot, 1))
+                        || lanes.stream().anyMatch(lane -> lane.contains(spot, 1)))) {
+                    return false;
+                }
+            }
+        }
+        return participants.stream().filter(player -> area.contains(player.getLocation(), 1)).allMatch(player -> {
+            for (int direction = 0; direction < 16; direction++) {
+                double angle = direction * Math.PI * 2 / 16;
+                for (double distance = 0; distance <= warningSeconds * 3; distance += 0.5) {
+                    Location step = player.getLocation().clone().add(Math.cos(angle) * distance, 0,
+                            Math.sin(angle) * distance);
+                    if (!walkable(step) || existing.stream().anyMatch(other -> other.contains(step, 0.5))
+                            || lanes.stream().anyMatch(lane -> lane.contains(step, 0.5))
+                            || clouds.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
+                        break;
+                    }
+                    if (!area.contains(step, 1)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+    }
+
     boolean landingSafe() {
         // Native landing uses the real podium. Require ground-level melee approaches, not a void perch.
         int distance = (int) Math.min(8, config.landingRadius() - 3);
