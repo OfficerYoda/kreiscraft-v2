@@ -36,7 +36,7 @@ public final class ShatteredCrownModule implements Module {
         installRecovery(ctx.plugin().getServer(), ctx.events());
         try {
             var config = ShatteredCrownConfig.load(ctx.moduleConfig());
-            if (!ctx.moduleConfig().node("enabled").getBoolean(true)) {
+            if (ctx.moduleConfig().virtual() || !ctx.moduleConfig().node("enabled").getBoolean(true)) {
                 return;
             }
             if (encounter != null) {
@@ -66,7 +66,7 @@ public final class ShatteredCrownModule implements Module {
             ShatteredCrownConfig next = ShatteredCrownConfig.load(node);
             if (encounter != null) {
                 encounter.configure(next);
-                if (!node.node("enabled").getBoolean(true)) {
+                if (node.virtual() || !node.node("enabled").getBoolean(true)) {
                     encounter.close();
                     encounter = null;
                 }

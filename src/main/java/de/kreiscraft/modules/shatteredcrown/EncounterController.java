@@ -167,6 +167,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         var candidate = battle.getEnderDragon();
         var candidateArena = new EncounterArena(candidate.getPodium(), config);
         if (candidate.isDead() || candidate.getHealth() <= 0
+                || candidate.getPhase() == EnderDragon.Phase.DYING
                 || world.getPlayers().stream().noneMatch(candidateArena::participant)) {
             return;
         }
@@ -183,7 +184,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         originalMaxHealth = dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue();
         dragon.getPersistentDataContainer().set(ORIGINAL_HEALTH, PersistentDataType.DOUBLE, originalMaxHealth);
         dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.maxHealth());
-        dragon.setHealth(config.maxHealth());
+        dragon.setHealth(dragon.getAttribute(Attribute.MAX_HEALTH).getValue());
         for (Location ground : grounds) {
             var objective = new Anchor(spawnAnchor(ground), ground);
             anchors.add(objective);

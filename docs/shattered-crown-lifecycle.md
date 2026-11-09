@@ -13,6 +13,8 @@ Use the existing permission-controlled Server Configuration GUI or YAML and `/kr
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains
 YAML-only, and enabling combat still requires a restart. An explicit reload with `enabled: false`
 aborts immediately; a later reload with `enabled: true` does not start the stopped module.
+Removing the entire section also aborts/disables combat, matching the bundled default-off policy.
+Missing sections deserialize default tuning without inserting a section into the live YAML tree.
 Dimension Access and travel/respawn policy are untouched.
 
 Both GUI edits and disk reloads validate the complete supplied Shattered Crown profile before
@@ -43,9 +45,13 @@ Recovery excludes entities belonging to the live attempt and never removes playe
 Unmarked ordinary crystals, ritual crystals and mobs remain untouched. Tagged stale artifacts
 are removed. The existing surviving dragon is restored to its original maximum and full health;
 damaged/non-finite recovery metadata emits a warning and falls back to vanilla maximum 200.
-A tagged custom native phase normalizes to `CIRCLING`, rather than resuming a landing or warning.
+A surviving dragon with either managed-health or native-phase metadata normalizes to `CIRCLING`,
+rather than resuming a landing, warning, or pre-death `DYING` flight. Already-dead dragons are never
+revived. Discovery does not start an Encounter on an unowned dragon in native `DYING` flight.
 Markers are cleared after restoration. No replacement dragon, rewarded death, portal/egg change,
 or simulated respawn ritual is involved.
+Native maximum-health modifiers remain intact; attempts start at the effective maximum, not the
+configured base value when modifiers change it.
 
 ## Attempt ownership contract for subsequent slices
 

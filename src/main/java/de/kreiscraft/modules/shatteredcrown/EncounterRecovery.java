@@ -51,7 +51,8 @@ final class EncounterRecovery implements Listener {
             if (dragon.isDead()) {
                 return;
             }
-            if (dragon.getPersistentDataContainer().has(ORIGINAL_PHASE)) {
+            if (dragon.getPersistentDataContainer().has(ORIGINAL_PHASE)
+                    || dragon.getPersistentDataContainer().has(ORIGINAL_HEALTH)) {
                 // A restart is a fresh retry, never a resumed custom landing/attack window.
                 dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 dragon.getPersistentDataContainer().remove(ORIGINAL_PHASE);

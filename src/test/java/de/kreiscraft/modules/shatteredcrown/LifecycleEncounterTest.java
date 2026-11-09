@@ -106,6 +106,159 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void removingTheSectionOnDiskReloadDisablesTheAttemptAndReturnCannotRestartIt() throws Exception {
+        var yaml = new de.kreiscraft.core.config.YamlConfigService(data, getClass().getClassLoader());
+        java.nio.file.Files.writeString(data.resolve("config.yml"), """
+                modules:
+                  shattered-crown:
+                    enabled: true
+                    world-key: %s
+                    max-health: 800
+                """.formatted(end.getKey()));
+        yaml.reload();
+        module.enable(new ModuleContext(plugin, yaml.module("shattered-crown"), context.messages(),
+                context.services(), scheduler, context.commands(), context.events()));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(4);
+        assertThat(dragon.getHealth()).isEqualTo(800);
+
+        java.nio.file.Files.writeString(data.resolve("config.yml"), "modules: {}\n");
+        yaml.reload();
+        assertThat(ShatteredCrownConfig.load(yaml.module("shattered-crown")).maxHealth()).isEqualTo(1000);
+        module.onConfigReload(yaml.module("shattered-crown"));
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(35));
+        assertThat(crystals()).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
+        assertThat(yaml.module("shattered-crown").virtual()).isTrue();
+    }
+
+    @Test
+    void nativeNegativeMaximumHealthModifierSurvivesActivationResetAndDisable() {
+        // MockBukkit silently clamps setHealth; supported CraftLivingEntity rejects above-effective-max values.
+        // Adapt that one Paper contract, leaving attributes, events and encounter behavior real.
+        dragon = spy(dragon);
+        doAnswer(invocation -> {
+            double health = invocation.getArgument(0);
+            if (health < 0 || health > dragon.getAttribute(Attribute.MAX_HEALTH).getValue()) {
+                throw new IllegalArgumentException("Health exceeds the effective maximum");
+            }
+            return invocation.callRealMethod();
+        }).when(dragon).setHealth(org.mockito.ArgumentMatchers.anyDouble());
+        var nativeBattle = spy(dragon.getDragonBattle());
+        org.mockito.Mockito.doReturn(dragon).when(nativeBattle).getEnderDragon();
+        module = new ShatteredCrownModule(new DragonBattleAccess() {
+            @Override
+            public org.bukkit.boss.DragonBattle battle(World world) {
+                return world == end ? nativeBattle : null;
+            }
+
+            @Override
+            public void preventDespawn(Mob defender) {
+                battles.preventDespawn(defender);
+            }
+        });
+        var maximum = dragon.getAttribute(Attribute.MAX_HEALTH);
+        var modifier = new org.bukkit.attribute.AttributeModifier(new NamespacedKey("test", "native_health"),
+                -50, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER);
+        maximum.addModifier(modifier);
+        dragon.setHealth(150);
+        module.enable(context);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(4);
+        assertThat(maximum.getBaseValue()).isEqualTo(1000);
+        assertThat(maximum.getValue()).isEqualTo(950);
+        assertThat(dragon.getHealth()).isEqualTo(950);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        assertThat(crystals()).isEmpty();
+        assertThat(maximum.getBaseValue()).isEqualTo(200);
+        assertThat(dragon.getHealth()).isEqualTo(150);
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(4);
+        module.disable();
+        assertThat(crystals()).isEmpty();
+        assertThat(maximum.getModifiers()).containsExactly(modifier);
+        assertThat(maximum.getValue()).isEqualTo(150);
+        assertThat(dragon.getHealth()).isEqualTo(150);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void discoveryDoesNotEnhanceNativeDyingFlightForInitialOrRitualDragons(boolean previouslyKilled) {
+        dragon.getDragonBattle().setPreviouslyKilled(previouslyKilled);
+        dragon.setPhase(EnderDragon.Phase.DYING);
+        dragon.setHealth(1); // Native flying lethal hits enter DYING before actual zero-health death.
+        module.enable(context);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(1);
+        assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(200);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.DYING);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isEqualTo(previouslyKilled);
+        assertThat(dragon.getPersistentDataContainer().has(new NamespacedKey("kreiscraft", "crown_original_health")))
+                .isFalse();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void restartRecoversManagedHealthFromPreDeathDyingFlightWithoutPhaseOwnership(boolean previouslyKilled)
+            throws Exception {
+        dragon.getDragonBattle().setPreviouslyKilled(previouslyKilled);
+        dragon.getPersistentDataContainer().set(new NamespacedKey("kreiscraft", "crown_original_health"),
+                PersistentDataType.DOUBLE, 200.0);
+        dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(1000);
+        dragon.setHealth(1);
+        dragon.setPhase(EnderDragon.Phase.DYING);
+        config.node("enabled").set(false);
+        module.enable(context);
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(dragon.getPersistentDataContainer().has(new NamespacedKey("kreiscraft", "crown_original_health")))
+                .isFalse();
+        dragon.setHealth(180);
+        server.getPluginManager().callEvent(new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0),
+                List.of(dragon)));
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(dragon.getHealth()).isEqualTo(180); // No repeated recovery/refill after metadata is consumed.
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isEqualTo(previouslyKilled);
+    }
+
+    @Test
+    void recoveryNeverRevivesAZeroHealthNativeDeathEvenWithBothOwnershipMarkers() throws Exception {
+        config.node("enabled").set(false);
+        module.enable(context);
+        dragon.getDragonBattle().setPreviouslyKilled(true);
+        dragon.getPersistentDataContainer().set(new NamespacedKey("kreiscraft", "crown_original_health"),
+                PersistentDataType.DOUBLE, 200.0);
+        dragon.getPersistentDataContainer().set(new NamespacedKey("kreiscraft", "crown_original_phase"),
+                PersistentDataType.STRING, "CIRCLING");
+        dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(1000);
+        dragon.setPhase(EnderDragon.Phase.DYING);
+        dragon.setHealth(0);
+        server.getPluginManager().callEvent(new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0),
+                List.of(dragon)));
+        assertThat(dragon.isDead()).isTrue();
+        assertThat(dragon.getHealth()).isZero();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.DYING);
+        assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(1000);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isTrue();
+        assertThat(crystals()).isEmpty();
+    }
+
+    @Test
     void disabledStartupRecoversOwnedArtifactsAndDragonButNeverStartsCombat() throws Exception {
         var stale = end.spawn(player.getLocation(), EnderCrystal.class);
         mark(stale, "anchor");

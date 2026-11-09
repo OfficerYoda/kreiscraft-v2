@@ -23,6 +23,11 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {
+        if (node.virtual()) {
+            // Missing sections use default tuning without publishing or enabling a profile in YAML.
+            node = node.copy();
+            node.node("enabled").set(false);
+        }
         if (!node.node("enabled").virtual()) {
             var invalid = de.kreiscraft.core.config.ConfigValidators.booleanValue().validate(node.node("enabled"));
             if (invalid.isPresent()) {
