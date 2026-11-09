@@ -46,6 +46,7 @@ Precise, complete descriptions of the system's components.
 | [The Shattered Crown](/shattered-crown/) | Opt-in main-End encounter: setup, fixed mixed-gear profile, mechanics, and validation limits |
 | [Shattered Crown Hunt](/shattered-crown-hunt/) | Attack geometry, warnings, temporary hazards, and supported-Paper melee windows |
 | [Shattered Crown Lifecycle](/shattered-crown-lifecycle/) | Configuration snapshots, abort/retry, and stale-artifact recovery |
+| [Shattered Crown Live Validation](/shattered-crown-validation/) | Exact supported-Paper combat, lifecycle, reward, and representative multiplayer acceptance steps |
 | [Commands and Permissions](/reference/commands-and-permissions/) | Every command, alias, permission node, and default |
 | [Configuration](/reference/configuration/) | Every `config.yml` key — core and per-module — with types and defaults |
 | [HTTP and WebSocket API](/reference/http-api/) | All 8 HTTP endpoints, the `/chat` WebSocket protocol, the account-linking flow |
