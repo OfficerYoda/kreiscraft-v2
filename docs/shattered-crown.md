@@ -93,8 +93,8 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   `kreiscraft:crown_protected_shot` records an indirect attack's protected origin, not entity ownership.
   Recovery on module startup and entity/world load removes stale owned artifacts and restores the
   same surviving dragon, without rewards or duplicate dragons. It resumes no attack or phase.
-  Recovery listeners run only while this module is enabled; disabled-at-startup recovery policy is
-  part of the later full restart lifecycle work.
+  Recovery now runs independently of combat enablement, including disabled startup and later-loaded
+  chunks. See the [reload/restart lifecycle contract and evidence](/shattered-crown-lifecycle/).
 
 ## Automated evidence
 

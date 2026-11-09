@@ -157,7 +157,9 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.positions.PositionsModule());
         modules.register(new de.kreiscraft.modules.reboot.RebootModule());
         modules.register(new de.kreiscraft.modules.settingsgui.SettingsGuiModule());
-        modules.register(new de.kreiscraft.modules.shatteredcrown.ShatteredCrownModule());
+        var crown = new de.kreiscraft.modules.shatteredcrown.ShatteredCrownModule();
+        crown.installRecovery(plugin.getServer(), events);
+        modules.register(crown);
         modules.register(new de.kreiscraft.modules.signcolor.SignColorModule());
         modules.register(new de.kreiscraft.modules.sit.SitModule());
         modules.register(new de.kreiscraft.modules.spawn.SpawnModule());

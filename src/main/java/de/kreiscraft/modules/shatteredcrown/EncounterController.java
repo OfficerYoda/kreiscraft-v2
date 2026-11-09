@@ -46,7 +46,6 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 /** Owns one managed battle's attempt, objectives and cancellable work on the server thread. */
 public final class EncounterController implements Listener, AutoCloseable {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
-    private static final NamespacedKey ARTIFACT = new NamespacedKey("kreiscraft", "crown_artifact");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private final Server server;
     private final DragonBattleAccess battles;
@@ -64,6 +63,8 @@ public final class EncounterController implements Listener, AutoCloseable {
     private EncounterArena arena;
     private double originalMaxHealth;
     private int retryDelay;
+    private EncounterWork work;
+    private boolean closed;
 
     public EncounterController(Server server, DragonBattleAccess battles,
             ShatteredCrownConfig config, Scheduler scheduler, MessageService messages) {
@@ -76,6 +77,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     public void start() {
+        if (closed) {
+            return;
+        }
         server.getWorlds().forEach(world -> world.getEntities().forEach(this::recoverStale));
         if (discovery == null) {
             discovery = scheduler.runRepeating(Duration.ZERO, Duration.ofSeconds(1), this::pulse);
@@ -89,6 +93,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void pulse() {
+        if (closed) {
+            return;
+        }
         if (retryDelay > 0) {
             retryDelay--;
             return;
@@ -139,6 +146,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         dragon = candidate;
+        work = new EncounterWork(scheduler, server.getLogger());
         arena = candidateArena;
         originalMaxHealth = dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue();
         dragon.getPersistentDataContainer().set(ORIGINAL_HEALTH, PersistentDataType.DOUBLE, originalMaxHealth);
@@ -148,7 +156,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (!anchor.isValid()) {
             throw new IllegalStateException("Anchor spawn was refused");
         }
-        anchor.getPersistentDataContainer().set(ARTIFACT, PersistentDataType.STRING, "anchor");
+        own(anchor, "anchor");
         for (int i = 0; i < config.defenderCount(); i++) {
             defenders.add(spawnDefender(ground));
         }
@@ -176,19 +184,57 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void recoverStale(Entity entity) {
-        if (entity.equals(dragon) || entity.equals(anchor) || defenders.contains(entity)) {
+        EncounterRecovery.recover(entity, owns(entity));
+    }
+
+    boolean owns(Entity entity) {
+        return entity.equals(dragon) || entity.equals(anchor) || defenders.contains(entity)
+                || work != null && work.owns(entity);
+    }
+
+    /** Registers a persistent encounter-owned entity for cleanup and restart discovery. */
+    public void own(Entity entity, String kind) {
+        requireWork().own(entity, kind);
+    }
+
+    /** All delayed warnings, damage and landing effects must use this attempt-scoped scheduler. */
+    public Scheduler.Task runLater(Duration delay, Runnable effect) {
+        return requireWork().later(delay, effect);
+    }
+
+    /** Repeating effects are cancelled on every termination, not just on plugin shutdown. */
+    public Scheduler.Task runRepeating(Duration delay, Duration period, Runnable effect) {
+        return requireWork().repeating(delay, period, effect);
+    }
+
+    /** Restore temporary effects/UI on termination or call the returned action on normal expiry. */
+    public Runnable onCleanup(Runnable restore) {
+        return requireWork().onCleanup(restore);
+    }
+
+    /** Register native phase ownership before changing flight/landing behavior via Paper. */
+    public void ownDragonPhase() {
+        requireWork();
+        EnderDragon owned = dragon;
+        if (owned.getPersistentDataContainer().has(EncounterRecovery.ORIGINAL_PHASE)) {
             return;
         }
-        if (entity.getPersistentDataContainer().has(ARTIFACT)) {
-            entity.remove();
-        } else if (entity instanceof EnderDragon stale) {
-            Double health = stale.getPersistentDataContainer().get(ORIGINAL_HEALTH, PersistentDataType.DOUBLE);
-            if (health != null && Double.isFinite(health) && health > 0 && !stale.isDead()) {
-                stale.getAttribute(Attribute.MAX_HEALTH).setBaseValue(health);
-                stale.setHealth(stale.getAttribute(Attribute.MAX_HEALTH).getValue());
-                stale.getPersistentDataContainer().remove(ORIGINAL_HEALTH);
+        EnderDragon.Phase original = owned.getPhase();
+        owned.getPersistentDataContainer().set(EncounterRecovery.ORIGINAL_PHASE, PersistentDataType.STRING,
+                original.name());
+        onCleanup(() -> {
+            if (!owned.isDead() && !owned.getUniqueId().equals(completed)) {
+                owned.setPhase(original);
             }
+            owned.getPersistentDataContainer().remove(EncounterRecovery.ORIGINAL_PHASE);
+        });
+    }
+
+    private EncounterWork requireWork() {
+        if (work == null || closed) {
+            throw new IllegalStateException("No active Encounter owns this effect");
         }
+        return work;
     }
 
     private Mob spawnDefender(Location ground) {
@@ -198,7 +244,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             if (!defender.isValid()) {
                 throw new IllegalStateException("Defender spawn was refused");
             }
-            defender.getPersistentDataContainer().set(ARTIFACT, PersistentDataType.STRING, "defender");
+            own(defender, "defender");
             defender.setPersistent(true);
             battles.preventDespawn(defender);
             defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
@@ -224,7 +270,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 return;
             }
             anchor = ground.getWorld().spawn(ground, EnderCrystal.class);
-            anchor.getPersistentDataContainer().set(ARTIFACT, PersistentDataType.STRING, "anchor");
+            own(anchor, "anchor");
             anchor.setGlowing(defenders.isEmpty());
             home = ground;
         }
@@ -446,7 +492,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 absence = null;
             }
         } else if (absence == null) {
-            absence = scheduler.runLater(Duration.ofSeconds(60), () -> {
+            absence = runLater(Duration.ofSeconds(60), () -> {
                 if (dragon != null && dragon.getWorld().getPlayers().stream().noneMatch(arena::participant)) {
                     cleanup(true);
                 }
@@ -455,16 +501,16 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void cleanup(boolean reset) {
+        if (work != null) {
+            work.close();
+            work = null;
+        }
         if (absence != null) {
             absence.cancel();
             absence = null;
         }
-        defenders.forEach(Entity::remove);
         defenders.clear();
-        if (anchor != null) {
-            anchor.remove();
-            anchor = null;
-        }
+        anchor = null;
         if (dragon != null && !dragon.getUniqueId().equals(completed) && !dragon.isDead()) {
             double fraction = dragon.getHealth() / dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
             dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(originalMaxHealth);
@@ -480,6 +526,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @Override
     public void close() {
+        closed = true;
         if (discovery != null) {
             discovery.cancel();
         }

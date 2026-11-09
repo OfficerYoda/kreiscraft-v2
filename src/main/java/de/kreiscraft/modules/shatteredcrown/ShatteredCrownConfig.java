@@ -11,6 +11,19 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double arrivalX, Double arrivalY, Double arrivalZ, Double arrivalRadius,
         Double arrivalHeight, Double anchorDistance, Integer groundSearchRadius, Double groundMaxY,
         String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash) {
+    /** Validate the complete supplied section, including the enable flag outside the tuning record. */
+    public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
+            throws org.spongepowered.configurate.serialize.SerializationException {
+        if (!node.node("enabled").virtual()) {
+            var invalid = de.kreiscraft.core.config.ConfigValidators.booleanValue().validate(node.node("enabled"));
+            if (invalid.isPresent()) {
+                throw new org.spongepowered.configurate.serialize.SerializationException(
+                        "shattered-crown.enabled " + invalid.get());
+            }
+        }
+        return node.get(ShatteredCrownConfig.class);
+    }
+
     public ShatteredCrownConfig {
         worldKey = worldKey == null ? "minecraft:the_end" : worldKey;
         maxHealth = maxHealth == null ? 1000.0 : maxHealth;

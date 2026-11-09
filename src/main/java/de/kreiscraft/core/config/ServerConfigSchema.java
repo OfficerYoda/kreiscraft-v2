@@ -44,6 +44,24 @@ public final class ServerConfigSchema {
         return new ServerConfigSchema(fields);
     }
 
+    /** Cross-field constraints use the same validated profile as the encounter, before publication. */
+    static Optional<String> validateCrown(ConfigurationNode root) {
+        ConfigurationNode section = root.node("modules", "shattered-crown");
+        if (section.virtual()) {
+            return Optional.empty();
+        }
+        try {
+            de.kreiscraft.modules.shatteredcrown.ShatteredCrownConfig.load(section);
+            return Optional.empty();
+        } catch (org.spongepowered.configurate.serialize.SerializationException | IllegalArgumentException error) {
+            Throwable cause = error;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            return Optional.of("Invalid shattered-crown configuration: " + cause.getMessage());
+        }
+    }
+
     /**
      * The complete safe, GUI-editable field set.
      *

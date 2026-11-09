@@ -87,8 +87,18 @@ public final class YamlConfigService implements ConfigService {
 
     @Override
     public void reload() throws IOException {
-        this.root = loader.load();
-        this.schema = ServerConfigSchema.fromRoot(root);
+        ConfigurationNode candidate = loader.load();
+        // Startup errors are attributed to the owning module by ModuleRegistry. A reload must
+        // reject the detached candidate before any other live section or module can observe it.
+        if (root != null) {
+            Optional<String> invalid = ServerConfigSchema.validateCrown(candidate);
+            if (invalid.isPresent()) {
+                throw new IOException(invalid.get());
+            }
+        }
+        ServerConfigSchema candidateSchema = ServerConfigSchema.fromRoot(candidate);
+        this.root = candidate;
+        this.schema = candidateSchema;
     }
 
     @Override
@@ -110,6 +120,13 @@ public final class YamlConfigService implements ConfigService {
         Optional<String> invalid = field.validator().validate(target);
         if (invalid.isPresent()) {
             return new ConfigEditResult.Rejected(invalid.get());
+        }
+        if (field.path().size() >= 2 && field.path().get(0).equals("modules")
+                && field.path().get(1).equals("shattered-crown")) {
+            Optional<String> invalidSection = ServerConfigSchema.validateCrown(candidate);
+            if (invalidSection.isPresent()) {
+                return new ConfigEditResult.Rejected(invalidSection.get());
+            }
         }
         try {
             persist(candidate);

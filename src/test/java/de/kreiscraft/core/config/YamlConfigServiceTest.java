@@ -1,6 +1,7 @@
 package de.kreiscraft.core.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +13,37 @@ import org.junit.jupiter.api.io.TempDir;
 import org.spongepowered.configurate.ConfigurationNode;
 
 class YamlConfigServiceTest {
+
+    @Test
+    void invalidCrownDiskReloadPreservesTheEntirePreviousLiveTree(@TempDir Path tmp) throws IOException {
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
+        Files.writeString(tmp.resolve("config.yml"), """
+                core:
+                  language: de
+                modules:
+                  shattered-crown:
+                    max-health: 800
+                    arena-radius: 20
+                """);
+        assertThatThrownBy(cfg::reload).isInstanceOf(IOException.class).hasMessageContaining("geometry");
+        assertThat(cfg.root().node("core", "language").getString()).isEqualTo("en");
+        assertThat(cfg.module("shattered-crown").node("max-health").getDouble()).isEqualTo(1000);
+    }
+
+    @Test
+    void crownGuiEditRejectsAnIndividuallyValidValueThatMakesTheArenaImpossible(@TempDir Path tmp)
+            throws IOException {
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
+        String original = Files.readString(tmp.resolve("config.yml"));
+        ConfigField radius = cfg.configSchema().fields().stream()
+                .filter(field -> field.path().equals(List.of("modules", "shattered-crown", "arena-radius")))
+                .findFirst().orElseThrow();
+        var result = cfg.edit(new ConfigEdit(radius, 20.0));
+        assertThat(result).isInstanceOf(ConfigEditResult.Rejected.class);
+        assertThat(((ConfigEditResult.Rejected) result).reason()).contains("geometry");
+        assertThat(cfg.module("shattered-crown").node("arena-radius").getDouble()).isEqualTo(80);
+        assertThat(Files.readString(tmp.resolve("config.yml"))).isEqualTo(original);
+    }
 
     @Test
     void firstRun_copiesBundledConfigFromClasspath(@TempDir Path tmp) throws IOException {
