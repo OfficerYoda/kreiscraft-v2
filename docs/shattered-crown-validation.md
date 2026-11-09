@@ -8,6 +8,92 @@ title: Shattered Crown live validation
 actual supported-Paper combat and a representative multiplayer session before PR #133 can leave
 WIP. Completing an agent run is not completing this acceptance. Do not merge while it is pending.
 
+## #140 agent-executable integration evidence
+
+Base: `81da751` with native #138/#139 implementation integrated. This work adds **11 encounter
+cases** and expands the existing repeated-attempt and shortened-pool regressions, at the approved module/public-event/
+MockBukkit/MockScheduler seam. No production behavior, tuning, adapter, server helper or framework
+was changed. No concrete production defect was found in these checks.
+
+- `FinalEncounterTest.twentyParticipantsCompleteTimedOpeningHuntAndFinalRaceBeforeUntouchedNativeCompletion`
+  runs both initial and previously-killed battle profiles with 20 mock participants: all four opening
+  gates, opening warning/escape, Hunt lane warning/escape, three moving marks yielding one non-stacking
+  pool, a complete 12-second public-native-arrival melee window, fixed sweep/escape, shared multipart
+  explosion limiting, oversized ranged threshold crossing, exactly two final gates with familiar
+  bombardment, accelerated final lane/sweep and another full melee window. Native completion occurs
+  with a fresh lane warning pending; duplicate death notifications leave supplied XP (12000/500) and
+  drop payloads untouched. Two further virtual minutes produce no artifacts or player damage.
+- `FinalEncounterTest.repeatedTwentyPlayerFullAttemptsReturnsAndCancelledAttacksKeepArtifactsAndExplosionWorkBounded`
+  now runs three 20-participant attempts through warned opening, at least 60 virtual seconds of Hunt,
+  the final pair and at least 180 seconds of final race, supplying public podium arrival events.
+  Real MockBukkit combat-event cancellation vetoes custom player damage, and canceled sweeps never
+  apply knockback. Each attempt dispatches 1000 fractional explosions without adding scheduled work,
+  checks at most four displays and 21 active scheduler tasks, returns at 59.999 seconds to preserve
+  the race, then resets after a new complete 60-second absence. Reset restores the same dragon to
+  native 200 health, removes owned artifacts and leaves discovery alone; return starts four fresh gates.
+- `HuntEncounterTest.publicDepartureEventsCancelTheSameMarkEvenIfEligibilityReturnsBeforeTheNextTick`
+  adds eight same-tick departures/returns: arrival via move and teleport, world, arena, creative,
+  spectator, death and logout. Outgoing public event destination/new mode differs from current player
+  state; the mark must disappear **before** that state is committed. Eligibility returns before any
+  scheduler poll/countdown expiry, but only the teammate's pool resolves. Death and join are public
+  event envelopes, not proof of real Paper death travel or network reconnection.
+- `HuntEncounterTest.aMarkedParticipantCanWalkOutAfterDepositBeforeTheThirdPoolPulse` advances actual
+  fixture movement by 0.75 blocks per 250 ms on flat footing (3 blocks/second): the deposited default
+  pool deals two pulses, then movement beyond its radius prevents subsequent damage through exclusive
+  expiry. This verifies configured policy at the seam, not armor, client reaction or native movement.
+- The existing `FinalEncounterTest.finalFinishUsesEarlierFamiliarWarningsAndThreeSecondPools` now
+  observes real simulated damage as well as display lifetime: no damage during the mark warning,
+  exactly three one-second pulses during the three-second final pool, and no fourth pulse at expiry.
+
+### Required automated acceptance audit
+
+| Required behavior | Existing plus integrated public-seam evidence |
+| --- | --- |
+| Activation, ritual/duplicate discovery, disabled/unrelated scope | `EncounterTest`, `LifecycleEncounterTest`; both initial/ritual full timed attempts above |
+| Four independent opening gates, arbitrary/concurrent clear, unrelated crystals | `OpeningEncounterTest` four-site regression; timed full attempts |
+| Shield, melee/ranged/explosion/multipart, aggregate cap and lethal threshold | `EncounterTest` shield/provenance cases; `FinalEncounterTest` all-route, rolling-window/nested-event and timed full-attempt cases |
+| Exactly two final gates once, healing/duplicates, native completion | `FinalEncounterTest` independent orders, all-route/large-hit and untouched initial/ritual completion payloads |
+| Warning before damage, geometry/routes, exclusive expiry, landing windows | `OpeningEncounterTest` geometry/route cases; `HuntEncounterTest` lane/pool/sweep boundary and exclusive-expiry cases; `FinalEncounterTest` shortened-pool/default accelerated timings and both integrated windows |
+| Eligibility revalidation and protected indirect attacks | Existing opening/lane/prey invalidation and arrow/TNT/potion/cloud cases; eight new pre-commit public-event quick returns; existing sweep/pool damage audience and cancellation cases |
+| Continuous absence, dead/spectator occupancy, fresh reset | `EncounterTest` timeout/dead/spectator cases; final-transition absence test; repeated full-attempt 59.999-second return and new full timeout |
+| Pending/active cleanup, disable/unload/restart, unrelated preservation | Existing opening/Hunt/finale termination-stage matrices and lifecycle stale loaded/later-loaded entity recovery; timed victory with pending warning and no late damage |
+| Atomic reload/snapshots, localized instructions/configuration integration | Existing opening/Hunt/finale valid/invalid reload cases, lifecycle/bootstrap/configuration/GUI/message regressions in full `check` |
+| Bounded full-attempt/retry growth | Expanded three-attempt check above plus existing eight opening retries and four 20-participant Hunts; scheduler/display limits are checked bounds, **not live performance measurements** |
+
+### Reproduction and red/green limits
+
+Use the Java 25 launcher below; no version-specific code changed, so `testNms` execution is excluded.
+
+```sh
+JAVA_HOME=/Users/I767799/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4.1+1/Contents/Home \
+  ./gradlew test --tests 'de.kreiscraft.modules.shatteredcrown.*' --max-workers=2 --console=plain
+JAVA_HOME=/Users/I767799/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4.1+1/Contents/Home \
+  ./gradlew spotlessApply check -x testNms --max-workers=2 --console=plain
+git diff --check
+```
+
+Durable local logs/XMLs: `~/.local/state/kreiscraft-java-runs/140-integration-81da751/`, with `140-`
+run names. The initial timed-attempt red run exposed fixture assumptions (cardinal escape orientation
+and a cadence opportunity suppressed by a landing), not a production defect; these were corrected
+without changing gameplay. New quick-return and repeated-attempt checks pass existing behavior.
+A separately retained **negative-control red** temporarily made movement translation consult the
+old player location instead of the event destination: four of eight quick-return cases failed.
+Restoring the original translation makes them green. This is regression-sensitivity evidence,
+**not a claimed production red→green fix**; the mutation is not shipped.
+
+Targeted integration: **280 tests**, zero failures/errors/skips (23 encounter, 35 opening, 120 Hunt,
+85 finale, 17 lifecycle). Full `spotlessApply check -x testNms`: **1,592 tests**, zero failures/errors,
+five existing `ServerMetricsCollectorTest` skips. Spotless, Checkstyle (main/test/NMS source sets),
+production compilation with `-Werror`, shadow JAR and InvUI compatibility passed; `git diff --check`
+passed. Existing native-event deprecation, Mockito/ByteBuddy/Unsafe, Shadow Kotlin metadata and Gradle
+deprecation warnings remain in the raw logs; a successful check does not mean warning-free output.
+MockBukkit does not run dragon AI or render effects, and public death-event payloads do not generate
+XP, portals, eggs, gateways or rituals. Simulated timing and scripted fixture movement are not a
+15–20-minute fight, native armor evidence or numerical balance validation. The shipped fixed ~20-player
+mixed enchanted diamond/netherite profile is unchanged; death and normal rejoining remain allowed.
+Real supported-Paper validation is coordinated separately. Final Standards + Spec reviews are still
+required after integrated checks; this document does not mark #140 complete or authorize merge.
+
 ## Prepare a disposable supported-Paper server
 
 1. Use Java 25 and the supported Paper 26.2 release. Record Java/Paper versions, integration commit,

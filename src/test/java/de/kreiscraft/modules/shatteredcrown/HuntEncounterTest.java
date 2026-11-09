@@ -755,6 +755,88 @@ class HuntEncounterTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(
+            strings = {"arrival", "arrival-teleport", "world", "arena", "creative", "spectator", "death", "quit"})
+    void publicDepartureEventsCancelTheSameMarkEvenIfEligibilityReturnsBeforeTheNextTick(String departure)
+            throws Exception {
+        var teammate = server.addPlayer();
+        teammate.teleport(new Location(end, -15.5, 64, 0.5));
+        prey();
+        var origin = player.getLocation();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        switch (departure) {
+            case "arrival", "arrival-teleport", "world", "arena" -> {
+                var destination = departure.startsWith("arrival") ? new Location(end, 100, 50, 0)
+                        : departure.equals("arena") ? new Location(end, 81, 64, 0)
+                                : new Location(server.addSimpleWorld("other"), 0, 64, 0);
+                // Paper dispatches before committing destination: the participant is still at origin.
+                server.getPluginManager().callEvent(departure.equals("arrival") || departure.equals("arena")
+                        ? new org.bukkit.event.player.PlayerMoveEvent(player, origin, destination)
+                        : new org.bukkit.event.player.PlayerTeleportEvent(player, origin, destination));
+                assertThat(player.getLocation()).isEqualTo(origin);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+                player.teleport(destination);
+                server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerTeleportEvent(player,
+                        destination, origin));
+                player.teleport(origin);
+            }
+            case "creative", "spectator" -> {
+                var mode = org.bukkit.GameMode.valueOf(departure.toUpperCase(java.util.Locale.ROOT));
+                server.getPluginManager()
+                        .callEvent(new org.bukkit.event.player.PlayerGameModeChangeEvent(player, mode,
+                                org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.UNKNOWN, null));
+                assertThat(player.getGameMode()).isEqualTo(org.bukkit.GameMode.SURVIVAL);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+                player.setGameMode(mode);
+                server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerGameModeChangeEvent(player,
+                        org.bukkit.GameMode.SURVIVAL,
+                        org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.UNKNOWN, null));
+                player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+            }
+            case "death" -> {
+                player.setHealth(0);
+                server.getPluginManager().callEvent(new org.bukkit.event.entity.PlayerDeathEvent(player,
+                        mock(DamageSource.class), List.of(), 0, net.kyori.adventure.text.Component.empty(), false));
+                player.setHealth(20);
+                server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerTeleportEvent(player,
+                        origin, origin));
+            }
+            case "quit" -> {
+                server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerQuitEvent(player,
+                        net.kyori.adventure.text.Component.empty(),
+                        org.bukkit.event.player.PlayerQuitEvent.QuitReason.DISCONNECTED));
+                server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerJoinEvent(player,
+                        net.kyori.adventure.text.Component.empty()));
+            }
+            default -> throw new AssertionError(departure);
+        }
+        // All leave/return events occurred before scheduler polling could observe ineligibility.
+        assertThat(player.getLocation()).isEqualTo(origin);
+        assertThat(player.isOnline()).isTrue();
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @Test
+    void aMarkedParticipantCanWalkOutAfterDepositBeforeTheThirdPoolPulse() throws Exception {
+        prey();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+        for (int step = 1; step <= 5; step++) {
+            player.teleport(new Location(end, 10.5 + step * 0.75, 64, 0.5));
+            scheduler.advance(Duration.ofMillis(250)); // Configured conservative 3 blocks/second on flat ground.
+        }
+        assertThat(player.getHealth()).isEqualTo(14);
+        scheduler.advance(Duration.ofMillis(4750));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
     @Test
     void stackedMarksCreateOnlyOneFinitePoolAndItsRadiusCadenceAndExpiryMatchTheWarning() throws Exception {
         config.node("pool-lifetime-seconds").set(1);

@@ -179,7 +179,7 @@ class FinalEncounterTest {
         config.node("lane-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
         config.node("prey-cadence-seconds").set(20);
-        config.node("pool-damage").set(0);
+        config.node("pool-damage").set(1);
         hunt();
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         clearAnchors();
@@ -187,14 +187,18 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(4));
         var pool = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(player.getHealth()).isEqualTo(19);
         assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
                 .serialize(pool.text())).contains("3");
         scheduler.advance(Duration.ofMillis(2999));
         assertThat(pool.isValid()).isTrue();
+        assertThat(player.getHealth()).isEqualTo(17);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(pool.isValid()).isFalse();
+        assertThat(player.getHealth()).isEqualTo(17); // Exclusive expiry: no fourth shortened-pool pulse.
     }
 
     @Test
@@ -650,8 +654,130 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
 
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"false,12000", "true,500"})
+    void twentyParticipantsCompleteTimedOpeningHuntAndFinalRaceBeforeUntouchedNativeCompletion(
+            boolean previouslyKilled, int experience) throws Exception {
+        dragon.getDragonBattle().setPreviouslyKilled(previouslyKilled);
+        for (int i = 1; i < 20; i++) {
+            server.addPlayer().teleport(player.getLocation());
+        }
+        opening();
+        assertThat(crystals()).hasSize(4);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 10000).isCancelled()).isTrue();
+        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        moveParticipants(10.5, 6.5); // Escape the fixed opening warning on actual fixture terrain.
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertParticipantHealth(20);
+        clearAnchors();
+
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(bars(player)).anyMatch(text -> text.contains("Breath lane in 3.0s"));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        moveParticipants(16.5, 12.5); // Diagonal escape clears either cardinal lane orientation.
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(3);
+        moveParticipants(20.5, 10.5);
+        scheduler.advance(Duration.ofMillis(3999));
+        assertParticipantHealth(20);
+        scheduler.advance(Duration.ofMillis(1));
+        assertParticipantHealth(17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Co-located marks do not stack pools.
+        moveParticipants(26.5, 10.5);
+        scheduler.advance(Duration.ofMillis(6250));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        arriveAtPodium();
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isFalse();
+        scheduler.advance(Duration.ofMillis(11999));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
+        moveParticipants(0.5, 10.5);
+        scheduler.advance(Duration.ofMillis(7500)); // Hunt 50s: the fixed sweep follows the clear melee window.
+        assertThat(bars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
+        moveParticipants(10.5, 0.5);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertParticipantHealth(17);
+
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        when(part.getParent()).thenReturn(dragon);
+        assertThat(damage(part, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 30).getFinalDamage()).isEqualTo(30);
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, 30).getFinalDamage()).isEqualTo(10);
+        assertThat(damage(part, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 30).isCancelled()).isTrue();
+        damage(part, EntityDamageEvent.DamageCause.PROJECTILE, 10000);
+        assertThat(dragon.getHealth()).isEqualTo(300);
+        assertThat(crystals()).hasSize(2);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(damage(part, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
+        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Familiar final-Anchor pressure.
+        moveParticipants(16.5, 0.5);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertParticipantHealth(17);
+        clearAnchors();
+
+        scheduler.advance(Duration.ofSeconds(7));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        moveParticipants(22.5, 6.5);
+        scheduler.advance(Duration.ofSeconds(9));
+        moveParticipants(0.5, 10.5);
+        scheduler.advance(Duration.ofMillis(1500)); // Final 17.5s; lane has expired, fixed sweep warns.
+        assertThat(bars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
+        moveParticipants(10.5, 0.5);
+        scheduler.advance(Duration.ofMillis(4250));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        arriveAtPodium();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
+        scheduler.advance(Duration.ofSeconds(1)); // A fresh familiar lane is pending at native completion.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
+        var loot = new org.bukkit.inventory.ItemStack(Material.DRAGON_EGG);
+        var victory = new EntityDeathEvent(dragon, mock(DamageSource.class),
+                new java.util.ArrayList<>(List.of(loot)), experience);
+        server.getPluginManager().callEvent(victory);
+        server.getPluginManager().callEvent(victory);
+        assertThat(victory.isCancelled()).isFalse();
+        assertThat(victory.getDroppedExp()).isEqualTo(experience);
+        assertThat(victory.getDrops()).containsExactly(loot);
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertParticipantHealth(17);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isEqualTo(previouslyKilled);
+    }
+
+    private void moveParticipants(double x, double z) {
+        end.getPlayers().forEach(participant -> participant.teleport(new Location(end, x, 64, z)));
+    }
+
+    private void assertParticipantHealth(double expected) {
+        assertThat(end.getPlayers()).hasSize(20)
+                .allSatisfy(participant -> assertThat(participant.getHealth()).isEqualTo(expected));
+    }
+
+    private void arriveAtPodium() {
+        // Only public arrival movement/phase events: MockBukkit does not run native dragon AI.
+        dragon.teleport(new Location(end, 0, 67, 0));
+        var arrival = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon, dragon.getPhase(),
+                EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        server.getPluginManager().callEvent(arrival);
+        if (!arrival.isCancelled()) {
+            dragon.setPhase(arrival.getNewPhase());
+        }
+        scheduler.advance(Duration.ofMillis(250));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+    }
+
     @Test
-    void repeatedTwentyPlayerFinalesAndFractionalExplosionSpamKeepHazardsAndSchedulerWorkBounded() throws Exception {
+    void repeatedTwentyPlayerFullAttemptsReturnsAndCancelledAttacksKeepArtifactsAndExplosionWorkBounded()
+            throws Exception {
         scheduler = org.mockito.Mockito.spy(scheduler);
         var scheduled = new java.util.ArrayList<de.kreiscraft.core.scheduler.Scheduler.Task>();
         org.mockito.stubbing.Answer<Object> track = invocation -> {
@@ -664,9 +790,16 @@ class FinalEncounterTest {
         org.mockito.Mockito.doAnswer(track).when(scheduler).runRepeating(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         config.node("prey-count").set(4);
-        config.node("lane-damage").set(0);
-        config.node("pool-damage").set(0);
-        config.node("sweep-damage").set(0);
+        var cancelledHits = new java.util.concurrent.atomic.AtomicInteger();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void protect(EntityDamageEvent event) {
+                if (event.getEntity() instanceof org.bukkit.entity.Player) {
+                    event.setCancelled(true);
+                    cancelledHits.incrementAndGet();
+                }
+            }
+        }, plugin);
         var participants = new java.util.ArrayList<PlayerMock>(List.of(player));
         for (int i = 1; i < 20; i++) {
             var teammate = server.addPlayer();
@@ -675,7 +808,25 @@ class FinalEncounterTest {
         }
         opening();
         for (int attempt = 0; attempt < 3; attempt++) {
+            int previousHits = cancelledHits.get();
+            scheduler.advance(Duration.ofSeconds(8));
+            assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+            scheduler.advance(Duration.ofSeconds(3));
             clearAnchors();
+            for (int second = 0; second < 60; second++) {
+                scheduler.advance(Duration.ofSeconds(1));
+                if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
+                    arriveAtPodium();
+                } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
+                    dragon.setPhase(EnderDragon.Phase.CIRCLING);
+                }
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(4);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(21);
+                assertParticipantHealth(20);
+                assertThat(participants).allSatisfy(participant -> assertThat(participant.getVelocity().lengthSquared())
+                        .isZero()); // Cancelled sweeps never shove players.
+            }
+            assertThat(cancelledHits.get()).isGreaterThan(previousHits);
             long before = scheduled.stream().filter(task -> !task.isCancelled()).count();
             for (int burst = 0; burst < 1000; burst++) {
                 damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 0.001);
@@ -685,15 +836,28 @@ class FinalEncounterTest {
             clearAnchors();
             for (int second = 0; second < 180; second++) {
                 scheduler.advance(Duration.ofSeconds(1));
+                if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
+                    arriveAtPodium();
+                } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
+                    dragon.setPhase(EnderDragon.Phase.CIRCLING);
+                }
                 assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(4);
                 assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(21);
+                assertParticipantHealth(20);
             }
             participants.forEach(participant -> participant.teleport(new Location(end, 100, 50, 0)));
+            scheduler.advance(Duration.ofMillis(59999));
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+            scheduler.advance(Duration.ofMillis(1));
+            assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(1000);
+            assertThat(crystals()).isEmpty(); // The returning player preserves this final race, not a fresh opening.
+            player.teleport(new Location(end, 100, 50, 0));
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(crystals()).isEmpty();
             assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
             assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
             assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isEqualTo(1);
+            assertThat(dragon.getHealth()).isEqualTo(200);
             participants.forEach(participant -> participant.teleport(new Location(end, 10.5, 64, 0.5)));
             scheduler.advance(Duration.ofSeconds(1));
             assertThat(crystals()).hasSize(4);
