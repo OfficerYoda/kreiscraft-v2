@@ -3,6 +3,7 @@ package de.kreiscraft.core.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import de.kreiscraft.modules.shatteredcrown.ShatteredCrownConfig;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +17,8 @@ class YamlConfigServiceTest {
 
     @Test
     void invalidCrownDiskReloadPreservesTheEntirePreviousLiveTree(@TempDir Path tmp) throws IOException {
-        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader(),
+                ShatteredCrownConfig::validateCandidate);
         Files.writeString(tmp.resolve("config.yml"), """
                 core:
                   language: de
@@ -33,7 +35,8 @@ class YamlConfigServiceTest {
     @Test
     void crownGuiEditRejectsAnIndividuallyValidValueThatMakesTheArenaImpossible(@TempDir Path tmp)
             throws IOException {
-        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader());
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader(),
+                ShatteredCrownConfig::validateCandidate);
         String original = Files.readString(tmp.resolve("config.yml"));
         ConfigField radius = cfg.configSchema().fields().stream()
                 .filter(field -> field.path().equals(List.of("modules", "shattered-crown", "arena-radius")))
@@ -43,6 +46,38 @@ class YamlConfigServiceTest {
         assertThat(((ConfigEditResult.Rejected) result).reason()).contains("geometry");
         assertThat(cfg.module("shattered-crown").node("arena-radius").getDouble()).isEqualTo(80);
         assertThat(Files.readString(tmp.resolve("config.yml"))).isEqualTo(original);
+    }
+
+    @Test
+    void unrelatedEditsRemainAvailableWithBrokenCrownAndCrownEditsCanRepairIt(@TempDir Path tmp)
+            throws IOException {
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader(),
+                ShatteredCrownConfig::validateCandidate);
+        cfg.module("shattered-crown").node("arena-radius").set(20.0);
+        ConfigField language = cfg.configSchema().find(List.of("core", "language")).orElseThrow();
+
+        assertThat(cfg.edit(new ConfigEdit(language, "de"))).isInstanceOf(ConfigEditResult.Applied.class);
+        assertThat(cfg.root().node("core", "language").getString()).isEqualTo("de");
+        assertThat(Files.readString(tmp.resolve("config.yml"))).contains("language: de");
+        assertThatThrownBy(cfg::reload).isInstanceOf(IOException.class).hasMessageContaining("geometry");
+
+        ConfigField radius = cfg.configSchema()
+                .find(List.of("modules", "shattered-crown", "arena-radius")).orElseThrow();
+        assertThat(cfg.edit(new ConfigEdit(radius, 80.0))).isInstanceOf(ConfigEditResult.Applied.class);
+        cfg.reload();
+        assertThat(cfg.module("shattered-crown").node("arena-radius").getDouble()).isEqualTo(80);
+    }
+
+    @Test
+    void missingAndNullCrownSectionsCanBePublishedByReload(@TempDir Path tmp) throws IOException {
+        YamlConfigService cfg = new YamlConfigService(tmp, getClass().getClassLoader(),
+                ShatteredCrownConfig::validateCandidate);
+        for (String modules : List.of("{}", "{shattered-crown: null}")) {
+            Files.writeString(tmp.resolve("config.yml"), "modules: " + modules + "\n");
+            cfg.reload();
+            assertThat(cfg.module("shattered-crown").isNull()).isTrue();
+            assertThat(ShatteredCrownConfig.load(cfg.module("shattered-crown")).maxHealth()).isEqualTo(1000);
+        }
     }
 
     @Test

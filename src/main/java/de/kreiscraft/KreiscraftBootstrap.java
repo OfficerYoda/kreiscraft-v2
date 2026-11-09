@@ -18,6 +18,7 @@ import de.kreiscraft.core.scheduler.BukkitScheduler;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.core.util.Durations;
+import de.kreiscraft.modules.shatteredcrown.ShatteredCrownConfig;
 import de.kreiscraft.platform.NmsPlayerDataCodec;
 import de.kreiscraft.platform.NmsWhitelist;
 import de.kreiscraft.platform.OfflinePlayerData;
@@ -66,7 +67,7 @@ public final class KreiscraftBootstrap {
 
     public void start() throws Exception {
         this.config = new YamlConfigService(plugin.getDataFolder().toPath(),
-                plugin.getClass().getClassLoader());
+                plugin.getClass().getClassLoader(), ShatteredCrownConfig::validateCandidate);
         String lang = config.root().node("core", "language").getString("de");
 
         // Always-available player preferences are loaded before the message service so that every

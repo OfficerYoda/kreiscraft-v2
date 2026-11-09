@@ -107,7 +107,8 @@ class LifecycleEncounterTest {
 
     @Test
     void removingTheSectionOnDiskReloadDisablesTheAttemptAndReturnCannotRestartIt() throws Exception {
-        var yaml = new de.kreiscraft.core.config.YamlConfigService(data, getClass().getClassLoader());
+        var yaml = new de.kreiscraft.core.config.YamlConfigService(data, getClass().getClassLoader(),
+                ShatteredCrownConfig::validateCandidate);
         java.nio.file.Files.writeString(data.resolve("config.yml"), """
                 modules:
                   shattered-crown:

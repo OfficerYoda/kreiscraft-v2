@@ -1,8 +1,11 @@
 package de.kreiscraft.modules.shatteredcrown;
 
 import java.util.List;
+import java.util.Optional;
 import org.bukkit.NamespacedKey;
+import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.serialize.SerializationException;
 
 /** Fixed encounter tuning, snapshotted at the start of an attempt. */
 @ConfigSerializable
@@ -22,6 +25,32 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
         Double explosionWindowSeconds, Double explosionWindowBudget) {
+    /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
+    public static Optional<String> validateCandidate(ConfigurationNode candidate) {
+        Object[] path = candidate.path().array();
+        if (path.length != 0 && (path.length < 2 || !path[0].equals("modules")
+                || !path[1].equals("shattered-crown"))) {
+            return Optional.empty();
+        }
+        while (candidate.parent() != null) {
+            candidate = candidate.parent();
+        }
+        ConfigurationNode section = candidate.node("modules", "shattered-crown");
+        if (section.virtual()) {
+            return Optional.empty();
+        }
+        try {
+            load(section);
+            return Optional.empty();
+        } catch (SerializationException | IllegalArgumentException error) {
+            Throwable cause = error;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            return Optional.of("Invalid shattered-crown configuration: " + cause.getMessage());
+        }
+    }
+
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {

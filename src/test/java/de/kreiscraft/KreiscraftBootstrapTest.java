@@ -1,9 +1,13 @@
 package de.kreiscraft;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleRegistry;
+import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,9 +15,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 
 class KreiscraftBootstrapTest {
+
+    @Test
+    void startupRejectsInvalidCrownBeforePublishingConfiguration(@TempDir Path tmp) throws IOException {
+        Files.writeString(tmp.resolve("config.yml"), """
+                modules:
+                  shattered-crown:
+                    enabled: false
+                    arena-radius: 20
+                """);
+        JavaPlugin plugin = mock(JavaPlugin.class);
+        when(plugin.getDataFolder()).thenReturn(tmp.toFile());
+
+        assertThatThrownBy(() -> new KreiscraftBootstrap(plugin).start())
+                .isInstanceOf(IOException.class).hasMessageContaining("geometry");
+        assertThat(Files.exists(tmp.resolve("data"))).isFalse();
+    }
 
     /** Discover production implementations so new modules are covered without updating a fixture. */
     private static List<Module> allModules() throws Exception {
