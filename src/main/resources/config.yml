@@ -164,6 +164,10 @@ modules:
     anchor-distance: 24.0
     ground-search-radius: 8
     ground-max-y: 90.0
+    bombardment-warning-seconds: 3.0
+    bombardment-cadence-seconds: 8.0
+    bombardment-damage: 6.0
+    bombardment-radius: 4.0
   wither:
     enabled: true
     max-health: 600.0

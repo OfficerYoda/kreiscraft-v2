@@ -357,6 +357,10 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("defender-health", 1, 1000));
         fields.add(crownNumber("defender-damage", 0, 100));
         fields.add(crownNumber("defender-leash", 4, 32));
+        fields.add(crownNumber("bombardment-warning-seconds", 1, 15));
+        fields.add(crownNumber("bombardment-cadence-seconds", 2, 120));
+        fields.add(crownNumber("bombardment-damage", 0, 100));
+        fields.add(crownNumber("bombardment-radius", 1, 12));
         fields.add(crownNumber("arena-radius", 16, 256));
         for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));

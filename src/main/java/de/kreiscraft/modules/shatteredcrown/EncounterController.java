@@ -12,6 +12,11 @@ import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.entity.TextDisplay;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.EnderDragon;
@@ -58,13 +63,29 @@ public final class EncounterController implements Listener, AutoCloseable {
     private Scheduler.Task discovery;
     private Scheduler.Task absence;
     private EnderDragon dragon;
-    private EnderCrystal anchor;
+    private final List<Anchor> anchors = new ArrayList<>();
     private UUID completed;
     private EncounterArena arena;
     private double originalMaxHealth;
     private int retryDelay;
     private EncounterWork work;
     private boolean closed;
+    private Scheduler.Task bombardmentCadence;
+    private Scheduler.Task bombardmentWarning;
+    private Scheduler.Task bombardmentImpact;
+    private TextDisplay bombardmentIndicator;
+    private int targetCursor;
+
+    private static final class Anchor {
+        private EnderCrystal crystal;
+        private final Location home;
+        private final List<Mob> wave = new ArrayList<>();
+
+        private Anchor(EnderCrystal crystal, Location home) {
+            this.crystal = crystal;
+            this.home = home;
+        }
+    }
 
     public EncounterController(Server server, DragonBattleAccess battles,
             ShatteredCrownConfig config, Scheduler scheduler, MessageService messages) {
@@ -138,8 +159,8 @@ public final class EncounterController implements Listener, AutoCloseable {
                 || world.getPlayers().stream().noneMatch(candidateArena::participant)) {
             return;
         }
-        Location ground = candidateArena.anchorGround();
-        if (ground == null) {
+        List<Location> grounds = candidateArena.openingGround();
+        if (grounds.size() != 4) {
             retryDelay = 30;
             server.getLogger().warning("[Shattered Crown] No usable Anchor ground in " + world.getKey()
                     + "; check arena/Anchor geometry and terrain. Retrying in 30 seconds.");
@@ -152,16 +173,128 @@ public final class EncounterController implements Listener, AutoCloseable {
         dragon.getPersistentDataContainer().set(ORIGINAL_HEALTH, PersistentDataType.DOUBLE, originalMaxHealth);
         dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.maxHealth());
         dragon.setHealth(config.maxHealth());
-        anchor = world.spawn(ground, EnderCrystal.class);
-        if (!anchor.isValid()) {
-            throw new IllegalStateException("Anchor spawn was refused");
-        }
-        own(anchor, "anchor");
-        for (int i = 0; i < config.defenderCount(); i++) {
-            defenders.add(spawnDefender(ground));
+        for (Location ground : grounds) {
+            var objective = new Anchor(spawnAnchor(ground), ground);
+            anchors.add(objective);
+            for (int i = 0; i < config.defenderCount(); i++) {
+                Mob defender = spawnDefender(ground);
+                defenders.add(defender);
+                objective.wave.add(defender);
+            }
         }
         announce("shattered-crown.opening");
         showStatus();
+        targetCursor = 0;
+        Duration cadence = seconds(config.bombardmentCadenceSeconds());
+        bombardmentCadence = runRepeating(cadence, cadence, this::warnBombardment);
+    }
+
+    private static Duration seconds(double value) {
+        return Duration.ofMillis(Math.round(value * 1000));
+    }
+
+    private void warnBombardment() {
+        if (dragon == null || anchors.isEmpty() || bombardmentIndicator != null) {
+            return;
+        }
+        var targets = dragon.getWorld().getPlayers().stream().filter(arena::participant)
+                .sorted(java.util.Comparator.comparing(Player::getUniqueId)).limit(64).toList();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
+        Location impact = target.getLocation().clone();
+        impact.setY(impact.getBlockY());
+        if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), targets)) {
+            return;
+        }
+        EnderDragon warnedDragon = dragon;
+        bombardmentIndicator = impact.getWorld().spawn(impact.clone().add(0, 1.5, 0), TextDisplay.class);
+        // Spawning fires public events: do not resume after a synchronous phase exit/disable.
+        if (dragon != warnedDragon || anchors.isEmpty() || !bombardmentIndicator.isValid()) {
+            cancelPendingBombardment();
+            return;
+        }
+        own(bombardmentIndicator, "warning");
+        battles.faceWarningToViewer(bombardmentIndicator);
+        bombardmentIndicator.setShadowed(true);
+        bombardmentIndicator.text(Component.text(config.bombardmentWarningSeconds(), NamedTextColor.GOLD));
+        targets.forEach(player -> {
+            player.sendActionBar(messages.renderFor(player, "shattered-crown.bombardment-warning", "seconds",
+                    config.bombardmentWarningSeconds()));
+            player.playSound(impact, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
+        });
+        drawBombardment(impact);
+        final int[] pulses = {0};
+        bombardmentWarning = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
+                cancelPendingBombardment();
+                return;
+            }
+            double remaining = Math.max(0, config.bombardmentWarningSeconds() - ++pulses[0] * 0.25);
+            bombardmentIndicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1f", remaining),
+                    NamedTextColor.GOLD));
+            drawBombardment(impact);
+        });
+        bombardmentImpact = runLater(seconds(config.bombardmentWarningSeconds()), () -> {
+            boolean visible = bombardmentIndicator != null && bombardmentIndicator.isValid();
+            cancelPendingBombardment();
+            if (!visible || dragon == null || anchors.isEmpty() || !isParticipant(target)) {
+                return;
+            }
+            var participants = dragon.getWorld().getPlayers().stream().filter(arena::participant).toList();
+            if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), participants)) {
+                return;
+            }
+            participants.stream().limit(64).forEach(player -> {
+                player.spawnParticle(Particle.EXPLOSION, impact.clone().add(0, 0.5, 0), 1);
+                player.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
+            });
+            EnderDragon source = dragon;
+            for (Player player : participants) {
+                // Damage invokes public combat events, which can synchronously end this attempt.
+                if (dragon != source || anchors.isEmpty()) {
+                    break;
+                }
+                if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
+                        config.bombardmentRadius())) {
+                    battles.bombardmentDamage(player, source, config.bombardmentDamage());
+                }
+            }
+        });
+    }
+
+    private void drawBombardment(Location impact) {
+        dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
+            for (int point = 0; point < 32; point++) {
+                double angle = point * Math.PI * 2 / 32;
+                player.spawnParticle(Particle.FLAME, impact.clone().add(Math.cos(angle) * config.bombardmentRadius(),
+                        0.15, Math.sin(angle) * config.bombardmentRadius()), 1, 0, 0, 0, 0);
+            }
+        });
+    }
+
+    private void cancelPendingBombardment() {
+        if (bombardmentWarning != null) {
+            bombardmentWarning.cancel();
+            bombardmentWarning = null;
+        }
+        if (bombardmentImpact != null) {
+            bombardmentImpact.cancel();
+            bombardmentImpact = null;
+        }
+        if (bombardmentIndicator != null) {
+            bombardmentIndicator.remove();
+            bombardmentIndicator = null;
+        }
+    }
+
+    private void stopBombardments() {
+        if (bombardmentCadence != null) {
+            bombardmentCadence.cancel();
+            bombardmentCadence = null;
+        }
+        cancelPendingBombardment();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -188,7 +321,8 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     boolean owns(Entity entity) {
-        return entity.equals(dragon) || entity.equals(anchor) || defenders.contains(entity)
+        return entity.equals(dragon) || entity.equals(bombardmentIndicator)
+                || anchors.stream().anyMatch(anchor -> entity.equals(anchor.crystal)) || defenders.contains(entity)
                 || work != null && work.owns(entity);
     }
 
@@ -258,39 +392,41 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
     }
 
+    private EnderCrystal spawnAnchor(Location ground) {
+        EnderCrystal crystal = ground.getWorld().spawn(ground, EnderCrystal.class);
+        if (!crystal.isValid()) {
+            crystal.remove();
+            throw new IllegalStateException("Anchor spawn was refused");
+        }
+        own(crystal, "anchor");
+        return crystal;
+    }
+
     private void maintainDefenders() {
-        if (anchor == null) {
-            return;
-        }
-        Location home = anchor.getLocation();
-        if (!anchor.isValid()) {
-            Location ground = arena.anchorGround();
-            if (ground == null) {
-                cleanup(true);
-                return;
+        for (Anchor anchor : anchors) {
+            Location home = anchor.home;
+            if (!anchor.crystal.isValid()) {
+                anchor.crystal = spawnAnchor(home);
+                anchor.crystal.setGlowing(anchor.wave.isEmpty());
             }
-            anchor = ground.getWorld().spawn(ground, EnderCrystal.class);
-            own(anchor, "anchor");
-            anchor.setGlowing(defenders.isEmpty());
-            home = ground;
-        }
-        final Location targetCenter = home;
-        for (int i = 0; i < defenders.size(); i++) {
-            Mob defender = defenders.get(i);
-            if (!defender.isValid()) {
-                defender.remove();
-                defender = spawnDefender(home);
-                defenders.set(i, defender);
+            for (int i = 0; i < anchor.wave.size(); i++) {
+                Mob defender = anchor.wave.get(i);
+                if (!defender.isValid()) {
+                    defenders.remove(defender);
+                    defender.remove();
+                    defender = spawnDefender(home);
+                    defenders.add(defender);
+                    anchor.wave.set(i, defender);
+                }
+                Location location = defender.getLocation();
+                if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
+                        || location.distanceSquared(home) > config.defenderLeash() * config.defenderLeash()) {
+                    defender.teleport(home.clone().add(2, 0, 0));
+                }
+                defender.setTarget(home.getWorld().getPlayers().stream().filter(arena::participant)
+                        .min(java.util.Comparator.comparingDouble(player -> player.getLocation().distanceSquared(home)))
+                        .orElse(null));
             }
-            Location location = defender.getLocation();
-            if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
-                    || location.distanceSquared(home) > config.defenderLeash() * config.defenderLeash()) {
-                defender.teleport(home.clone().add(2, 0, 0));
-            }
-            defender.setTarget(home.getWorld().getPlayers().stream().filter(arena::participant)
-                    .min(java.util.Comparator
-                            .comparingDouble(player -> player.getLocation().distanceSquared(targetCenter)))
-                    .orElse(null));
         }
     }
 
@@ -340,20 +476,25 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (dragon == null) {
             return;
         }
-        boolean enemy = target.equals(dragon) || target.equals(anchor) || defenders.contains(target);
+        Anchor objective = anchors.stream().filter(anchor -> target.equals(anchor.crystal)).findFirst().orElse(null);
+        boolean enemy = target.equals(dragon) || objective != null || defenders.contains(target);
         if (enemy && (protectedSource(source) || protectedSource(direct))) {
             event.setCancelled(true);
             return;
         }
-        if (target.equals(dragon) && anchor != null) {
+        if (target.equals(dragon) && !anchors.isEmpty()) {
             event.setCancelled(true);
         }
-        if (target.equals(anchor)) {
+        if (objective != null) {
             event.setCancelled(true); // Remove the objective without a terrain-damaging crystal explosion.
-            if (defenders.isEmpty() && source instanceof Player player && isParticipant(player)) {
-                anchor.remove();
-                anchor = null;
-                announce("shattered-crown.unshielded");
+            if (objective.wave.isEmpty() && source instanceof Player player && isParticipant(player)) {
+                objective.crystal.remove();
+                anchors.remove(objective);
+                if (anchors.isEmpty()) {
+                    stopBombardments();
+                    announce("shattered-crown.unshielded");
+                }
+                showStatus();
             }
         }
         if (target instanceof Player player && isProtectedArrival(player.getLocation()) && defenders.contains(source)) {
@@ -403,7 +544,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onIgnite(BlockIgniteEvent event) {
-        if (anchor != null && anchor.equals(event.getIgnitingEntity())) {
+        if (anchors.stream().anyMatch(anchor -> anchor.crystal.equals(event.getIgnitingEntity()))) {
             event.setCancelled(true);
         }
     }
@@ -420,9 +561,13 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (event.getEntity() instanceof Player player) {
             updateAbsence(player, false);
         }
-        if (defenders.remove(event.getEntity()) && defenders.isEmpty() && anchor != null) {
-            anchor.setGlowing(true);
-            announce("shattered-crown.exposed");
+        if (defenders.remove(event.getEntity())) {
+            for (Anchor anchor : anchors) {
+                if (anchor.wave.remove(event.getEntity()) && anchor.wave.isEmpty()) {
+                    anchor.crystal.setGlowing(true);
+                    announce("shattered-crown.exposed");
+                }
+            }
         }
         if (event.getEntity().equals(dragon)) {
             completed = dragon.getUniqueId();
@@ -443,13 +588,13 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         dragon.getWorld().getPlayers().stream().filter(arena::participant)
                 .forEach(player -> {
-                    if (anchor == null) {
+                    if (anchors.isEmpty()) {
                         player.sendActionBar(messages.renderFor(player, "shattered-crown.hunt-status"));
-                    } else if (defenders.isEmpty()) {
-                        player.sendActionBar(messages.renderFor(player, "shattered-crown.exposed-status"));
                     } else {
-                        player.sendActionBar(messages.renderFor(player, "shattered-crown.shield-status", "defenders",
-                                defenders.size()));
+                        player.sendActionBar(messages.renderFor(player, "shattered-crown.shield-status", "anchors",
+                                anchors.size(), "exposed",
+                                anchors.stream().filter(anchor -> anchor.wave.isEmpty()).count(),
+                                "defenders", defenders.size()));
                     }
                 });
     }
@@ -501,6 +646,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void cleanup(boolean reset) {
+        stopBombardments();
         if (work != null) {
             work.close();
             work = null;
@@ -510,7 +656,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             absence = null;
         }
         defenders.clear();
-        anchor = null;
+        anchors.clear();
         if (dragon != null && !dragon.getUniqueId().equals(completed) && !dragon.isDead()) {
             double fraction = dragon.getHealth() / dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
             dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(originalMaxHealth);

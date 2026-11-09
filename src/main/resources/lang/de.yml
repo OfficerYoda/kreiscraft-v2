@@ -118,6 +118,10 @@ server-config:
     shattered-crown-anchor-distance: "Ankerabstand vom Podium"
     shattered-crown-ground-search-radius: "Bodensuchradius"
     shattered-crown-ground-max-y: "Maximale Anker-Bodenhöhe"
+    shattered-crown-bombardment-warning-seconds: "Bombardierungswarnung (Sekunden)"
+    shattered-crown-bombardment-cadence-seconds: "Bombardierungsintervall (Sekunden)"
+    shattered-crown-bombardment-damage: "Bombardierungsschaden"
+    shattered-crown-bombardment-radius: "Bombardierungsradius"
     wither-attack-damage: "Angriffsschaden"
     wither-armor: "Rüstung"
     wither-half-health-threshold: "Halbzeit-Schwelle"
@@ -329,12 +333,12 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
-  opening: "<gold>Die zersplitterte Krone:</gold> <gray>Besiegt die Verteidiger und zerstört dann den Anker am Boden, um den Drachenschild zu brechen!</gray>"
+  opening: "<gold>Brecht die Krone:</gold> <gray>Teilt euch auf! Besiegt die Verteidiger jedes der vier Anker und zerstört dann seinen leuchtenden Bodenkristall. Verlasst markierte Bombardierungskreise vor dem Einschlag!</gray>"
   exposed: "<green>Der Anker ist verwundbar! Zerstört den leuchtenden Kristall.</green>"
-  unshielded: "<green>Der Drachenschild ist gebrochen. Greift den Drachen an!</green>"
-  shield-status: "<gold>Brecht die Krone</gold> <gray>— Drache geschützt • Anker-Verteidiger: <yellow><defenders></yellow></gray>"
-  exposed-status: "<gold>Brecht die Krone</gold> <gray>— Drache geschützt • <green>Zerstört den leuchtenden Anker!</green></gray>"
-  hunt-status: "<green>Drache verwundbar — Angreifen!</green>"
+  unshielded: "<green>Übersteht die Jagd: Alle vier Anker zerstört! Der Drachenschild ist gebrochen. Greift den Drachen an!</green>"
+  shield-status: "<gold>Brecht die Krone</gold> <gray>— Drache geschützt • Anker: <yellow><anchors></yellow> • Verwundbar: <green><exposed></green> • Verteidiger: <yellow><defenders></yellow></gray>"
+  hunt-status: "<green>Übersteht die Jagd — Drache verwundbar • Angreifen!</green>"
+  bombardment-warning: "<gold>Bombardierung in <seconds>s — Verlasst den Flammenkreis!</gold>"
 
 wither:
   explosion-title: "<red>Explosion</red>"

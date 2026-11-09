@@ -118,6 +118,10 @@ server-config:
     shattered-crown-anchor-distance: "Anchor distance from podium"
     shattered-crown-ground-search-radius: "Ground search radius"
     shattered-crown-ground-max-y: "Maximum objective ground Y"
+    shattered-crown-bombardment-warning-seconds: "Bombardment warning (seconds)"
+    shattered-crown-bombardment-cadence-seconds: "Bombardment cadence (seconds)"
+    shattered-crown-bombardment-damage: "Bombardment damage"
+    shattered-crown-bombardment-radius: "Bombardment radius"
     wither-attack-damage: "Attack damage"
     wither-armor: "Armor"
     wither-half-health-threshold: "Half-health threshold"
@@ -329,12 +333,12 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
-  opening: "<gold>The Shattered Crown:</gold> <gray>Defeat the defenders, then break the ground-level Anchor to remove the dragon's shield!</gray>"
+  opening: "<gold>Break the Crown:</gold> <gray>Split up! Defeat each of the four Anchors' defenders, then break its glowing ground-level crystal. Leave marked bombardment circles before impact!</gray>"
   exposed: "<green>The Anchor is exposed! Break the glowing crystal.</green>"
-  unshielded: "<green>The dragon's shield is broken. Attack the dragon!</green>"
-  shield-status: "<gold>Break the Crown</gold> <gray>— Dragon shielded • Anchor defenders: <yellow><defenders></yellow></gray>"
-  exposed-status: "<gold>Break the Crown</gold> <gray>— Dragon shielded • <green>Break the glowing Anchor!</green></gray>"
-  hunt-status: "<green>Dragon vulnerable — Attack!</green>"
+  unshielded: "<green>Weather the Hunt: all four Anchors destroyed! The dragon's shield is broken. Attack the dragon!</green>"
+  shield-status: "<gold>Break the Crown</gold> <gray>— Dragon shielded • Anchors: <yellow><anchors></yellow> • Exposed: <green><exposed></green> • Defenders: <yellow><defenders></yellow></gray>"
+  hunt-status: "<green>Weather the Hunt — Dragon vulnerable • Attack!</green>"
+  bombardment-warning: "<gold>Bombardment in <seconds>s — Leave the flaming circle!</gold>"
 
 wither:
   explosion-title: "<red>Explosion</red>"

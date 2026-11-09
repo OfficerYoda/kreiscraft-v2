@@ -10,7 +10,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double arenaRadius, Double arenaMinY, Double arenaMaxY,
         Double arrivalX, Double arrivalY, Double arrivalZ, Double arrivalRadius,
         Double arrivalHeight, Double anchorDistance, Integer groundSearchRadius, Double groundMaxY,
-        String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash) {
+        String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash,
+        Double bombardmentWarningSeconds, Double bombardmentCadenceSeconds,
+        Double bombardmentDamage, Double bombardmentRadius) {
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {
@@ -43,6 +45,10 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         defenderHealth = defenderHealth == null ? 40.0 : defenderHealth;
         defenderDamage = defenderDamage == null ? 6.0 : defenderDamage;
         defenderLeash = defenderLeash == null ? 16.0 : defenderLeash;
+        bombardmentWarningSeconds = bombardmentWarningSeconds == null ? 3.0 : bombardmentWarningSeconds;
+        bombardmentCadenceSeconds = bombardmentCadenceSeconds == null ? 8.0 : bombardmentCadenceSeconds;
+        bombardmentDamage = bombardmentDamage == null ? 6.0 : bombardmentDamage;
+        bombardmentRadius = bombardmentRadius == null ? 4.0 : bombardmentRadius;
         if (NamespacedKey.fromString(worldKey) == null) {
             throw new IllegalArgumentException("shattered-crown.world-key must be a namespaced world key");
         }
@@ -62,6 +68,15 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("defender-health", defenderHealth, 1, 1000);
         bounded("defender-damage", defenderDamage, 0, 100);
         bounded("defender-leash", defenderLeash, 4, 32);
+        bounded("bombardment-warning-seconds", bombardmentWarningSeconds, 1, 15);
+        bounded("bombardment-cadence-seconds", bombardmentCadenceSeconds, 2, 120);
+        bounded("bombardment-damage", bombardmentDamage, 0, 100);
+        bounded("bombardment-radius", bombardmentRadius, 1, 12);
+        if (bombardmentCadenceSeconds < bombardmentWarningSeconds + 0.5
+                || bombardmentRadius + 2 > bombardmentWarningSeconds * 3) {
+            throw new IllegalArgumentException(
+                    "shattered-crown bombardments must leave warning time to walk clear and cannot overlap");
+        }
         if (arenaMinY >= arenaMaxY || groundMaxY < arenaMinY || groundMaxY > arenaMaxY
                 || anchorDistance + groundSearchRadius + 3 >= arenaRadius) {
             throw new IllegalArgumentException(

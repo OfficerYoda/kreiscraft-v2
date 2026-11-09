@@ -25,7 +25,7 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, sit). |
-| `shattered-crown` | `de.kreiscraft.modules.shatteredcrown` | single-Anchor slice | none | — | Cooperative main-End dragon objective, shield and retry lifecycle; [profile and validation notes](/shattered-crown/). |
+| `shattered-crown` | `de.kreiscraft.modules.shatteredcrown` | four-Anchor opening | none | — | Cooperative main-End dragon objectives, warned bombardments, shield and retry lifecycle; [profile and validation notes](/shattered-crown/). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `sit` | `de.kreiscraft.modules.sit` | stable | none | sit | Toggle sitting through `/sit` or the cushion in `/settings`. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
