@@ -381,8 +381,18 @@ class OpeningEncounterTest {
         var warning = end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class).stream()
                 .filter(entity -> entity != unrelated).findFirst().orElseThrow();
         switch (termination) {
-            case "victory" -> server.getPluginManager()
-                    .callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
+            case "victory" -> {
+                for (int stage = 0; stage < 2; stage++) {
+                    defenders().forEach(this::defeat);
+                    anchors().forEach(this::hit);
+                    if (stage == 0) {
+                        dragon.setHealth(300);
+                        hit(dragon);
+                    }
+                }
+                server.getPluginManager()
+                        .callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
+            }
             case "disable" -> module.disable();
             case "unload" -> server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
             default -> throw new AssertionError(termination);

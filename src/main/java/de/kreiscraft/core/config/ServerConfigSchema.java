@@ -386,6 +386,11 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
         fields.add(crownNumber("sweep-damage", 0, 100));
         fields.add(crownNumber("sweep-knockback", 0, 2));
+        fields.add(crownNumber("final-health-fraction", 0.1, 0.5));
+        fields.add(crownNumber("final-cadence-factor", 0.5, 0.9));
+        fields.add(crownNumber("final-pool-lifetime-factor", 0.25, 0.9));
+        fields.add(crownNumber("explosion-window-seconds", 0.25, 5));
+        fields.add(crownNumber("explosion-window-budget", 1, 200));
         fields.add(crownNumber("arena-radius", 16, 256));
         for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));

@@ -67,8 +67,10 @@ public final class EncounterController implements Listener, AutoCloseable {
     private UUID completed;
     private EncounterArena arena;
     private double originalMaxHealth;
+    private double attemptMaxHealth;
     private int retryDelay;
     private EncounterWork work;
+    private EncounterWork attackWork;
     private boolean closed;
     private Scheduler.Task bombardmentCadence;
     private Scheduler.Task bombardmentWarning;
@@ -79,6 +81,11 @@ public final class EncounterController implements Listener, AutoCloseable {
     private final List<HuntArea> areas = new ArrayList<>();
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
+    private boolean finalEntered;
+    private final List<Location> openingGround = new ArrayList<>();
+    private double[] explosionBuckets;
+    private int explosionCursor;
+    private final java.util.Map<EntityDamageEvent, Double> explosionReservations = new java.util.IdentityHashMap<>();
     private boolean landingRequested;
     private boolean landingDue;
     private Scheduler.Task landingDeferral;
@@ -91,6 +98,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         private EnderCrystal crystal;
         private final Location home;
         private final List<Mob> wave = new ArrayList<>();
+        private boolean waveInstalled;
 
         private Anchor(EnderCrystal crystal, Location home) {
             this.crystal = crystal;
@@ -180,11 +188,17 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         dragon = candidate;
         work = new EncounterWork(scheduler, server.getLogger());
+        attackWork = new EncounterWork(scheduler, server.getLogger());
+        // Extra tick prevents a hit between clock pulses expiring before a full rolling window.
+        explosionBuckets = new double[(int) Math.ceil(config.explosionWindowSeconds() * 20) + 1];
+        startExplosionClock();
         arena = candidateArena;
         originalMaxHealth = dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue();
         dragon.getPersistentDataContainer().set(ORIGINAL_HEALTH, PersistentDataType.DOUBLE, originalMaxHealth);
         dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.maxHealth());
-        dragon.setHealth(dragon.getAttribute(Attribute.MAX_HEALTH).getValue());
+        attemptMaxHealth = dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
+        dragon.setHealth(attemptMaxHealth);
+        openingGround.addAll(grounds);
         for (Location ground : grounds) {
             var objective = new Anchor(spawnAnchor(ground), ground);
             anchors.add(objective);
@@ -193,16 +207,62 @@ public final class EncounterController implements Listener, AutoCloseable {
                 defenders.add(defender);
                 objective.wave.add(defender);
             }
+            objective.waveInstalled = true;
         }
         announce("shattered-crown.opening");
         showStatus();
         targetCursor = 0;
         Duration cadence = seconds(config.bombardmentCadenceSeconds());
-        bombardmentCadence = runRepeating(cadence, cadence, this::warnBombardment);
+        bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
     }
 
     private static Duration seconds(double value) {
         return Duration.ofMillis(Math.round(value * 1000));
+    }
+
+    private void enterFinalGate() {
+        if (finalEntered || dragon == null) {
+            return;
+        }
+        finalEntered = true; // Set before spawning: public spawn callbacks may reenter combat.
+        EnderDragon source = dragon;
+        hunting = false;
+        endLanding();
+        if (dragon != source || closed) {
+            return;
+        }
+        stopBombardments();
+        attackWork.close();
+        attackWork = new EncounterWork(scheduler, server.getLogger());
+        lanes.clear();
+        marks.clear();
+        areas.clear();
+        try {
+            if (openingGround.subList(0, 2).stream().anyMatch(ground -> !arena.usable(ground))) {
+                throw new IllegalStateException("Final Anchor ground is no longer usable");
+            }
+            for (Location ground : openingGround.subList(0, 2)) {
+                var objective = new Anchor(spawnAnchor(ground), ground);
+                anchors.add(objective);
+                for (int i = 0; i < config.defenderCount(); i++) {
+                    Mob defender = spawnDefender(ground);
+                    defenders.add(defender);
+                    objective.wave.add(defender);
+                }
+                objective.waveInstalled = true;
+            }
+        } catch (RuntimeException exception) {
+            cleanup(true);
+            retryDelay = 30;
+            server.getLogger().log(java.util.logging.Level.WARNING,
+                    "[Shattered Crown] Final Anchor setup aborted; retry in 30 seconds", exception);
+            return;
+        }
+        announce("shattered-crown.final-anchors");
+        showStatus();
+        Duration cadence = seconds(config.bombardmentCadenceSeconds());
+        bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
+        updateAbsence(null, false);
     }
 
     private void startHunt() {
@@ -210,29 +270,72 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         hunting = true;
-        Duration cadence = seconds(config.laneCadenceSeconds());
-        Duration landingCadence = seconds(config.landingCadenceSeconds());
-        runRepeating(landingCadence, landingCadence, () -> {
+        Duration cadence = seconds(attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5));
+        Duration landingCadence = seconds(attackCadence(config.landingCadenceSeconds(), 10));
+        attackWork.repeating(landingCadence, landingCadence, () -> {
             if (!landingRequested && !landingDue) {
                 landingDue = true;
                 double pressure = Math.max(config.laneWarningSeconds() + config.laneLifetimeSeconds(),
-                        Math.max(config.preyCountdownSeconds() + config.poolLifetimeSeconds(),
+                        Math.max(config.preyCountdownSeconds() + poolLifetime(),
                                 config.sweepWarningSeconds()));
                 landingDeferral =
-                        runLater(seconds(pressure + config.landingApproachSeconds()), () -> landingDue = false);
+                        attackWork.later(seconds(pressure + config.landingApproachSeconds()), () -> landingDue = false);
                 requestLanding();
             }
         });
-        runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             if (landingDue && !landingRequested) {
                 requestLanding();
             }
         });
-        Duration preyCadence = seconds(config.preyCadenceSeconds());
-        runRepeating(preyCadence, preyCadence, this::markPrey);
-        Duration sweepCadence = seconds(config.sweepCadenceSeconds());
-        runRepeating(sweepCadence, sweepCadence, this::warnSweep);
-        runRepeating(cadence, cadence, this::warnLane);
+        Duration preyCadence = seconds(attackCadence(config.preyCadenceSeconds(),
+                config.preyCountdownSeconds() + poolLifetime() + 0.5));
+        attackWork.repeating(preyCadence, preyCadence, this::markPrey);
+        Duration sweepCadence =
+                seconds(attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5));
+        attackWork.repeating(sweepCadence, sweepCadence, this::warnSweep);
+        attackWork.repeating(cadence, cadence, this::warnLane);
+    }
+
+    private double attackCadence(double ordinary, double minimum) {
+        return finalEntered ? Math.max(minimum, ordinary * config.finalCadenceFactor()) : ordinary;
+    }
+
+    private double poolLifetime() {
+        return config.poolLifetimeSeconds() * (finalEntered ? config.finalPoolLifetimeFactor() : 1);
+    }
+
+    private void startExplosionClock() {
+        // One fixed-size tick ring, not one expiry task per hit: even fractional bed hits stay bounded.
+        runRepeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            explosionCursor = (explosionCursor + 1) % explosionBuckets.length;
+            explosionBuckets[explosionCursor] = 0;
+        });
+    }
+
+    private static boolean explosive(EntityDamageEvent event) {
+        return event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
+                || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION;
+    }
+
+    private static void capDamage(EntityDamageEvent event, double maximum) {
+        if (maximum <= 0) {
+            event.setCancelled(true);
+        } else if (event.getFinalDamage() > maximum) {
+            event.setDamage(Math.max(0, event.getDamage() - (event.getFinalDamage() - maximum)));
+            // Unexpected positive/nonlinear modifiers must never defeat the safety cap.
+            if (event.getFinalDamage() > maximum) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onExplosionAccepted(EntityDamageEvent event) {
+        Double reserved = explosionReservations.remove(event);
+        if (reserved != null && !event.isCancelled() && explosionBuckets != null) {
+            explosionBuckets[explosionCursor] += Math.min(reserved, event.getFinalDamage());
+        }
     }
 
     private static boolean sitting(EnderDragon.Phase phase) {
@@ -259,8 +362,8 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (dragon == null || !hunting) {
             return;
         }
-        landingDeadline = runLater(seconds(config.landingApproachSeconds()), this::endLanding);
-        landingMonitor = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        landingDeadline = attackWork.later(seconds(config.landingApproachSeconds()), this::endLanding);
+        landingMonitor = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             if (!arena.landingSafe() || dragon.getWorld().getPlayers().stream().noneMatch(arena::participant)) {
                 endLanding();
             } else if (!landingWindow && sitting(dragon.getPhase()) && arena.atPodium(dragon.getLocation())) {
@@ -271,13 +374,21 @@ public final class EncounterController implements Listener, AutoCloseable {
                     return;
                 }
                 announce("shattered-crown.landing-window");
-                landingEnd = runLater(seconds(config.landingWindowSeconds()), this::endLanding);
+                landingEnd = attackWork.later(seconds(config.landingWindowSeconds()), this::endLanding);
             }
         });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDragonPhase(org.bukkit.event.entity.EnderDragonChangePhaseEvent event) {
+        if (event.getEntity().equals(dragon) && event.getNewPhase() == EnderDragon.Phase.DYING
+                && (!finalEntered || !anchors.isEmpty() || !hunting)) {
+            event.setCancelled(true);
+            if (anchors.isEmpty()) {
+                enterFinalGate();
+            }
+            return;
+        }
         if (!event.getEntity().equals(dragon) || !landingRequested || event.getNewPhase() == EnderDragon.Phase.DYING) {
             return;
         }
@@ -343,7 +454,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             lane.indicator.remove();
             return;
         }
-        own(lane.indicator, "lane");
+        attackWork.own(lane.indicator, "lane");
         battles.faceWarningToViewer(lane.indicator);
         lanes.add(lane);
         targets.forEach(player -> {
@@ -353,7 +464,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         });
         drawLane(lane);
         final Scheduler.Task[] refresh = new Scheduler.Task[1];
-        refresh[0] = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        refresh[0] = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             lane.age += 0.25;
             if (!lane.indicator.isValid() || !lane.active && !isParticipant(target)) {
                 lane.indicator.remove();
@@ -363,7 +474,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             drawLane(lane);
         });
-        runLater(seconds(config.laneWarningSeconds()), () -> {
+        attackWork.later(seconds(config.laneWarningSeconds()), () -> {
             if (!lane.indicator.isValid() || !lanes.contains(lane) || !isParticipant(target)) {
                 return;
             }
@@ -379,13 +490,13 @@ public final class EncounterController implements Listener, AutoCloseable {
             drawLane(lane);
             final Scheduler.Task[] damage = new Scheduler.Task[1];
             // Expiry wins over a cadence pulse on the same server tick: the lifetime is [start, end).
-            runLater(seconds(config.laneLifetimeSeconds()), () -> {
+            attackWork.later(seconds(config.laneLifetimeSeconds()), () -> {
                 damage[0].cancel();
                 refresh[0].cancel();
                 lane.indicator.remove();
                 lanes.remove(lane);
             });
-            damage[0] = runRepeating(Duration.ZERO, seconds(config.laneDamageCadenceSeconds()), () -> {
+            damage[0] = attackWork.repeating(Duration.ZERO, seconds(config.laneDamageCadenceSeconds()), () -> {
                 if (!lane.indicator.isValid() || !lanes.contains(lane)) {
                     damage[0].cancel();
                     return;
@@ -417,7 +528,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 mark.remove();
                 break;
             }
-            own(mark, "prey");
+            attackWork.own(mark, "prey");
             battles.faceWarningToViewer(mark);
             marks.put(target.getUniqueId(), mark);
             final double[] age = {0};
@@ -427,7 +538,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     config.preyCountdownSeconds()));
             target.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
             final Scheduler.Task[] refresh = new Scheduler.Task[1];
-            refresh[0] = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            refresh[0] = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
                 if (!isParticipant(target) || !mark.isValid()) {
                     mark.remove();
                     marks.remove(target.getUniqueId(), mark);
@@ -444,7 +555,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 var footprint = new HuntArea(target.getLocation(), config.poolRadius());
                 drawAreaRing(footprint, Particle.FLAME);
             });
-            runLater(seconds(config.preyCountdownSeconds()), () -> {
+            attackWork.later(seconds(config.preyCountdownSeconds()), () -> {
                 boolean valid = isParticipant(target) && mark.isValid() && marks.containsValue(mark);
                 mark.remove();
                 marks.remove(target.getUniqueId(), mark);
@@ -471,10 +582,10 @@ public final class EncounterController implements Listener, AutoCloseable {
             pool.indicator.remove();
             return;
         }
-        own(pool.indicator, "pool");
+        attackWork.own(pool.indicator, "pool");
         battles.faceWarningToViewer(pool.indicator);
         areas.add(pool);
-        pool.indicator.text(Component.text(config.poolLifetimeSeconds() + "s", NamedTextColor.LIGHT_PURPLE));
+        pool.indicator.text(Component.text(poolLifetime() + "s", NamedTextColor.LIGHT_PURPLE));
         drawAreaRing(pool, Particle.DRAGON_BREATH);
         final Scheduler.Task[] refresh = new Scheduler.Task[1];
         final Scheduler.Task[] damage = new Scheduler.Task[1];
@@ -484,18 +595,18 @@ public final class EncounterController implements Listener, AutoCloseable {
             refresh[0].cancel();
             damage[0].cancel();
         };
-        runLater(seconds(config.poolLifetimeSeconds()), expire);
-        refresh[0] = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        attackWork.later(seconds(poolLifetime()), expire);
+        refresh[0] = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             if (!pool.indicator.isValid()) {
                 expire.run();
                 return;
             }
             pool.age += 0.25;
             pool.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                    Math.max(0, config.poolLifetimeSeconds() - pool.age)), NamedTextColor.LIGHT_PURPLE));
+                    Math.max(0, poolLifetime() - pool.age)), NamedTextColor.LIGHT_PURPLE));
             drawAreaRing(pool, Particle.DRAGON_BREATH);
         });
-        damage[0] = runRepeating(Duration.ZERO, seconds(config.poolDamageCadenceSeconds()), () -> {
+        damage[0] = attackWork.repeating(Duration.ZERO, seconds(config.poolDamageCadenceSeconds()), () -> {
             if (!pool.indicator.isValid()) {
                 expire.run();
                 return;
@@ -550,7 +661,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             sweep.indicator.remove();
             return;
         }
-        own(sweep.indicator, "sweep");
+        attackWork.own(sweep.indicator, "sweep");
         battles.faceWarningToViewer(sweep.indicator);
         areas.add(sweep);
         participants.forEach(player -> {
@@ -561,7 +672,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         sweep.indicator.text(Component.text(config.sweepWarningSeconds() + "s", NamedTextColor.GOLD));
         drawAreaRing(sweep, Particle.FLAME);
         final Scheduler.Task[] refresh = new Scheduler.Task[1];
-        refresh[0] = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        refresh[0] = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             if (!sweep.indicator.isValid()) {
                 areas.remove(sweep);
                 refresh[0].cancel();
@@ -572,7 +683,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     Math.max(0, config.sweepWarningSeconds() - sweep.age)), NamedTextColor.GOLD));
             drawAreaRing(sweep, Particle.FLAME);
         });
-        runLater(seconds(config.sweepWarningSeconds()), () -> {
+        attackWork.later(seconds(config.sweepWarningSeconds()), () -> {
             boolean visible = sweep.indicator.isValid() && areas.contains(sweep);
             sweep.indicator.remove();
             areas.remove(sweep);
@@ -650,7 +761,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             cancelPendingBombardment();
             return;
         }
-        own(bombardmentIndicator, "warning");
+        attackWork.own(bombardmentIndicator, "warning");
         battles.faceWarningToViewer(bombardmentIndicator);
         bombardmentIndicator.setShadowed(true);
         bombardmentIndicator.text(Component.text(config.bombardmentWarningSeconds(), NamedTextColor.GOLD));
@@ -661,7 +772,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         });
         drawBombardment(impact);
         final int[] pulses = {0};
-        bombardmentWarning = runRepeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        bombardmentWarning = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
             if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
                 cancelPendingBombardment();
                 return;
@@ -671,7 +782,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     NamedTextColor.GOLD));
             drawBombardment(impact);
         });
-        bombardmentImpact = runLater(seconds(config.bombardmentWarningSeconds()), () -> {
+        bombardmentImpact = attackWork.later(seconds(config.bombardmentWarningSeconds()), () -> {
             boolean visible = bombardmentIndicator != null && bombardmentIndicator.isValid();
             cancelPendingBombardment();
             if (!visible || dragon == null || anchors.isEmpty() || !isParticipant(target)) {
@@ -758,7 +869,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     boolean owns(Entity entity) {
         return entity.equals(dragon) || entity.equals(bombardmentIndicator)
                 || anchors.stream().anyMatch(anchor -> entity.equals(anchor.crystal)) || defenders.contains(entity)
-                || work != null && work.owns(entity);
+                || work != null && work.owns(entity) || attackWork != null && attackWork.owns(entity);
     }
 
     /** Registers a persistent encounter-owned entity for cleanup and restart discovery. */
@@ -807,10 +918,11 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private Mob spawnDefender(Location ground) {
+        EncounterWork owner = requireWork();
         Mob defender = (Mob) ground.getWorld().spawnEntity(ground.clone().add(2, 0, 0),
                 EntityType.valueOf(config.defenderType()));
         try {
-            if (!defender.isValid()) {
+            if (!defender.isValid() || work != owner || dragon == null) {
                 throw new IllegalStateException("Defender spawn was refused");
             }
             own(defender, "defender");
@@ -828,8 +940,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private EnderCrystal spawnAnchor(Location ground) {
+        EncounterWork owner = requireWork();
         EnderCrystal crystal = ground.getWorld().spawn(ground, EnderCrystal.class);
-        if (!crystal.isValid()) {
+        if (!crystal.isValid() || work != owner || dragon == null) {
             crystal.remove();
             throw new IllegalStateException("Anchor spawn was refused");
         }
@@ -922,17 +1035,39 @@ public final class EncounterController implements Listener, AutoCloseable {
             event.setCancelled(true);
             return;
         }
-        if (target.equals(dragon) && !anchors.isEmpty()) {
+        if (target.equals(dragon) && (!anchors.isEmpty() || finalEntered && !hunting)) {
             event.setCancelled(true);
+        } else if (target.equals(dragon)) {
+            if (!Double.isFinite(event.getFinalDamage()) || event.getFinalDamage() < 0) {
+                event.setCancelled(true);
+                return;
+            }
+            if (explosive(event)) {
+                double spent = java.util.Arrays.stream(explosionBuckets).sum()
+                        + explosionReservations.values().stream().mapToDouble(Double::doubleValue).sum();
+                capDamage(event, config.explosionWindowBudget() - spent);
+            }
+            if (!event.isCancelled() && !finalEntered && dragon.getHealth()
+                    - event.getFinalDamage() <= attemptMaxHealth * config.finalHealthFraction()) {
+                capDamage(event, Math.max(0, dragon.getHealth() - attemptMaxHealth * config.finalHealthFraction()));
+                enterFinalGate();
+                if (!target.equals(dragon)) {
+                    event.setCancelled(true);
+                }
+            }
+            if (!event.isCancelled() && explosive(event)) {
+                explosionReservations.put(event, event.getFinalDamage());
+            }
         }
         if (objective != null) {
             event.setCancelled(true); // Remove the objective without a terrain-damaging crystal explosion.
-            if (objective.wave.isEmpty() && source instanceof Player player && isParticipant(player)) {
+            if (objective.waveInstalled && objective.wave.isEmpty() && source instanceof Player player
+                    && isParticipant(player)) {
                 objective.crystal.remove();
                 anchors.remove(objective);
                 if (anchors.isEmpty()) {
                     stopBombardments();
-                    announce("shattered-crown.unshielded");
+                    announce(finalEntered ? "shattered-crown.final-hunt" : "shattered-crown.unshielded");
                     startHunt();
                 }
                 showStatus();
@@ -1059,6 +1194,17 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPrematureDeath(EntityDeathEvent event) {
+        if (event.getEntity().equals(dragon) && (!finalEntered || !anchors.isEmpty() || !hunting)) {
+            event.setCancelled(true);
+            event.setReviveHealth(attemptMaxHealth * config.finalHealthFraction());
+            if (anchors.isEmpty()) {
+                enterFinalGate();
+            }
+        }
+    }
+
     private void announce(String key) {
         if (dragon != null) {
             dragon.getWorld().getPlayers().stream().filter(arena::participant)
@@ -1073,9 +1219,12 @@ public final class EncounterController implements Listener, AutoCloseable {
         dragon.getWorld().getPlayers().stream().filter(arena::participant)
                 .forEach(player -> {
                     if (anchors.isEmpty()) {
-                        player.sendActionBar(messages.renderFor(player, "shattered-crown.hunt-status"));
+                        player.sendActionBar(messages.renderFor(player,
+                                finalEntered ? "shattered-crown.final-status" : "shattered-crown.hunt-status"));
                     } else {
-                        player.sendActionBar(messages.renderFor(player, "shattered-crown.shield-status", "anchors",
+                        player.sendActionBar(messages.renderFor(player,
+                                finalEntered ? "shattered-crown.final-shield-status" : "shattered-crown.shield-status",
+                                "anchors",
                                 anchors.size(), "exposed",
                                 anchors.stream().filter(anchor -> anchor.wave.isEmpty()).count(),
                                 "defenders", defenders.size()));
@@ -1150,6 +1299,10 @@ public final class EncounterController implements Listener, AutoCloseable {
         marks.clear();
         areas.clear();
         stopBombardments();
+        if (attackWork != null) {
+            attackWork.close();
+            attackWork = null;
+        }
         if (work != null) {
             work.close();
             work = null;
@@ -1160,6 +1313,11 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         defenders.clear();
         anchors.clear();
+        openingGround.clear();
+        finalEntered = false;
+        explosionBuckets = null;
+        explosionCursor = 0;
+        explosionReservations.clear();
         if (dragon != null && !dragon.getUniqueId().equals(completed) && !dragon.isDead()) {
             double fraction = dragon.getHealth() / dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
             dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(originalMaxHealth);
@@ -1171,6 +1329,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         dragon = null;
         arena = null;
+        attemptMaxHealth = 0;
     }
 
     @Override

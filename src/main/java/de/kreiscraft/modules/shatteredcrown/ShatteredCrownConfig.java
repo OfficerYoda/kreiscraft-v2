@@ -19,7 +19,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double landingRadius, Integer preyCount, Double preyCadenceSeconds, Double preyCountdownSeconds,
         Double poolRadius, Double poolDamage, Double poolDamageCadenceSeconds, Double poolLifetimeSeconds,
         Double sweepRadius, Double sweepAngle, Double sweepWarningSeconds, Double sweepCadenceSeconds,
-        Double sweepDamage, Double sweepKnockback) {
+        Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
+        Double finalCadenceFactor, Double finalPoolLifetimeFactor,
+        Double explosionWindowSeconds, Double explosionWindowBudget) {
     /** Validate the complete supplied section, including the enable flag outside the tuning record. */
     public static ShatteredCrownConfig load(org.spongepowered.configurate.ConfigurationNode node)
             throws org.spongepowered.configurate.serialize.SerializationException {
@@ -85,6 +87,16 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         sweepCadenceSeconds = sweepCadenceSeconds == null ? 25.0 : sweepCadenceSeconds;
         sweepDamage = sweepDamage == null ? 6.0 : sweepDamage;
         sweepKnockback = sweepKnockback == null ? 1.2 : sweepKnockback;
+        finalHealthFraction = finalHealthFraction == null ? 0.3 : finalHealthFraction;
+        finalCadenceFactor = finalCadenceFactor == null ? 0.7 : finalCadenceFactor;
+        finalPoolLifetimeFactor = finalPoolLifetimeFactor == null ? 0.5 : finalPoolLifetimeFactor;
+        bounded("final-health-fraction", finalHealthFraction, 0.1, 0.5);
+        bounded("final-cadence-factor", finalCadenceFactor, 0.5, 0.9);
+        bounded("final-pool-lifetime-factor", finalPoolLifetimeFactor, 0.25, 0.9);
+        explosionWindowSeconds = explosionWindowSeconds == null ? 2.0 : explosionWindowSeconds;
+        explosionWindowBudget = explosionWindowBudget == null ? 40.0 : explosionWindowBudget;
+        bounded("explosion-window-seconds", explosionWindowSeconds, 0.25, 5);
+        bounded("explosion-window-budget", explosionWindowBudget, 1, 200);
         bounded("sweep-radius", sweepRadius, 4, 16);
         bounded("sweep-angle", sweepAngle, 30, 120);
         bounded("sweep-warning-seconds", sweepWarningSeconds, 2, 15);

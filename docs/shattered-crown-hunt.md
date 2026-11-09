@@ -8,7 +8,9 @@ Ticket #136 extends the four-Anchor opening of [The Shattered Crown](/shattered-
 The final opening Anchor starts Hunt scheduling once, cancels pending bombardments and releases the
 shield immediately. Permitted ordinary melee and ranged flight damage remain native combat events;
 the controller neither substitutes health nor applies player attacks a second time.
-Ticket #137 adds Marked Prey and wing sweeps below. The finale remains ticket #138, not part of this slice.
+Ticket #137 added Marked Prey and wing sweeps below. Ticket #138 now completes the once-only final
+Anchor interlude and accelerated familiar Hunt. Historical #136/#137 evidence below stays labeled;
+see the [current complete encounter and final safeguards](/shattered-crown/).
 
 ## Initial Server Configuration profile
 
@@ -43,6 +45,17 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `sweep-cadence-seconds` | 25 | 5–120 seconds between opportunities; first after this interval |
 | `sweep-damage` | 6 | 0–100 health points through the native damage/cancellation pathway |
 | `sweep-knockback` | 1.2 | 0–2 horizontal velocity, vertical component one-third of this value |
+| `final-health-fraction` | 0.3 | 0.1–0.5; exactly two cleared sites return once |
+| `final-cadence-factor` | 0.7 | 0.5–0.9; familiar cadence acceleration with warning/serialization floors |
+| `final-pool-lifetime-factor` | 0.5 | 0.25–0.9; final pools expire sooner |
+| `explosion-window-seconds` | 2 | 0.25–5; shared rolling managed-dragon budget window |
+| `explosion-window-budget` | 40 | 1–200 health points across accepted explosions/parts |
+
+Final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**, pool lifetime **3s**. Ordinary
+warning durations, lane lifetime, knockback and the complete 12s actual-arrival melee window stay
+unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
+forced-wipe timer is introduced. During the two-Anchor shield, only learned opening bombardments
+run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
 
 `lane-cadence-seconds >= lane-warning-seconds + 0.5` serializes warnings.
 `lane-width / 2 + 2 <= lane-warning-seconds * 3` reserves conservative walking escape time.
@@ -180,7 +193,11 @@ never an unbounded repeating damage task. There are no every-world per-tick enti
 cloud and ground checks run at planning/activation and during the 250 ms landing monitor, bounded
 by configured geometry/search budgets. Live performance is not established by these bounds.
 
-## Automated evidence and real-Paper gaps
+## Historical automated evidence and real-Paper gaps
+
+The #136/#137 results below describe their original integration points. They do not claim that
+the finale was implemented at those dates. #138 now implements it; current evidence and scope are
+in the [complete encounter guide](/shattered-crown/).
 
 ### #137 red→green and additional acceptance evidence
 
@@ -216,7 +233,8 @@ alignment; actual knockback/cancellation and arrival-origin potion/TNT/projectil
 → approach → complete melee window → takeoff under all three attack families; cleanup at each stage;
 and a representative ~20-player mixed enchanted diamond/netherite session. Death and normal rejoining
 remain allowed. Record duration, deaths, phase/objective/melee/ranged contribution and tick/particle load.
-The parent 15–20-minute target remains **unvalidated**, and finale #138 is not implemented here.
+The parent 15–20-minute target remained **unvalidated**; finale #138 was not implemented at that
+#137 evidence point. It is now implemented, with live combat and balance still unvalidated.
 
 Mac verification uses the installed Java 25 launcher rather than assuming a Linux Java path:
 
@@ -266,7 +284,7 @@ claiming the ticket's live acceptance, record on Java 25 / supported Paper 26.2:
   flight phase, unrelated deletion or duplicate reward.
 - Approximately 20 mixed-gear participants: record gear, deaths, duration, melee/ranged participation,
   objective and phase durations, first-time readability, tick timings and particle/server load.
-  Tune toward the parent spec's 15–20-minute target only after the finale is integrated;
+   Tune the now-complete encounter toward the parent spec's 15–20-minute target using real evidence;
   do not infer fun, difficulty, performance or first-attempt win rates from automated tests.
 
 Verification commands (Java 25 launcher; no version-specific code changed):

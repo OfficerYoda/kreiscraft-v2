@@ -129,7 +129,9 @@ public final class ServerConfigGui {
         for (List<ConfigField> group : fieldGroups(schema, category).values()) {
             int column = group.indexOf(field);
             if (column >= 0) {
-                return row * 9 + column;
+                int slot = row * 9 + column;
+                // ponytail: 50 Crown controls fit; use InvUI pagination if a category exceeds 52 fields.
+                return slot >= SLOT_MODULE_ENABLED ? slot + 1 : slot;
             }
             row++;
         }

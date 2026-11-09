@@ -79,7 +79,13 @@ Regular reset still means 60 continuous seconds without eligible living combat p
 the existing dragon returns to full original health and waits for a participant before a new
 configured-health opening. Abort is not victory.
 
-## Automated evidence
+The completed #138 encounter reuses the same `EncounterWork` guard in a private attack scope.
+Closing that scope at the final gate cancels Hunt indicators/damage/landing work without closing
+attempt-owned restoration, the continuous absence timer or the rolling explosion clock/budget.
+Every full termination closes both scopes; recovery recognizes live artifacts from either scope.
+The finale threshold snapshots the effective native maximum at attempt start, preserving modifiers.
+
+## Historical automated evidence (#139 baseline)
 
 `LifecycleEncounterTest` adds ten encounter-level behavior cases, alongside the 22 existing
 `EncounterTest` tests. All 32 passed with no skips. Tests use real module enable/reload/disable,

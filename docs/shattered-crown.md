@@ -2,15 +2,19 @@
 title: The Shattered Crown
 ---
 
-# The Shattered Crown: opening and hunt
+# The Shattered Crown: complete encounter
 
-Implementation of tickets #134–#137, following spec #132. **Break the Crown** creates four
+Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
 immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt now adds
 warned temporary breath lanes, Marked Prey pools, fixed wing-sweep sectors and supported-Paper melee landing windows. See the
 [hunt geometry, tuning and verification contract](/shattered-crown-hunt/).
-The finale is a subsequent slice; the dragon can currently be killed normally after the opening.
-Numerical balance is **unvalidated**.
+At 30% health **Shatter the Last Stand** reactivates exactly two cleared sites once, shields the
+dragon until their independent defender gates and crystals are cleared, then accelerates familiar
+Hunt attacks with shorter pools. Oversized/lethal/multipart hits cannot skip that gate; all managed
+dragon parts share a rolling explosion budget. Completion stays with the native battle, without
+extra rewards. **Full implementation is not live validation:** numerical balance, actual Paper
+combat/AI/rendering and native reward generation remain unvalidated.
 
 ## Enable and tune
 
@@ -52,6 +56,11 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `anchor-distance` | 24 | Desired cardinal ground objectives east/north/west/south of the podium, 8–192 |
 | `ground-search-radius` | 8 | Bounded horizontal search around each position, 0–16 |
 | `ground-max-y` | 90 | Highest allowed objective feet Y; inside arena height bounds |
+| `final-health-fraction` | 0.3 | 0.1–0.5 of the effective maximum snapshotted at attempt start; once-only final gate |
+| `final-cadence-factor` | 0.7 | 0.5–0.9 multiplier for familiar Hunt/landing cadence opportunities |
+| `final-pool-lifetime-factor` | 0.5 | 0.25–0.9 multiplier for pool lifetime; warning and damage cadence unchanged |
+| `explosion-window-seconds` | 2 | 0.25–5 seconds, aggregate rolling game-time window for the managed dragon |
+| `explosion-window-budget` | 40 | 1–200 health points total across accepted explosions and all dragon parts |
 
 Damage is in health points (two per heart). All numeric values must be finite. The complete Anchor
 search footprint must fit within the arena. Cadence must exceed warning duration by at least
@@ -65,6 +74,45 @@ the actual arrival area: defaults cover the vanilla platform at `(100, 50, 0)` f
 podium at the island origin. On servers relocating the podium or arrival destination, adjust these
 offsets and height to the real platform. Arena X/Z are resolved from `EnderDragon.getPodium()`.
 Arrival protection is excluded even where it overlaps the combat cylinder.
+
+### Shatter the Last Stand: final defaults and safeguards
+
+- The gate is checked against final event damage **before native damage/death**. A threshold-crossing
+  hit is capped to stop at 300/1000 health with the default unmodified dragon attribute. Shielding is
+  installed before spawning final objectives, including synchronous multipart/spawn callbacks.
+  Premature native dying/death callbacks are rejected until the final pair is cleared; an already
+  cancelled combat, phase or death event remains cancelled.
+  Native maximum-health modifiers are preserved: for a 1000 base with a −50 modifier, the attempt
+  begins at 950 and the final gate is 285, not 300. Abort/reset keep those modifiers intact.
+- Exactly two established sites (the positive-X and positive-Z opening sites) reactivate, never the
+  other two. Both retain the opening's independent four-defender/exposure rules and can clear in
+  either order or the same tick. Final eligibility is consumed before spawning; healing and duplicate
+  callbacks cannot replay it. Missing defenders/crystals use established bounded recovery. If final
+  footing is no longer usable or a spawn is refused, abort to a full-health retryable native battle,
+  cancel the crossing damage and award nothing; never relocate an objective into the void.
+- Entering the gate closes only the attack scope: pending Hunt warnings, hazards and landings stop.
+  Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
+  remain intact. Familiar 8-second bombardment opportunities with 3-second visible warnings pressure
+  the two objectives, using the same walking-route/native-cloud checks and no lingering pools or
+  terrain changes. Clearing the final pair cancels them immediately and starts the final Hunt once.
+- Default final cadence opportunities are **7s lanes, 14s Marked Prey, 17.5s sweeps and 21s landings**;
+  default breath pools last **3s**, not 6s. Warnings remain 3s/4s/4s, lanes last 6s, landing approach
+  remains 20s and the melee window remains a full 12s **after actual native arrival**. Cadences are
+  opportunities, not guaranteed simultaneous attacks. The same serial composition, route checks,
+  hazard ceilings and landing reservation apply. Final cadence never falls below warning + 0.5s,
+  prey countdown + shortened pool lifetime + 0.5s, or 10s for landings. No new attack or forced wipe.
+- The budget counts accepted final explosion damage, not each bed independently. A fixed-size tick
+  ring aggregates simultaneous block/entity explosions and multipart callbacks; reservations also
+  cover nested callbacks and are released on later event cancellation. Unrelated dragons/entities
+  and ordinary melee/projectile/magic damage are not explosion-capped. The window rounds up to game
+  ticks and includes one conservative extra tick so mid-tick hits never expire early: default damage
+  returns after 2–2.05 seconds, not at a wall-clock fixed-window boundary. At most 101 buckets and one
+  50ms clock task; fractional-hit spam creates no per-hit scheduled work. Budget persists across the
+  final interlude and resets only with a new attempt/termination.
+- English/German phase instructions, shield counts and familiar warnings use existing Player Settings
+  localization and the Server Configuration GUI exposes all five new tuning fields. Reload validation
+  is atomic and the complete combat profile is snapshotted per attempt. Four opening and two final
+  Anchors are fixed mechanics, not extra configuration knobs.
 
 Ground resolution requires solid footing and three clear blocks over an entire 5×5 patch inside
 the combat arena and outside arrival protection. The four sites must be more than 12 blocks apart,
@@ -95,7 +143,7 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   from eligible players remove just that objective and suppress its explosion and ignition.
 - Protected arrivals cannot attack encounter enemies. Current source/shooter location is checked,
   and projectiles/primed TNT originating in protection retain a persistent origin marker even after
-  moving into the arena. Owned defenders also cannot damage protected arrivals. Future custom
+  moving into the arena. Owned defenders also cannot damage protected arrivals. All custom
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
 - Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
   ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
@@ -124,19 +172,22 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
 - During the opening, ownership is bounded at four crystals, 16 shipped defenders (128 at maximum configuration),
-  and one warning display. At most five opening module/attempt scheduler tasks coexist, including discovery
-  and absence; completed attacks do not accumulate active tasks. Particle audiences are capped at 64,
+  and one warning display. At most six opening module/attempt scheduler tasks coexist, including discovery,
+  absence and the rolling-budget clock; completed attacks do not accumulate active tasks. Particle audiences are capped at 64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.
-- PDC ownership keys are `kreiscraft:crown_artifact` (`anchor`/`defender`/`warning`) and
-  `kreiscraft:crown_original_health` (original dragon maximum-health base value).
+- PDC ownership keys are `kreiscraft:crown_artifact` (`anchor`/`defender`/`warning`/`lane`/`prey`/`pool`/`sweep`),
+  `kreiscraft:crown_original_health` (original dragon maximum-health base value), and
+  `kreiscraft:crown_original_phase` (restore/recover temporary native landing ownership).
   `kreiscraft:crown_protected_shot` records an indirect attack's protected origin, not entity ownership.
   Recovery on module startup and entity/world load removes stale owned artifacts and restores the
   same surviving dragon, without rewards or duplicate dragons. It resumes no attack or phase.
   Recovery now runs independently of combat enablement, including disabled startup and later-loaded
   chunks. See the [reload/restart lifecycle contract and evidence](/shattered-crown-lifecycle/).
 
-## Automated evidence
+## Historical opening evidence (#134–#135)
+
+The following records the earlier opening slice, not the current complete-encounter test count.
 
 `EncounterTest` and `OpeningEncounterTest` drive module enable/reload/disable, Bukkit events,
 real MockBukkit world entities, player movement and `MockScheduler` at the single approved
@@ -195,12 +246,54 @@ tests**, zero failures/errors, with five existing `ServerMetricsCollectorTest` s
 Checkstyle, production compilation with `-Werror`, shadow JAR creation and InvUI compatibility
 verification passed. Version-specific NMS test execution was excluded because no NMS code changed.
 
+## Current #138 automated evidence and verification
+
+`FinalEncounterTest` drives the same approved module/public-event/MockScheduler boundary. Nine
+vertical red→green slices established: exact/oversized/lethal threshold gate; accelerated prey and
+exclusive short-pool expiry; shared multipart explosion budget; premature-death rejection and untouched
+legal victory payload; refused final spawn cleanup; sliding half-tick budget edge; and changed-footing
+refusal; effective-maximum gating/native modifier restoration; and refusing early crystal clears
+from synchronous defender-spawn callbacks before the complete wave has been installed.
+A tenth red→green slice verifies all 50 tuning controls and EN/DE final labels fit the
+existing chest without replacing the enable toggle; no pagination framework was needed.
+Additional cases cover both independent final orders, healing/duplicates, all seven damage
+routes, cancellations, full default lane/sweep/landing timings, EN/DE presentation, atomic invalid/valid
+reload snapshots, continuous absence across the transition, synchronous spawn damage/disable, every
+finale reset/abort stage and repeated bounded 20-player final Hunts.
+
+The full opening → Hunt → final pair → victory demo runs for initial and ritual-battle profiles on
+the **available MockBukkit server setup**, retaining 12000/500 XP event payloads and vanilla-owned
+completion. It does not generate a real exit portal, egg, XP or ritual: those remain Paper acceptance.
+The existing unsupported-operation envelopes are unchanged; no new dragon adapter method, NMS,
+test engine or real-server automation framework was added.
+
+Current verification uses the installed macOS Java **25.0.4** launcher:
+
+```sh
+JAVA_HOME=/Users/I767799/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4.1+1/Contents/Home \
+  ./gradlew test --tests 'de.kreiscraft.modules.shatteredcrown.*' --max-workers=2 --console=plain
+JAVA_HOME=/Users/I767799/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4.1+1/Contents/Home \
+  ./gradlew spotlessApply check -x testNms --max-workers=2 --console=plain
+git diff --check
+```
+
+Durable execution evidence is saved under `~/.local/state/kreiscraft-java-runs/138-*.log`.
+Passed for #138: **83 final tests, 269 total encounter tests and 35 Server Configuration GUI tests**,
+none skipped; the targeted run covers 304 tests. Full check passes **1,581 tests**, zero failures/errors
+and five existing metrics-collector skips, including Spotless, Checkstyle, production `-Werror`, shadow
+JAR and InvUI compatibility. `testNms` execution is excluded because no version-specific code changed.
+The repeated-final-Hunt check uses 20 mock participants over three three-minute final Hunts, with
+1000 fractional explosions per attempt: at most four hazard displays, 21 active scheduled tasks and
+discovery alone after reset. These are automated bounds, not measured Paper performance or balance.
+
 ## Paper evidence and remaining live checklist
 
 Target: Java 25 / Paper 26.2. No running Paper server or multiplayer participants were available in
 this worktree environment; **no live combat, rendering, AI or balance evidence is claimed**.
 
-Before deployment validation, run this slice on the supported Paper server and record:
+No disposable Paper server exists in this worktree and no listener was available on local port 25565
+at #138 verification. No multiplayer session was performed. Before deployment validation, run the
+**complete encounter** on the supported Paper server and record:
 
 1. Main-End initial and ritual dragon discovery, real podium/platform alignment, all four accessible Anchor
    terrain, visible locale/status cues, defender targeting/leash and despawn behavior.
@@ -211,4 +304,6 @@ Before deployment validation, run this slice on the supported Paper server and r
 4. Representative ~20-player mixed-gear fight: attendance, gear, duration, deaths, objective
    participation, melee/ranged contribution and tick/performance observations. Inspect every circle's
    countdown, visible area and escape route, plus phase-boundary and protected-arrival cancellation.
-    Full spec #132 balance/15–20-minute validation also requires the remaining Hunt attacks and finale.
+    All phases are now implemented, but the ~20-player mixed enchanted diamond/netherite, 15–20-minute
+    target remains unvalidated. Death and normal rejoining are allowed. Follow the existing
+    [complete live acceptance checklist](/shattered-crown-validation/); #140 remains separate human work.

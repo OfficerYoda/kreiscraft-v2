@@ -134,6 +134,16 @@ class HuntEncounterTest {
         return event;
     }
 
+    private void clearFinalGate() {
+        dragon.setHealth(300);
+        hit(dragon);
+        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        });
+        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+    }
+
     @Test
     void fixedLaneWarnsBeforeDamageAndExpiresWithItsGroundUnchanged() throws Exception {
         hunt();
@@ -353,6 +363,7 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofMillis(250));
         }
         if (stage.startsWith("victory")) {
+            clearFinalGate(); // Native completion is now legal only after the one-shot final pair.
             server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
         } else if (stage.startsWith("unload")) {
             server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
@@ -840,6 +851,7 @@ class HuntEncounterTest {
         } else if (stage.startsWith("unload")) {
             server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
         } else {
+            clearFinalGate();
             server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
         }
         scheduler.advance(Duration.ofSeconds(120));

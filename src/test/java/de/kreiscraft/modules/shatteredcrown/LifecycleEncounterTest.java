@@ -484,6 +484,24 @@ class LifecycleEncounterTest {
         if (reset) {
             player.teleport(new Location(end, 100, 50, 0));
         } else {
+            for (int stage = 0; stage < 2; stage++) {
+                end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+                    defender.setHealth(0);
+                    server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
+                            mock(org.bukkit.damage.DamageSource.class), List.of()));
+                });
+                for (EnderCrystal crystal : crystals()) {
+                    server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(player,
+                            crystal, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                            mock(org.bukkit.damage.DamageSource.class), 10));
+                }
+                if (stage == 0) {
+                    dragon.setHealth(200);
+                    server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(player,
+                            dragon, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                            mock(org.bukkit.damage.DamageSource.class), 1000));
+                }
+            }
             server.getPluginManager().callEvent(rewards);
         }
         scheduler.advance(Duration.ofSeconds(70));

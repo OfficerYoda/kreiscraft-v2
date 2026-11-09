@@ -129,6 +129,7 @@ class EncounterTest {
         assertThat(anchor.isValid()).isFalse();
         crystals().forEach(this::hit);
         assertThat(hit(dragon).isCancelled()).isFalse();
+        clearFinalGate();
         server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
         scheduler.advance(Duration.ofSeconds(65));
         assertThat(crystals()).isEmpty();
@@ -170,6 +171,21 @@ class EncounterTest {
 
     private void enable() throws Exception {
         enable(true);
+    }
+
+    private void clearFinalGate() {
+        for (int stage = 0; stage < 2; stage++) {
+            for (Zombie defender : defenders()) {
+                defender.setHealth(0);
+                server.getPluginManager()
+                        .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+            }
+            crystals().forEach(this::hit);
+            if (stage == 0) {
+                dragon.setHealth(300);
+                hit(dragon);
+            }
+        }
     }
 
     private void enable(boolean enabled) throws Exception {
@@ -398,6 +414,7 @@ class EncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(hit(unrelated).isCancelled()).isFalse();
         assertThat(other.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+        clearFinalGate();
         server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
         dragon.remove();
         dragon = end.spawn(new Location(end, 0, 80, 0), EnderDragon.class);
@@ -490,6 +507,7 @@ class EncounterTest {
         server.getPluginManager().callEvent(cancelled);
         assertThat(crystals()).hasSize(4);
         crystals().forEach(this::hit);
+        clearFinalGate();
         var death = new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000);
         server.getPluginManager().callEvent(death);
         assertThat(death.isCancelled()).isFalse();

@@ -192,6 +192,11 @@ modules:
     sweep-cadence-seconds: 25.0
     sweep-damage: 6.0
     sweep-knockback: 1.2
+    final-health-fraction: 0.3
+    final-cadence-factor: 0.7
+    final-pool-lifetime-factor: 0.5
+    explosion-window-seconds: 2.0
+    explosion-window-budget: 40.0
   wither:
     enabled: true
     max-health: 600.0

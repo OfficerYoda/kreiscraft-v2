@@ -304,6 +304,40 @@ class ServerConfigGuiTest {
         assertThat(editor.current(deathPower)).isEqualTo(deathBefore + 0.1);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"en", "de"})
+    void fullCrownTuningAndLocalizedFinalFieldsFitWithoutOverwritingTheEnableToggle(String locale, @TempDir Path tmp)
+            throws IOException {
+        var localized = new ConfigurateMessageService(tmp, getClass().getClassLoader(), locale, server);
+        var gui = ServerConfigGui.buildCategory(editor, localized, player, navigator, session, "shattered-crown");
+        assertThat(stackAt(gui, 45).getType()).isIn(Material.LIME_STAINED_GLASS_PANE, Material.RED_STAINED_GLASS_PANE);
+        assertThat(stackAt(gui, 53).getType()).isEqualTo(Material.ARROW);
+        var names = new ArrayList<String>();
+        int thresholdSlot = -1;
+        String threshold = locale.equals("en") ? "Final Anchor health fraction" : "Lebensanteil für finale Anker";
+        for (int slot = 0; slot < 54; slot++) {
+            if (gui.getItem(slot) != null) {
+                String name = plain(stackAt(gui, slot));
+                names.add(name);
+                if (name.startsWith(threshold)) {
+                    thresholdSlot = slot;
+                }
+            }
+        }
+        assertThat(names).hasSize(52);
+        assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
+        String[] labels = locale.equals("en")
+                ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",
+                        "Dragon explosion budget window (seconds)", "Dragon aggregate explosion damage budget"}
+                : new String[] {"Finaler Angriffstakt-Multiplikator", "Finaler Atemflächen-Dauer-Multiplikator",
+                        "Drachen-Explosionsbudgetfenster (Sekunden)", "Gemeinsames Drachen-Explosionsschadensbudget"};
+        for (String label : labels) {
+            assertThat(names).anyMatch(name -> name.startsWith(label));
+        }
+        click(gui, thresholdSlot);
+        assertThat(editor.current(field("shattered-crown", "final-health-fraction"))).isEqualTo(0.4);
+    }
+
     @Test
     void performanceBarControls_shareAnAdminRowAndPersistHotReloadableEdits() {
         var fields = ServerConfigGui.fieldsIn(editor.schema(), "admin").stream()

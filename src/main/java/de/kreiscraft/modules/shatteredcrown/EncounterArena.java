@@ -77,7 +77,7 @@ final class EncounterArena {
         return null;
     }
 
-    private boolean usable(Location location) {
+    boolean usable(Location location) {
         // Enough flat footing for the objective, defenders and a melee approach; never build terrain.
         for (int x = -2; x <= 2; x++) {
             for (int z = -2; z <= 2; z++) {
