@@ -13,9 +13,12 @@ WIP. Completing an agent run is not completing this acceptance. Do not merge whi
 1. Use Java 25 and the supported Paper 26.2 release. Record Java/Paper versions, integration commit,
    plugin JAR SHA256, world seed, plugin list, and the complete effective
    `plugins/Kreiscraft/config.yml`. Use a disposable world or a verified backup, not production data.
+   Keep credentials private; redact API keys and other secrets from published evidence.
 2. Build the reviewed integration branch with a Java 25 launcher:
    `./gradlew check -x testNms --console=plain`. No version-specific code is expected to change;
    if it does, run `testNms` too. Copy the resulting shadow JAR to the disposable server's `plugins/`.
+   Confirm prerequisite implementations #138 and #139 are integrated before full-fight validation;
+   retain automated regression/check results separately from live observations.
 3. Enable `modules.shattered-crown.enabled`, verify `world-key` against the real main End, and restart.
    Verify the configured arena, arrival platform and all four objective sites have usable terrain.
    Follow the [operator profile](/shattered-crown/) and [hunt geometry contract](/shattered-crown-hunt/).
@@ -33,17 +36,18 @@ evidence for each step; fix failures and repeat affected steps rather than merel
 | Step | Action and expected observation |
 | --- | --- |
 | Activation | Enter with one eligible player, then others. Only the designated main-End normal battle starts; initial and ritual-respawned dragons each start one attempt. Other dragons/worlds remain unchanged. |
-| Opening | Split four teams. All four Anchors are reachable in ordinary melee, independently defender-gated, visibly exposed after their own defenders die, and clearable in either/concurrent order. Shield ends immediately only after the last Anchor. |
+| Opening | Split four teams. All four Anchors are reachable in ordinary melee, independently defender-gated, visibly exposed after their own defenders die, and clearable in arbitrary/concurrent order. Unrelated crystals do not advance objectives. Opening bombardment warnings precede matching impact damage. Shield ends immediately only after the last Anchor. |
 | Native defenders | Observe targeting, leash/escape recovery, finite waves, despawn/chunk discovery and crystal recovery. No missing entity may leave an impossible gate. |
 | Damage routes | Try swords, arrows, multipart hits and simultaneous bed/explosion bursts while shielded and damageable. Cancellation/protection must be respected, ordinary combat applied once, and explosion restrictions scoped to the managed dragon. |
 | Crystal interactions | Confirm ordinary crystal healing cannot reverse active progression; outside an attempt, vanilla ritual crystals remain usable. |
 | Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify both English and German recipient instructions and native visuals without mandatory audio/resource packs. |
 | Safe placement | React at normal walking speed on representative island terrain. Check existing native/custom danger, overlapping authored attacks, protected arrival exclusion and route deferrals; unsafe combinations must be omitted rather than fill remaining routes. |
 | Landings | Observe repeated native flight, approach, actual podium arrival, meaningful approach/melee duration, sitting hit/phase callbacks, takeoff and ranged flight contribution. A window must not expire before arrival or be cancelled immediately by competing phases. |
-| Final gate | Approach exactly 30% and also try an oversized lethal hit, multipart callbacks and simultaneous explosions. Exactly two cleared sites reactivate once before death; both independently gate shielding. After both clear, healing/duplicate events cannot replay the interlude. |
-| Final race | Verify familiar attacks accelerate and pools expire sooner. No new vocabulary, forced-duration wipe or permanent terrain changes; objective routes and landing opportunities stay usable. |
+| Final gate | Cross 30% and also try an oversized lethal hit, multipart callbacks and simultaneous explosions. Exactly two Anchors reactivate once before death; both independently gate shielding. After both clear, healing/duplicate events cannot replay the interlude. |
+| Final race | Verify familiar attacks accelerate and pools expire sooner. No new vocabulary, forced-duration wipe or permanent terrain changes from custom effects; objective routes and landing opportunities stay usable. |
 | Arrival/provenance | Attack from protection with melee/arrows/primed TNT and any supported attributable indirect source. Fire from protection, then step into the arena before impact. Dragon, Anchors and defenders must reject safe-origin damage; custom danger cannot strike arrivals. |
 | Mark invalidation | During a countdown separately die, disconnect, change world/mode, leave the arena and enter arrival protection. No stale pool may resolve. Rejoining through normal server travel resumes participation without teleport/inventory assistance. |
+| Late arrivals/departures | Join and leave during each phase. Dragon maximum health and attack counts must not dynamically rescale; new eligible arrivals can participate without restarting the attempt. |
 | Native victory | Complete through normal dragon death. Record XP, exit portal, egg/gateway eligibility and ritual eligibility on initial versus subsequent kills. No custom duplicate rewards. |
 
 ## Lifecycle and repeated-attempt session
@@ -52,8 +56,10 @@ Repeat with attacks pending, hazards active, during native landing, during the f
 the final race. Follow the [lifecycle contract](/shattered-crown-lifecycle/).
 
 1. Kill/leave all eligible players; creative/spectator/arrival-only occupants must not keep the
-   attempt alive. Return before 60 continuous seconds: progress remains. Remain absent for the full
-   timeout: fresh full-health retry, four new independent gates, no rewards or delayed damage.
+   attempt alive. Return just before 60 continuous seconds: progress remains and a later absence
+   starts a new full timeout. Remain absent for the full timeout: cleanup and a full-health retryable
+   battle, no rewards or delayed damage. It waits for an eligible participant; return to start a
+   fresh opening with four independent gates.
 2. Reload valid timing/damage while an attack is warned: the running attempt retains its snapshot;
    next attempt uses the new values. Try invalid finite/bounds/combinations: clear error and no
    partial application or loss of the running valid profile.
@@ -104,6 +110,9 @@ Tune only documented numeric health, damage, defender, timing and geometry value
 evidence. Preserve four opening Anchors, the once-only two-Anchor 30% interlude, rejoining and native
 rewards. A required design change needs explicit approval, not silent numerical evasion.
 
-Publish results in #140 and PR #133. Until this session and functional acceptance are complete,
+Run the final Standards + Spec review against the integration branch, address findings, and publish
+actual test/live evidence, shipped configuration assumptions, remaining limitations and the gameplay
+blast-radius assessment in #140 and PR #133. Leave final merge to the normal project workflow.
+Until this session and functional acceptance are complete,
 leave #140 open and `ready-for-human`, retain WIP, and state that balance, first-attempt readability,
 real AI/rendering/rewards and representative performance remain unvalidated where not observed.

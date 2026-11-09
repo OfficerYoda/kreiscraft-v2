@@ -55,10 +55,10 @@ The bundled `config.yml` enables most modules. The following three are **disable
 
 Enable and restart to activate these modules. Before enabling Shattered Crown, verify the designated
 world, actual arrival platform, and usable objective terrain against its
-[validated Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
+[initial Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
 documented in the [hunt guide](/shattered-crown-hunt/); reload/restart behavior is documented in the
 [lifecycle guide](/shattered-crown-lifecycle/). Balance remains unvalidated until representative live
-playtesting.
+playtesting; follow the [live acceptance checklist](/shattered-crown-validation/).
 
 ---
 
