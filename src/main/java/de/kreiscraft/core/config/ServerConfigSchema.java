@@ -333,6 +333,28 @@ public final class ServerConfigSchema {
                 ConfigValidators.stringList(),
                 ConfigLifecycle.HOT_RELOAD));
 
+        // ── shattered-crown ──────────────────────────────────────────────────
+        // World identity remains YAML-only infrastructure. Tuning is snapshotted next attempt.
+        fields.add(crownNumber("max-health", 1, 1024));
+        fields.add(crownNumber("defender-health", 1, 1000));
+        fields.add(crownNumber("defender-damage", 0, 100));
+        fields.add(crownNumber("defender-leash", 4, 32));
+        fields.add(crownNumber("arena-radius", 16, 256));
+        for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
+            fields.add(crownNumber(key, -64, 320));
+        }
+        fields.add(crownNumber("arrival-x", -512, 512));
+        fields.add(crownNumber("arrival-z", -512, 512));
+        fields.add(crownNumber("arrival-radius", 3, 32));
+        fields.add(crownNumber("arrival-height", 4, 64));
+        fields.add(crownNumber("anchor-distance", 8, 192));
+        fields.add(field(path("modules", "shattered-crown", "defender-count"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 32), ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(path("modules", "shattered-crown", "ground-search-radius"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(0, 16), ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(path("modules", "shattered-crown", "defender-type"), ConfigFieldType.ENUM,
+                ConfigValidators.oneOf("HUSK", "ZOMBIE"), ConfigLifecycle.HOT_RELOAD));
+
         // ── wither ──────────────────────────────────────────────────────────
         fields.add(field(
                 path("modules", "wither", "max-health"),
@@ -402,6 +424,11 @@ public final class ServerConfigSchema {
 
     private static ConfigField tpsBarNumber(String key, ConfigFieldType type, ConfigValidator validator) {
         return field(path("modules", "admin", "tps-bar", key), type, validator, ConfigLifecycle.HOT_RELOAD);
+    }
+
+    private static ConfigField crownNumber(String key, double min, double max) {
+        return field(path("modules", "shattered-crown", key), ConfigFieldType.DOUBLE,
+                ConfigValidators.decimalRange(min, max), ConfigLifecycle.HOT_RELOAD);
     }
 
     /** The three independent explosion tunables for one Wither lifecycle phase. */

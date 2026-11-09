@@ -1,0 +1,561 @@
+package de.kreiscraft.modules.shatteredcrown;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import de.kreiscraft.core.command.CommandRegistrar;
+import de.kreiscraft.core.event.EventBus;
+import de.kreiscraft.core.message.ConfigurateMessageService;
+import de.kreiscraft.core.module.ModuleContext;
+import de.kreiscraft.core.service.ServiceRegistry;
+import de.kreiscraft.testsupport.MockScheduler;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import org.bukkit.Location;
+import org.bukkit.GameMode;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.entity.EnderCrystal;
+import org.bukkit.entity.EnderDragon;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Zombie;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.plugin.PluginMock;
+import org.mockbukkit.mockbukkit.world.WorldMock;
+import org.spongepowered.configurate.BasicConfigurationNode;
+
+class EncounterTest {
+    @org.junit.jupiter.api.extension.RegisterExtension
+    static final org.junit.jupiter.api.extension.TestExecutionExceptionHandler NO_SILENT_SKIPS = (context, error) -> {
+        if (error instanceof org.opentest4j.TestAbortedException) {
+            throw new AssertionError("Unsupported MockBukkit behavior must be explicit at the Paper boundary", error);
+        }
+        throw error;
+    };
+    @TempDir
+    Path data;
+    private ServerMock server;
+    private PluginMock plugin;
+    private WorldMock end;
+    private EnderDragon dragon;
+    private PlayerMock player;
+    private MockScheduler scheduler;
+    private ShatteredCrownModule module;
+    private org.spongepowered.configurate.ConfigurationNode config;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        server = MockBukkit.mock();
+        plugin = MockBukkit.createMockPlugin();
+        end = server.addSimpleWorld("arena");
+        end.setEnvironment(World.Environment.THE_END);
+        for (int x = 15; x <= 35; x++) {
+            for (int z = -12; z <= 12; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        dragon = end.spawn(new Location(end, 0, 80, 0), EnderDragon.class);
+        dragon.setPodium(new Location(end, 0, 64, 0));
+        player = server.addPlayer();
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler = new MockScheduler();
+        // WorldMock.getEnderDragonBattle is unimplemented; entity/world behavior stays real.
+        module = new ShatteredCrownModule(new DragonBattleAccess() {
+            @Override
+            public org.bukkit.boss.DragonBattle battle(World world) {
+                return world == end ? dragon.getDragonBattle() : null;
+            }
+
+            @Override
+            public void preventDespawn(org.bukkit.entity.Mob defender) {
+                // LivingEntityMock.setRemoveWhenFarAway is unimplemented. Recovery is tested via real removal.
+                // MockBukkit's husk attributes also omit the vanilla attack-damage attribute.
+                defender.registerAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE);
+                defender.registerAttribute(org.bukkit.attribute.Attribute.SPAWN_REINFORCEMENTS);
+                defender.getAttribute(org.bukkit.attribute.Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0.1);
+            }
+        });
+    }
+
+    @AfterEach
+    void tearDown() {
+        module.disable();
+        MockBukkit.unmock();
+    }
+
+    @Test
+    void participantsDefeatDefendersThenAnchorAndCanFinishTheNormalDragonBattle() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(1);
+        assertThat(defenders()).hasSize(4);
+        EnderCrystal anchor = crystals().getFirst();
+        assertThat(hit(dragon).isCancelled()).isTrue();
+        assertThat(hit(anchor).isCancelled()).isTrue();
+        assertThat(anchor.isValid()).isTrue();
+
+        for (Zombie defender : defenders()) {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        }
+        assertThat(anchor.isGlowing()).isTrue();
+        hit(anchor);
+        assertThat(anchor.isValid()).isFalse();
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
+        scheduler.advance(Duration.ofSeconds(65));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(dragon.isValid()).isTrue(); // Completion remains owned by vanilla, never remove/kill it.
+    }
+
+    private void enable() throws Exception {
+        enable(true);
+    }
+
+    private void enable(boolean enabled) throws Exception {
+        config = BasicConfigurationNode.root();
+        config.node("world-key").set(end.getKey().toString());
+        config.node("enabled").set(enabled);
+        module.enable(new ModuleContext(plugin, config,
+                new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server,
+                        recipient -> recipient.getName().equals("Deutsch") ? java.util.Optional.of("de")
+                                : java.util.Optional.empty()),
+                new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
+    }
+
+    @Test
+    void disabledModuleLeavesTheBattleAndOtherEntitiesUntouched() throws Exception {
+        enable(false);
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(hit(dragon).isCancelled()).isFalse();
+    }
+
+    @Test
+    void noUsableGroundRefusesAnAttemptWithoutBuildingAnObjectiveInTheVoid() throws Exception {
+        for (int x = 15; x <= 35; x++) {
+            for (int z = -12; z <= 12; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.AIR);
+            }
+        }
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(hit(dragon).isCancelled()).isFalse();
+    }
+
+    @Test
+    void objectiveInstructionsAndOngoingShieldStatusUseEachRecipientsLanguage() throws Exception {
+        PlayerMock german = server.addPlayer("Deutsch");
+        german.teleport(player.getLocation());
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.nextMessage()).contains("defenders", "Anchor");
+        assertThat(german.nextMessage()).contains("Verteidiger", "Anker");
+        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        assertThat(plain.serialize(player.nextActionBar())).contains("4", "shielded");
+        assertThat(plain.serialize(german.nextActionBar())).contains("4", "geschützt");
+    }
+
+    @Test
+    void onlyLivingCombatParticipantsStartOneEncounterInTheDesignatedEnd() throws Exception {
+        player.setGameMode(GameMode.SPECTATOR);
+        enable();
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).isEmpty();
+        player.setGameMode(GameMode.CREATIVE);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).isEmpty();
+        player.setGameMode(GameMode.SURVIVAL);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).isEmpty();
+        player.teleport(new Location(end, 200, 64, 0));
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).isEmpty();
+        player.setGameMode(GameMode.ADVENTURE);
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(2));
+        EnderCrystal anchor = crystals().getFirst();
+        assertThat(anchor.getLocation().getBlock().getRelative(0, -1, 0).getType().isSolid()).isTrue();
+        assertThat(anchor.getLocation().getY()).isEqualTo(64);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(crystals()).containsExactly(anchor);
+        assertThat(dragon.getHealth()).isEqualTo(1000);
+    }
+
+    private EntityDamageEvent hit(Entity target) {
+        var event = new EntityDamageByEntityEvent(player, target,
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK, mock(DamageSource.class), 10);
+        server.getPluginManager().callEvent(event);
+        return event;
+    }
+
+    @Test
+    void returningBeforeSixtySecondsPreservesProgressButContinuousAbsenceResetsForRetry() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        EnderCrystal first = crystals().getFirst();
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(59));
+        assertThat(crystals()).containsExactly(first);
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).containsExactly(first);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofMillis(59999));
+        assertThat(crystals()).containsExactly(first);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(dragon.isValid()).isTrue();
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(1).doesNotContain(first);
+        assertThat(defenders()).hasSize(4);
+        assertThat(hit(dragon).isCancelled()).isTrue();
+    }
+
+    private List<EnderCrystal> crystals() {
+        return end.getEntitiesByClass(EnderCrystal.class).stream().filter(Entity::isValid).toList();
+    }
+
+    @Test
+    void shieldsCoverAllDamageRoutesAndProtectedShotsCannotBypassTheArrivalBoundary() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        for (var cause : List.of(EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                EntityDamageEvent.DamageCause.PROJECTILE, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION)) {
+            var damage = new EntityDamageEvent(dragon, cause, mock(DamageSource.class), 5000);
+            server.getPluginManager().callEvent(damage);
+            assertThat(damage.isCancelled()).isTrue();
+        }
+        // EnderDragonMock.getParts is unimplemented: only the Paper multipart envelope is doubled.
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        when(part.getParent()).thenReturn(dragon);
+        assertThat(hit(part).isCancelled()).isTrue();
+        var healing = new org.bukkit.event.entity.EntityRegainHealthEvent(dragon, 10,
+                org.bukkit.event.entity.EntityRegainHealthEvent.RegainReason.ENDER_CRYSTAL);
+        server.getPluginManager().callEvent(healing);
+        assertThat(healing.isCancelled()).isTrue();
+        player.teleport(new Location(end, 100, 50, 0));
+        assertThat(hit(defenders().getFirst()).isCancelled()).isTrue();
+        var arrow = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(player);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(arrow));
+        player.teleport(new Location(end, 10, 64, 0));
+        arrow.teleport(new Location(end, 25, 64, 0));
+        var shot = new EntityDamageByEntityEvent(arrow, defenders().getFirst(),
+                EntityDamageEvent.DamageCause.PROJECTILE, mock(DamageSource.class), 20);
+        server.getPluginManager().callEvent(shot);
+        assertThat(shot.isCancelled()).isTrue();
+        var ordinary = end.spawn(new Location(end, 50, 65, 0), EnderCrystal.class);
+        assertThat(hit(ordinary).isCancelled()).isFalse();
+        assertThat(hit(dragon).isCancelled()).isTrue();
+    }
+
+    private List<Zombie> defenders() {
+        return end.getEntitiesByClass(Zombie.class).stream().filter(Entity::isValid).toList();
+    }
+
+    @Test
+    void protectedArrivalsCannotKillTheIdleManagedDragonWithoutStartingAnEncounter() throws Exception {
+        player.teleport(new Location(end, 100, 50, 0));
+        enable();
+        assertThat(hit(dragon).isCancelled()).isTrue();
+        assertThat(crystals()).isEmpty();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+    }
+
+    @Test
+    void aHitBeforeTheFirstDiscoveryTickCannotSkipTheOpeningShield() throws Exception {
+        enable();
+        assertThat(hit(dragon).isCancelled()).isTrue();
+        assertThat(crystals()).hasSize(1);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(1);
+        assertThat(defenders()).hasSize(4);
+    }
+
+    @Test
+    void aShotFromThePlatformBeforeTheEncounterStartsStillCannotDamageItsDefenders() throws Exception {
+        player.teleport(new Location(end, 100, 50, 0));
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        var arrow = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(player);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(arrow));
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        arrow.teleport(crystals().getFirst().getLocation());
+        var damage = new EntityDamageByEntityEvent(arrow, defenders().getFirst(),
+                EntityDamageEvent.DamageCause.PROJECTILE, mock(DamageSource.class), 20);
+        server.getPluginManager().callEvent(damage);
+        assertThat(damage.isCancelled()).isTrue();
+    }
+
+    @Test
+    void defenderWavesCannotGrowThroughReinforcementsOrEscapeOwnershipByTransforming() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        var defender = defenders().getFirst();
+        assertThat(defender.getAttribute(org.bukkit.attribute.Attribute.SPAWN_REINFORCEMENTS).getValue()).isZero();
+        var replacement = end.spawn(new Location(end, 50, 64, 0), org.bukkit.entity.Zombie.class);
+        var transform = new org.bukkit.event.entity.EntityTransformEvent(defender, List.of(replacement),
+                org.bukkit.event.entity.EntityTransformEvent.TransformReason.DROWNED);
+        server.getPluginManager().callEvent(transform);
+        assertThat(transform.isCancelled()).isTrue();
+    }
+
+    @Test
+    void movingPrimedTntOutOfArrivalProtectionDoesNotTurnItIntoSafeDamage() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        player.teleport(new Location(end, 100, 50, 0));
+        var tnt = end.spawn(player.getLocation(), org.bukkit.entity.TNTPrimed.class);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(tnt));
+        player.teleport(new Location(end, 10, 64, 0));
+        tnt.teleport(new Location(end, 25, 64, 0));
+        var damage = new EntityDamageByEntityEvent(tnt, defenders().getFirst(),
+                EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, mock(DamageSource.class), 20);
+        server.getPluginManager().callEvent(damage);
+        assertThat(damage.isCancelled()).isTrue();
+    }
+
+    @Test
+    void aLaterVanillaRitualDragonGetsOneFreshEncounterAndOtherWorldsRemainUnaffected() throws Exception {
+        var other = server.addSimpleWorld("unmanaged-end");
+        other.setEnvironment(World.Environment.THE_END);
+        var unrelated = other.spawn(new Location(other, 0, 80, 0), EnderDragon.class);
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(hit(unrelated).isCancelled()).isFalse();
+        assertThat(other.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+        server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000));
+        dragon.remove();
+        dragon = end.spawn(new Location(end, 0, 80, 0), EnderDragon.class);
+        dragon.setPodium(new Location(end, 0, 64, 0));
+        dragon.getDragonBattle().setPreviouslyKilled(true);
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(crystals()).hasSize(1);
+        assertThat(defenders()).hasSize(4);
+        assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isTrue();
+        assertThat(hit(dragon).isCancelled()).isTrue();
+    }
+
+    @Test
+    void repeatedAttemptsWithOnlyDeadPlayersOrSpectatorsDoNotAccumulateArtifacts() throws Exception {
+        var spectator = server.addPlayer();
+        spectator.teleport(player.getLocation());
+        spectator.setGameMode(GameMode.SPECTATOR);
+        enable();
+        for (int attempt = 0; attempt < 8; attempt++) {
+            player.teleport(new Location(end, 10, 64, 0));
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(crystals()).hasSize(1);
+            assertThat(defenders()).hasSize(4);
+            player.setHealth(0);
+            scheduler.advance(Duration.ofSeconds(60));
+            assertThat(crystals()).isEmpty();
+            assertThat(defenders()).isEmpty();
+            player = server.addPlayer();
+        }
+        module.disable();
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
+        assertThat(crystals()).isEmpty();
+    }
+
+    @Test
+    void refusedDefenderSpawnsAbortCleanlyInsteadOfLeavingAnImpossibleShield() throws Exception {
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void veto(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof Zombie) {
+                    event.setCancelled(true);
+                }
+            }
+        }, plugin);
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+    }
+
+    @Test
+    void encounterCrystalsCannotIgniteTerrainButOrdinaryCrystalsKeepVanillaBehavior() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        var anchor = crystals().getFirst();
+        var ignition = new org.bukkit.event.block.BlockIgniteEvent(anchor.getLocation().getBlock(),
+                org.bukkit.event.block.BlockIgniteEvent.IgniteCause.ENDER_CRYSTAL, anchor);
+        server.getPluginManager().callEvent(ignition);
+        assertThat(ignition.isCancelled()).isTrue();
+        var ordinary = end.spawn(new Location(end, 50, 65, 0), EnderCrystal.class);
+        var normal = new org.bukkit.event.block.BlockIgniteEvent(ordinary.getLocation().getBlock(),
+                org.bukkit.event.block.BlockIgniteEvent.IgniteCause.ENDER_CRYSTAL, ordinary);
+        server.getPluginManager().callEvent(normal);
+        assertThat(normal.isCancelled()).isFalse();
+    }
+
+    @Test
+    void cancelledDeathAndDamageDoNotAdvanceTheObjectiveAndVanillaRewardsAreUnmodified() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        for (Zombie defender : defenders()) {
+            var cancelled = new EntityDeathEvent(defender, mock(DamageSource.class), List.of());
+            cancelled.setCancelled(true);
+            server.getPluginManager().callEvent(cancelled);
+        }
+        assertThat(crystals().getFirst().isGlowing()).isFalse();
+        for (Zombie defender : defenders()) {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        }
+        var cancelled = new EntityDamageByEntityEvent(player, crystals().getFirst(),
+                EntityDamageEvent.DamageCause.ENTITY_ATTACK, mock(DamageSource.class), 10);
+        cancelled.setCancelled(true);
+        server.getPluginManager().callEvent(cancelled);
+        assertThat(crystals()).hasSize(1);
+        hit(crystals().getFirst());
+        var death = new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000);
+        server.getPluginManager().callEvent(death);
+        assertThat(death.isCancelled()).isFalse();
+        assertThat(death.getDroppedExp()).isEqualTo(12000);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
+        assertThat(crystals()).isEmpty();
+    }
+
+    @Test
+    void anUnloadedAnchorIsRecreatedWithoutLosingItsDefenderGate() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        EnderCrystal original = crystals().getFirst();
+        original.remove();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(1).doesNotContain(original);
+        assertThat(defenders()).hasSize(4);
+        assertThat(hit(crystals().getFirst()).isCancelled()).isTrue();
+        assertThat(crystals()).hasSize(1);
+        assertThat(hit(dragon).isCancelled()).isTrue();
+    }
+
+    @Test
+    void restartOwnershipRecoveryRemovesStaleArtifactsAndRestoresTheExistingDragonWithoutRewards() throws Exception {
+        var stale = end.spawn(new Location(end, 24, 64, 0), EnderCrystal.class);
+        stale.getPersistentDataContainer().set(new org.bukkit.NamespacedKey("kreiscraft", "crown_artifact"),
+                org.bukkit.persistence.PersistentDataType.STRING, "anchor");
+        var ordinary = end.spawn(new Location(end, 50, 64, 0), EnderCrystal.class);
+        dragon.getPersistentDataContainer().set(new org.bukkit.NamespacedKey("kreiscraft", "crown_original_health"),
+                org.bukkit.persistence.PersistentDataType.DOUBLE, 200.0);
+        dragon.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(1200);
+        dragon.setHealth(123);
+        player.setGameMode(GameMode.SPECTATOR);
+        enable();
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(crystals()).containsExactly(ordinary);
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
+        player.setGameMode(GameMode.SURVIVAL);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(2);
+        assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
+    }
+
+    @Test
+    void worldUnloadCancelsTheAttemptAndLoadingTheBattleAgainStartsFresh() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        EnderCrystal first = crystals().getFirst();
+        player.teleport(new Location(end, 100, 50, 0));
+        server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+        assertThat(crystals()).isEmpty();
+        assertThat(defenders()).isEmpty();
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(65));
+        assertThat(crystals()).isEmpty();
+        server.getPluginManager().callEvent(new org.bukkit.event.world.WorldLoadEvent(end));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).hasSize(1).doesNotContain(first);
+    }
+
+    @Test
+    void reloadValidatesAtomicallyAndAppliesTuningOnlyToTheNextAttemptWhileDisableAbortsNow() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        var invalid = config.copy();
+        invalid.node("max-health").set(-1);
+        assertThatThrownBy(() -> module.onConfigReload(invalid)).isInstanceOf(RuntimeException.class);
+        invalid.node("max-health").set(Double.NaN);
+        assertThatThrownBy(() -> module.onConfigReload(invalid)).isInstanceOf(RuntimeException.class);
+        invalid.node("max-health").set(1025);
+        assertThatThrownBy(() -> module.onConfigReload(invalid)).isInstanceOf(RuntimeException.class);
+        var next = config.copy();
+        next.node("max-health").set(800);
+        next.node("defender-count").set(6);
+        module.onConfigReload(next);
+        assertThat(dragon.getHealth()).isEqualTo(1000);
+        assertThat(defenders()).hasSize(4);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(dragon.getHealth()).isEqualTo(800);
+        assertThat(defenders()).hasSize(6);
+        next.node("enabled").set(false);
+        module.onConfigReload(next);
+        assertThat(defenders()).isEmpty();
+        assertThat(crystals()).isEmpty();
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(crystals()).isEmpty();
+    }
+
+    @Test
+    void escapedAndUnloadedDefendersRemainDefeatableAndDisableRemovesOnlyOwnedArtifacts() throws Exception {
+        var unrelated = end.spawn(new Location(end, 50, 64, 0), Zombie.class);
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        var owned = defenders().stream().filter(entity -> entity != unrelated).toList();
+        assertThat(owned).hasSize(4);
+        owned.getFirst().teleport(new Location(end, 200, 10, 0));
+        owned.get(1).remove();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(owned.getFirst().getLocation().distance(crystals().getFirst().getLocation())).isLessThan(5);
+        assertThat(defenders()).hasSize(5);
+        module.disable();
+        module.disable();
+        scheduler.advance(Duration.ofSeconds(120));
+        assertThat(defenders()).containsExactly(unrelated);
+        assertThat(crystals()).isEmpty();
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+    }
+}

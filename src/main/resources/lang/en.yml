@@ -43,6 +43,7 @@ server-config:
     tablist: "Tab List"
     update-mode: "Update Mode"
     wither: "Wither"
+    shattered-crown: "The Shattered Crown"
     world-mgmt: "World Management"
   field:
     module-enabled: "Module <module> enabled"
@@ -100,6 +101,23 @@ server-config:
     update-mode-bypass-permission: "Bypass permission"
     update-mode-bypass-names: "Bypass names"
     wither-max-health: "Max health"
+    shattered-crown-max-health: "Dragon max health (next attempt)"
+    shattered-crown-defender-count: "Defenders per Anchor"
+    shattered-crown-defender-type: "Defender type"
+    shattered-crown-defender-health: "Defender health"
+    shattered-crown-defender-damage: "Defender damage"
+    shattered-crown-defender-leash: "Defender leash radius"
+    shattered-crown-arena-radius: "Arena radius"
+    shattered-crown-arena-min-y: "Arena minimum Y"
+    shattered-crown-arena-max-y: "Arena maximum Y"
+    shattered-crown-arrival-x: "Arrival X offset"
+    shattered-crown-arrival-y: "Arrival Y"
+    shattered-crown-arrival-z: "Arrival Z offset"
+    shattered-crown-arrival-radius: "Arrival protection radius"
+    shattered-crown-arrival-height: "Arrival protection height"
+    shattered-crown-anchor-distance: "Anchor distance from podium"
+    shattered-crown-ground-search-radius: "Ground search radius"
+    shattered-crown-ground-max-y: "Maximum objective ground Y"
     wither-attack-damage: "Attack damage"
     wither-armor: "Armor"
     wither-half-health-threshold: "Half-health threshold"
@@ -310,6 +328,14 @@ update-mode:
     <gray>Kreiscraft is currently receiving <green>UPDATES<gray>!
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
+shattered-crown:
+  opening: "<gold>The Shattered Crown:</gold> <gray>Defeat the defenders, then break the ground-level Anchor to remove the dragon's shield!</gray>"
+  exposed: "<green>The Anchor is exposed! Break the glowing crystal.</green>"
+  unshielded: "<green>The dragon's shield is broken. Attack the dragon!</green>"
+  shield-status: "<gold>Break the Crown</gold> <gray>— Dragon shielded • Anchor defenders: <yellow><defenders></yellow></gray>"
+  exposed-status: "<gold>Break the Crown</gold> <gray>— Dragon shielded • <green>Break the glowing Anchor!</green></gray>"
+  hunt-status: "<green>Dragon vulnerable — Attack!</green>"
+
 wither:
   explosion-title: "<red>Explosion</red>"
 world-mgmt:

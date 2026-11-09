@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -25,6 +25,7 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 | `positions` | `de.kreiscraft.modules.positions` | stable | none | pos | Saves and retrieves named waypoints per player; includes a GUI browser and optional click-to-teleport. |
 | `reboot` | `de.kreiscraft.modules.reboot` | stable | none | reboot, restart | Schedules a graceful server restart with configurable countdown titles and chat warnings. |
 | `settings-gui` | `de.kreiscraft.modules.settingsgui` | stable | none | settings | Module-aware per-player settings GUI (language, click-through, combat display, effects, sit). |
+| `shattered-crown` | `de.kreiscraft.modules.shatteredcrown` | single-Anchor slice | none | — | Cooperative main-End dragon objective, shield and retry lifecycle; [profile and validation notes](/shattered-crown/). |
 | `sign-color` | `de.kreiscraft.modules.signcolor` | stable | none | — | Renders legacy `&` codes, Kreiscraft placeholders and safe MiniMessage in sign text and anvil renames for players with the appropriate permission. |
 | `sit` | `de.kreiscraft.modules.sit` | stable | none | sit | Toggle sitting through `/sit` or the cushion in `/settings`. |
 | `spawn` | `de.kreiscraft.modules.spawn` | stable | none | spawn, setspawn | Manages the server spawn point; includes a spawn glide zone, optional swap-hand boost, and a persistent sneak glide boost. |
@@ -37,15 +38,17 @@ Catalog of all 24 Kreiscraft modules: purpose, dependencies, services, and event
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Two ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Three ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
 |-----------|--------------------------|
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
+| `shattered-crown` | Opt-in intermediate encounter slice; representative Paper multiplayer balance is not yet validated. |
 
-Both implementations are fully functional; enabling the flag is sufficient to activate them.
+Enable the flag and restart to activate these modules. Shattered Crown's full encounter phases are
+being delivered incrementally; see its [current scope and operator guide](/shattered-crown/).
 
 ---
 

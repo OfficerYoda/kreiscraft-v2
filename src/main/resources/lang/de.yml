@@ -43,6 +43,7 @@ server-config:
     tablist: "Tab-Liste"
     update-mode: "Wartungsmodus"
     wither: "Wither"
+    shattered-crown: "Die zersplitterte Krone"
     world-mgmt: "Weltverwaltung"
   field:
     module-enabled: "Modul <module> aktiviert"
@@ -100,6 +101,23 @@ server-config:
     update-mode-bypass-permission: "Bypass-Berechtigung"
     update-mode-bypass-names: "Bypass-Namen"
     wither-max-health: "Maximale Gesundheit"
+    shattered-crown-max-health: "Drachengesundheit (nächster Versuch)"
+    shattered-crown-defender-count: "Verteidiger pro Anker"
+    shattered-crown-defender-type: "Verteidigertyp"
+    shattered-crown-defender-health: "Verteidigergesundheit"
+    shattered-crown-defender-damage: "Verteidigerschaden"
+    shattered-crown-defender-leash: "Verteidiger-Bewegungsradius"
+    shattered-crown-arena-radius: "Arenaradius"
+    shattered-crown-arena-min-y: "Minimale Arenahöhe"
+    shattered-crown-arena-max-y: "Maximale Arenahöhe"
+    shattered-crown-arrival-x: "Ankunftsversatz X"
+    shattered-crown-arrival-y: "Ankunftshöhe Y"
+    shattered-crown-arrival-z: "Ankunftsversatz Z"
+    shattered-crown-arrival-radius: "Ankunfts-Schutzradius"
+    shattered-crown-arrival-height: "Ankunfts-Schutzhöhe"
+    shattered-crown-anchor-distance: "Ankerabstand vom Podium"
+    shattered-crown-ground-search-radius: "Bodensuchradius"
+    shattered-crown-ground-max-y: "Maximale Anker-Bodenhöhe"
     wither-attack-damage: "Angriffsschaden"
     wither-armor: "Rüstung"
     wither-half-health-threshold: "Halbzeit-Schwelle"
@@ -310,6 +328,14 @@ update-mode:
     <gray>Kreiscraft erhält gerade <green>UPDATES<gray>!
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
+shattered-crown:
+  opening: "<gold>Die zersplitterte Krone:</gold> <gray>Besiegt die Verteidiger und zerstört dann den Anker am Boden, um den Drachenschild zu brechen!</gray>"
+  exposed: "<green>Der Anker ist verwundbar! Zerstört den leuchtenden Kristall.</green>"
+  unshielded: "<green>Der Drachenschild ist gebrochen. Greift den Drachen an!</green>"
+  shield-status: "<gold>Brecht die Krone</gold> <gray>— Drache geschützt • Anker-Verteidiger: <yellow><defenders></yellow></gray>"
+  exposed-status: "<gold>Brecht die Krone</gold> <gray>— Drache geschützt • <green>Zerstört den leuchtenden Anker!</green></gray>"
+  hunt-status: "<green>Drache verwundbar — Angreifen!</green>"
+
 wither:
   explosion-title: "<red>Explosion</red>"
 world-mgmt:
