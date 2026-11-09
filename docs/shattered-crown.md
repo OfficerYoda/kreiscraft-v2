@@ -2,12 +2,14 @@
 title: The Shattered Crown
 ---
 
-# The Shattered Crown: four-Anchor opening
+# The Shattered Crown: opening and hunt
 
-Implementation of tickets #134–#135, following spec #132. **Break the Crown** creates four
+Implementation of tickets #134–#136, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
-immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt attacks
-and the finale are subsequent slices; the dragon can currently be killed normally after the opening.
+immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt now adds
+warned temporary breath lanes and supported-Paper melee landing windows. See the
+[hunt geometry, tuning and verification contract](/shattered-crown-hunt/).
+Marked Prey, wing sweeps and the finale are subsequent slices; the dragon can currently be killed normally after the opening.
 Numerical balance is **unvalidated**.
 
 ## Enable and tune
@@ -121,8 +123,8 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   discovery too. Opening cadence, warning refresh and pending damage are all cancelled on the last
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
-- Active ownership is bounded at four crystals, 16 shipped defenders (128 at maximum configuration),
-  and one warning display. At most five active module/attempt scheduler tasks coexist, including discovery
+- During the opening, ownership is bounded at four crystals, 16 shipped defenders (128 at maximum configuration),
+  and one warning display. At most five opening module/attempt scheduler tasks coexist, including discovery
   and absence; completed attacks do not accumulate active tasks. Particle audiences are capped at 64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.
@@ -209,4 +211,4 @@ Before deployment validation, run this slice on the supported Paper server and r
 4. Representative ~20-player mixed-gear fight: attendance, gear, duration, deaths, objective
    participation, melee/ranged contribution and tick/performance observations. Inspect every circle's
    countdown, visible area and escape route, plus phase-boundary and protected-arrival cancellation.
-   Full spec #132 balance/15–20-minute validation also requires the later Hunt attack and finale slices.
+    Full spec #132 balance/15–20-minute validation also requires the remaining Hunt attacks and finale.
