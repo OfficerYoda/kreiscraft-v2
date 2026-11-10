@@ -4,6 +4,27 @@ title: The Shattered Crown
 
 # The Shattered Crown: complete encounter
 
+## Encounter communication policy (#156)
+
+Automatic Encounter output stays **in the world**, not in chat or above the hotbar. Opening,
+Anchor exposure, shield changes, wave/finale transitions, attack announcements and landing states
+produce no automatic chat, action bars or replacement title feed. This applies to new waves and
+attacks too, including debug-triggered attacks and both moving and legacy profiles; no opt-in
+chat/actionbar setting is provided.
+
+Keep floating labels/countdowns, sounds and applicable Attack Warning visuals. Particle redesign
+belongs to individual attacks, not this policy. The vanilla dragon boss bar is untouched; the
+enhanced-Wither boss/countdown presentation remains available and is not suppressed by Crown UI.
+Only **explicitly requested** `/dragondebug` results, errors and status use chat, through the
+recipient-localized message service. Status fields/attack enum names and low-level placement or
+exception diagnostics remain technical identifiers; the surrounding reply and eligibility guidance
+are translated in English/German. Replies go only to the requesting operator, not attack targets.
+
+When adding an attack, observe its world indicators, sounds, native phases and damage at the
+encounter seam; do not use announcement text as evidence that it ran. Assert no unsolicited chat or
+action bars over a complete sequence, and retain command-reply coverage. Existing independent UI
+modules (for example a player's Combat Display preference) are not disabled by this Encounter rule.
+
 ## Live-playtest follow-up: moving attacks
 
 The bundled module is **enabled by default**, with `movement-attacks: true`
@@ -191,8 +212,8 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   returns after 2–2.05 seconds, not at a wall-clock fixed-window boundary. At most 101 buckets and one
   50ms clock task; fractional-hit spam creates no per-hit scheduled work. Budget persists across the
   final interlude and resets only with a new attempt/termination.
-- English/German phase instructions, shield counts and familiar warnings use existing Player Settings
-  localization and the Server Configuration GUI exposes all five new tuning fields. Reload validation
+- Explicit command replies use existing Player Settings localization; phase/shield/attack output
+  follows the quiet communication policy above. The Server Configuration GUI exposes all five new tuning fields. Reload validation
   is atomic and the complete combat profile is snapshotted per attempt. Four opening and two final
   Anchors are fixed mechanics, not extra configuration knobs.
 
@@ -217,9 +238,8 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   spawning and transformations are disabled for owned defenders. Missing defenders are replaced
   within the remaining wave budget, escaped defenders return to the objective, and missing Anchors
   are recreated without clearing the defender gate. Refused spawns abort and restore the battle.
-- Essential per-recipient localized instructions and a once-per-second action bar communicate the
-  phase, shield, remaining Anchors, exposed count, total defenders and damage window. They use the existing message
-  service's Player Settings language resolution. The vanilla dragon boss bar is untouched.
+- Glowing exposed crystals, floating Attack Warning countdowns, visuals and sounds communicate
+  Encounter state without automatic chat or action bars. The vanilla dragon boss bar is untouched.
 - Shield cancellation handles normal and multipart damage events, including explosions and arrows.
   Ordinary crystal healing is cancelled only for the currently managed dragon. Exposed Anchor hits
   from eligible players remove just that objective and suppress its explosion and ignition.
@@ -229,8 +249,8 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
 - Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
   ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
-  a native TextDisplay shows a numeric countdown, and localized action-bar timing plus a dragon
-  growl announces the warning. Impact uses a distinct explosion visual/sound, not a real explosion.
+  a native TextDisplay shows a numeric countdown, and a dragon growl accompanies the warning.
+  Impact uses a distinct explosion visual/sound, not a real explosion.
   Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
   attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters
   arrival protection, or if its warning disappears. No impact footprint may overlap the protected

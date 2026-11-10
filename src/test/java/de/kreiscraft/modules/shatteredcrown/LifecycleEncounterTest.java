@@ -125,7 +125,7 @@ class LifecycleEncounterTest {
         for (double height : new double[] {end.getMinHeight(), 39, end.getMaxHeight() - 1}) {
             player.teleport(new Location(end, 192, height, 0));
             assertThat(encounter.isParticipant(player)).as("height=%s location=%s health=%s status=%s", height,
-                    player.getLocation(), player.getHealth(), encounter.debugStatus()).isTrue();
+                    player.getLocation(), player.getHealth(), status(encounter)).isTrue();
         }
         player.teleport(new Location(end, 192.01, 64, 0));
         assertThat(encounter.isParticipant(player)).isFalse();
@@ -164,7 +164,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.firstEntryPopulation()).isEqualTo(3);
         assertThat(encounter.combatPopulation()).isEqualTo(1);
-        assertThat(encounter.debugStatus()).contains("combat-population=1", "scaling-population=3", "entry-snapshot=3");
+        assertThat(status(encounter)).contains("combat-population=1", "scaling-population=3", "entry-snapshot=3");
         encounter.close();
         assertThat(encounter.firstEntryPopulation()).isZero();
         var recovered = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
@@ -185,7 +185,7 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        assertThat(encounter.debugStatus()).contains("grace-seconds=30.0");
+        assertThat(status(encounter)).contains("grace-seconds=30.0");
         assertThat(crystals()).hasSize(4);
         assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
@@ -217,7 +217,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ofMillis(19999));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
-        assertThat(encounter.debugStatus()).contains("grace-seconds=0.0");
+        assertThat(status(encounter)).contains("grace-seconds=0.0");
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         var resumed = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
                 EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
@@ -237,7 +237,7 @@ class LifecycleEncounterTest {
         invalid.node("opening-grace-seconds").set(value);
         assertThatThrownBy(() -> encounter.configure(ShatteredCrownConfig.load(invalid)))
                 .hasRootCauseMessage("shattered-crown.opening-grace-seconds must be finite and between 0.0 and 120.0");
-        assertThat(encounter.debugStatus()).contains("grace-seconds=30.0");
+        assertThat(status(encounter)).contains("grace-seconds=30.0");
         encounter.close();
     }
 
@@ -248,8 +248,9 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(encounter.debugTrigger(EncounterController.DebugAttack.BOMBARDMENT, player)).startsWith("Started");
-        assertThat(encounter.debugStatus()).contains("grace-seconds=25.0");
+        encounter.debugTrigger(EncounterController.DebugAttack.BOMBARDMENT, player, player);
+        assertThat(player.nextMessage()).contains("BOMBARDMENT");
+        assertThat(status(encounter)).contains("grace-seconds=25.0");
         encounter.debugCancel();
         var next = config.copy();
         next.node("opening-grace-seconds").set(10);
@@ -263,7 +264,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.firstEntryPopulation()).isZero();
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ZERO);
-        assertThat(encounter.debugStatus()).contains("grace-seconds=10.0");
+        assertThat(status(encounter)).contains("grace-seconds=10.0");
         player.teleport(new Location(end, 190, 64, 0));
         assertThat(encounter.isParticipant(player)).isFalse();
         encounter.close();
@@ -720,5 +721,13 @@ class LifecycleEncounterTest {
 
     private List<EnderCrystal> crystals() {
         return end.getEntitiesByClass(EnderCrystal.class).stream().filter(Entity::isValid).toList();
+    }
+
+    private String status(EncounterController encounter) {
+        while (player.nextMessage() != null) {
+            // Read only this explicit debug response, not earlier command output.
+        }
+        encounter.debugStatus(player);
+        return player.nextMessage();
     }
 }

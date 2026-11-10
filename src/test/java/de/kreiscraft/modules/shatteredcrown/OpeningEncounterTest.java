@@ -184,15 +184,12 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void objectiveCountsAndExactlyOneHuntTransitionAreLocalizedForEachParticipant() throws Exception {
+    void independentObjectivesAndDuplicateTransitionsDoNotProduceAutomaticOutput() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         enable();
-        assertThat(player.nextMessage()).contains("four", "Anchors", "defenders");
-        assertThat(german.nextMessage()).contains("vier", "Anker", "Verteidiger");
-        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(player.nextActionBar())).contains("4", "16", "shielded");
-        assertThat(plain.serialize(german.nextActionBar())).contains("4", "16", "geschützt");
+        assertThat(anchors()).hasSize(4);
+        assertThat(defenders()).hasSize(16);
         var objectives = anchors();
         var wave = defenders();
         wave.forEach(this::defeat);
@@ -202,8 +199,10 @@ class OpeningEncounterTest {
         objectives.forEach(this::hit);
         var english = drainMessages(player);
         var deutsch = drainMessages(german);
-        assertThat(english.stream().filter(message -> message.contains("Weather the Hunt"))).hasSize(1);
-        assertThat(deutsch.stream().filter(message -> message.contains("Jagd"))).hasSize(1);
+        assertThat(english).isEmpty();
+        assertThat(deutsch).isEmpty();
+        assertThat(drainActionBars(player)).isEmpty();
+        assertThat(drainActionBars(german)).isEmpty();
         assertThat(hit(dragon).isCancelled()).isFalse();
     }
 
@@ -322,7 +321,7 @@ class OpeningEncounterTest {
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(20);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
-        assertThat(drainMessages(player).stream().filter(message -> message.contains("Weather the Hunt"))).hasSize(1);
+        assertThat(drainMessages(player)).isEmpty();
     }
 
     @Test
@@ -532,15 +531,16 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void warningsIncludeLocalizedTimingAndDistinctNativeSoundsWithoutRepeatedChatInstructions() throws Exception {
+    void warningsKeepWorldCountdownAndDistinctNativeSoundsWithoutChatOrActionBars() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         enable();
-        drainMessages(player);
-        drainMessages(german);
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(drainActionBars(player)).anyMatch(text -> text.contains("Bombardment in 3.0s"));
-        assertThat(drainActionBars(german)).anyMatch(text -> text.contains("Bombardierung in 3.0s"));
+        assertThat(drainActionBars(player)).isEmpty();
+        assertThat(drainActionBars(german)).isEmpty();
+        var countdown = end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class).iterator().next();
+        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        assertThat(plain.serialize(countdown.text())).contains("3");
         assertThat(player.getHeardSounds()).anyMatch(sound -> sound.getSound().contains("ender_dragon.growl"));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHeardSounds()).anyMatch(sound -> sound.getSound().contains("generic.explode"));

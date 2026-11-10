@@ -797,20 +797,21 @@ class FinalEncounterTest {
     }
 
     @Test
-    void finalInterludeHasFamiliarLocalizedBombardmentsAndClearTwoObjectiveShieldPresentation() throws Exception {
+    void finalInterludeAndShieldReleaseStayQuietWhileWorldCountdownAndNativeBossBarRemain() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         hunt();
+        var bossBar = dragon.getDragonBattle().getBossBar();
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
-        assertThat(messages(player)).anyMatch(text -> text.contains("Two Anchors return once"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("Zwei Anker kehren einmal"));
-        assertThat(bars(player))
-                .anyMatch(text -> text.contains("Shatter the Last Stand") && text.contains("Anchors: 2"));
-        assertThat(bars(german)).anyMatch(text -> text.contains("letzten Widerstand") && text.contains("Anker: 2"));
+        assertThat(crystals()).hasSize(2);
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        assertThat(bars(player)).anyMatch(text -> text.contains("Bombardment in 3.0s"));
-        assertThat(bars(german)).anyMatch(text -> text.contains("Bombardierung in 3.0s"));
+        var countdown = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        assertThat(plain.serialize(countdown.text())).contains("3");
+        scheduler.advance(Duration.ofMillis(250));
+        assertThat(plain.serialize(countdown.text())).contains("2.8");
         player.teleport(player.getLocation().add(6, 0, 0));
         german.teleport(german.getLocation().add(6, 0, 0));
         scheduler.advance(Duration.ofSeconds(3));
@@ -818,11 +819,12 @@ class FinalEncounterTest {
         assertThat(german.getHealth()).isEqualTo(20);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         clearAnchors();
-        assertThat(messages(player)).anyMatch(text -> text.contains("Both final Anchors"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("Beide finalen Anker"));
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(bars(player)).anyMatch(text -> text.contains("Faster attacks, shorter pools"));
-        assertThat(bars(german)).anyMatch(text -> text.contains("Schnellere Angriffe"));
+        assertThat(dragon.getDragonBattle().getBossBar()).isSameAs(bossBar);
+        for (PlayerMock recipient : List.of(player, german)) {
+            assertThat(messages(recipient)).isEmpty();
+            assertThat(bars(recipient)).isEmpty();
+        }
     }
 
     private List<String> messages(PlayerMock recipient) {
@@ -891,7 +893,7 @@ class FinalEncounterTest {
         clearAnchors();
 
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(bars(player)).anyMatch(text -> text.contains("Breath lane in 3.0s"));
+        assertThat(bars(player)).isEmpty();
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         moveParticipants(16.5, 12.5); // Diagonal escape clears either cardinal lane orientation.
         scheduler.advance(Duration.ofSeconds(10));
@@ -915,7 +917,7 @@ class FinalEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofMillis(7500)); // Hunt 50s: the fixed sweep follows the clear melee window.
-        assertThat(bars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
+        assertWorldCountdown("4.0s");
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofSeconds(4));
         assertParticipantHealth(17);
@@ -943,7 +945,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofSeconds(9));
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofMillis(1500)); // Final 17.5s; lane has expired, fixed sweep warns.
-        assertThat(bars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
+        assertWorldCountdown("4.0s");
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofMillis(4250));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
@@ -967,6 +969,17 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertParticipantHealth(17);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isEqualTo(previouslyKilled);
+        for (var participant : end.getPlayers()) {
+            var recipient = (PlayerMock) participant;
+            assertThat(messages(recipient)).isEmpty();
+            assertThat(bars(recipient)).isEmpty();
+        }
+    }
+
+    private void assertWorldCountdown(String expected) {
+        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        assertThat(end.getEntitiesByClass(TextDisplay.class))
+                .anyMatch(display -> plain.serialize(display.text()).equals(expected));
     }
 
     private void moveParticipants(double x, double z) {

@@ -14,6 +14,7 @@ import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.TextDisplay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -48,7 +49,11 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 
-/** Owns one managed battle's attempt, objectives and cancellable work on the server thread. */
+/**
+ * Owns one managed battle's attempt, objectives and cancellable work on the server thread.
+ * Communication policy: automatic cues stay in-world (displays, sounds, visuals, native boss bars),
+ * never chat, action bars or replacement titles. Only explicitly requested debug replies use chat.
+ */
 public final class EncounterController implements Listener, AutoCloseable {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
@@ -174,21 +179,24 @@ public final class EncounterController implements Listener, AutoCloseable {
                 || !lanes.isEmpty() || !marks.isEmpty() || !areas.isEmpty();
     }
 
-    String debugStatus() {
+    void debugStatus(CommandSender sender) {
         if (dragon == null) {
-            return "No active encounter; enter the configured End arena in survival/adventure."
-                    + "; combat-population=0, scaling-population=" + scalingPopulation()
-                    + ", entry-snapshot=" + entryPopulation + ", grace-seconds=0.0";
+            messages.send(sender, "shattered-crown.debug-no-encounter");
+            messages.send(sender, "shattered-crown.debug-status", "status",
+                    "combat-population=0, scaling-population=" + scalingPopulation()
+                            + ", entry-snapshot=" + entryPopulation + ", grace-seconds=0.0");
+            return;
         }
-        return "mode=" + (manualMode ? "manual" : "automatic") + ", phase="
-                + (hunting ? "hunt" : "anchors") + ", final=" + finalEntered
-                + ", attack=" + activeAttack()
-                + ", queued=[" + (rotation == null ? "" : rotation.queued()) + "]"
-                + ", lanes=" + lanes.size() + ", marks=" + marks.size() + ", areas=" + areas.size()
-                + ", landing=" + landingRequested + ", flight=" + (flight != null)
-                + ", native=" + dragon.getPhase()
-                + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
-                + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + graceTicks / 20.0;
+        messages.send(sender, "shattered-crown.debug-status", "status",
+                "mode=" + (manualMode ? "manual" : "automatic") + ", phase="
+                        + (hunting ? "hunt" : "anchors") + ", final=" + finalEntered
+                        + ", attack=" + activeAttack()
+                        + ", queued=[" + (rotation == null ? "" : rotation.queued()) + "]"
+                        + ", lanes=" + lanes.size() + ", marks=" + marks.size() + ", areas=" + areas.size()
+                        + ", landing=" + landingRequested + ", flight=" + (flight != null)
+                        + ", native=" + dragon.getPhase()
+                        + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
+                        + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + graceTicks / 20.0);
     }
 
     private String activeAttack() {
@@ -236,18 +244,21 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
     }
 
-    String debugTrigger(DebugAttack attack, Player target) {
+    void debugTrigger(DebugAttack attack, Player target, CommandSender sender) {
         if (closed) {
-            return "Encounter module is disabled.";
+            messages.send(sender, "shattered-crown.debug-disabled");
+            return;
         }
         if (dragon == null) {
             pulse();
         }
         if (dragon == null) {
-            return "No active encounter; enter the configured End arena in survival/adventure.";
+            messages.send(sender, "shattered-crown.debug-no-encounter");
+            return;
         }
         if (!isParticipant(target)) {
-            return "Target must be alive in survival/adventure inside the combat arena, outside protected arrival.";
+            messages.send(sender, "shattered-crown.debug-target-ineligible");
+            return;
         }
         debugPause();
         debugAttack = attack;
@@ -264,14 +275,16 @@ public final class EncounterController implements Listener, AutoCloseable {
         } catch (RuntimeException error) {
             resetAttacks();
             server.getLogger().log(java.util.logging.Level.WARNING, "[Shattered Crown] Debug attack failed", error);
-            return "Attack failed: " + error.getMessage();
+            messages.send(sender, "shattered-crown.debug-failed", "reason", error.getMessage());
+            return;
         }
         if (!busy()) {
             String reason = arena.rejection();
             resetAttacks();
-            return "Not started: " + reason;
+            messages.send(sender, "shattered-crown.debug-not-started", "reason", reason);
+            return;
         }
-        return "Started " + attack + " targeting " + target.getName() + "; automatic attacks paused.";
+        messages.send(sender, "shattered-crown.debug-started", "attack", attack, "player", target.getName());
     }
 
     private void resetAttacks() {
@@ -368,7 +381,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             maintainDefenders();
             updateAbsence(null, false);
-            showStatus();
             return;
         }
         config = nextConfig;
@@ -417,8 +429,6 @@ public final class EncounterController implements Listener, AutoCloseable {
         for (Location ground : grounds) {
             installAnchor(ground);
         }
-        announce("shattered-crown.opening");
-        showStatus();
         targetCursor = 0;
         graceTicks = Math.round(config.openingGraceSeconds() * 20);
         if (graceTicks == 0) {
@@ -483,8 +493,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                     "[Shattered Crown] Final Anchor setup aborted; retry in 30 seconds", exception);
             return;
         }
-        announce("shattered-crown.final-anchors");
-        showStatus();
         scheduleBombardments();
         updateAbsence(null, false);
     }
@@ -623,7 +631,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             landingDeferral = null;
         }
         landingRequested = true;
-        announce("shattered-crown.landing-approach");
         dragon.setPhase(EnderDragon.Phase.FLY_TO_PORTAL);
         if (dragon == null || !attacking()) {
             return;
@@ -639,7 +646,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 if (dragon == null || !attacking()) {
                     return;
                 }
-                announce("shattered-crown.landing-window");
                 landingEnd = attackWork.later(seconds(config.landingWindowSeconds()), this::endLanding);
             }
         });
@@ -749,8 +755,6 @@ public final class EncounterController implements Listener, AutoCloseable {
         battles.faceWarningToViewer(lane.indicator);
         lanes.add(lane);
         targets.forEach(player -> {
-            player.sendActionBar(messages.renderFor(player, "shattered-crown.lane-warning", "seconds",
-                    config.laneWarningSeconds()));
             player.playSound(lane.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
         drawLane(lane);
@@ -828,8 +832,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             final double[] age = {0};
             mark.text(Component.text(target.getName() + " · " + config.preyCountdownSeconds() + "s",
                     NamedTextColor.GOLD));
-            target.sendActionBar(messages.renderFor(target, "shattered-crown.prey-warning", "seconds",
-                    config.preyCountdownSeconds()));
             target.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
             final Scheduler.Task[] refresh = new Scheduler.Task[1];
             refresh[0] = attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
@@ -845,7 +847,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 mark.text(Component.text(
                         target.getName() + " · " + String.format(java.util.Locale.ROOT, "%.1fs", remaining),
                         NamedTextColor.GOLD));
-                target.sendActionBar(messages.renderFor(target, "shattered-crown.prey-warning", "seconds", remaining));
                 Location ground = arena.groundBelow(target.getLocation());
                 if (ground != null) {
                     drawAreaRing(new HuntArea(ground, config.poolRadius()), Particle.FLAME);
@@ -975,7 +976,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                     lanes.remove(lane);
                 });
         DragonFlight movement = flight;
-        announce("shattered-crown.dive-warning");
         Location origin = source.getLocation();
         movement.start(t -> DragonFlight.between(origin, start, t), config.laneWarningSeconds(), position -> {
             lane.age += 0.05;
@@ -1072,7 +1072,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                     areas.remove(area);
                 });
         DragonFlight movement = flight;
-        announce("shattered-crown.smash-warning");
         Location origin = source.getLocation();
         movement.start(t -> DragonFlight.between(origin, above, t), warning, position -> {
             area.age += 0.05;
@@ -1223,8 +1222,6 @@ public final class EncounterController implements Listener, AutoCloseable {
         battles.faceWarningToViewer(sweep.indicator);
         areas.add(sweep);
         participants.forEach(player -> {
-            player.sendActionBar(messages.renderFor(player, "shattered-crown.sweep-warning", "seconds",
-                    config.sweepWarningSeconds()));
             player.playSound(sweep.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
         sweep.indicator.text(Component.text(config.sweepWarningSeconds() + "s", NamedTextColor.GOLD));
@@ -1323,8 +1320,6 @@ public final class EncounterController implements Listener, AutoCloseable {
         bombardmentIndicator.setShadowed(true);
         bombardmentIndicator.text(Component.text(config.bombardmentWarningSeconds(), NamedTextColor.GOLD));
         targets.forEach(player -> {
-            player.sendActionBar(messages.renderFor(player, "shattered-crown.bombardment-warning", "seconds",
-                    config.bombardmentWarningSeconds()));
             player.playSound(impact, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
         drawBombardment(impact);
@@ -1646,10 +1641,8 @@ public final class EncounterController implements Listener, AutoCloseable {
                 anchors.remove(objective);
                 if (anchors.isEmpty()) {
                     stopBombardments();
-                    announce(finalEntered ? "shattered-crown.final-hunt" : "shattered-crown.unshielded");
                     startHunt();
                 }
-                showStatus();
             }
         }
         if (target instanceof Player player && isProtectedArrival(player.getLocation()) && defenders.contains(source)) {
@@ -1778,7 +1771,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             for (Anchor anchor : anchors) {
                 if (anchor.wave.remove(event.getEntity()) && anchor.wave.isEmpty()) {
                     anchor.crystal.setGlowing(true);
-                    announce("shattered-crown.exposed");
                 }
             }
         }
@@ -1797,33 +1789,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 enterFinalGate();
             }
         }
-    }
-
-    private void announce(String key) {
-        if (dragon != null) {
-            dragon.getWorld().getPlayers().stream().filter(arena::participant)
-                    .forEach(player -> messages.send(player, key));
-        }
-    }
-
-    private void showStatus() {
-        if (dragon == null) {
-            return;
-        }
-        dragon.getWorld().getPlayers().stream().filter(arena::participant)
-                .forEach(player -> {
-                    if (anchors.isEmpty()) {
-                        player.sendActionBar(messages.renderFor(player,
-                                finalEntered ? "shattered-crown.final-status" : "shattered-crown.hunt-status"));
-                    } else {
-                        player.sendActionBar(messages.renderFor(player,
-                                finalEntered ? "shattered-crown.final-shield-status" : "shattered-crown.shield-status",
-                                "anchors",
-                                anchors.size(), "exposed",
-                                anchors.stream().filter(anchor -> anchor.wave.isEmpty()).count(),
-                                "defenders", defenders.size()));
-                    }
-                });
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
