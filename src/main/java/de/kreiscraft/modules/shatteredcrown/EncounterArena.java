@@ -276,6 +276,18 @@ final class EncounterArena {
         return escapes || reject("area has no body-sized escape within warning time");
     }
 
+    /** Owned pools may overlap; their combined danger still needs a body-sized walking escape. */
+    boolean poolsSafe(List<HuntArea> pools, List<BreathLane> lanes, List<Player> participants, double warningSeconds) {
+        if (!pools.stream().allMatch(pool -> areaSafe(pool, List.of(), lanes, participants, warningSeconds))) {
+            return false;
+        }
+        return participants.stream()
+                .filter(player -> pools.stream().anyMatch(pool -> pool.contains(player.getLocation(), 1)))
+                .allMatch(player -> terrainEscape(player.getLocation(),
+                        step -> pools.stream().anyMatch(pool -> pool.contains(step, 1)), lanes, List.of(),
+                        List.of(), warningSeconds));
+    }
+
     /** Resolve feet to nearby footing, including a player jumping when a mark expires. */
     Location groundBelow(Location feet) {
         if (config.movementAttacks()) {

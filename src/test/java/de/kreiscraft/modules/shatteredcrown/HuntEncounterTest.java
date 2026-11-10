@@ -148,6 +148,8 @@ class HuntEncounterTest {
         config = BasicConfigurationNode.root();
         config.node("opening-grace-seconds").set(0); // Isolate attack timing from the separately tested opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
+        config.node("prey-percentage").set(100); // Legacy multi-target geometry cases mark every participant.
+        config.node("pool-radius").set(3); // Those fixtures retain their original escape/boundary dimensions.
         // Lane-focused scenarios defer the newly coordinated attacks; dedicated cases set their cadences.
         config.node("prey-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
@@ -1232,7 +1234,7 @@ class HuntEncounterTest {
         config.node("lane-damage").set(0);
         config.node("pool-damage").set(0);
         config.node("sweep-damage").set(0);
-        config.node("prey-count").set(4);
+        config.node("prey-percentage").set(35);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
         scheduler = org.mockito.Mockito.spy(scheduler);
@@ -1262,8 +1264,8 @@ class HuntEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     nativePhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(4);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(20);
+                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(7);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertThat(end.getPlayers())
                         .allSatisfy(participant -> assertThat(participant.getHealth()).isEqualTo(20));
             }
@@ -1430,9 +1432,109 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"4,4,2", "8,8,3", "20,20,7", "20,2,2"})
+    void automaticPreyRoundsAllEndPopulationUpAndCapsOnlyByEligibleTargets(int population, int eligible,
+            int expected) throws Exception {
+        config.node("prey-percentage").set(null); // Exercise the production 35% default.
+        config.node("prey-count").set(1); // Retired input cannot silently truncate population scaling.
+        config.node("lane-cadence-seconds").set(120);
+        for (int index = 1; index < population; index++) {
+            var other = server.addPlayer();
+            other.teleport(new Location(end, index < eligible ? -15.5 : 1000, 64, 0.5));
+            if (index >= eligible && index % 3 != 0) {
+                other.teleport(new Location(end, 0.5, 64, 0.5));
+                other.setGameMode(index % 3 == 1 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
+            }
+            if (index == 1) {
+                other.setGameMode(org.bukkit.GameMode.ADVENTURE);
+                other.teleport(new Location(end, -15.5, end.getMaxHeight() - 1, 0.5));
+            }
+            if (index == population - 1 && eligible < population) {
+                other.setGameMode(org.bukkit.GameMode.SURVIVAL);
+                other.teleport(new Location(end, 100, 50, 0));
+            }
+        }
+        var unrelated = server.addPlayer();
+        var unrelatedEnd = server.addSimpleWorld("other-end");
+        unrelatedEnd.setEnvironment(World.Environment.THE_END);
+        unrelated.teleport(new Location(unrelatedEnd, 0, 64, 0));
+        prey();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(expected);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).extracting(display -> display.text())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
+    void defaultPreyPoolsMayOverlapWithoutMultiplyingDamage() throws Exception {
+        config.node("pool-radius").set(null);
+        var teammate = server.addPlayer();
+        teammate.teleport(player.getLocation().add(2, 0, 0));
+        prey();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        player.teleport(new Location(end, 17.5, 64, 0.5)); // Inclusive edge of teammate's radius-five pool only.
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(teammate.getHealth()).isEqualTo(14);
+    }
+
+    @Test
+    void depositionCompletesBeforeLingeringPoolsAndAllowsTheNextMeleeLanding() throws Exception {
+        config.node("pool-lifetime-seconds").set(15);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("movement-attacks").set(true);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(24));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        player.teleport(new Location(end, -10.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        dragon.teleport(new Location(end, 0, 64, 0));
+        dragon.setPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+    }
+
+    @Test
+    void theNextAutomaticPreyStartsWhileThePreviousPoolIsStillOwned() throws Exception {
+        config.node("prey-cadence-seconds").set(5);
+        config.node("pool-lifetime-seconds").set(15);
+        config.node("lane-cadence-seconds").set(120);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(9));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        player.teleport(new Location(end, -15.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2); // Old pool plus the next mark.
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2); // Both independent pools.
+        assertThat(player.getHealth()).isEqualTo(14);
+    }
+
+    @Test
+    void invalidatingTheLastMarkCompletesTheMainActionWithoutWaitingForItsOldCountdown() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerGameModeChangeEvent(player,
+                org.bukkit.GameMode.SPECTATOR,
+                org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.UNKNOWN, null));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("marks=0"));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"arrival", "world", "death", "quit", "arena",
             "creative", "spectator", "arrival-return"})
     void preyInvalidationPermanentlyCancelsOnlyThatPlayersPendingPool(String departure) throws Exception {
+        config.node("pool-radius").set(null);
         var teammate = server.addPlayer();
         teammate.teleport(new Location(end, -15.5, 64, 0.5));
         prey();
@@ -1462,6 +1564,7 @@ class HuntEncounterTest {
             strings = {"arrival", "arrival-teleport", "world", "arena", "creative", "spectator", "death", "quit"})
     void publicDepartureEventsCancelTheSameMarkEvenIfEligibilityReturnsBeforeTheNextTick(String departure)
             throws Exception {
+        config.node("pool-radius").set(null);
         var teammate = server.addPlayer();
         teammate.teleport(new Location(end, -15.5, 64, 0.5));
         prey();
@@ -1540,14 +1643,14 @@ class HuntEncounterTest {
     }
 
     @Test
-    void stackedMarksCreateOnlyOneFinitePoolAndItsRadiusCadenceAndExpiryMatchTheWarning() throws Exception {
+    void stackedMarksKeepIndependentFinitePoolsWithoutAnExtraDamagePulseAtExpiry() throws Exception {
         config.node("pool-lifetime-seconds").set(1);
         var teammate = server.addPlayer();
         teammate.teleport(player.getLocation());
         prey();
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         assertThat(player.getHealth()).isEqualTo(17);
         assertThat(teammate.getHealth()).isEqualTo(17);
         var edge = server.addPlayer();
@@ -1645,7 +1748,8 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"prey-count,5", "prey-cadence-seconds,10", "prey-countdown-seconds,1",
+    @org.junit.jupiter.params.provider.CsvSource({"prey-percentage,101", "prey-cadence-seconds,4",
+            "prey-countdown-seconds,1",
             "pool-radius,7", "pool-damage,NaN", "pool-damage-cadence-seconds,0", "pool-lifetime-seconds,16",
             "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-cadence-seconds,4",
             "sweep-damage,Infinity", "sweep-knockback,3"})
@@ -1834,7 +1938,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void aSecondWarnedPoolCannotCutOffTheFirstPoolsOnlyReachableEscape() throws Exception {
+    void playersMayWalkAcrossOverlappingOwnedDangerToReachTheCombinedEscape() throws Exception {
         config.node("pool-radius").set(1);
         var teammate = server.addPlayer();
         var ordered = List.of(player, teammate).stream()
@@ -1853,11 +1957,11 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
-        assertThat(ordered.getLast().getHealth()).isEqualTo(20);
+        assertThat(ordered.getLast().getHealth()).isEqualTo(17);
         ordered.getFirst().teleport(new Location(end, 13, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
+        assertThat(ordered.getFirst().getHealth()).isEqualTo(14);
     }
 }
