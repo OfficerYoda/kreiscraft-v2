@@ -485,7 +485,8 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
   "type": "CHAT",
   "content": "hello",
   "source": "player",
-  "playerName": "PlayerName"
+  "playerName": "PlayerName",
+  "playerColor": "#aaaaaa"
 }
 ```
 
@@ -495,12 +496,13 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 | `content`    | String                        | Plain message body, without in-game prefixes, sender names, or colour codes.      |
 | `source`     | `player` \| `web` \| `system` | Origin of the chat message.                                                      |
 | `playerName` | String, optional              | Exact Minecraft username. Required when `source` is `player`; omitted otherwise. |
+| `playerColor` | String, optional             | Player-name colour as `#rrggbb`, matching the player's in-game status colour at send time. Required for `player`; omitted otherwise. |
 
 ### Message Types
 
 | Type           | Direction       | Description                                                                                                                                                                                                      |
 | -------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CHAT`         | Server → Client | Chat forwarded to the browser. Player messages include `source: "player"` and `playerName`; `content` contains only the plain message body. |
+| `CHAT`         | Server → Client | Chat forwarded to the browser. Player messages include `source: "player"`, `playerName`, and `playerColor`; `content` contains only the plain message body. |
 | `CHAT`         | Client → Server | A chat message sent from the browser. Content is broadcast to in-game chat via `MessageService.broadcast("api.chat-format-from-web", "content", <content>)` and echoed to all other connected WebSocket clients. |
 | `PING`         | Server → Client | Heartbeat ping sent every `heartbeat-interval`. Content: `"heartbeat ping"`.                                                                                                                                     |
 | `PONG`         | Client → Server | Expected reply to `PING`. Server ignores this message.                                                                                                                                                           |
@@ -512,7 +514,8 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 
 Browser messages use the pre-computed plain message body from `ChatBridge`, not
 the rendered in-game chat line. For example, OfficerYoda sending `hi` produces
-`content: "hi"` and `playerName: "OfficerYoda"`. In-game formatting is unchanged.
+`content: "hi"`, `playerName: "OfficerYoda"`, and the player's status colour in
+`playerColor` (for example, `"#aaaaaa"`). In-game formatting is unchanged.
 
 ### Heartbeat
 

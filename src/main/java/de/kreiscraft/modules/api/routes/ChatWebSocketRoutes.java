@@ -106,7 +106,8 @@ public final class ChatWebSocketRoutes {
                                 boolean player = event.source() == ChatSource.PLAYER;
                                 broadcastToWsClients(new ChatMessage(
                                         WebSocketMessageType.CHAT, event.plainText(),
-                                        player ? "player" : "system", player ? event.senderName() : null));
+                                        player ? "player" : "system", player ? event.senderName() : null,
+                                        player ? event.senderColor() : null));
                             }
                         });
 
@@ -188,13 +189,14 @@ public final class ChatWebSocketRoutes {
                                     ChatSource.WEB,
                                     null,
                                     "WEB",
+                                    null,
                                     rendered,
                                     msg.content(),
                                     Instant.now()));
                         });
                 // Echo to OTHER connected clients (sender's UI already showed it optimistically)
                 broadcastToWsClientsExcept(
-                        ctx, new ChatMessage(WebSocketMessageType.CHAT, msg.content(), "web", null));
+                        ctx, new ChatMessage(WebSocketMessageType.CHAT, msg.content(), "web", null, null));
             }
             case VERIFICATION, EXCEPTION -> {
                 // ignore

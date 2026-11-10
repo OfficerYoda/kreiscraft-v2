@@ -577,7 +577,7 @@ components:
     # docs/kreiscraft-api/http-api.md.
     PlayerChatMessage:
       type: object
-      required: [type, content, source, playerName]
+      required: [type, content, source, playerName, playerColor]
       properties:
         type:
           type: string
@@ -591,6 +591,11 @@ components:
           const: player
         playerName:
           type: string
+        playerColor:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+          description: Player-name colour matching the in-game status colour at send time.
+          example: "#aaaaaa"
     NonPlayerChatMessage:
       type: object
       required: [type, content, source]

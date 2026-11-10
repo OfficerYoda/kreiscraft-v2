@@ -48,12 +48,15 @@ class JsonRoundTripTest {
     }
 
     @Test
-    void outgoingChatIncludesOriginAndOnlyPlayerMessagesIncludeNames() throws Exception {
-        assertThat(mapper.writeValueAsString(new ChatMessage(WebSocketMessageType.CHAT, "hello", "player", "Alice")))
-                .contains("\"source\":\"player\"", "\"playerName\":\"Alice\"");
+    void outgoingChatIncludesOriginAndOnlyPlayerMessagesIncludeNamesAndColors() throws Exception {
+        var player = new ChatMessage(WebSocketMessageType.CHAT, "hello", "player", "Alice", "#aaaaaa");
+        assertThat(mapper.writeValueAsString(player))
+                .contains("\"source\":\"player\"", "\"playerName\":\"Alice\"", "\"playerColor\":\"#aaaaaa\"");
+        assertThat(mapper.readValue(mapper.writeValueAsString(player), ChatMessage.class)).isEqualTo(player);
         for (String source : List.of("web", "system")) {
-            assertThat(mapper.writeValueAsString(new ChatMessage(WebSocketMessageType.CHAT, "hello", source, null)))
-                    .contains("\"source\":\"" + source + "\"").doesNotContain("playerName");
+            assertThat(
+                    mapper.writeValueAsString(new ChatMessage(WebSocketMessageType.CHAT, "hello", source, null, null)))
+                            .contains("\"source\":\"" + source + "\"").doesNotContain("playerName", "playerColor");
         }
     }
 
