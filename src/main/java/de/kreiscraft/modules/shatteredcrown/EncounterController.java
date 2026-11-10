@@ -132,6 +132,11 @@ public final class EncounterController implements Listener, AutoCloseable {
         return entryPopulation;
     }
 
+    /** Remaining preparation time; manual attack debugging does not replenish this clock. */
+    public double remainingGraceSeconds() {
+        return graceTicks / 20.0;
+    }
+
     /** Everyone connected in the managed End, regardless of mode, health or arena position. */
     public int scalingPopulation() {
         if (closed) {
@@ -199,7 +204,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                         + ", landing=" + landingRequested + ", flight=" + (flight != null)
                         + ", native=" + dragon.getPhase()
                         + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
-                        + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + graceTicks / 20.0);
+                        + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + remainingGraceSeconds());
     }
 
     private String activeAttack() {

@@ -186,6 +186,7 @@ class LifecycleEncounterTest {
         encounter.start();
         scheduler.advance(Duration.ZERO);
         assertThat(status(encounter)).contains("grace-seconds=30.0");
+        assertThat(encounter.remainingGraceSeconds()).isEqualTo(30);
         assertThat(crystals()).hasSize(4);
         assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
@@ -222,9 +223,11 @@ class LifecycleEncounterTest {
         var arrival = server.addPlayer();
         arrival.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofMillis(19999));
+        assertThat(encounter.remainingGraceSeconds()).isEqualTo(0.05);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
         assertThat(status(encounter)).contains("grace-seconds=0.0");
+        assertThat(encounter.remainingGraceSeconds()).isZero();
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         var resumed = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
                 EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
