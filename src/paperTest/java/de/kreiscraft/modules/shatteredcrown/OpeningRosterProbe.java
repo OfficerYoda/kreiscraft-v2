@@ -56,6 +56,8 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
     private boolean damageApplied;
     private boolean done;
     private int recoveryTick;
+    private int recoveryStage;
+    private Mob escapedRider;
 
     private static final class Sink extends Connection {
         private PacketListener listener;
@@ -150,7 +152,21 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                     require(current.stream().allMatch(mob -> Math.abs(mob.getX()) < 192),
                             "mounted arena escape recovery");
                     require(current.size() == 43, "escape/unload recovery is not a defeat or extra life");
-                    verifyCleanup();
+                    if (recoveryStage == 1) {
+                        require(cases.getFirst().isValid() && spawns == 86,
+                                "loaded escape retains original lives without replacement");
+                        require(cases.getFirst().addPassenger(escapedRider),
+                                "reattach same owned rider without another life");
+                        player.getWorld().setChunkForceLoaded(-19, 0, false);
+                        require(cases.getFirst().teleport(new Location(player.getWorld(), -300, 151, 0),
+                                io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
+                                "native unloaded mounted fixture");
+                        recoveryStage = 2;
+                        recoveryTick = ticks;
+                    } else {
+                        require(spawns <= 88, "finite replacement budget for two mounted members");
+                        verifyCleanup();
+                    }
                 }
                 return;
             }
@@ -195,9 +211,12 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                             "park completed calibration group away from projectile path");
                     group.forEach(mob -> mob.setGravity(false));
                     if (++index == cases.size()) {
+                        escapedRider = (Mob) cases.getFirst().getPassengers().getFirst();
+                        player.getWorld().setChunkForceLoaded(-19, 0, true);
                         require(cases.getFirst().teleport(new Location(player.getWorld(), -300, 151, 0),
                                 io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
                                 "escaped mounted fixture");
+                        recoveryStage = 1;
                         recoveryTick = ticks;
                     } else {
                         begin();
