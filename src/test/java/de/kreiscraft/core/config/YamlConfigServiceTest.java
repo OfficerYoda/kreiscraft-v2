@@ -123,14 +123,14 @@ class YamlConfigServiceTest {
             "admin", "api", "ai-chat", "anti-cheat", "bedrock", "chat-format", "clickthrough",
             "combat", "effects", "invsee", "jail", "reboot", "settings-gui",
             "sign-color", "sit", "spawn", "start-sequence", "status", "tablist", "update-mode",
-            "wither", "world-mgmt");
+            "wither", "world-mgmt", "shattered-crown");
 
     /**
      * Modules that ship inactive by default. Their implementations remain available for explicit
      * opt-in via {@code modules.<id>.enabled: true}; see the Module Catalog for the rationale.
      */
     private static final List<String> DEFAULT_DISABLED = List.of(
-            "firework", "positions", "shattered-crown");
+            "firework", "positions");
 
     @Test
     void everyModuleSection_hasEnabledKey(@TempDir Path tmp) throws IOException {

@@ -11,6 +11,7 @@ final class HuntArea {
     final double halfAngle;
     TextDisplay indicator;
     double age;
+    AttackSurface surface;
 
     HuntArea(Location center, double radius) {
         this(center, radius, 0, 360);
@@ -27,7 +28,8 @@ final class HuntArea {
     boolean contains(Location location, double margin) {
         double dx = location.getX() - center.getX();
         double dz = location.getZ() - center.getZ();
-        return center.getWorld().equals(location.getWorld()) && Math.abs(location.getY() - center.getY()) <= 3
+        return center.getWorld().equals(location.getWorld())
+                && (surface == null ? Math.abs(location.getY() - center.getY()) <= 3 : surface.containsHeight(location))
                 && dx * dx + dz * dz <= Math.pow(radius + margin, 2) + 1e-9
                 && (halfAngle == Math.PI || Math.hypot(dx, dz) <= margin
                         || Math.abs(Math.atan2(Math.sin(Math.atan2(dz, dx) - direction),
@@ -36,6 +38,8 @@ final class HuntArea {
     }
 
     Location point(double angle, double distance) {
-        return center.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+        Location point = center.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+        Location ground = surface == null ? null : surface.project(point);
+        return ground == null ? point : ground;
     }
 }

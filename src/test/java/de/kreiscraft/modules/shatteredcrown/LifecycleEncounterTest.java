@@ -80,6 +80,11 @@ class LifecycleEncounterTest {
         // Only unsupported Paper lookup/native attribute metadata is adapted, not encounter behavior.
         battles = new DragonBattleAccess() {
             @Override
+            public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
+                return new SimulatedDragonFlight(source, scheduler, tick);
+            }
+
+            @Override
             public org.bukkit.boss.DragonBattle battle(World world) {
                 return world == end ? dragon.getDragonBattle() : null;
             }

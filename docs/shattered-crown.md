@@ -6,7 +6,8 @@ title: The Shattered Crown
 
 ## Live-playtest follow-up: moving attacks
 
-The current default is `movement-attacks: true` (YAML-only, snapshotted per attempt).
+The bundled module is **enabled by default**, with `movement-attacks: true`
+(YAML-only, snapshotted per attempt).
 This replaces stationary Hunt lanes with a **marked-strip dive** and stationary wing sectors
 with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
 
@@ -18,17 +19,29 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   blocks; warning time is at least `(radius + 2) / 3` seconds. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
   `sweep-angle` applies only to legacy sectors.
-- Flight uses tick-sized Paper teleports in `HOVER`, retaining native hitbox updates. Native contact
+- Flight uses an owned native **airborne charge phase**, applying movement inside the dragon tick
+  before multipart repositioning, with no repeated teleports or no-AI state. Native contact
   damage, push and block destruction are suppressed during the scripted move. Custom hits follow
   encounter eligibility and combat cancellation. Attack cleanup restores native flight; existing
   persistent phase recovery handles restarts. New attack warnings wait while flight is active.
-- Prey now resolves nearby ground below a jumping player and renders a filled purple breath disk
+- Dive strips, smash disks and Prey pools now snapshot local ground heights (up to six blocks of
+  relief from the center). Warning particles and damage use the same surface. Escape checks follow
+  one-block steps with player-body clearance, additional uphill time, and void/cloud exclusion.
+  Changed footing cancels the attack instead of silently moving its warning.
+- The default Hunt rotation retains overdue attacks through other attacks and landings. Oldest due
+  attacks get priority; refused placement retries after one second and does not block other families.
+  `INFO` diagnostics identify deferred attack families and busy/placement categories at most once per
+  family per 30 seconds. Native driver acquisition/interruption failures are logged with their cause.
+- Prey resolves nearby ground below a jumping player and renders a filled purple breath disk
   with an activation sound. The shared damage source supplies both direct and causing dragon entities,
   fixing Paper's `Direct entity must be set if causing entity is set` exception. Unsafe placements
   still cancel; reasons are available through the plugin logger at `FINE` level.
 
-Automated checks cover production damage-source attribution, dive timing/dodging/disable, smash
-impact/recovery, and jumping at Prey expiry. **Client-visible flight smoothness, model alignment,
+Automated checks cover production damage-source attribution, terrain-aware dive timing/dodging/disable,
+smash impact/recovery, Prey expiry, and all attack families with the complete default rotation.
+A disposable real-Paper probe verifies native ticking, multipart movement and phase restoration;
+see [native flight implementation and evidence](/shattered-crown-native-flight/).
+**Client-visible flight smoothness, model alignment,
 real combat and multiplayer balance still require a new live Paper playtest.**
 
 ## Earlier encounter contract
@@ -47,7 +60,8 @@ combat/AI/rendering and native reward generation remain unvalidated.
 
 ## Enable and tune
 
-Set `modules.shattered-crown.enabled: true` and restart. The module has no feature-module
+New configurations default to `modules.shattered-crown.enabled: true`. Existing configurations retain
+their saved flag; set it to true and restart to activate. The module has no feature-module
 dependencies and does not enable Dimension Access. `world-key` defaults to `minecraft:the_end`;
 use the actual namespaced key for the designated main End, not its legacy Bukkit directory name.
 Only that world's `DragonBattle.getEnderDragon()` is managed, including subsequent vanilla ritual

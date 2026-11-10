@@ -82,6 +82,11 @@ class FinalEncounterTest {
         scheduler = new MockScheduler();
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
+                return new SimulatedDragonFlight(source, scheduler, tick);
+            }
+
+            @Override
             public org.bukkit.boss.DragonBattle battle(World world) {
                 return world == end ? dragon.getDragonBattle() : null;
             }

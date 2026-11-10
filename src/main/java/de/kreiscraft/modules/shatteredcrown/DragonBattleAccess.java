@@ -15,6 +15,10 @@ import org.bukkit.entity.TextDisplay;
 public interface DragonBattleAccess {
     DragonBattle battle(World world);
 
+    default de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon dragon, Runnable tick) {
+        return new de.kreiscraft.platform.NmsDragonFlight(dragon, tick);
+    }
+
     default void preventDespawn(Mob defender) {
         defender.setRemoveWhenFarAway(false);
     }

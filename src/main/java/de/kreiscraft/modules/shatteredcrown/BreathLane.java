@@ -11,6 +11,7 @@ final class BreathLane {
     final boolean eastWest;
     TextDisplay indicator;
     double age;
+    AttackSurface surface;
     boolean active;
 
     BreathLane(Location center, double length, double width, boolean eastWest) {
@@ -21,12 +22,15 @@ final class BreathLane {
     }
 
     boolean contains(Location location, double margin) {
-        return center.getWorld().equals(location.getWorld()) && Math.abs(location.getY() - center.getY()) <= 3
+        return center.getWorld().equals(location.getWorld())
+                && (surface == null ? Math.abs(location.getY() - center.getY()) <= 3 : surface.containsHeight(location))
                 && Math.abs(location.getX() - center.getX()) <= (eastWest ? length : width) / 2 + margin
                 && Math.abs(location.getZ() - center.getZ()) <= (eastWest ? width : length) / 2 + margin;
     }
 
     Location point(double along, double across) {
-        return center.clone().add(eastWest ? along : across, 0, eastWest ? across : along);
+        Location point = center.clone().add(eastWest ? along : across, 0, eastWest ? across : along);
+        Location ground = surface == null ? null : surface.project(point);
+        return ground == null ? point : ground;
     }
 }

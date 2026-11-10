@@ -77,6 +77,11 @@ class HuntEncounterTest {
         scheduler = new MockScheduler();
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
+                return new SimulatedDragonFlight(source, scheduler, tick);
+            }
+
+            @Override
             public org.bukkit.boss.DragonBattle battle(World world) {
                 return world == end ? dragon.getDragonBattle() : null;
             }
@@ -177,7 +182,7 @@ class HuntEncounterTest {
         hunt();
         Location origin = dragon.getLocation();
         scheduler.advance(Duration.ofSeconds(11));
-        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         assertThat(dragon.getLocation()).isNotEqualTo(origin);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(2));
@@ -187,6 +192,85 @@ class HuntEncounterTest {
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveStartsOverSteppedTerrainEvenWhenTargetIsJumping() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        // Both possible lane orientations cross a one-block rise, outside the Anchor sites.
+        for (int x = 5; x <= 16; x++) {
+            for (int z = 4; z <= 8; z++) {
+                end.getBlockAt(x, 64, z).setType(Material.END_STONE);
+            }
+        }
+        for (int x = 15; x <= 18; x++) {
+            for (int z = -4; z <= 4; z++) {
+                end.getBlockAt(x, 64, z).setType(Material.END_STONE);
+            }
+        }
+        player.teleport(player.getLocation().add(0, 1.2, 0));
+        scheduler.advance(Duration.ofSeconds(11));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(messages(player)).anyMatch(text -> text.contains("Dive incoming"));
+    }
+
+    @Test
+    void owedSmashRunsAsSoonAsPreyClearsInsteadOfWaitingForAnotherCadence() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(25);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("landing-cadence-seconds").set(120);
+        config.node("pool-damage").set(0);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(31));
+        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
+    }
+
+    @Test
+    void completeDefaultRotationIncludesEveryAttackAcrossTerrainAndLandings() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("prey-cadence-seconds").set(20);
+        config.node("sweep-cadence-seconds").set(25);
+        config.node("pool-damage").set(0);
+        config.node("lane-damage").set(0);
+        config.node("sweep-damage").set(0);
+        hunt();
+        for (int x = 5; x < 18; x++) {
+            for (int z = 4; z < 9; z++) {
+                end.getBlockAt(x, 64, z).setType(Material.END_STONE);
+            }
+        }
+        for (int second = 0; second < 180; second++) {
+            scheduler.advance(Duration.ofSeconds(1));
+            if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
+                dragon.teleport(new Location(end, 0, 67, 0));
+                nativePhase(EnderDragon.Phase.LAND_ON_PORTAL);
+                nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+            }
+        }
+        var chat = messages(player);
+        assertThat(chat).filteredOn(text -> text.contains("Dive incoming")).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(chat).filteredOn(text -> text.contains("Ground smash")).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(chat).anyMatch(text -> text.contains("has landed"));
+        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+    }
+
+    @Test
+    void terrainAwareDiveStillRejectsVoidAndDistantCloudOverlap() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        // A void trench cuts through both candidate orientations, not a climbable one-block rise.
+        end.getBlockAt(11, 63, 0).setType(Material.AIR);
+        scheduler.advance(Duration.ofSeconds(11));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        end.getBlockAt(11, 63, 0).setType(Material.END_STONE);
+        var cloud = end.spawn(new Location(end, 15, 64, 5), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setParticle(org.bukkit.Particle.DRAGON_BREATH);
+        cloud.setRadius(8);
+        scheduler.advance(Duration.ofSeconds(2));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
 
@@ -243,14 +327,14 @@ class HuntEncounterTest {
         config.node("movement-attacks").set(true);
         hunt();
         scheduler.advance(Duration.ofSeconds(12));
-        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         clearFinalGate();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(player.getHealth()).isEqualTo(16);
     }

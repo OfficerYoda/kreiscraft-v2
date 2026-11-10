@@ -128,6 +128,20 @@ val testNms = tasks.register<Test>("testNms") {
     useJUnitPlatform()
 }
 
+// Disposable real-server probe. This artifact is never included in the production plugin.
+val paperTest = sourceSets.create("paperTest") {
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+}
+tasks.register<Jar>("dragonFlightProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dragon-flight-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output)
+    from(sourceSets.main.get().output) {
+        include("de/kreiscraft/platform/NmsDragonFlight*.class", "de/kreiscraft/platform/DragonFlightControl.class")
+    }
+}
+
 tasks.compileJava {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))

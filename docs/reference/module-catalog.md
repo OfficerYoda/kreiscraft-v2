@@ -38,16 +38,15 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Three ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Two ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
 |-----------|--------------------------|
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
-| `shattered-crown` | Opt-in complete implemented encounter; real Paper combat, rewards and representative multiplayer balance remain unvalidated. |
 
-Enable the flag and restart to activate these modules. Shattered Crown implements all three phases;
+Enable the flag and restart to activate these modules. Shattered Crown ships enabled and implements all three phases;
 implementation is not live acceptance. See its [current scope and operator guide](/shattered-crown/).
 
 ---

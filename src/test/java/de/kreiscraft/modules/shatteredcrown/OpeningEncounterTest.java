@@ -76,6 +76,11 @@ class OpeningEncounterTest {
         scheduler = new MockScheduler();
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
+                return new SimulatedDragonFlight(source, scheduler, tick);
+            }
+
+            @Override
             public org.bukkit.boss.DragonBattle battle(World world) {
                 // WorldMock.getEnderDragonBattle is unimplemented; the dragon remains a world entity.
                 return world == end ? dragon.getDragonBattle() : null;

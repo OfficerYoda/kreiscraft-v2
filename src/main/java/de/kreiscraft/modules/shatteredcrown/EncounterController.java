@@ -260,6 +260,29 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         hunting = true;
+        if (config.movementAttacks()) {
+            var rotation = new HuntRotation(
+                    attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5),
+                    attackCadence(config.preyCadenceSeconds(), config.preyCountdownSeconds() + poolLifetime() + 0.5),
+                    attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5),
+                    attackCadence(config.landingCadenceSeconds(), 10),
+                    () -> flight != null || landingRequested || !lanes.isEmpty() || !marks.isEmpty()
+                            || !areas.isEmpty(),
+                    attack -> {
+                        arena.resetRejection();
+                        switch (attack) {
+                            case DIVE -> warnLane();
+                            case PREY -> markPrey();
+                            case SMASH -> warnSweep();
+                            case LANDING -> requestLanding();
+                        }
+                        return flight != null || landingRequested || !marks.isEmpty();
+                    }, (attack, reason) -> server.getLogger()
+                            .info("[Shattered Crown] " + attack + " deferred: "
+                                    + (reason.startsWith("another") ? reason : arena.rejection() + "; retry in 1s")));
+            attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), rotation::tick);
+            return;
+        }
         Duration cadence = seconds(attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5));
         Duration landingCadence = seconds(attackCadence(config.landingCadenceSeconds(), 10));
         attackWork.repeating(landingCadence, landingCadence, () -> {
@@ -387,7 +410,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDragonPhase(org.bukkit.event.entity.EnderDragonChangePhaseEvent event) {
         if (event.getEntity().equals(dragon) && flight != null
-                && event.getNewPhase() != EnderDragon.Phase.HOVER
+                && event.getNewPhase() != EnderDragon.Phase.CHARGE_PLAYER
                 && event.getNewPhase() != EnderDragon.Phase.DYING) {
             event.setCancelled(true);
             return;
@@ -452,12 +475,16 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
+        Location center = config.movementAttacks() ? arena.groundBelow(target.getLocation()) : target.getLocation();
+        if (center == null) {
+            return;
+        }
         var candidate =
-                new BreathLane(target.getLocation(), config.laneLength(), config.laneWidth(), targetCursor % 2 == 1);
-        if (!arena.laneSafe(candidate, lanes, targets)) {
+                new BreathLane(center, config.laneLength(), config.laneWidth(), targetCursor % 2 == 1);
+        if (config.movementAttacks() && !arena.surface(candidate) || !arena.laneSafe(candidate, lanes, targets)) {
             candidate =
-                    new BreathLane(target.getLocation(), config.laneLength(), config.laneWidth(), !candidate.eastWest);
-            if (!arena.laneSafe(candidate, lanes, targets)) {
+                    new BreathLane(center, config.laneLength(), config.laneWidth(), !candidate.eastWest);
+            if (config.movementAttacks() && !arena.surface(candidate) || !arena.laneSafe(candidate, lanes, targets)) {
                 return;
             }
         }
@@ -592,6 +619,9 @@ public final class EncounterController implements Listener, AutoCloseable {
                     return;
                 }
                 var pool = new HuntArea(ground, config.poolRadius());
+                if (config.movementAttacks() && !arena.surface(pool)) {
+                    return;
+                }
                 var participants = source.getWorld().getPlayers().stream().filter(arena::participant).toList();
                 var combined = new ArrayList<>(areas);
                 combined.add(pool);
@@ -689,7 +719,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         battles.faceWarningToViewer(lane.indicator);
         lanes.add(lane);
         ownDragonPhase();
-        flight = new DragonFlight(source, attackWork,
+        flight = new DragonFlight(source, battles, attackWork,
                 () -> dragon == source && hunting && isParticipant(target) && lane.indicator.isValid(), () -> {
                     flight = null;
                     lane.indicator.remove();
@@ -724,15 +754,21 @@ public final class EncounterController implements Listener, AutoCloseable {
             lane.age = config.laneLifetimeSeconds() - 3;
             Set<UUID> hit = new HashSet<>();
             movement.start(t -> {
-                Location position = DragonFlight.between(start, end, t);
-                position.setY(lane.center.getY() + 2 + 12 * Math.pow(Math.max(0, 1 - t * 3), 2));
+                double along = -lane.length / 2 + lane.length * t;
+                Location position = lane.point(along, 0);
+                double groundY = position.getY();
+                for (double across = -lane.width / 2; across <= lane.width / 2; across += 1) {
+                    groundY = Math.max(groundY, lane.point(along, across).getY());
+                }
+                position.setY(groundY + 2 + 12 * Math.pow(Math.max(0, 1 - t * 3), 2));
                 return position;
             }, 3, position -> {
                 lane.age += 0.05;
                 if (Math.round(lane.age * 20) % 5 == 0) {
                     drawLane(lane);
                 }
-                if (position.getY() > lane.center.getY() + 4) {
+                Location ground = lane.surface == null ? lane.center : lane.surface.project(position);
+                if (ground == null || position.getY() > ground.getY() + 5) {
                     return;
                 }
                 for (Player player : source.getWorld().getPlayers()) {
@@ -764,6 +800,9 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         HuntArea area = new HuntArea(ground, radius);
+        if (!arena.surface(area)) {
+            return;
+        }
         Location above = ground.clone().add(0, 18, 0);
         if (!arena.contains(above) || !arena.areaSafe(area, areas, lanes, targets, warning)) {
             return;
@@ -778,7 +817,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         battles.faceWarningToViewer(area.indicator);
         areas.add(area);
         ownDragonPhase();
-        flight = new DragonFlight(source, attackWork,
+        flight = new DragonFlight(source, battles, attackWork,
                 () -> dragon == source && hunting && isParticipant(target) && area.indicator.isValid(), () -> {
                     flight = null;
                     area.indicator.remove();

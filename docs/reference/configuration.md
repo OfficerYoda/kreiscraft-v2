@@ -45,15 +45,14 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following three are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following two are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
-| `shattered-crown` | Cooperative main-End encounter; required live combat and multiplayer balance validation remains outstanding. |
 
-Enable and restart to activate these modules. Before enabling Shattered Crown, verify the designated
+Enable and restart to activate these modules. Shattered Crown defaults to enabled. Verify its designated
 world, actual arrival platform, and usable objective terrain against its
 [initial Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
 documented in the [hunt guide](/shattered-crown-hunt/); reload/restart behavior is documented in the
