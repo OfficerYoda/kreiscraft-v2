@@ -56,10 +56,13 @@ Use [HTTP and WebSocket API Reference](/reference/http-api/) for routes, payload
 
 | Changed fields | Behaviour |
 |----------------|-----------|
-| `host`, `port`, or `cors-origins` | Javalin is stopped and restarted with the new values. Open WebSocket connections are dropped. |
+| `host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout` | Javalin is stopped and restarted with the new values. Open WebSocket connections are dropped; browser-player links are retained. |
 | Any other field | Config object is updated in memory but the running server is **not** restarted. Changes take effect only on the next full server start. |
 
-Fields baked in at construction time (not hot-updatable): `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout`. The `ApiModule` Javadoc documents this constraint explicitly.
+Only metrics and verification tuning (`metrics-refresh-interval`, `verification-timeout`) remains
+baked into longer-lived services. All API settings except `admin-api-key` are editable under
+`/settings admin` → **HTTP API**; these two timers and module enablement show restart-required lore.
+Closing the editor applies hot-reloadable edits automatically, restarting only Javalin when needed.
 
 ---
 

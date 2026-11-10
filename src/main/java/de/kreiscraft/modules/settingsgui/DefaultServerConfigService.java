@@ -6,6 +6,7 @@ import de.kreiscraft.core.config.ConfigField;
 import de.kreiscraft.core.config.ConfigService;
 import de.kreiscraft.core.config.ServerConfigSchema;
 import de.kreiscraft.modules.admin.TpsBarConfig;
+import de.kreiscraft.modules.api.ApiConfig;
 import java.util.List;
 import org.bukkit.Location;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -45,15 +46,19 @@ public final class DefaultServerConfigService implements ServerConfigService {
                 if (DEFAULT_ENABLED_PATHS.contains(field.path())) {
                     return true;
                 }
-                if (field.path().size() != 4
+                ConfigurationNode defaults = node.copy();
+                if (field.category().equals("api") && !field.moduleEnabled()) {
+                    defaults.set(ApiConfig.class, new ApiConfig(null, 0, null, null, null, null, null, null, null));
+                    node = defaults.node(field.path().subList(2, field.path().size()).toArray());
+                } else if (field.path().size() != 4
                         || !field.path().subList(0, 3).equals(java.util.List.of("modules", "admin", "tps-bar"))) {
                     return null;
+                } else {
+                    // Existing installations may not have the new section yet. Display and step the
+                    // same defaults the admin module uses, without writing defaults into live config.
+                    defaults.set(TpsBarConfig.class, new TpsBarConfig());
+                    node = defaults.node(field.path().getLast());
                 }
-                // Existing installations may not have the new section yet. Display and step the
-                // same defaults the admin module uses, without writing defaults into live config.
-                ConfigurationNode defaults = node.copy();
-                defaults.set(TpsBarConfig.class, new TpsBarConfig());
-                node = defaults.node(field.path().getLast());
             }
             return switch (field.type()) {
                 case BOOLEAN -> node.getBoolean();

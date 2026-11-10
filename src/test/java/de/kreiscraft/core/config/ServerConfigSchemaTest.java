@@ -108,18 +108,14 @@ class ServerConfigSchemaTest {
     }
 
     @Test
-    void editableFields_hideCredentialsNetworkingAndOperatorOwnedState() {
+    void editableFields_hideCredentialsAndUnapprovedInfrastructureAndOperatorOwnedState() {
         ServerConfigSchema schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
         List<List<Object>> exposed = schema.guiExposed().stream().map(ConfigField::path).toList();
 
         assertThat(exposed)
-                .as("risky, networking and operator-owned values stay YAML-only")
+                .as("credentials, unapproved infrastructure and operator-owned values stay YAML-only")
                 .noneMatch(
                         path -> path.contains("admin-api-key")
-                                || path.contains("host")
-                                || path.contains("port")
-                                || path.contains("cors-origins")
-                                || path.contains("session-cookie")
                                 || path.contains("channel")
                                 || path.contains("header")
                                 || path.contains("footer")
@@ -128,6 +124,21 @@ class ServerConfigSchemaTest {
                                 || path.contains("auto-save-interval")
                                 || path.contains("active")
                                 || path.contains("has-started"));
+    }
+
+    @Test
+    void apiExposesEveryNonSecretSettingWithAccurateLifecycle() {
+        var fields =
+                ServerConfigSchema.editableFields().stream().filter(field -> field.category().equals("api")).toList();
+        assertThat(fields).extracting(field -> field.path().stream().skip(2).map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining("."))).containsExactlyInAnyOrder(
+                        "host", "port", "cors-origins", "session-cookie.name", "session-cookie.max-age",
+                        "heartbeat-interval", "async-timeout", "metrics-refresh-interval", "verification-timeout");
+        for (ConfigField field : fields) {
+            assertThat(field.guiExposed()).isTrue();
+            assertThat(field.restartRequired()).isEqualTo(
+                    List.of("metrics-refresh-interval", "verification-timeout").contains(field.path().getLast()));
+        }
     }
 
     @Test

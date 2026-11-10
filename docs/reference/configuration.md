@@ -115,13 +115,12 @@ live apply.
 
 #### Kept YAML-only
 
-Credentials, networking and low-level infrastructure, the tab-list header/footer, and
+Credentials, unexposed networking and low-level infrastructure, the tab-list header/footer, and
 operator-owned runtime state written by commands stay out of the GUI:
 
 | YAML-only value | Reason |
 |---|---|
 | `modules.api.admin-api-key` | Credential. |
-| `modules.api.host`, `port`, `cors-origins`, `session-cookie`, `heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` | Networking / infrastructure. |
 | `modules.anti-cheat.channel` | Plugin-messaging channel (networking). |
 | `modules.tablist.header`, `modules.tablist.footer` | Tab-list header/footer. |
 | `core.timezone`, `core.auto-save-interval` | Low-level infrastructure / timezone and persistence settings. |
@@ -181,6 +180,18 @@ GUI validation rejects non-finite, negative, and crossed thresholds. TPS thresho
 | `admin-api-key` | String | `""` | Secret key for admin endpoints (`X-Kreiscraft-Api-Key` header). **Empty string disables all admin endpoints** (they return `503`). |
 
 > See [Hot Reload](#hot-reload) for which API settings require a server restart.
+
+All API settings except `admin-api-key` are editable in `/settings admin` → **HTTP API**.
+Bind address and cookie name use text editors; CORS origins use a list editor (add an origin,
+right-click an existing entry to remove it); port uses a stepper; durations cycle preset values.
+Enter the website's exact origin, including its scheme and optional port, with no path or trailing
+slash, for example `http://localhost:3000`. Wildcards, credentials, empty allowlists, invalid ports,
+unsafe cookie names, and out-of-range durations are rejected without writing configuration.
+
+Closing the editor applies bind address, port, CORS, cookie, heartbeat and HTTP timeout changes by
+restarting the embedded API server, disconnecting existing WebSockets but retaining browser-player
+links. Metrics refresh and player-verification timeouts, like module enablement, are explicitly
+marked **restart-only**. The admin API key remains YAML-only and is never shown in the menu.
 
 ---
 
@@ -467,7 +478,7 @@ Run `/kreiscraft reload` (requires `kreiscraft.admin` permission) to hot-reload 
 **What requires a server restart:**
 
 - `core.language` — the message service captures the server language when it is constructed; `reload` only re-reads the language trees, so a new server language needs a restart. A player's persisted language still takes precedence for output addressed to them.
-- `modules.api.heartbeat-interval`, `async-timeout`, `metrics-refresh-interval`, `verification-timeout` — these are baked into `VerificationService` and `ServerMetricsCollector` at enable time and cannot be changed without rebuilding those objects. A reload that changes `host`, `port`, or `cors-origins` will automatically restart the Javalin server; the other `api` fields will still not change until a full plugin restart.
+- `modules.api.metrics-refresh-interval`, `verification-timeout` — these are baked into `ServerMetricsCollector` and `VerificationService` at enable time. Bind address, port, CORS origins, session cookies, heartbeat interval and HTTP async timeout changes automatically restart only the embedded Javalin server on reload; metrics and verification tuning still require a full plugin restart.
 - Adding or removing modules — the `enabled` flag is only evaluated at plugin startup.
 - `modules.firework.custom-model-data`, `modules.firework.namespace-key` — read when the firework recipe is registered.
 - `modules.tablist.update-interval` — the shared repeating task is not rescheduled on reload; header/footer templates still hot-reload.

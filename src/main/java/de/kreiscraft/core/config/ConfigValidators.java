@@ -99,6 +99,76 @@ public final class ConfigValidators {
         };
     }
 
+    /** Requires a parseable duration within the runtime's supported bounds. */
+    public static ConfigValidator durationRange(Duration min, Duration max) {
+        return value -> {
+            try {
+                Duration duration = value.get(Duration.class);
+                return duration != null && duration.compareTo(min) >= 0 && duration.compareTo(max) <= 0
+                        ? Optional.empty()
+                        : Optional.of("duration must be between " + min + " and " + max);
+            } catch (SerializationException e) {
+                return Optional.of("must be a duration");
+            }
+        };
+    }
+
+    /** Validates host/IP syntax without a blocking DNS lookup. */
+    public static ConfigValidator bindAddress() {
+        return value -> {
+            String text = value.getString();
+            try {
+                String host = text != null && text.contains(":") && !text.startsWith("[") ? "[" + text + "]" : text;
+                URI uri = URI.create("http://" + host);
+                return text != null && !text.isBlank() && uri.getHost() != null && uri.getPort() == -1
+                        && uri.getUserInfo() == null && uri.getRawPath().isEmpty()
+                        && uri.getRawQuery() == null && uri.getRawFragment() == null
+                                ? Optional.empty()
+                                : Optional.of("must be a hostname or IP address, without a port");
+            } catch (IllegalArgumentException e) {
+                return Optional.of("must be a hostname or IP address, without a port");
+            }
+        };
+    }
+
+    /** CORS with credentials requires explicit HTTP(S) origins, not wildcard hosts or URL paths. */
+    public static ConfigValidator httpOrigins() {
+        return value -> {
+            Optional<String> invalid = stringList().validate(value);
+            if (invalid.isPresent()) {
+                return invalid;
+            }
+            try {
+                List<String> origins = value.getList(String.class);
+                if (origins == null || origins.isEmpty()) {
+                    return Optional.of("must contain at least one origin");
+                }
+                for (String origin : origins) {
+                    URI uri = URI.create(origin);
+                    if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
+                            || uri.getHost() == null || uri.getUserInfo() != null || !uri.getRawPath().isEmpty()
+                            || uri.getRawQuery() != null || uri.getRawFragment() != null
+                            || uri.getPort() == 0 || uri.getPort() > 65535) {
+                        return Optional.of("must be HTTP(S) origins without paths, credentials or wildcards");
+                    }
+                }
+                return Optional.empty();
+            } catch (IllegalArgumentException | SerializationException e) {
+                return Optional.of("must be HTTP(S) origins without paths, credentials or wildcards");
+            }
+        };
+    }
+
+    /** Cookie names must be HTTP tokens; separators and control characters are unsafe. */
+    public static ConfigValidator cookieName() {
+        return value -> {
+            String name = value.getString();
+            return name != null && name.matches("[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+                    ? Optional.empty()
+                    : Optional.of("must be a valid cookie name");
+        };
+    }
+
     /** Requires a name matching one of the constants of {@code type}, ignoring case. */
     public static <E extends Enum<E>> ConfigValidator enumValue(Class<E> type) {
         List<String> names = Arrays.stream(type.getEnumConstants()).map(Enum::name).toList();

@@ -28,12 +28,8 @@ import org.bukkit.Server;
  * <p>Each call to {@link #start()} creates a new {@link Javalin} instance, mounts all routes, and
  * binds to the host/port in {@link ApiConfig}. Call {@link #stop()} to tear down cleanly.
  *
- * <p><b>Config-fields-that-take-effect-only-on-restart:</b> {@link ApiConfig} parameters other
- * than host, port, and corsOrigins (e.g. heartbeatInterval, asyncTimeout,
- * metricsRefreshInterval, verificationTimeout) are baked in at construction time of the
- * sub-services and take effect only when the server is fully restarted via
- * {@link de.kreiscraft.modules.api.ApiModule#onConfigReload}. This is a documented
- * constraint — see {@link ApiModule} Javadoc.
+ * <p>{@link ApiModule#onConfigReload} reconstructs this server for networking, cookie, heartbeat
+ * and HTTP timeout changes. Metrics and verification services retain their startup tuning.
  */
 public final class ApiServer {
 

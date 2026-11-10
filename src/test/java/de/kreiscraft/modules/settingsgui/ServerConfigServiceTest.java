@@ -77,6 +77,39 @@ class ServerConfigServiceTest {
     }
 
     @Test
+    void apiOriginsPersistAndRejectedEditsPreserveLiveAndDurableConfig() throws Exception {
+        var origins = field("api", "cors-origins");
+        assertApplied(origins, List.of("https://kreiscraft.de", "http://localhost:3000"));
+        config.reload();
+        assertThat(service.current(origins)).isEqualTo(List.of("https://kreiscraft.de", "http://localhost:3000"));
+        String before = Files.readString(configFile);
+        for (Object value : List.of(List.of("*"), List.of("https://example.com/path"), List.of())) {
+            assertThat(service.edit(origins, value)).isInstanceOf(ConfigEditResult.Rejected.class);
+            assertThat(Files.readString(configFile)).isEqualTo(before);
+        }
+        assertThat(service.edit(field("api", "port"), 65536)).isInstanceOf(ConfigEditResult.Rejected.class);
+        assertThat(service.edit(field("api", "heartbeat-interval"), "0s"))
+                .isInstanceOf(ConfigEditResult.Rejected.class);
+        var cookie = service.schema().find(List.of("modules", "api", "session-cookie", "name")).orElseThrow();
+        assertThat(service.edit(cookie, "bad;name")).isInstanceOf(ConfigEditResult.Rejected.class);
+        assertThat(Files.readString(configFile)).isEqualTo(before);
+        assertThat(service.schema().find(List.of("modules", "api", "admin-api-key"))).isEmpty();
+    }
+
+    @Test
+    void missingApiValuesDisplayRuntimeDefaultsWithoutWritingThem() throws Exception {
+        config.root().node("modules", "api").set(null);
+        String before = Files.readString(configFile);
+        assertThat(service.current(field("api", "host"))).isEqualTo("0.0.0.0");
+        assertThat(service.current(field("api", "port"))).isEqualTo(8080);
+        assertThat(service.current(field("api", "cors-origins"))).isEqualTo(List.of("https://kreiscraft.de"));
+        assertThat(service
+                .current(service.schema().find(List.of("modules", "api", "session-cookie", "name")).orElseThrow()))
+                        .isEqualTo("website_user_uuid");
+        assertThat(Files.readString(configFile)).isEqualTo(before);
+    }
+
+    @Test
     void rejectedEdit_reportsReasonAndLeavesConfiguration() throws IOException {
         ConfigField count = field("effects", "count");
         Object originalValue = service.current(count);

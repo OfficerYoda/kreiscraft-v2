@@ -120,13 +120,9 @@ class ServerConfigGuiTest {
                 editor.schema().guiExposed().stream().map(ConfigField::path).toList();
 
         assertThat(exposedPaths)
-                .as("credentials, network settings, and tab-list header/footer stay YAML-only")
+                .as("credentials, unapproved infrastructure, and tab-list header/footer stay YAML-only")
                 .noneMatch(
                         path -> path.contains("admin-api-key")
-                                || path.contains("host")
-                                || path.contains("port")
-                                || path.contains("cors-origins")
-                                || path.contains("session-cookie")
                                 || path.contains("channel")
                                 || path.contains("header")
                                 || path.contains("footer")
@@ -134,9 +130,35 @@ class ServerConfigGuiTest {
                                 || path.contains("debug")
                                 || path.contains("active")
                                 || path.contains("has-started"));
-        assertThat(ServerConfigGui.fieldsIn(editor.schema(), "api"))
-                .as("the HTTP API section exposes only its module toggle")
-                .allMatch(field -> field.path().get(2).equals("enabled"));
+        assertThat(editor.schema().find(List.of("modules", "api", "admin-api-key"))).isEmpty();
+    }
+
+    @Test
+    void apiSettingsUseExistingControlsAndKeepEveryFieldInADistinctSlot() {
+        var fields = ServerConfigGui.fieldsIn(editor.schema(), "api");
+        var gui = category("api");
+        assertThat(fields).hasSize(10);
+        assertThat(fields.stream().map(field -> slotOf("api", field)).distinct()).hasSize(10);
+        for (ConfigField field : fields) {
+            var stack = stackAt(gui, slotOf("api", field));
+            assertThat(stack).isNotNull();
+            if (field.path().get(2).equals("session-cookie")) {
+                assertThat(slotOf("api", field) / 9).isEqualTo(1);
+            }
+            if (field.type() == ConfigFieldType.STRING_LIST) {
+                click(gui, slotOf("api", field));
+                assertThat(navigator.listEditors).contains(ServerConfigPage.of("api"));
+            } else if (field.type() == ConfigFieldType.STRING) {
+                click(gui, slotOf("api", field));
+                assertThat(navigator.stringEditors).contains(ServerConfigPage.of("api"));
+            } else {
+                Object before = editor.current(field);
+                click(gui, slotOf("api", field));
+                assertThat(editor.current(field)).isNotEqualTo(before);
+            }
+        }
+        assertThat(session.restartCount()).isEqualTo(3);
+        assertThat(session.hotReloadCount()).isEqualTo(4);
     }
 
     @Test
