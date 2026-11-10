@@ -68,7 +68,7 @@ final class DragonDebugCommand {
             default -> {
             }
         }
-        messages.send(sender, "shattered-crown.debug-result", "result", encounter.debugStatus());
+        encounter.debugStatus(sender);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -79,7 +79,7 @@ final class DragonDebugCommand {
             messages.send(sender, "shattered-crown.debug-disabled");
             return 0;
         }
-        messages.send(sender, "shattered-crown.debug-result", "result", encounter.debugTrigger(attack, target));
+        encounter.debugTrigger(attack, target, sender);
         return Command.SINGLE_SUCCESS;
     }
 }
