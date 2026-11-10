@@ -142,15 +142,15 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `bombardment-cadence-seconds` | 8 | 2–120 seconds between warning starts; first warning after this interval |
 | `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |
 | `bombardment-radius` | 4 | 1–12 blocks; circular impact, at most 3 blocks vertically from warned ground |
-| `arena-radius` | 80 | 16–256 blocks, horizontal cylinder around the battle podium |
-| `arena-min-y` / `arena-max-y` | 40 / 160 | World heights, −64–320, strictly increasing |
+| `arena-radius` | 192 | 16–256 blocks, horizontal cylinder around the battle podium over the full world build height |
+| `opening-grace-seconds` | 30 | 0–120 seconds; preparation before the first automatic Attack Warning |
 | `arrival-x` / `arrival-z` | 100 / 0 | X/Z offsets from the actual battle podium; −512–512 |
 | `arrival-y` | 50 | Arrival center world height; −64–320 |
 | `arrival-radius` | 8 | Protected cylinder radius, 3–32 |
 | `arrival-height` | 12 | Cylinder's total height, 4–64 |
 | `anchor-distance` | 24 | Desired cardinal ground objectives east/north/west/south of the podium, 8–192 |
 | `ground-search-radius` | 8 | Bounded horizontal search around each position, 0–16 |
-| `ground-max-y` | 90 | Highest allowed objective feet Y; inside arena height bounds |
+| `ground-max-y` | 90 | Highest allowed objective feet Y, −64–320; combat still covers the full build height |
 | `final-health-fraction` | 0.3 | 0.1–0.5 of the effective maximum snapshotted at attempt start; once-only final gate |
 | `final-cadence-factor` | 0.7 | 0.5–0.9 multiplier for familiar Hunt/landing cadence opportunities |
 | `final-pool-lifetime-factor` | 0.5 | 0.25–0.9 multiplier for pool lifetime; warning and damage cadence unchanged |

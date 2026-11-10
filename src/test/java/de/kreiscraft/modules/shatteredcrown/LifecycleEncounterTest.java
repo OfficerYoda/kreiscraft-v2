@@ -94,6 +94,11 @@ class LifecycleEncounterTest {
                 defender.registerAttribute(Attribute.ATTACK_DAMAGE);
                 defender.registerAttribute(Attribute.SPAWN_REINFORCEMENTS);
             }
+
+            @Override
+            public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
+                // DisplayMock has no billboard setter; warning text, position and lifetime stay real.
+            }
         };
         module = new ShatteredCrownModule(battles);
         config = BasicConfigurationNode.root();
@@ -108,6 +113,223 @@ class LifecycleEncounterTest {
     void tearDown() {
         module.disable();
         MockBukkit.unmock();
+    }
+
+    @Test
+    void combatCylinderCoversFullBuildHeightAtRadius192ButExcludesArrivalAndOtherWorlds() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        for (double height : new double[] {end.getMinHeight(), 39, end.getMaxHeight() - 1}) {
+            player.teleport(new Location(end, 192, height, 0));
+            assertThat(encounter.isParticipant(player)).as("height=%s location=%s health=%s status=%s", height,
+                    player.getLocation(), player.getHealth(), status(encounter)).isTrue();
+        }
+        player.teleport(new Location(end, 192.01, 64, 0));
+        assertThat(encounter.isParticipant(player)).isFalse();
+        player.teleport(new Location(end, 100, 50, 0));
+        assertThat(encounter.isParticipant(player)).isFalse();
+        var other = server.addSimpleWorld("other-end");
+        other.setEnvironment(World.Environment.THE_END);
+        player.teleport(new Location(other, 0, 64, 0));
+        assertThat(encounter.isParticipant(player)).isFalse();
+        encounter.close();
+    }
+
+    @Test
+    void firstEntryFreezesEveryoneServerWideBeforeArenaEntryAndRecoveryUsesDiscoveryPopulation() throws Exception {
+        var overworld = server.addSimpleWorld("overworld");
+        player.teleport(new Location(overworld, 0, 64, 0));
+        var creative = server.addPlayer();
+        creative.teleport(new Location(overworld, 0, 64, 0));
+        creative.setGameMode(org.bukkit.GameMode.CREATIVE);
+        var spectator = server.addPlayer();
+        spectator.teleport(new Location(overworld, 0, 64, 0));
+        spectator.setGameMode(org.bukkit.GameMode.SPECTATOR);
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        player.teleport(new Location(end, 100, 50, 0));
+        assertThat(encounter.firstEntryPopulation()).isEqualTo(3);
+        assertThat(crystals()).isEmpty();
+        var late = server.addPlayer();
+        late.teleport(new Location(overworld, 0, 64, 0));
+        creative.teleport(new Location(end, 250, 64, 0));
+        spectator.teleport(new Location(end, 0, 64, 0));
+        assertThat(encounter.scalingPopulation()).isEqualTo(3);
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ZERO);
+        assertThat(encounter.firstEntryPopulation()).isEqualTo(3);
+        assertThat(encounter.combatPopulation()).isEqualTo(1);
+        assertThat(status(encounter)).contains("combat-population=1", "scaling-population=3", "entry-snapshot=3");
+        encounter.close();
+        assertThat(encounter.firstEntryPopulation()).isZero();
+        var recovered = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        recovered.start();
+        scheduler.advance(Duration.ZERO);
+        assertThat(recovered.firstEntryPopulation()).isEqualTo(4);
+        late.teleport(new Location(end, 250, 64, 0));
+        assertThat(recovered.scalingPopulation()).isEqualTo(4);
+        assertThat(recovered.firstEntryPopulation()).isEqualTo(4);
+        recovered.close();
+    }
+
+    @Test
+    void openingGraceKeepsDefendersActiveAndNativeAttacksQuietUntilTheExactBoundary() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        assertThat(status(encounter)).contains("grace-seconds=30.0");
+        assertThat(encounter.remainingGraceSeconds()).isEqualTo(30);
+        assertThat(crystals()).hasSize(4);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        var nativePhase = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
+                EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
+        server.getPluginManager().callEvent(nativePhase);
+        assertThat(nativePhase.isCancelled()).isTrue();
+        var nativeHit = new org.bukkit.event.entity.EntityDamageByEntityEvent(dragon, player,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(org.bukkit.damage.DamageSource.class), 10);
+        server.getPluginManager().callEvent(nativeHit);
+        assertThat(nativeHit.isCancelled()).isTrue();
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        org.mockito.Mockito.when(part.getParent()).thenReturn(dragon);
+        var multipartHit = new org.bukkit.event.entity.EntityDamageByEntityEvent(part, player,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(org.bukkit.damage.DamageSource.class), 10);
+        server.getPluginManager().callEvent(multipartHit);
+        assertThat(multipartHit.isCancelled()).isTrue();
+        var fireball = end.spawn(dragon.getLocation(), org.bukkit.entity.DragonFireball.class);
+        fireball.setShooter(dragon);
+        var launch = new org.bukkit.event.entity.ProjectileLaunchEvent(fireball);
+        server.getPluginManager().callEvent(launch);
+        assertThat(launch.isCancelled()).isTrue();
+        var cloud = end.spawn(dragon.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(dragon);
+        var applied = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud,
+                new java.util.ArrayList<>(List.of(player)));
+        server.getPluginManager().callEvent(applied);
+        assertThat(applied.getAffectedEntities()).isEmpty();
+        scheduler.advance(Duration.ofSeconds(10));
+        encounter.debugPause();
+        encounter.debugResume();
+        var arrival = server.addPlayer();
+        arrival.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofMillis(19999));
+        assertThat(encounter.remainingGraceSeconds()).isEqualTo(0.05);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(status(encounter)).contains("grace-seconds=0.0");
+        assertThat(encounter.remainingGraceSeconds()).isZero();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        var resumed = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
+                EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
+        server.getPluginManager().callEvent(resumed);
+        assertThat(resumed.isCancelled()).isFalse();
+        encounter.close();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(doubles = {-1, 121, Double.NaN, Double.POSITIVE_INFINITY})
+    void openingGraceConfigurationRejectsInvalidCandidatesWithoutChangingAnAttempt(double value) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var invalid = config.copy();
+        invalid.node("opening-grace-seconds").set(value);
+        assertThatThrownBy(() -> encounter.configure(ShatteredCrownConfig.load(invalid)))
+                .hasRootCauseMessage("shattered-crown.opening-grace-seconds must be finite and between 0.0 and 120.0");
+        assertThat(status(encounter)).contains("grace-seconds=30.0");
+        encounter.close();
+    }
+
+    @Test
+    void clearingOpeningAnchorsDuringGraceDoesNotStartAttacksOrRestartPreparation() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ofSeconds(5));
+        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
+                    mock(org.bukkit.damage.DamageSource.class), List.of()));
+        });
+        crystals().forEach(crystal -> server.getPluginManager().callEvent(
+                new org.bukkit.event.entity.EntityDamageByEntityEvent(player, crystal,
+                        org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                        mock(org.bukkit.damage.DamageSource.class), 10)));
+        assertThat(crystals()).isEmpty();
+        assertThat(status(encounter)).contains("grace-seconds=25.0");
+        scheduler.advance(Duration.ofMillis(24999));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        encounter.close();
+    }
+
+    @Test
+    void graceReloadAppliesNextAttemptAndManualTriggerDoesNotRestartTheGraceClock() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ofSeconds(5));
+        encounter.debugTrigger(EncounterController.DebugAttack.BOMBARDMENT, player, player);
+        assertThat(player.nextMessage()).contains("BOMBARDMENT");
+        assertThat(status(encounter)).contains("grace-seconds=25.0");
+        encounter.debugCancel();
+        var next = config.copy();
+        next.node("opening-grace-seconds").set(10);
+        next.node("arena-radius").set(128);
+        encounter.configure(ShatteredCrownConfig.load(next));
+        player.teleport(new Location(end, 190, 64, 0));
+        assertThat(encounter.isParticipant(player)).isTrue();
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        assertThat(crystals()).isEmpty();
+        assertThat(encounter.firstEntryPopulation()).isZero();
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ZERO);
+        assertThat(status(encounter)).contains("grace-seconds=10.0");
+        player.teleport(new Location(end, 190, 64, 0));
+        assertThat(encounter.isParticipant(player)).isFalse();
+        encounter.close();
+        scheduler.advance(Duration.ofSeconds(30));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void allEndPopulationHasNoLegacyTargetLimitAndModeChangesDoNotSustainAnAttempt() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        for (int i = 0; i < 65; i++) {
+            var observer = server.addPlayer();
+            observer.setGameMode(i % 2 == 0 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
+            observer.teleport(new Location(end, 250, 64, 0));
+        }
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        assertThat(encounter.scalingPopulation()).isEqualTo(66);
+        assertThat(encounter.firstEntryPopulation()).isEqualTo(66);
+        assertThat(encounter.combatPopulation()).isEqualTo(1);
+        player.setGameMode(org.bukkit.GameMode.CREATIVE);
+        scheduler.advance(Duration.ofMillis(59999));
+        assertThat(crystals()).hasSize(4);
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(encounter.firstEntryPopulation()).isZero();
+        assertThat(encounter.scalingPopulation()).isEqualTo(66);
+        encounter.close();
     }
 
     @Test
@@ -534,5 +756,13 @@ class LifecycleEncounterTest {
 
     private List<EnderCrystal> crystals() {
         return end.getEntitiesByClass(EnderCrystal.class).stream().filter(Entity::isValid).toList();
+    }
+
+    private String status(EncounterController encounter) {
+        while (player.nextMessage() != null) {
+            // Read only this explicit debug response, not earlier command output.
+        }
+        encounter.debugStatus(player);
+        return player.nextMessage();
     }
 }

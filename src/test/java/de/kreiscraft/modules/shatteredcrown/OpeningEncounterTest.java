@@ -60,7 +60,7 @@ class OpeningEncounterTest {
     private int referenceHits;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         end = server.addSimpleWorld("arena");
@@ -115,6 +115,7 @@ class OpeningEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("opening-grace-seconds").set(0); // Isolate existing attack timing; grace has its own lifecycle test.
     }
 
     @AfterEach
@@ -452,7 +453,7 @@ class OpeningEncounterTest {
             assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
             assertThat(objectives).noneMatch(Entity::isValid);
             player.teleport(new Location(end, 10.5, 64, 0.5));
-            scheduler.advance(Duration.ofSeconds(1));
+            scheduler.advance(Duration.ZERO); // Movement discovery starts the fresh attempt on the next tick.
             assertThat(anchors()).hasSize(4).doesNotContainAnyElementsOf(objectives);
         }
         assertThat(player.getHealth()).isEqualTo(20);
@@ -609,7 +610,9 @@ class OpeningEncounterTest {
     void threeUsableObjectivesCannotStartAPartialOrImpossibleFourAnchorEncounter() throws Exception {
         for (int x = -12; x <= 12; x++) {
             for (int z = -36; z <= -12; z++) {
-                end.getBlockAt(x, 63, z).setType(Material.AIR);
+                for (int y = end.getMinHeight(); y <= 63; y++) {
+                    end.getBlockAt(x, y, z).setType(Material.AIR);
+                }
             }
         }
         enable();

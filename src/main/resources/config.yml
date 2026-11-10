@@ -157,9 +157,8 @@ modules:
     defender-health: 40.0
     defender-damage: 6.0
     defender-leash: 16.0
-    arena-radius: 80.0
-    arena-min-y: 40.0
-    arena-max-y: 160.0
+    arena-radius: 192.0
+    opening-grace-seconds: 30.0
     arrival-x: 100.0
     arrival-y: 50.0
     arrival-z: 0.0

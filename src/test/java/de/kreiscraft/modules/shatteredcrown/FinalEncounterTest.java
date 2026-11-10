@@ -116,6 +116,7 @@ class FinalEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("opening-grace-seconds").set(0); // Isolate final-phase timing from opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());

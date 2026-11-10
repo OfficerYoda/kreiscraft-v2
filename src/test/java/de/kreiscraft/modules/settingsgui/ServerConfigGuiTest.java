@@ -324,7 +324,9 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(52);
+        assertThat(names).hasSize(51);
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening grace (seconds)"
+                : "Vorbereitungszeit (Sekunden)"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
         String[] labels = locale.equals("en")
                 ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",
