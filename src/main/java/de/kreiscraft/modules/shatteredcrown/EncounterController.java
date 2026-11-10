@@ -200,8 +200,9 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         World world = dragon == null ? server.getWorld(NamespacedKey.fromString(nextConfig.worldKey()))
                 : dragon.getWorld();
+        // Paper's world entity roster omits connected dead players awaiting respawn.
         return world == null || unavailableWorlds.contains(world.getUID()) ? 0
-                : (int) world.getPlayers().stream().filter(Player::isOnline).count();
+                : (int) server.getOnlinePlayers().stream().filter(player -> player.getWorld().equals(world)).count();
     }
 
     public int combatPopulation() {
