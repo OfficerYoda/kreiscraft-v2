@@ -1011,26 +1011,46 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         EnderDragon source = dragon;
-        lane.indicator = source.getWorld().spawn(lane.center.clone().add(0, 1.5, 0), TextDisplay.class);
-        if (owner.isClosed() || !lane.indicator.isValid() || dragon != source || !attacking()) {
-            lane.indicator.remove();
-            return;
-        }
-        owner.own(lane.indicator, "lane");
         owner.onCleanup(() -> lanes.remove(lane));
-        battles.faceWarningToViewer(lane.indicator);
-        if (owner.isClosed()) {
-            return;
-        }
         lanes.add(lane);
         ownDragonPhase();
         flight = new DragonFlight(source, battles, owner,
-                () -> dragon == source && attacking() && isParticipant(target) && lane.indicator.isValid(), () -> {
+                () -> dragon == source && attacking() && isParticipant(target)
+                        && (lane.indicator == null || lane.indicator.isValid())
+                        && (lane.surface == null || lane.surface.unchanged()),
+                () -> {
                     flight = null;
                     lanes.remove(lane);
                     owner.close();
                 });
         DragonFlight movement = flight;
+        Location origin = source.getLocation();
+        int warningTicks = (int) Math.ceil(config.laneWarningSeconds() * 20);
+        if (origin.distance(start) > warningTicks * 8) {
+            // ponytail: stage only out-of-range approaches; the visible warning still lasts exactly its configured time.
+            double approachSeconds = Math.ceil(origin.distance(start) / 7.5) / 20;
+            movement.start(t -> DragonFlight.between(origin, start, t), approachSeconds, position -> {
+            }, () -> beginDiveWarning(lane, owner, start, source, movement));
+        } else {
+            beginDiveWarning(lane, owner, start, source, movement);
+        }
+    }
+
+    private void beginDiveWarning(BreathLane lane, EncounterWork owner, Location start, EnderDragon source,
+            DragonFlight movement) {
+        lane.indicator = source.getWorld().spawn(lane.center.clone().add(0, 1.5, 0), TextDisplay.class);
+        if (owner.isClosed() || !lane.indicator.isValid() || dragon != source || !attacking()) {
+            lane.indicator.remove();
+            movement.close();
+            return;
+        }
+        owner.own(lane.indicator, "lane");
+        battles.faceWarningToViewer(lane.indicator);
+        if (owner.isClosed()) {
+            return;
+        }
+        drawLane(lane);
+        attackTargets().forEach(player -> player.playSound(lane.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
         Location origin = source.getLocation();
         movement.start(t -> DragonFlight.between(origin, start, t), config.laneWarningSeconds(), position -> {
             lane.age += 0.05;
@@ -1038,16 +1058,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 return;
             }
             drawLane(lane);
-            // A moving arrow points down the fixed strip during the warning.
-            source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
-                double along = -lane.length / 2 + (lane.age % 1) * lane.length;
-                for (int side : new int[] {-1, 1}) {
-                    for (int point = 0; point < 5; point++) {
-                        player.spawnParticle(Particle.END_ROD, lane.point(along - point * 0.4, side * point * 0.25)
-                                .add(0, 0.3, 0), 1, 0, 0, 0, 0);
-                    }
-                }
-            });
         }, () -> {
             if (!arena.laneSafe(lane, List.of(), source.getWorld().getPlayers().stream()
                     .filter(arena::participant).toList())) {
@@ -1055,7 +1065,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 return;
             }
             lane.active = true;
-            lane.age = config.laneLifetimeSeconds() - 3;
+            lane.age = config.laneLifetimeSeconds() - config.divePassSeconds();
             Set<UUID> hit = new HashSet<>();
             movement.start(t -> {
                 double along = -lane.length / 2 + lane.length * t;
@@ -1066,7 +1076,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 }
                 position.setY(groundY + 2 + 12 * Math.pow(Math.max(0, 1 - t * 3), 2));
                 return position;
-            }, 3, position -> {
+            }, config.divePassSeconds(), position -> {
                 lane.age += 0.05;
                 if (Math.round(lane.age * 20) % 5 == 0) {
                     drawLane(lane);
@@ -1083,10 +1093,10 @@ public final class EncounterController implements Listener, AutoCloseable {
                             && Math.abs((lane.eastWest ? player.getX() - position.getX()
                                     : player.getZ() - position.getZ())) <= 2
                             && hit.add(player.getUniqueId())) {
-                        flightHit(player, source, config.laneDamage(), position);
+                        flightHit(player, source, config.laneDamage(), position, true);
                     }
                 }
-            }, () -> climb(movement, source));
+            }, () -> climb(movement, source, config.diveClimbSeconds()));
         });
     }
 
@@ -1182,21 +1192,33 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void climb(DragonFlight movement, EnderDragon source) {
+        climb(movement, source, 2);
+    }
+
+    private void climb(DragonFlight movement, EnderDragon source, double duration) {
         Location origin = source.getLocation();
         Location end = origin.clone().add(0, 16, 0);
         if (!arena.contains(end)) {
             movement.close();
             return;
         }
-        movement.start(t -> DragonFlight.between(origin, end, t), 2, position -> {
+        movement.start(t -> DragonFlight.between(origin, end, t), duration, position -> {
         }, movement::close);
     }
 
     private void flightHit(Player player, EnderDragon source, double amount, Location center) {
+        flightHit(player, source, amount, center, false);
+    }
+
+    private void flightHit(Player player, EnderDragon source, double amount, Location center, boolean reference) {
         double health = player.getHealth();
         flightDamage = true;
         try {
-            battles.bombardmentDamage(player, source, amount);
+            if (reference) {
+                battles.referenceDamage(player, source, amount);
+            } else {
+                battles.bombardmentDamage(player, source, amount);
+            }
         } finally {
             flightDamage = false;
         }
@@ -1350,22 +1372,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 Math.max(0, (lane.active ? config.laneLifetimeSeconds() : config.laneWarningSeconds()) - lane.age);
         lane.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs", remaining),
                 lane.active ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.GOLD));
-        dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
-            for (int point = 0; point <= 16; point++) {
-                double along = -lane.length / 2 + lane.length * point / 16;
-                for (double side : new double[] {-lane.width / 2, lane.width / 2}) {
-                    CrownParticles.spawn(player, lane.active ? Particle.DRAGON_BREATH : Particle.FLAME,
-                            lane.point(along, side).add(0, 0.15, 0), 1, 0, 0, 0, 0);
-                }
-            }
-            for (int point = 0; point <= 4; point++) {
-                double across = -lane.width / 2 + lane.width * point / 4;
-                for (double end : new double[] {-lane.length / 2, lane.length / 2}) {
-                    CrownParticles.spawn(player, lane.active ? Particle.DRAGON_BREATH : Particle.FLAME,
-                            lane.point(end, across).add(0, 0.15, 0), 1, 0, 0, 0, 0);
-                }
-            }
-        });
     }
 
     private void warnBombardment() {
