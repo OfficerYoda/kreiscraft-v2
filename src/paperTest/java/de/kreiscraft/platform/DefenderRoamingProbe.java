@@ -56,6 +56,8 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
     private Entity arrow;
     private Entity cloud;
     private int checks;
+    private int effectCallbacks;
+    private int leakedEffects;
 
     /** Only transport is synthetic: native registration, ticks, targeting, pathfinding and damage remain real. */
     private static final class Sink extends Connection {
@@ -214,6 +216,7 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
             cloud = world.spawn(defender.getLocation(), org.bukkit.entity.AreaEffectCloud.class,
                     effect -> effect.setSource(defender));
             require(owned(arrow) && owned(cloud), "native projectile/cloud inherit ownership before callbacks");
+            require(effectCallbacks >= 2 && leakedEffects == 0, "ownership visible in native launch/spawn callbacks");
         }
         var enderman = world.spawn(defender.getLocation().clone().add(0, 0, 2), org.bukkit.entity.Enderman.class);
         var ally = world.getEntitiesByClass(Husk.class).stream().filter(mob -> mob != defender && owned(mob))
@@ -251,6 +254,27 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
                 && event.getEntity() == player.getBukkitEntity() && !event.isCancelled()) {
             melee = true;
             getLogger().info("DEFENDER melee base=" + event.getDamage() + " final=" + event.getFinalDamage());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void launched(org.bukkit.event.entity.ProjectileLaunchEvent event) {
+        if (event.getEntity().getShooter() == defender && defender != null) {
+            effectCallbacks++;
+            if (!owned(event.getEntity())) {
+                leakedEffects++;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void effectSpawned(org.bukkit.event.entity.EntitySpawnEvent event) {
+        if (event.getEntity() instanceof org.bukkit.entity.AreaEffectCloud effect && effect.getSource() == defender
+                && defender != null) {
+            effectCallbacks++;
+            if (!owned(effect)) {
+                leakedEffects++;
+            }
         }
     }
 
