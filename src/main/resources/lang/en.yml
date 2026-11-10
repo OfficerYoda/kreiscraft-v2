@@ -106,7 +106,6 @@ server-config:
     shattered-crown-defender-type: "Defender type"
     shattered-crown-defender-health: "Defender health"
     shattered-crown-defender-damage: "Defender damage"
-    shattered-crown-defender-leash: "Defender leash radius"
     shattered-crown-arena-radius: "Arena radius"
     shattered-crown-opening-grace-seconds: "Opening grace (seconds)"
     shattered-crown-arrival-x: "Arrival X offset"

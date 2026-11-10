@@ -116,6 +116,130 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void ownedWitherSideHeadsDropPlayersWhoBecomeProtectedOrIneligible() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var wither = (org.bukkit.entity.Wither) encounter.spawnCombatant(parent.getLocation(),
+                org.bukkit.entity.EntityType.WITHER, parent, battles::preventDespawn);
+        for (var head : org.bukkit.entity.Wither.Head.values()) {
+            wither.setTarget(head, player);
+        }
+        player.teleport(new Location(end, 100, 50, 0));
+        for (var head : org.bukkit.entity.Wither.Head.values()) {
+            assertThat(wither.getTarget(head)).isNull();
+        }
+        encounter.close();
+    }
+
+    @Test
+    void missingDescendantsRecoverTheirSpeciesAndTuningButRepeatedLossAbortsInsteadOfLockingAnAnchor()
+            throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var anchorId = encounter.anchorId(parent);
+        var originals = end.getEntitiesByClass(Mob.class).stream().map(Entity::getUniqueId).toList();
+        Mob missing = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent, mob -> {
+            battles.preventDespawn(mob);
+            mob.getAttribute(Attribute.MAX_HEALTH).setBaseValue(45);
+            mob.setHealth(45);
+        });
+        for (int loss = 0; loss < 3; loss++) {
+            var old = missing;
+            old.remove(); // Missing/unloaded is not an accepted death notification.
+            scheduler.advance(Duration.ofSeconds(1));
+            missing = end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
+                    .filter(mob -> mob.getType() == org.bukkit.entity.EntityType.HUSK && mob != old)
+                    .filter(mob -> !originals.contains(mob.getUniqueId()))
+                    .findFirst().orElseThrow();
+            assertThat(encounter.anchorId(missing)).isEqualTo(anchorId);
+            assertThat(missing.getHealth()).isEqualTo(45);
+            assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
+        }
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        missing.remove();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid))
+                .containsExactlyInAnyOrder(dragon, unrelated);
+        scheduler.advance(Duration.ofSeconds(31));
+        assertThat(crystals()).hasSize(4);
+        assertThat(unrelated.isValid()).isTrue();
+        encounter.close();
+    }
+
+    @Test
+    void ownershipExistsBeforeSpawnAndDescendantsKeepTheOriginalGateAfterParentDeath() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void spawning(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof Zombie) {
+                    assertThat(encounter.ownsCombatant(event.getEntity())).isTrue();
+                    var retaliate = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(event.getEntity(), dragon,
+                            org.bukkit.event.entity.EntityTargetEvent.TargetReason.TARGET_ATTACKED_ENTITY);
+                    server.getPluginManager().callEvent(retaliate);
+                    assertThat(retaliate.isCancelled()).isTrue();
+                }
+            }
+        }, plugin);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var anchorId = encounter.anchorId(parent);
+        var anchor =
+                crystals().stream().filter(crystal -> crystal.getUniqueId().equals(anchorId)).findFirst().orElseThrow();
+        var child = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
+                battles::preventDespawn);
+        assertThat(encounter.anchorId(child)).isEqualTo(anchorId);
+        var arrow = end.spawn(child.getLocation(), org.bukkit.entity.Arrow.class, shot -> {
+            assertThat(encounter.inheritOwnership(shot, child)).isTrue();
+            shot.setShooter(child);
+        });
+        assertThat(encounter.anchorId(arrow)).isEqualTo(anchorId);
+        var cloud = end.spawn(child.getLocation(), org.bukkit.entity.AreaEffectCloud.class,
+                effect -> assertThat(encounter.inheritOwnership(effect, child)).isTrue());
+        var arrival = server.addPlayer();
+        arrival.teleport(new Location(end, 100, 50, 0));
+        var apply = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud,
+                new java.util.ArrayList<>(List.of(arrival, player, dragon, child)));
+        server.getPluginManager().callEvent(apply);
+        assertThat(apply.getAffectedEntities()).containsExactly(player);
+        for (var mob : List.copyOf(end.getEntitiesByClass(Zombie.class))) {
+            if (mob != child && anchorId.equals(encounter.anchorId(mob))) {
+                mob.setHealth(0);
+                server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(mob,
+                        mock(org.bukkit.damage.DamageSource.class), List.of()));
+            }
+        }
+        assertThat(anchor.isGlowing()).isFalse();
+        child.teleport(new Location(end, -150, end.getMaxHeight() - 1, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(child.getLocation().getX()).isEqualTo(-150);
+        assertThat(anchor.isGlowing()).isFalse();
+        var delayed = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
+                battles::preventDespawn);
+        assertThat(encounter.anchorId(delayed)).isEqualTo(anchorId);
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        assertThat(encounter.inheritOwnership(unrelated, unrelated)).isFalse();
+        encounter.close();
+        assertThat(child.isValid()).isFalse();
+        assertThat(delayed.isValid()).isFalse();
+        assertThat(arrow.isValid()).isFalse();
+        assertThat(cloud.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+    }
+
+    @Test
     void combatCylinderCoversFullBuildHeightAtRadius192ButExcludesArrivalAndOtherWorlds() throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());

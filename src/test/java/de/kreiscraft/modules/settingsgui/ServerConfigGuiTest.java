@@ -324,7 +324,9 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(53);
+        assertThat(names).hasSize(52);
+        assertThat(names).noneMatch(name -> name.startsWith(locale.equals("en") ? "Defender leash radius"
+                : "Verteidiger-Bewegungsradius"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Dive pass (seconds)"
                 : "Sturzflugpassage (Sekunden)"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Dive climb (seconds)"

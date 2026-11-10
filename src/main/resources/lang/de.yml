@@ -106,7 +106,6 @@ server-config:
     shattered-crown-defender-type: "Verteidigertyp"
     shattered-crown-defender-health: "Verteidigergesundheit"
     shattered-crown-defender-damage: "Verteidigerschaden"
-    shattered-crown-defender-leash: "Verteidiger-Bewegungsradius"
     shattered-crown-arena-radius: "Arenaradius"
     shattered-crown-opening-grace-seconds: "Vorbereitungszeit (Sekunden)"
     shattered-crown-arrival-x: "Ankunftsversatz X"
