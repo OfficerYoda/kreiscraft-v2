@@ -1562,10 +1562,17 @@ public final class EncounterController implements Listener, AutoCloseable {
             defenders.add(mob);
             anchor.wave.add(mob);
             mob.setPersistent(true);
-            if (mob.getAttribute(Attribute.FOLLOW_RANGE) != null) {
-                mob.getAttribute(Attribute.FOLLOW_RANGE).setBaseValue(config.arenaRadius() * 2);
-            }
+            setCombatRange(mob);
             anchor.crystal.setGlowing(false);
+        }
+    }
+
+    private void setCombatRange(Mob mob) {
+        var range = mob.getAttribute(Attribute.FOLLOW_RANGE);
+        if (range != null) {
+            // Native zombie randomization must not shrink pursuit below the whole arena diameter.
+            range.getModifiers().stream().filter(modifier -> modifier.getAmount() < 0).forEach(range::removeModifier);
+            range.setBaseValue(config.arenaRadius() * 2);
         }
     }
 
@@ -1590,9 +1597,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     registerCombatant(mob, anchor);
                     defenderInitializers.put(mob.getUniqueId(), initialize);
                     initialize.accept(mob);
-                    if (mob.getAttribute(Attribute.FOLLOW_RANGE) != null) {
-                        mob.getAttribute(Attribute.FOLLOW_RANGE).setBaseValue(config.arenaRadius() * 2);
-                    }
+                    setCombatRange(mob);
                 });
         if (!entity.isValid() || work != owner || owner.isClosed() || dragon == null) {
             entity.remove();

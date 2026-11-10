@@ -93,6 +93,9 @@ class OpeningEncounterTest {
                 defender.registerAttribute(Attribute.ATTACK_DAMAGE);
                 defender.registerAttribute(Attribute.SPAWN_REINFORCEMENTS);
                 defender.registerAttribute(Attribute.FOLLOW_RANGE);
+                defender.getAttribute(Attribute.FOLLOW_RANGE).addModifier(new org.bukkit.attribute.AttributeModifier(
+                        new org.bukkit.NamespacedKey("test", "random_follow_range"), -0.1,
+                        org.bukkit.attribute.AttributeModifier.Operation.ADD_SCALAR));
             }
 
             @Override
