@@ -187,6 +187,7 @@ paths:
     get:
       operationId: getWhitelistRequest
       summary: Whitelist request state for one player name
+      security: []
       responses:
         "200":
           description:
@@ -204,6 +205,7 @@ paths:
     post:
       operationId: createWhitelistRequest
       summary: Request a player name to be whitelisted
+      security: []
       parameters:
         - name: reopen
           in: query
