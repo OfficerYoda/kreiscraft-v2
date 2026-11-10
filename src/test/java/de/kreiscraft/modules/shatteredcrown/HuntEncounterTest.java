@@ -171,7 +171,7 @@ class HuntEncounterTest {
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
         assertThat(debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player)).isEqualTo(1);
-        assertThat(messages(player)).anyMatch(text -> text.contains("Started " + attack));
+        assertThat(messages(player)).singleElement().asString().contains("Started " + attack);
         assertThat(hit(dragon).isCancelled()).isTrue(); // Debugging attacks does not clear the shield.
         switch (attack) {
             case DIVE -> {
@@ -193,13 +193,16 @@ class HuntEncounterTest {
             }
             case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         }
+        assertThat(messages(player)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
         debug("cancel", player);
+        assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         scheduler.advance(Duration.ofSeconds(12));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         debug("status", player);
-        assertThat(messages(player)).anyMatch(text -> text.contains("mode=manual") && text.contains("attack=none"));
+        assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         debug("resume", player);
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
@@ -249,6 +252,39 @@ class HuntEncounterTest {
                 mock(DamageSource.class), 10);
         server.getPluginManager().callEvent(event);
         return event;
+    }
+
+    @Test
+    void explicitDebugRepliesAreLocalizedAndOnlyReachTheRequestingOperator() throws Exception {
+        var german = server.addPlayer("Deutsch");
+        german.teleport(player.getLocation());
+        german.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        startEncounter();
+        assertThat(debug("pause", german)).isEqualTo(1);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "mode=manual");
+        assertThat(debug("trigger prey " + player.getName(), german)).isEqualTo(1);
+        assertThat(messages(german)).singleElement().asString().contains("Gestartet", "PREY", player.getName());
+        scheduler.advance(Duration.ofSeconds(1));
+        var mark = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(mark.text())).contains(player.getName(), "3.0s");
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
+        debug("cancel", german);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "attack=none");
+        debug("trigger dive MissingPlayer", german);
+        assertThat(messages(german)).singleElement().asString().contains("MissingPlayer", "nicht online");
+        player.teleport(new Location(end, 100, 50, 0));
+        debug("trigger smash " + player.getName(), german);
+        assertThat(messages(german)).singleElement().asString().contains("Ziel", "Ankunft");
+        debug("resume", german);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "mode=automatic");
+        module.disable();
+        debug("status", german);
+        assertThat(messages(german)).singleElement().asString().contains("deaktiviert");
+        assertThat(messages(player)).isEmpty();
     }
 
     private void clearFinalGate() {
@@ -324,7 +360,7 @@ class HuntEncounterTest {
         player.teleport(player.getLocation().add(0, 1.2, 0));
         scheduler.advance(Duration.ofSeconds(11));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        assertThat(messages(player)).anyMatch(text -> text.contains("Dive incoming"));
+        assertThat(messages(player)).isEmpty();
     }
 
     @Test
@@ -337,7 +373,7 @@ class HuntEncounterTest {
         config.node("pool-damage").set(0);
         hunt();
         scheduler.advance(Duration.ofSeconds(31));
-        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
+        assertWarningKind("sweep");
     }
 
     @Test
@@ -354,19 +390,36 @@ class HuntEncounterTest {
                 end.getBlockAt(x, 64, z).setType(Material.END_STONE);
             }
         }
+        var dives = new java.util.HashSet<java.util.UUID>();
+        var smashes = new java.util.HashSet<java.util.UUID>();
+        var prey = new java.util.HashSet<java.util.UUID>();
+        int landings = 0;
         for (int second = 0; second < 180; second++) {
             scheduler.advance(Duration.ofSeconds(1));
+            for (TextDisplay display : end.getEntitiesByClass(TextDisplay.class)) {
+                String kind = display.getPersistentDataContainer().get(EncounterRecovery.ARTIFACT,
+                        org.bukkit.persistence.PersistentDataType.STRING);
+                switch (kind) {
+                    case "lane" -> dives.add(display.getUniqueId());
+                    case "sweep" -> smashes.add(display.getUniqueId());
+                    case "prey" -> prey.add(display.getUniqueId());
+                    default -> {
+                    }
+                }
+            }
             if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
+                landings++;
                 dragon.teleport(new Location(end, 0, 67, 0));
                 nativePhase(EnderDragon.Phase.LAND_ON_PORTAL);
                 nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
             }
         }
-        var chat = messages(player);
-        assertThat(chat).filteredOn(text -> text.contains("Dive incoming")).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(chat).filteredOn(text -> text.contains("Ground smash")).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(chat).anyMatch(text -> text.contains("has landed"));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+        assertThat(dives).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(smashes).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(prey).isNotEmpty();
+        assertThat(landings).isPositive();
+        assertThat(messages(player)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
     }
 
     @Test
@@ -454,7 +507,7 @@ class HuntEncounterTest {
         }
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
+        assertWarningKind("sweep");
     }
 
     @Test
@@ -765,22 +818,25 @@ class HuntEncounterTest {
     }
 
     @Test
-    void huntWarningsAndLandingInstructionsRespectEachPlayersLanguage() throws Exception {
+    void legacyLaneAndLandingSequenceStaysQuietForBothLanguages() throws Exception {
         config.node("lane-damage").set(0);
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         hunt();
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Breath lane in 3.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Atembahn in 3.0s"));
+        assertWarningKind("lane");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
         scheduler.advance(Duration.ofSeconds(20));
-        assertThat(messages(player)).anyMatch(text -> text.contains("approaching the podium"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("nähert sich dem Podium"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
         dragon.teleport(new Location(end, 0, 67, 0));
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
-        assertThat(messages(player)).anyMatch(text -> text.contains("has landed"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("ist gelandet"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
     }
 
     private List<String> messages(PlayerMock recipient) {
@@ -790,6 +846,12 @@ class HuntEncounterTest {
             result.add(message);
         }
         return result;
+    }
+
+    private void assertWarningKind(String kind) {
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).anyMatch(display -> kind.equals(
+                display.getPersistentDataContainer().get(EncounterRecovery.ARTIFACT,
+                        org.bukkit.persistence.PersistentDataType.STRING)));
     }
 
     private List<String> actionBars(PlayerMock recipient) {
@@ -1287,7 +1349,7 @@ class HuntEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane.
         player.teleport(new Location(end, 10.5, 64, 6.5)); // Real usable short-side escape.
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+        assertWarningKind("prey");
         player.teleport(new Location(end, 20.5, 64, 10.5));
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(player.getHealth()).isEqualTo(17); // Pool at the moved location, never at the lane.
@@ -1306,7 +1368,7 @@ class HuntEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         player.teleport(new Location(end, 0.5, 64, 10.5));
         scheduler.advance(Duration.ofMillis(7500)); // Hunt time 50 seconds.
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep"));
+        assertWarningKind("sweep");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane postponed, not combined unsafely.
         player.teleport(new Location(end, 10.5, 64, 0.5)); // Reachable sector-side escape.
         scheduler.advance(Duration.ofSeconds(4));
@@ -1337,7 +1399,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void marksAndSweepWarningsRespectRecipientLanguagesWithoutChatFlooding() throws Exception {
+    void marksRefreshAndSweepWarningsStayInWorldForBothLanguages() throws Exception {
         config.node("lane-cadence-seconds").set(120);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -1345,11 +1407,10 @@ class HuntEncounterTest {
         var german = server.addPlayer("Deutsch");
         german.teleport(new Location(end, -15.5, 64, 0.5));
         hunt();
-        messages(player);
-        messages(german);
         scheduler.advance(Duration.ofSeconds(20));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey: 4.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Markierte Beute: 4.0s"));
+        assertWarningKind("prey");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
         assertThat(messages(player)).isEmpty();
         assertThat(messages(german)).isEmpty();
         scheduler.advance(Duration.ofMillis(10250));
@@ -1359,8 +1420,11 @@ class HuntEncounterTest {
         player.teleport(new Location(end, 0.5, 64, 10.5));
         german.teleport(new Location(end, 0.5, 64, 10.5));
         scheduler.advance(Duration.ofMillis(19500));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Flügelschlag in 4.0s"));
+        assertWarningKind("sweep");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
     }
 
     @org.junit.jupiter.params.ParameterizedTest
