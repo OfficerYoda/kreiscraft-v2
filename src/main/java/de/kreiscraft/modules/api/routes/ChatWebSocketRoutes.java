@@ -6,6 +6,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.api.ApiConfig;
 import de.kreiscraft.modules.api.dto.WebSocketMessage;
+import de.kreiscraft.modules.api.dto.ChatMessage;
 import de.kreiscraft.modules.api.dto.WebSocketMessageType;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
@@ -105,8 +106,10 @@ public final class ChatWebSocketRoutes {
                 chatBridge.subscribe(
                         event -> {
                             if (event.source() != ChatSource.WEB) {
-                                broadcastToWsClients(new WebSocketMessage(
-                                        WebSocketMessageType.CHAT, renderChatEventForWeb(event)));
+                                boolean player = event.source() == ChatSource.PLAYER;
+                                broadcastToWsClients(new ChatMessage(
+                                        WebSocketMessageType.CHAT, renderChatEventForWeb(event),
+                                        player ? "player" : "system", player ? event.senderName() : null));
                             }
                         });
 
@@ -194,7 +197,7 @@ public final class ChatWebSocketRoutes {
                         });
                 // Echo to OTHER connected clients (sender's UI already showed it optimistically)
                 broadcastToWsClientsExcept(
-                        ctx, new WebSocketMessage(WebSocketMessageType.CHAT, msg.content()));
+                        ctx, new ChatMessage(WebSocketMessageType.CHAT, msg.content(), "web", null));
             }
             case VERIFICATION, EXCEPTION -> {
                 // ignore
@@ -247,17 +250,17 @@ public final class ChatWebSocketRoutes {
                         new WebSocketMessage(WebSocketMessageType.PING, "heartbeat ping")));
     }
 
-    private void broadcastToWsClients(WebSocketMessage msg) {
+    private void broadcastToWsClients(Object msg) {
         connectedClients.forEach(ctx -> sendToClient(ctx, msg));
     }
 
-    private void broadcastToWsClientsExcept(WsContext except, WebSocketMessage msg) {
+    private void broadcastToWsClientsExcept(WsContext except, Object msg) {
         connectedClients.stream()
                 .filter(ctx -> !ctx.equals(except))
                 .forEach(ctx -> sendToClient(ctx, msg));
     }
 
-    private void sendToClient(WsContext ctx, WebSocketMessage msg) {
+    private void sendToClient(WsContext ctx, Object msg) {
         try {
             ctx.send(mapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {

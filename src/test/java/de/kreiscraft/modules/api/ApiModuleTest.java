@@ -25,6 +25,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Logger;
 import org.bukkit.Server;
@@ -32,10 +33,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 class ApiModuleTest {
+    @TempDir
+    Path dataDirectory;
 
     private MockScheduler scheduler;
     private ServiceRegistry services;
@@ -60,6 +64,7 @@ class ApiModuleTest {
         server = mock(Server.class);
         when(plugin.getServer()).thenReturn(server);
         when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
+        when(plugin.getDataFolder()).thenReturn(dataDirectory.toFile());
         when(server.getTPS()).thenReturn(new double[] {20.0, 20.0, 20.0});
         when(server.getOnlinePlayers()).thenReturn(List.of());
 

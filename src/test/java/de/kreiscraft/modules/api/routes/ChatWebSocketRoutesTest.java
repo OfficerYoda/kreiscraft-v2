@@ -210,7 +210,8 @@ class ChatWebSocketRoutesTest {
         ArgumentCaptor<String> receiverCaptor = ArgumentCaptor.forClass(String.class);
         verify(receiverCtx, times(2)).send(receiverCaptor.capture());
         assertThat(receiverCaptor.getAllValues())
-                .anyMatch(s -> s.contains("\"type\":\"CHAT\"") && s.contains("hello world"));
+                .anyMatch(s -> s.contains("\"type\":\"CHAT\"") && s.contains("hello world")
+                        && s.contains("\"source\":\"web\"") && !s.contains("playerName"));
 
         // Sender: only VERIFICATION on connect, NO CHAT echo
         verify(senderCtx, never()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
@@ -277,8 +278,14 @@ class ChatWebSocketRoutesTest {
         realBridge.publish(event);
 
         // Both clients must receive a CHAT message from the bridge publish
-        verify(client1, atLeastOnce()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
-        verify(client2, atLeastOnce()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
+        verify(client1, atLeastOnce()).send(argThat((String s) -> s.contains("\"source\":\"player\"")
+                && s.contains("\"playerName\":\"Alice\"")));
+        verify(client2, atLeastOnce()).send(argThat((String s) -> s.contains("\"source\":\"player\"")
+                && s.contains("\"playerName\":\"Alice\"")));
+        realBridge.publish(
+                new ChatBridgeEvent(ChatSource.AI, null, "AI", Component.text("reply"), "reply", Instant.now()));
+        verify(client1, atLeastOnce()).send(argThat((String s) -> s.contains("\"source\":\"system\"")
+                && !s.contains("playerName")));
     }
 
     // -------------------------------------------------------------------------

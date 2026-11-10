@@ -3,6 +3,7 @@ package de.kreiscraft.modules.api.metrics;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.api.dto.Metrics;
 import de.kreiscraft.modules.api.dto.PlayerData;
+import de.kreiscraft.modules.api.dto.PlayerState;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.HashMap;
@@ -106,11 +107,13 @@ public final class ServerMetricsCollector {
     }
 
     private PlayerData snapshot(Player p) {
-        int health = Math.round((float) p.getHealth());
+        PlayerState state = PlayerState.snapshot(p);
+        int health = (int) Math.round(state.health());
         int deaths = p.getStatistic(Statistic.DEATHS);
         int playerKills = p.getStatistic(Statistic.PLAYER_KILLS);
         long playtimeSeconds = p.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20L;
         return new PlayerData(
-                p.getName(), p.getUniqueId().toString(), health, deaths, playerKills, playtimeSeconds);
+                p.getName(), p.getUniqueId().toString(), health, (int) Math.round(state.maxHealth()),
+                state.absorption(), state.effects(), deaths, playerKills, playtimeSeconds);
     }
 }

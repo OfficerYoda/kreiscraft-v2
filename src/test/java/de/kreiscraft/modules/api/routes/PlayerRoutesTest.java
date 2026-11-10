@@ -17,7 +17,7 @@ class PlayerRoutesTest {
     void get_players_returnsArray() {
         var metrics = mock(ServerMetricsCollector.class);
         when(metrics.currentPlayers())
-                .thenReturn(List.of(new PlayerData("Alice", "u1", 20, 0, 0, 100)));
+                .thenReturn(List.of(new PlayerData("Alice", "u1", 20, 20, 0, List.of(), 0, 0, 100)));
         var app = Javalin.create();
         PlayerRoutes.register(app, metrics);
         JavalinTest.test(app, (server, client) -> {

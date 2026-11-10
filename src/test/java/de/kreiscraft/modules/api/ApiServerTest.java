@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.kreiscraft.modules.api.metrics.ServerMetricsCollector;
 import de.kreiscraft.modules.api.verification.LinkGuiPrompt;
 import de.kreiscraft.modules.api.verification.VerificationService;
+import de.kreiscraft.modules.api.verification.WhitelistRequests;
+import de.kreiscraft.modules.api.scene.SceneEvents;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.whitelist.WhitelistService;
 import de.kreiscraft.testsupport.MockScheduler;
@@ -16,17 +18,28 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.WebSocket;
+import java.net.http.WebSocketHandshakeException;
 import java.time.Clock;
 import java.time.Duration;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.bukkit.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ApiServerTest {
+    @TempDir
+    Path dataDirectory;
 
     private static final String ALLOWED_ORIGIN = "https://kreiscraft.de";
     private static final String MALICIOUS_ORIGIN = "https://malicious.example";
@@ -81,7 +94,9 @@ class ApiServerTest {
                         scheduler,
                         mockBukkitServer,
                         new ObjectMapper(),
-                        Logger.getLogger("test"));
+                        Logger.getLogger("test"),
+                        new SceneEvents(mockBukkitServer, scheduler),
+                        new WhitelistRequests(dataDirectory, new ObjectMapper(), Clock.systemUTC()));
 
         apiServer.start();
     }
@@ -110,6 +125,63 @@ class ApiServerTest {
                                         .build(),
                                 HttpResponse.BodyHandlers.ofString());
         assertThat(resp.statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void eventsStartsWithSnapshotRefreshesAndClosesClientsThatSendMessages() throws Exception {
+        var received = new LinkedBlockingQueue<String>();
+        var closed = new CompletableFuture<Integer>();
+        var text = new StringBuilder();
+        WebSocket socket = HttpClient.newHttpClient().newWebSocketBuilder()
+                .header("Origin", ALLOWED_ORIGIN)
+                .buildAsync(URI.create("ws://127.0.0.1:" + apiServer.port() + "/events"), new WebSocket.Listener() {
+                    @Override
+                    public void onOpen(WebSocket ws) {
+                        ws.request(1);
+                    }
+
+                    @Override
+                    public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
+                        text.append(data);
+                        if (last) {
+                            received.add(text.toString());
+                            text.setLength(0);
+                        }
+                        ws.request(1);
+                        return null;
+                    }
+
+                    @Override
+                    public CompletionStage<?> onClose(WebSocket ws, int status, String reason) {
+                        closed.complete(status);
+                        return null;
+                    }
+                }).get(5, TimeUnit.SECONDS);
+        try {
+            assertThat(received.poll(5, TimeUnit.SECONDS)).contains("\"type\":\"scene_snapshot\"", "\"players\":[]");
+            scheduler.advance(Duration.ofSeconds(30));
+            assertThat(received.poll(5, TimeUnit.SECONDS)).contains("\"type\":\"scene_snapshot\"");
+            socket.sendText("{}", true).get(5, TimeUnit.SECONDS);
+            assertThat(closed.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
+        } finally {
+            socket.abort();
+        }
+    }
+
+    @Test
+    void websocketUpgradesRejectOriginsOutsideTheAllowlist() throws Exception {
+        for (String endpoint : List.of("chat", "events")) {
+            try {
+                HttpClient.newHttpClient().newWebSocketBuilder().header("Origin", MALICIOUS_ORIGIN)
+                        .buildAsync(URI.create("ws://127.0.0.1:" + apiServer.port() + "/" + endpoint),
+                                new WebSocket.Listener() {})
+                        .get(5, TimeUnit.SECONDS);
+                throw new AssertionError("Disallowed origin connected to " + endpoint);
+            } catch (ExecutionException e) {
+                assertThat(e.getCause()).isInstanceOf(WebSocketHandshakeException.class);
+                assertThat(((WebSocketHandshakeException) e.getCause()).getResponse().statusCode()).isEqualTo(403);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------

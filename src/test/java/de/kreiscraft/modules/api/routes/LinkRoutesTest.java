@@ -218,7 +218,7 @@ class LinkRoutesTest {
     void getLinked_accepted_online_returnsAcceptedWithPlayerData() {
         UUID playerUuid = UUID.randomUUID();
         PlayerData data =
-                new PlayerData("Player1", playerUuid.toString(), 20, 5, 3, 10000L);
+                new PlayerData("Player1", playerUuid.toString(), 20, 20, 0, java.util.List.of(), 5, 3, 10000L);
         when(verification.getStatus(sessionUuid)).thenReturn(VerificationStatus.ACCEPTED);
         when(verification.getLinkedPlayer(sessionUuid)).thenReturn(playerUuid);
         when(metrics.playerByUuid(playerUuid)).thenReturn(data);
