@@ -57,6 +57,7 @@ class OpeningEncounterTest {
     private MockScheduler scheduler;
     private ShatteredCrownModule module;
     private ConfigurationNode config;
+    private int referenceHits;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -96,6 +97,13 @@ class OpeningEncounterTest {
             @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; location, text and lifetime remain real.
+            }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                referenceHits++;
+                // Encounter policy only; native gear/difficulty mitigation is exercised by DragonDamageProbe.
+                bombardmentDamage(recipient, source, healthPoints);
             }
 
             @Override
@@ -233,6 +241,7 @@ class OpeningEncounterTest {
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
         assertThat(indicator.isValid()).isFalse();
         assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
         scheduler.advance(Duration.ofSeconds(4));
@@ -476,6 +485,7 @@ class OpeningEncounterTest {
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({
             "bombardment-warning-seconds,0", "bombardment-cadence-seconds,0", "bombardment-damage,NaN",
+            "bombardment-damage,-1", "bombardment-damage,101", "bombardment-damage,Infinity",
             "bombardment-radius,Infinity", "bombardment-radius,13", "bombardment-warning-seconds,1",
             "bombardment-cadence-seconds,3"
     })

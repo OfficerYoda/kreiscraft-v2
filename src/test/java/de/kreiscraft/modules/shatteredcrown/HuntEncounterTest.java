@@ -60,6 +60,7 @@ class HuntEncounterTest {
     private Runnable beforeNativeRelease;
     private CommandRegistrar commands;
     private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
+    private int referenceHits;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -134,6 +135,13 @@ class HuntEncounterTest {
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
                                 .withCausingEntity(source).build());
             }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                referenceHits++;
+                // Encounter policy only; DragonDamageProbe verifies native reference-gear mitigation.
+                bombardmentDamage(recipient, source, healthPoints);
+            }
         });
         config = BasicConfigurationNode.root();
         config.node("opening-grace-seconds").set(0); // Isolate attack timing from the separately tested opening grace.
@@ -206,6 +214,7 @@ class HuntEncounterTest {
             case BOMBARDMENT -> {
                 scheduler.advance(Duration.ofSeconds(3));
                 assertThat(player.getHealth()).isEqualTo(14);
+                assertThat(referenceHits).isEqualTo(1);
             }
             case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         }
@@ -264,8 +273,12 @@ class HuntEncounterTest {
         debug("trigger bombardment", player);
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
         debug("status", player);
         assertThat(messages(player)).anyMatch(text -> text.contains("main=idle"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -342,6 +355,7 @@ class HuntEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
         debug("status", player);
         assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("main=idle"));
         debug("trigger prey", player);

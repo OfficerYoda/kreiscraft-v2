@@ -119,7 +119,7 @@ server-config:
     shattered-crown-ground-max-y: "Maximum objective ground Y"
     shattered-crown-bombardment-warning-seconds: "Bombardment warning (seconds)"
     shattered-crown-bombardment-cadence-seconds: "Bombardment cadence (seconds)"
-    shattered-crown-bombardment-damage: "Bombardment damage"
+    shattered-crown-bombardment-damage: "Bombardment reference health loss"
     shattered-crown-bombardment-radius: "Bombardment radius"
     shattered-crown-lane-length: "Breath lane length"
     shattered-crown-lane-width: "Breath lane width"

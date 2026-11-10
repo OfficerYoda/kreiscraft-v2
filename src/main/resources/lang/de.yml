@@ -119,7 +119,7 @@ server-config:
     shattered-crown-ground-max-y: "Maximale Anker-Bodenhöhe"
     shattered-crown-bombardment-warning-seconds: "Bombardierungswarnung (Sekunden)"
     shattered-crown-bombardment-cadence-seconds: "Bombardierungsintervall (Sekunden)"
-    shattered-crown-bombardment-damage: "Bombardierungsschaden"
+    shattered-crown-bombardment-damage: "Bombardierung: Referenz-Lebenspunkteverlust"
     shattered-crown-bombardment-radius: "Bombardierungsradius"
     shattered-crown-lane-length: "Atembahnlänge"
     shattered-crown-lane-width: "Atembahnbreite"
