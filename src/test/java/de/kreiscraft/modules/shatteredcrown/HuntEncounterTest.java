@@ -272,8 +272,12 @@ class HuntEncounterTest {
         debug("trigger bombardment", player);
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
         debug("status", player);
         assertThat(messages(player)).anyMatch(text -> text.contains("main=idle"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -350,6 +354,7 @@ class HuntEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
         debug("status", player);
         assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("main=idle"));
         debug("trigger prey", player);
