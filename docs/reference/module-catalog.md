@@ -384,7 +384,7 @@ Triggers the season-start ceremony: a countdown (`countdown` down through `1`, e
 
 ### Description
 
-Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and color are applied to every online viewer's scoreboard team (the overhead/nametag presentation), to the Bukkit display name, and to the tab-list player name. A `StatusChangedEvent` is broadcast so other modules (`chat-format`, `tablist`) can react. On join and on every status change, each online viewer's scoreboard is rebuilt so all viewers stay synchronized, and the player's display/tab-list names are refreshed.
+Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and color are applied to every online viewer's scoreboard team (the overhead/nametag presentation); the prefix and suffix are also applied to the Bukkit display name and the tab-list player name. A `StatusChangedEvent` is broadcast so other modules (`chat-format`, `tablist`) can react. On join and on every status change, each online viewer's scoreboard is rebuilt so all viewers stay synchronized, and the player's display/tab-list names are refreshed.
 
 Chat and the Tab player list parse the concatenated MiniMessage prefix, literal player name, and suffix without inserting a color or reset. Open prefix tags continue onto the name; closing tags and resets retain their normal meaning. A separating space is added after a visible prefix and before a visible suffix when missing; empty affixes add no spaces. Overhead nametags use the stored Minecraft team color.
 
