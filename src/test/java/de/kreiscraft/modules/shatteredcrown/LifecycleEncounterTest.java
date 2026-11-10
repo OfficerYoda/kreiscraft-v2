@@ -249,6 +249,31 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void clearingOpeningAnchorsDuringGraceDoesNotStartAttacksOrRestartPreparation() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ofSeconds(5));
+        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
+                    mock(org.bukkit.damage.DamageSource.class), List.of()));
+        });
+        crystals().forEach(crystal -> server.getPluginManager().callEvent(
+                new org.bukkit.event.entity.EntityDamageByEntityEvent(player, crystal,
+                        org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                        mock(org.bukkit.damage.DamageSource.class), 10)));
+        assertThat(crystals()).isEmpty();
+        assertThat(status(encounter)).contains("grace-seconds=25.0");
+        scheduler.advance(Duration.ofMillis(24999));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        encounter.close();
+    }
+
+    @Test
     void graceReloadAppliesNextAttemptAndManualTriggerDoesNotRestartTheGraceClock() throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());

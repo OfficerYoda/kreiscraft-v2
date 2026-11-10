@@ -97,8 +97,8 @@ Keep later attacks inside the same `EncounterController` boundary:
   the old attempt's closed/cancelled ownership, so an already queued callback is inert even after
   another attempt has begun. Completed/cancelled tasks leave the ownership set.
 - `own(entity, kind)`: tag and register every spawned persistent hazard/indicator/objective.
-  Cleanup removes them without touching unrelated entities. Invalid expired references are
-  pruned when registering more entities. The managed dragon and participants are not artifacts.
+  Cleanup removes them without touching unrelated entities. Attack children release expired
+  references when they close. The managed dragon and participants are not artifacts.
 - `onCleanup(restore)`: register temporary player effects, UI and other reversible changes. The
   returned action can be run on normal expiry; it removes itself and runs exactly once. Any
   outstanding restorations run on termination. A failed restoration is logged without suppressing
@@ -119,6 +119,42 @@ Closing that scope at the final gate cancels Hunt indicators/damage/landing work
 attempt-owned restoration, the continuous absence timer or the rolling explosion clock/budget.
 Every full termination closes both scopes; recovery recognizes live artifacts from either scope.
 The finale threshold snapshots the effective native maximum at attempt start, preserving modifiers.
+
+## Main actions and lingering hazards (#149)
+
+The attack scope owns a **main-action child** and separate **hazard children**. All current attack
+entry points, including debug triggers, run setup and subsequent callbacks through these existing
+`EncounterWork` scopes. Closing a main child signals completion once by releasing its executing
+membership. Repeated completion/cancellation is harmless; it does not close sibling hazards.
+
+| Main action | Completion boundary | Lingering work |
+| --- | --- | --- |
+| Dive / Ground Smash | Native movement recovery releases flight control; cancellation/failure also completes | None in the current moving attacks |
+| Prey | All countdown deposition callbacks finish (including skipped targets) | Each deposited pool owns its display, rendering, damage and exclusive expiry independently |
+| Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
+| Landing | Native approach deadline or melee-window end releases the reservation | None |
+| Legacy stationary lane | Warning resolves into an active lane | Lane rendering/damage/expiry remain separately owned; existing two-lane limit is retained |
+
+Setup, native-flight, rendering, refresh and damage exceptions close the applicable child and log
+the failure. Pool failure removes pool membership without aborting the Encounter coordinator.
+Ownership is installed before metadata/rendering that may fail. Spawn callbacks revalidate the
+specific owner, not merely the same dragon or phase: synchronous pause/phase replacement cannot
+attach a new warning to an already-closed owner. Cancelled scheduler callbacks are inert even if
+Paper queued them before cancellation. Cleanup is idempotent and logs failures independently,
+so one failed cancellation/restoration/removal does not suppress other work or native-flight release.
+
+`/dragondebug status` shows `main=executing|idle`, `attack=<name>|none`, and `hazards=<count>`
+alongside the existing lane/mark/area/native-phase details. For example, trigger Prey, wait for
+deposition, and inspect `main=idle, attack=none, hazards=1`: the visible pool still damages until
+expiry. `cancel` or `pause` removes both executing and lingering work and leaves automatic attacks
+paused. `trigger` replaces all existing attack work before starting its requested production action;
+`resume` does the same cleanup before re-enabling automatic coordination. Final phase replacement,
+60-second reset, victory, disable and world unload close both main actions and hazards.
+
+No new lifecycle toggle or timing knob is needed. Existing validated, per-attempt warning,
+movement, pool-lifetime/damage and landing tuning remains authoritative; rotation redesign follows
+in the approved successor tickets. Automated command/event tests are not live Paper combat evidence;
+integrated #163 must verify active pool cancellation, native release and real rendering on Paper.
 
 ## Historical automated evidence (#139 baseline)
 
