@@ -137,7 +137,6 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
 | `defender-health` | 40 | 1–1000 |
 | `defender-damage` | 6 | 0–100, native attack attribute |
-| `defender-leash` | 16 | 4–32 blocks from the Anchor |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
 | `bombardment-cadence-seconds` | 8 | 2–120 seconds between warning starts; first warning after this interval |
 | `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |
@@ -406,7 +405,7 @@ session was performed. Before deployment validation, run the
 **complete encounter** on the supported Paper server and record:
 
 1. Main-End initial and ritual dragon discovery, real podium/platform alignment, all four accessible Anchor
-   terrain, visible locale/status cues, defender targeting/leash and despawn behavior.
+   terrain, visible locale/status cues, arena-wide defender targeting/roaming and despawn behavior.
 2. Real multipart sword/arrow/explosion shield rejection; exposed crystal breaking; crystal healing
    suppression and restoration; protected-arrow/TNT origins; ignition/explosion suppression.
 3. Kill through vanilla completion and verify initial vs repeated XP, portal, egg/gateway and ritual

@@ -338,7 +338,6 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("max-health", 1, 1024));
         fields.add(crownNumber("defender-health", 1, 1000));
         fields.add(crownNumber("defender-damage", 0, 100));
-        fields.add(crownNumber("defender-leash", 4, 32));
         fields.add(crownNumber("bombardment-warning-seconds", 1, 15));
         fields.add(crownNumber("bombardment-cadence-seconds", 2, 120));
         fields.add(crownNumber("bombardment-damage", 0, 100));

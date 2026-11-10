@@ -156,7 +156,6 @@ modules:
     defender-type: HUSK
     defender-health: 40.0
     defender-damage: 6.0
-    defender-leash: 16.0
     arena-radius: 192.0
     opening-grace-seconds: 30.0
     arrival-x: 100.0

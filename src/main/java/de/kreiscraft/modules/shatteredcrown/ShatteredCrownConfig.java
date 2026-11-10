@@ -13,7 +13,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double arenaRadius,
         Double arrivalX, Double arrivalY, Double arrivalZ, Double arrivalRadius,
         Double arrivalHeight, Double anchorDistance, Integer groundSearchRadius, Double groundMaxY,
-        String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash,
+        String defenderType, Double defenderHealth, Double defenderDamage,
         Double bombardmentWarningSeconds, Double bombardmentCadenceSeconds,
         Double bombardmentDamage, Double bombardmentRadius,
         Double laneLength, Double laneWidth, Double laneWarningSeconds, Double laneLifetimeSeconds,
@@ -96,7 +96,6 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         defenderType = defenderType == null ? "HUSK" : defenderType;
         defenderHealth = defenderHealth == null ? 40.0 : defenderHealth;
         defenderDamage = defenderDamage == null ? 6.0 : defenderDamage;
-        defenderLeash = defenderLeash == null ? 16.0 : defenderLeash;
         bombardmentWarningSeconds = bombardmentWarningSeconds == null ? 3.0 : bombardmentWarningSeconds;
         bombardmentCadenceSeconds = bombardmentCadenceSeconds == null ? 8.0 : bombardmentCadenceSeconds;
         bombardmentDamage = bombardmentDamage == null ? 6.0 : bombardmentDamage;
@@ -189,7 +188,6 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("ground-max-y", groundMaxY, -64, 320);
         bounded("defender-health", defenderHealth, 1, 1000);
         bounded("defender-damage", defenderDamage, 0, 100);
-        bounded("defender-leash", defenderLeash, 4, 32);
         bounded("bombardment-warning-seconds", bombardmentWarningSeconds, 1, 15);
         bounded("bombardment-cadence-seconds", bombardmentCadenceSeconds, 2, 120);
         bounded("bombardment-damage", bombardmentDamage, 0, 100);

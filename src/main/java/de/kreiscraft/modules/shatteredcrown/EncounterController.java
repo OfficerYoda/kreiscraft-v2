@@ -64,6 +64,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     private final Scheduler scheduler;
     private final MessageService messages;
     private final List<Mob> defenders = new ArrayList<>();
+    private final java.util.Map<UUID, Anchor> combatOwners = new java.util.HashMap<>();
+    private final java.util.Map<UUID, java.util.function.Consumer<Mob>> defenderInitializers =
+            new java.util.HashMap<>();
     private final Set<UUID> unavailableWorlds = new HashSet<>();
     private Scheduler.Task discovery;
     private Scheduler.Task absence;
@@ -301,12 +304,15 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private static final class Anchor {
         private EnderCrystal crystal;
+        private final UUID id;
         private final Location home;
         private final List<Mob> wave = new ArrayList<>();
         private boolean waveInstalled;
+        private int recoveryPasses;
 
         private Anchor(EnderCrystal crystal, Location home) {
             this.crystal = crystal;
+            this.id = crystal.getUniqueId();
             this.home = home;
         }
     }
@@ -1519,6 +1525,76 @@ public final class EncounterController implements Listener, AutoCloseable {
         requireWork().own(entity, kind);
     }
 
+    /** Combat attribution survives parent death, but never crosses an attempt boundary. */
+    public boolean ownsCombatant(Entity entity) {
+        return entity != null && combatOwners.containsKey(entity.getUniqueId());
+    }
+
+    /** Original objective identity; roaming, riding and parent death do not reassign it. */
+    public UUID anchorId(Entity entity) {
+        Anchor anchor = entity == null ? null : combatOwners.get(entity.getUniqueId());
+        return anchor == null ? null : anchor.id;
+    }
+
+    /** Call in Paper's pre-spawn consumer, not a post-spawn listener. Mobs also gate their parent's Anchor. */
+    public boolean inheritOwnership(Entity entity, Entity parent) {
+        Anchor anchor = parent == null ? null : combatOwners.get(parent.getUniqueId());
+        if (anchor == null || work == null || work.isClosed() || !anchors.contains(anchor)) {
+            return false;
+        }
+        registerCombatant(entity, anchor);
+        return true;
+    }
+
+    private void registerCombatant(Entity entity, Anchor anchor) {
+        Anchor previous = combatOwners.get(entity.getUniqueId());
+        if (previous != null && previous != anchor) {
+            throw new IllegalArgumentException("Combatants cannot change their original Anchor");
+        }
+        own(entity, entity instanceof Mob ? "defender" : "defender-effect");
+        if (combatOwners.putIfAbsent(entity.getUniqueId(), anchor) == null && entity instanceof Mob mob) {
+            defenders.add(mob);
+            anchor.wave.add(mob);
+            mob.setPersistent(true);
+            if (mob.getAttribute(Attribute.FOLLOW_RANGE) != null) {
+                mob.getAttribute(Attribute.FOLLOW_RANGE).setBaseValue(config.arenaRadius() * 2);
+            }
+            anchor.crystal.setGlowing(false);
+        }
+    }
+
+    /** Recoverable descendant spawn. Initialization and ownership run before public spawn callbacks. */
+    public Mob spawnCombatant(Location location, EntityType type, Entity parent,
+            java.util.function.Consumer<Mob> initialize) {
+        Anchor anchor = parent == null ? null : combatOwners.get(parent.getUniqueId());
+        if (anchor == null || !anchors.contains(anchor)) {
+            throw new IllegalArgumentException("Parent is not an active Encounter combatant");
+        }
+        return spawnCombatant(location, type, anchor, initialize);
+    }
+
+    private Mob spawnCombatant(Location location, EntityType type, Anchor anchor,
+            java.util.function.Consumer<Mob> initialize) {
+        EncounterWork owner = requireWork();
+        Entity entity = location.getWorld().spawnEntity(location, type,
+                org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM, spawned -> {
+                    if (!(spawned instanceof Mob mob)) {
+                        throw new IllegalArgumentException("Defenders must be mobs");
+                    }
+                    registerCombatant(mob, anchor);
+                    defenderInitializers.put(mob.getUniqueId(), initialize);
+                    initialize.accept(mob);
+                    if (mob.getAttribute(Attribute.FOLLOW_RANGE) != null) {
+                        mob.getAttribute(Attribute.FOLLOW_RANGE).setBaseValue(config.arenaRadius() * 2);
+                    }
+                });
+        if (!entity.isValid() || work != owner || owner.isClosed() || dragon == null) {
+            entity.remove();
+            throw new IllegalStateException("Defender spawn was refused");
+        }
+        return (Mob) entity;
+    }
+
     /** All delayed warnings, damage and landing effects must use this attempt-scoped scheduler. */
     public Scheduler.Task runLater(Duration delay, Runnable effect) {
         return requireWork().later(delay, effect);
@@ -1560,25 +1636,15 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private Mob spawnDefender(Location ground) {
-        EncounterWork owner = requireWork();
-        Mob defender = (Mob) ground.getWorld().spawnEntity(ground.clone().add(2, 0, 0),
-                EntityType.valueOf(config.defenderType()));
-        try {
-            if (!defender.isValid() || work != owner || dragon == null) {
-                throw new IllegalStateException("Defender spawn was refused");
-            }
-            own(defender, "defender");
-            defender.setPersistent(true);
-            battles.preventDespawn(defender);
-            defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
-            defender.setHealth(config.defenderHealth());
-            defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
-            defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
-            return defender;
-        } catch (RuntimeException exception) {
-            defender.remove();
-            throw exception;
-        }
+        Anchor anchor = anchors.stream().filter(candidate -> candidate.home.equals(ground)).findFirst().orElseThrow();
+        return spawnCombatant(ground.clone().add(2, 0, 0), EntityType.valueOf(config.defenderType()), anchor,
+                defender -> {
+                    battles.preventDespawn(defender);
+                    defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
+                    defender.setHealth(config.defenderHealth());
+                    defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
+                    defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
+                });
     }
 
     private EnderCrystal spawnAnchor(Location ground) {
@@ -1596,9 +1662,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         var objective = new Anchor(spawnAnchor(ground), ground);
         anchors.add(objective);
         for (int i = 0; i < config.defenderCount(); i++) {
-            Mob defender = spawnDefender(ground);
-            defenders.add(defender);
-            objective.wave.add(defender);
+            spawnDefender(ground);
         }
         objective.waveInstalled = true;
     }
@@ -1606,28 +1670,48 @@ public final class EncounterController implements Listener, AutoCloseable {
     private void maintainDefenders() {
         for (Anchor anchor : anchors) {
             Location home = anchor.home;
+            if ((!anchor.crystal.isValid() || anchor.wave.stream().anyMatch(mob -> !mob.isValid()))
+                    && ++anchor.recoveryPasses > 3) {
+                throw new IllegalStateException("Anchor recovery exhausted after three replacement passes");
+            }
             if (!anchor.crystal.isValid()) {
+                work.forget(anchor.crystal);
+                anchor.crystal.remove();
                 anchor.crystal = spawnAnchor(home);
                 anchor.crystal.setGlowing(anchor.wave.isEmpty());
             }
             for (int i = 0; i < anchor.wave.size(); i++) {
                 Mob defender = anchor.wave.get(i);
                 if (!defender.isValid()) {
+                    var initialize = defenderInitializers.remove(defender.getUniqueId());
                     defenders.remove(defender);
+                    combatOwners.remove(defender.getUniqueId());
+                    work.forget(defender);
+                    anchor.wave.remove(i--);
                     defender.remove();
-                    defender = spawnDefender(home);
-                    defenders.add(defender);
-                    anchor.wave.set(i, defender);
+                    spawnCombatant(home.clone().add(2, 0, 0), defender.getType(), anchor,
+                            initialize == null ? battles::preventDespawn : initialize);
+                    continue;
                 }
                 Location location = defender.getLocation();
                 if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
-                        || location.distanceSquared(home) > config.defenderLeash() * config.defenderLeash()) {
+                        || arena.protectedArrival(location)) {
                     defender.teleport(home.clone().add(2, 0, 0));
                 }
+                Location targetOrigin = defender.getLocation();
                 defender.setTarget(home.getWorld().getPlayers().stream().filter(arena::participant)
-                        .min(java.util.Comparator.comparingDouble(player -> player.getLocation().distanceSquared(home)))
+                        .min(java.util.Comparator.comparingDouble(player -> player.getLocation()
+                                .distanceSquared(targetOrigin)))
                         .orElse(null));
             }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTarget(org.bukkit.event.entity.EntityTargetLivingEntityEvent event) {
+        if (ownsCombatant(event.getEntity()) && event.getTarget() != null
+                && (!(event.getTarget() instanceof Player player) || !isParticipant(player))) {
+            event.setCancelled(true);
         }
     }
 
@@ -1670,6 +1754,10 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         source = source instanceof ComplexEntityPart part ? part.getParent() : source;
         direct = direct instanceof ComplexEntityPart part ? part.getParent() : direct;
+        if ((ownsCombatant(source) || ownsCombatant(direct)) && combatAlly(target)) {
+            event.setCancelled(true);
+            return;
+        }
         if (target instanceof Player player
                 && (source != null && encounterEnemy(source) || direct != null && encounterEnemy(direct))
                 && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
@@ -1691,7 +1779,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         Anchor objective = anchors.stream().filter(anchor -> target.equals(anchor.crystal)).findFirst().orElse(null);
-        boolean enemy = target.equals(dragon) || objective != null || defenders.contains(target);
+        boolean enemy = target.equals(dragon) || objective != null || ownsCombatant(target);
         if (enemy && (protectedSource(source) || protectedSource(direct)
                 || protectedSource(event.getDamageSource().getDirectEntity()))) {
             event.setCancelled(true);
@@ -1733,9 +1821,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 }
             }
         }
-        if (target instanceof Player player && isProtectedArrival(player.getLocation()) && defenders.contains(source)) {
-            event.setCancelled(true);
-        }
     }
 
     private boolean isManagedDragon(EnderDragon candidate) {
@@ -1769,7 +1854,12 @@ public final class EncounterController implements Listener, AutoCloseable {
     private boolean encounterEnemy(Entity entity) {
         Entity target = entity instanceof ComplexEntityPart part ? part.getParent() : entity;
         return target.equals(dragon) || target instanceof EnderDragon candidate && isManagedDragon(candidate)
-                || defenders.contains(target) || anchors.stream().anyMatch(anchor -> target.equals(anchor.crystal));
+                || ownsCombatant(target) || anchors.stream().anyMatch(anchor -> target.equals(anchor.crystal));
+    }
+
+    private boolean combatAlly(Entity entity) {
+        Entity target = entity instanceof ComplexEntityPart part ? part.getParent() : entity;
+        return target instanceof org.bukkit.entity.Enderman || ownsCombatant(target) || target.equals(dragon);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -1782,27 +1872,38 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPotion(org.bukkit.event.entity.PotionSplashEvent event) {
+        if (ownsCombatant(event.getEntity())
+                || event.getEntity().getShooter() instanceof Entity source && ownsCombatant(source)) {
+            event.getAffectedEntities().stream().filter(this::combatAlly)
+                    .forEach(entity -> event.setIntensity(entity, 0));
+        }
         if (protectedSource(event.getEntity())) {
             event.getAffectedEntities().stream().filter(this::encounterEnemy)
                     .forEach(entity -> event.setIntensity(entity, 0));
         }
-        if (event.getEntity().getShooter() instanceof Entity source && encounterEnemy(source)) {
+        Entity source = event.getEntity().getShooter() instanceof Entity owner ? owner : null;
+        if (ownsCombatant(event.getEntity()) || source != null && encounterEnemy(source)) {
             event.getAffectedEntities().stream().filter(entity -> entity instanceof Player player
                     && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
-                            || openingGrace() && source.equals(dragon)))
+                            || openingGrace() && dragon.equals(source)))
                     .forEach(entity -> event.setIntensity(entity, 0));
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCloud(org.bukkit.event.entity.AreaEffectCloudApplyEvent event) {
+        if (ownsCombatant(event.getEntity())
+                || event.getEntity().getSource() instanceof Entity source && ownsCombatant(source)) {
+            event.getAffectedEntities().removeIf(this::combatAlly);
+        }
         if (protectedSource(event.getEntity())) {
             event.getAffectedEntities().removeIf(this::encounterEnemy);
         }
-        if (event.getEntity().getSource() instanceof Entity source && encounterEnemy(source)) {
+        Entity source = event.getEntity().getSource() instanceof Entity owner ? owner : null;
+        if (ownsCombatant(event.getEntity()) || source != null && encounterEnemy(source)) {
             event.getAffectedEntities().removeIf(entity -> entity instanceof Player player
                     && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
-                            || openingGrace() && source.equals(dragon)));
+                            || openingGrace() && dragon.equals(source)));
         }
     }
 
@@ -1816,6 +1917,31 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (isProtectedArrival(projectile.getLocation())
                 || projectile.getShooter() instanceof Entity shooter && protectedSource(shooter)) {
             projectile.getPersistentDataContainer().set(PROTECTED_SHOT, PersistentDataType.BYTE, (byte) 1);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatLaunch(ProjectileLaunchEvent event) {
+        if (event.getEntity().getShooter() instanceof Entity source) {
+            inheritOwnership(event.getEntity(), source);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatLingering(org.bukkit.event.entity.LingeringPotionSplashEvent event) {
+        inheritOwnership(event.getAreaEffectCloud(), event.getEntity());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatSpawn(EntitySpawnEvent event) {
+        Entity entity = event.getEntity();
+        if (entity instanceof Projectile projectile && projectile.getShooter() instanceof Entity source) {
+            inheritOwnership(entity, source);
+        } else if (entity instanceof TNTPrimed tnt && tnt.getSource() != null) {
+            inheritOwnership(entity, tnt.getSource());
+        } else if (entity instanceof org.bukkit.entity.AreaEffectCloud cloud
+                && cloud.getSource() instanceof Entity source) {
+            inheritOwnership(entity, source);
         }
     }
 
@@ -1853,9 +1979,11 @@ public final class EncounterController implements Listener, AutoCloseable {
     public void onDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Player player) {
             cancelMark(player);
+            clearDefenderTargets(player);
             updateAbsence(player, false);
         }
         if (defenders.remove(event.getEntity())) {
+            defenderInitializers.remove(event.getEntity().getUniqueId());
             for (Anchor anchor : anchors) {
                 if (anchor.wave.remove(event.getEntity()) && anchor.wave.isEmpty()) {
                     anchor.crystal.setGlowing(true);
@@ -1890,6 +2018,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getTo(), event.getPlayer().getGameMode())) {
                 cancelMark(event.getPlayer());
+                clearDefenderTargets(event.getPlayer());
             }
             updateAbsence(event.getPlayer(),
                     arena.participantAt(event.getPlayer(), event.getTo(), event.getPlayer().getGameMode()));
@@ -1904,6 +2033,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         cancelMark(event.getPlayer());
+        clearDefenderTargets(event.getPlayer());
         updateAbsence(event.getPlayer(), false);
     }
 
@@ -1919,6 +2049,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getPlayer().getLocation(), event.getNewGameMode())) {
                 cancelMark(event.getPlayer());
+                clearDefenderTargets(event.getPlayer());
             }
             updateAbsence(event.getPlayer(),
                     arena.participantAt(event.getPlayer(), event.getPlayer().getLocation(), event.getNewGameMode()));
@@ -1929,6 +2060,24 @@ public final class EncounterController implements Listener, AutoCloseable {
         var mark = marks.remove(player.getUniqueId());
         if (mark != null) {
             mark.remove();
+        }
+    }
+
+    private void clearDefenderTargets(Player player) {
+        for (Mob mob : List.copyOf(defenders)) {
+            if (!mob.isValid()) {
+                continue;
+            }
+            if (player.equals(mob.getTarget())) {
+                mob.setTarget(null);
+            }
+            if (mob instanceof org.bukkit.entity.Wither wither) {
+                for (var head : org.bukkit.entity.Wither.Head.values()) {
+                    if (player.equals(wither.getTarget(head))) {
+                        wither.setTarget(head, null);
+                    }
+                }
+            }
         }
     }
 
@@ -1981,6 +2130,8 @@ public final class EncounterController implements Listener, AutoCloseable {
             absence = null;
         }
         defenders.clear();
+        combatOwners.clear();
+        defenderInitializers.clear();
         anchors.clear();
         openingGround.clear();
         finalEntered = false;

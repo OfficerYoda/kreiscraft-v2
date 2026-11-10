@@ -324,7 +324,9 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(51);
+        assertThat(names).hasSize(50);
+        assertThat(names).noneMatch(name -> name.startsWith(locale.equals("en") ? "Defender leash radius"
+                : "Verteidiger-Bewegungsradius"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening grace (seconds)"
                 : "Vorbereitungszeit (Sekunden)"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
