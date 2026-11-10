@@ -108,10 +108,7 @@ final class EncounterArena {
             return false;
         }
         double search = radius + config.bombardmentWarningSeconds() * 3 + 32;
-        var danger = impact.getWorld().getNearbyEntities(impact, search, 6, search).stream()
-                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
-                        && cloud.getParticle() == Particle.DRAGON_BREATH)
-                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        var danger = nearbyBreath(impact, search, 6);
         if (danger.size() > 32 || danger.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || overlaps(impact, radius, cloud))) {
             return false;
@@ -181,10 +178,7 @@ final class EncounterArena {
             }
         }
         double search = lane.length + config.laneWarningSeconds() * 3 + 32;
-        var clouds = lane.center.getWorld().getNearbyEntities(lane.center, search, 6, search).stream()
-                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
-                        && cloud.getParticle() == Particle.DRAGON_BREATH)
-                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        var clouds = nearbyBreath(lane.center, search, 6);
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || lane.contains(cloud.getLocation(), cloud.getRadius() + 1))
                 || existing.stream().anyMatch(other -> rectanglesOverlap(lane, other))) {
@@ -209,10 +203,7 @@ final class EncounterArena {
             return false;
         }
         double search = area.radius + warningSeconds * 3 + 32;
-        var clouds = area.center.getWorld().getNearbyEntities(area.center, search, 6, search).stream()
-                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
-                        && cloud.getParticle() == Particle.DRAGON_BREATH)
-                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        var clouds = nearbyBreath(area.center, search, 6);
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || overlaps(area.center, area.radius + 1, cloud))) {
             return false;
@@ -259,13 +250,17 @@ final class EncounterArena {
             }
         }
         double reach = config.landingRadius() + 32;
-        var clouds = center.getWorld().getNearbyEntities(center, reach, 32, reach).stream()
-                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
-                        && cloud.getParticle() == Particle.DRAGON_BREATH)
-                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
+        var clouds = nearbyBreath(center, reach, 32);
         return clouds.size() <= 32 && clouds.stream().noneMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || horizontalSquared(cloud.getLocation(), center.getX(),
                         center.getZ()) <= Math.pow(config.landingRadius() + cloud.getRadius(), 2));
+    }
+
+    private List<AreaEffectCloud> nearbyBreath(Location location, double horizontal, double vertical) {
+        return location.getWorld().getNearbyEntities(location, horizontal, vertical, horizontal).stream()
+                .filter(entity -> entity instanceof AreaEffectCloud cloud && cloud.isValid()
+                        && cloud.getParticle() == Particle.DRAGON_BREATH)
+                .map(entity -> (AreaEffectCloud) entity).limit(33).toList();
     }
 
     boolean atPodium(Location dragon) {

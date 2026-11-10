@@ -145,6 +145,12 @@ class FinalEncounterTest {
     }
 
     private EntityDamageEvent damage(Entity target, EntityDamageEvent.DamageCause cause, double amount) {
+        EntityDamageEvent event = dispatchDamage(target, cause, amount);
+        scheduler.advance(Duration.ZERO); // Paper runs deferred work after native event damage, never within dispatch.
+        return event;
+    }
+
+    private EntityDamageEvent dispatchDamage(Entity target, EntityDamageEvent.DamageCause cause, double amount) {
         var event = new EntityDamageByEntityEvent(player, target, cause, mock(DamageSource.class), amount);
         server.getPluginManager().callEvent(event);
         // Dispatching a public event does not apply native damage in MockBukkit; no dragon AI exists.
@@ -253,7 +259,7 @@ class FinalEncounterTest {
                 }
             }
         }, plugin);
-        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(200);
         assertThat(crystals()).isEmpty();
         assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
@@ -355,6 +361,122 @@ class FinalEncounterTest {
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 30).isCancelled()).isTrue();
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, 40).getFinalDamage()).isEqualTo(40);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 40).isCancelled()).isTrue();
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"false,false", "true,false", "false,true", "true,true"})
+    void laterHighestCancellationOrReductionKeepsHuntAndTheOnceOnlyFinalGateAvailable(boolean cancellation,
+            boolean landed)
+            throws Exception {
+        config.node("prey-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(120);
+        if (landed) {
+            config.node("lane-cadence-seconds").set(120);
+        }
+        hunt();
+        scheduler.advance(Duration.ofSeconds(landed ? 30 : 10));
+        if (landed) {
+            arriveAtPodium();
+        }
+        var warnings = List.copyOf(end.getEntitiesByClass(TextDisplay.class));
+        assertThat(warnings).hasSize(landed ? 0 : 1);
+        var phase = dragon.getPhase();
+        var cancel = new java.util.concurrent.atomic.AtomicBoolean(true);
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void cancel(EntityDamageEvent event) {
+                if (event.getEntity() == dragon && cancel.get()) {
+                    assertThat(event.getFinalDamage()).isEqualTo(700);
+                    if (cancellation) {
+                        event.setCancelled(true);
+                    } else {
+                        event.setDamage(699);
+                    }
+                }
+            }
+        }, plugin);
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled())
+                .isEqualTo(cancellation);
+        scheduler.advance(Duration.ZERO);
+        assertThat(dragon.getHealth()).isEqualTo(cancellation ? 1000 : 301);
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(warnings).allMatch(Entity::isValid);
+        assertThat(dragon.getPhase()).isEqualTo(phase);
+        cancel.set(false);
+        damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 700);
+        scheduler.advance(Duration.ZERO);
+        assertThat(crystals()).hasSize(2);
+        assertThat(warnings).noneMatch(Entity::isValid);
+    }
+
+    @Test
+    void nestedLateHighestMultipartHitCannotSpendThePendingThresholdDamageTwice() throws Exception {
+        hunt();
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        when(part.getParent()).thenReturn(dragon);
+        var nested = new java.util.ArrayList<EntityDamageEvent>();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void nested(EntityDamageEvent event) {
+                if (event.getEntity() == dragon) {
+                    nested.add(dispatchDamage(part, EntityDamageEvent.DamageCause.PROJECTILE, 10000));
+                }
+            }
+        }, plugin);
+        var crossing = dispatchDamage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
+        assertThat(crossing.getFinalDamage()).isEqualTo(700);
+        assertThat(nested).hasSize(1).allMatch(EntityDamageEvent::isCancelled);
+        assertThat(dragon.getHealth()).isEqualTo(300);
+        assertThat(crystals()).isEmpty();
+        assertThat(dispatchDamage(part, EntityDamageEvent.DamageCause.MAGIC, 10000).isCancelled()).isTrue();
+        scheduler.advance(Duration.ZERO);
+        assertThat(crystals()).hasSize(2);
+        assertThat(dragon.getHealth()).isEqualTo(300);
+    }
+
+    @Test
+    void acceptedCrossingRevalidatesNativeHealthBeforeConsumingTheFinalGate() throws Exception {
+        hunt();
+        dispatchDamage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
+        dragon.setHealth(1000); // A permitted intervening native heal precedes deferred acceptance.
+        scheduler.advance(Duration.ZERO);
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 700);
+        assertThat(crystals()).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"disable", "unload", "reset"})
+    void pendingFinalAcceptanceIsCancelledOnTerminationWithoutDamagingTheRestoredNativeDragon(String termination)
+            throws Exception {
+        hunt();
+        var crossings = new java.util.ArrayList<EntityDamageEvent>();
+        Runnable cross = () -> {
+            crossings.add(dispatchDamage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000));
+            assertThat(dragon.getHealth()).isEqualTo(300);
+            assertThat(crystals()).isEmpty();
+        };
+        if (termination.equals("reset")) {
+            // The hit runs at the timeout tick; the already-queued absence reset precedes new acceptance work.
+            scheduler.runLater(Duration.ofSeconds(60), cross);
+            player.teleport(new Location(end, 200, 80, 0));
+            scheduler.advance(Duration.ofSeconds(60));
+        } else {
+            cross.run();
+            if (termination.equals("disable")) {
+                module.disable();
+            } else {
+                server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+            }
+        }
+        assertThat(dragon.getHealth()).isEqualTo(termination.equals("reset") ? 200 : 60);
+        scheduler.advance(Duration.ofSeconds(65));
+        assertThat(dragon.getHealth()).isEqualTo(termination.equals("reset") ? 200 : 60);
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(crossings).hasSize(1).noneMatch(EntityDamageEvent::isCancelled);
     }
 
     @ParameterizedTest
@@ -520,7 +642,7 @@ class FinalEncounterTest {
     void finalReactivationCannotPlaceAnObjectiveOnPreviouslyClearedButNowMissingGround() throws Exception {
         hunt();
         end.getBlockAt(24, 63, 0).setType(Material.AIR);
-        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
+        assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(200);
         assertThat(crystals()).isEmpty();
         assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
@@ -872,6 +994,9 @@ class FinalEncounterTest {
         var environment = new EntityDamageEvent(dragon, EntityDamageEvent.DamageCause.FIRE,
                 mock(DamageSource.class), 10000);
         server.getPluginManager().callEvent(environment);
+        assertThat(environment.isCancelled()).isFalse();
+        dragon.setHealth(dragon.getHealth() - environment.getFinalDamage());
+        scheduler.advance(Duration.ZERO);
         assertThat(crystals()).hasSize(2);
         scheduler.advance(Duration.ofMillis(999));
         assertThat(crystals()).hasSize(2);
@@ -899,10 +1024,10 @@ class FinalEncounterTest {
         var crossing = damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         assertThat(nested).isNotEmpty().allMatch(EntityDamageEvent::isCancelled);
         if (disable) {
-            assertThat(crossing.isCancelled()).isTrue();
+            assertThat(crossing.isCancelled()).isFalse();
             assertThat(crystals()).isEmpty();
             assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
-            assertThat(dragon.getHealth()).isEqualTo(200);
+            assertThat(dragon.getHealth()).isEqualTo(60);
             scheduler.advance(Duration.ofSeconds(65));
             assertThat(crystals()).isEmpty();
         } else {

@@ -77,9 +77,12 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
 
 ### Shatter the Last Stand: final defaults and safeguards
 
-- The gate is checked against final event damage **before native damage/death**. A threshold-crossing
-  hit is capped to stop at 300/1000 health with the default unmodified dragon attribute. Shielding is
-  installed before spawning final objectives, including synchronous multipart/spawn callbacks.
+- Damage is capped **before native damage/death** to stop at 300/1000 health with the default
+  unmodified dragon attribute. In-flight multipart hits share that health-floor allowance. MONITOR
+  observes final combat acceptance without editing the event; encounter-owned deferred work checks
+  actual native health before consuming the once-only gate or stopping Hunt. Later HIGHEST cancellation
+  or reduction cannot activate the finale above its threshold. The health floor protects every hit
+  until that work runs, and shielding is installed before spawning final objectives.
   Premature native dying/death callbacks are rejected until the final pair is cleared; an already
   cancelled combat, phase or death event remains cancelled.
   Native maximum-health modifiers are preserved: for a 1000 base with a −50 modifier, the attempt
@@ -89,7 +92,9 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   either order or the same tick. Final eligibility is consumed before spawning; healing and duplicate
   callbacks cannot replay it. Missing defenders/crystals use established bounded recovery. If final
   footing is no longer usable or a spawn is refused, abort to a full-health retryable native battle,
-  cancel the crossing damage and award nothing; never relocate an objective into the void.
+  award nothing; never relocate an objective into the void. The accepted, capped hit has already
+  applied before setup/abort, so it cannot subsequently kill the restored native dragon. Termination
+  cancels pending acceptance work with the rest of the attempt.
 - Entering the gate closes only the attack scope: pending Hunt warnings, hazards and landings stop.
   Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
   remain intact. Familiar 8-second bombardment opportunities with 3-second visible warnings pressure

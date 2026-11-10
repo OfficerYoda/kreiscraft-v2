@@ -497,10 +497,13 @@ class LifecycleEncounterTest {
                             mock(org.bukkit.damage.DamageSource.class), 10));
                 }
                 if (stage == 0) {
-                    dragon.setHealth(200);
-                    server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(player,
+                    var crossing = new org.bukkit.event.entity.EntityDamageByEntityEvent(player,
                             dragon, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
-                            mock(org.bukkit.damage.DamageSource.class), 1000));
+                            mock(org.bukkit.damage.DamageSource.class), 1000);
+                    server.getPluginManager().callEvent(crossing);
+                    assertThat(crossing.isCancelled()).isFalse();
+                    dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
+                    scheduler.advance(Duration.ZERO);
                 }
             }
             server.getPluginManager().callEvent(rewards);

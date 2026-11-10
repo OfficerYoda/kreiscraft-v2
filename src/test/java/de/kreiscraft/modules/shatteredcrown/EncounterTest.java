@@ -182,8 +182,11 @@ class EncounterTest {
             }
             crystals().forEach(this::hit);
             if (stage == 0) {
-                dragon.setHealth(300);
-                hit(dragon);
+                dragon.setHealth(310);
+                var crossing = hit(dragon);
+                assertThat(crossing.isCancelled()).isFalse();
+                dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
+                scheduler.advance(Duration.ZERO);
             }
         }
     }

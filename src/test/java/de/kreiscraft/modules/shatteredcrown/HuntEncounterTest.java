@@ -135,8 +135,11 @@ class HuntEncounterTest {
     }
 
     private void clearFinalGate() {
-        dragon.setHealth(300);
-        hit(dragon);
+        dragon.setHealth(310);
+        var crossing = hit(dragon);
+        assertThat(crossing.isCancelled()).isFalse();
+        dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
+        scheduler.advance(Duration.ZERO);
         end.getEntitiesByClass(Zombie.class).forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
