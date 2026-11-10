@@ -57,6 +57,7 @@ class HuntEncounterTest {
     private MockScheduler scheduler;
     private ShatteredCrownModule module;
     private ConfigurationNode config;
+    private Runnable beforeNativeRelease;
     private CommandRegistrar commands;
     private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
     private int referenceHits;
@@ -86,7 +87,30 @@ class HuntEncounterTest {
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
-                return new SimulatedDragonFlight(source, scheduler, tick);
+                var nativeControl = new SimulatedDragonFlight(source, scheduler, tick);
+                if (beforeNativeRelease == null) {
+                    return nativeControl;
+                }
+                return new de.kreiscraft.platform.DragonFlightControl() {
+                    @Override
+                    public boolean active() {
+                        return nativeControl.active();
+                    }
+
+                    @Override
+                    public void move(Location destination) {
+                        nativeControl.move(destination);
+                    }
+
+                    @Override
+                    public void close() {
+                        try {
+                            beforeNativeRelease.run();
+                        } finally {
+                            nativeControl.close();
+                        }
+                    }
+                };
             }
 
             @Override
@@ -206,6 +230,159 @@ class HuntEncounterTest {
         debug("resume", player);
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+    }
+
+    @Test
+    void completedPreyKeepsAnOwnedDamagingPoolUntilOperatorCancellation() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=PREY") && text.contains("hazards=0"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=1"));
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=0"));
+    }
+
+    @Test
+    void failedPreyRefreshClearsMainOwnershipAndAllowsAnotherProductionTrigger() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class)) {
+            particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble())).thenThrow(new IllegalStateException("render fault"));
+            scheduler.advance(Duration.ofMillis(250));
+        }
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=0"));
+        debug("trigger bombardment", player);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(player.getHealth()).isEqualTo(14);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(EncounterController.DebugAttack.class)
+    void everyCurrentAttackCompletesItsMainActionWithoutRequiringOperatorReset(EncounterController.DebugAttack attack)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-damage").set(0);
+        config.node("sweep-damage").set(0);
+        config.node("pool-damage").set(0);
+        config.node("bombardment-damage").set(0);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player);
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(text -> text.contains("main=executing") && text.contains("attack=" + attack));
+        scheduler.advance(Duration.ofSeconds(21));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void cancellationInsidePublicWarningSpawnCannotOrphanTheNewEntity() throws Exception {
+        hunt();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void spawned(org.bukkit.event.entity.EntitySpawnEvent event) throws Exception {
+                if (event.getEntity() instanceof TextDisplay) {
+                    debug("cancel", player);
+                }
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        debug("trigger prey", player);
+        org.bukkit.event.HandlerList.unregisterAll(listener);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("trigger prey", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+    }
+
+    @Test
+    void aSchedulerCancellationFailureDoesNotLeaveAnAttackOrPreventTheNextTrigger() throws Exception {
+        scheduler = org.mockito.Mockito.spy(scheduler);
+        org.mockito.Mockito.doAnswer(call -> {
+            var task = (de.kreiscraft.core.scheduler.Scheduler.Task) call.callRealMethod();
+            if (!Duration.ofMillis(250).equals(call.getArgument(1))) {
+                return task;
+            }
+            return new de.kreiscraft.core.scheduler.Scheduler.Task() {
+                @Override
+                public void cancel() {
+                    task.cancel();
+                    throw new IllegalStateException("scheduler cancellation fault");
+                }
+
+                @Override
+                public boolean isCancelled() {
+                    return task.isCancelled();
+                }
+            };
+        }).when(scheduler).runRepeating(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger bombardment", player);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("main=idle"));
+        debug("trigger prey", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveSignalsCompletionOnlyAfterReleasingNativeControl() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-damage").set(0);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        int[] releases = {0};
+        beforeNativeRelease = () -> {
+            releases[0]++;
+            try {
+                debug("status", player);
+            } catch (Exception error) {
+                throw new AssertionError(error);
+            }
+            assertThat(messages(player))
+                    .anyMatch(text -> text.contains("main=executing") && text.contains("attack=DIVE"));
+        };
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(9));
+        assertThat(releases[0]).isEqualTo(1);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+        debug("cancel", player);
+        assertThat(releases[0]).isEqualTo(1);
     }
 
     @Test
