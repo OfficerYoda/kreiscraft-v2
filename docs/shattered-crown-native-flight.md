@@ -31,6 +31,13 @@ perfectly flat 24×6 rectangle or a flat 16-block-wide disk anymore.
 
 ## Verification
 
+The later particle fix adds `CrownParticlesTest`, which calls the production renderer through
+Paper's real `CraftPlayer.spawnParticle` implementation and captures outgoing particle packets.
+The native registry and conversion code are real; only the player handle/network transport is
+mocked. It reproduced `missing required data class java.lang.Float` before the Float payload fix.
+Encounter fault-injection tests cover pool activation/refresh failures and the next attack starting.
+The movement-only disposable probe below did not cover player-facing particle emission.
+
 - Encounter tests cover stepped terrain, jumping targets, void and cloud rejection, owed smash
   after Prey, and repeated dive/Prey/smash/landing participation with the full default timings.
 - `NmsDragonFlightTest` uses Paper's real manager/phase implementations, with mocked world/entity

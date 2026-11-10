@@ -5,6 +5,9 @@ api-version: "26.2"
 author: OfficerYoda
 description: Combined Kreiscraft plugin (gameplay + web API)
 permissions:
+  kreiscraft.shatteredcrown.debug:
+    description: Inspect, pause and manually trigger Shattered Crown attacks
+    default: op
   kreiscraft.admin.item:
     description: Spawn items
     default: op

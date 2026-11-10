@@ -46,6 +46,8 @@ public final class ShatteredCrownModule implements Module {
                     new EncounterController(ctx.plugin().getServer(), battles, config, ctx.scheduler(), ctx.messages());
             ctx.events().register(encounter);
             encounter.start();
+            ctx.commands().register(DragonDebugCommand.build(() -> encounter, ctx.messages(), ctx.plugin().getServer()),
+                    "Inspect and manually trigger Shattered Crown attacks");
         } catch (SerializationException e) {
             throw configurationError("load", e);
         }

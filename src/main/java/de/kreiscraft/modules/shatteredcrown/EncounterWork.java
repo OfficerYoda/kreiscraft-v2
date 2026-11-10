@@ -13,6 +13,8 @@ final class EncounterWork implements AutoCloseable {
     private final Set<OwnedTask> tasks = new HashSet<>();
     private final Set<Entity> entities = new HashSet<>();
     private final Set<Runnable> cleanups = new HashSet<>();
+    private final Set<EncounterWork> children = new HashSet<>();
+    private boolean isolated;
     private final java.util.logging.Logger logger;
     private boolean closed;
 
@@ -31,7 +33,34 @@ final class EncounterWork implements AutoCloseable {
     }
 
     boolean owns(Entity entity) {
-        return entities.contains(entity);
+        return entities.contains(entity) || children.stream().anyMatch(child -> child.owns(entity));
+    }
+
+    /** A failed effect releases its own hazards while the encounter coordinator keeps running. */
+    EncounterWork child(Runnable cleanup) {
+        if (closed) {
+            throw new IllegalStateException("Encounter has ended");
+        }
+        var child = new EncounterWork(scheduler, logger);
+        child.isolated = true;
+        children.add(child);
+        child.onCleanup(() -> {
+            children.remove(child);
+            cleanup.run();
+        });
+        return child;
+    }
+
+    void run(Runnable effect) {
+        if (closed) {
+            return;
+        }
+        try {
+            effect.run();
+        } catch (RuntimeException error) {
+            close();
+            logger.log(java.util.logging.Level.WARNING, "[Shattered Crown] Attack failed; effect cleaned up", error);
+        }
     }
 
     Runnable onCleanup(Runnable restore) {
@@ -72,7 +101,11 @@ final class EncounterWork implements AutoCloseable {
                 return;
             }
             try {
-                effect.run();
+                if (isolated) {
+                    run(effect);
+                } else {
+                    effect.run();
+                }
             } finally {
                 if (period == null) {
                     owned.cancel();
@@ -90,6 +123,8 @@ final class EncounterWork implements AutoCloseable {
             return;
         }
         closed = true;
+        Set.copyOf(children).forEach(EncounterWork::close);
+        children.clear();
         Set.copyOf(tasks).forEach(task -> cleanSafely(task::cancel));
         tasks.clear();
         Set.copyOf(cleanups).forEach(this::cleanSafely);

@@ -44,6 +44,37 @@ see [native flight implementation and evidence](/shattered-crown-native-flight/)
 **Client-visible flight smoothness, model alignment,
 real combat and multiplayer balance still require a new live Paper playtest.**
 
+### Manual attack debugging
+
+Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production attacks:
+
+```text
+/dragondebug status
+/dragondebug pause
+/dragondebug trigger <dive|smash|prey|bombardment|landing> [player]
+/dragondebug cancel
+/dragondebug resume
+```
+
+The target defaults to the player running the command; console must name an online player.
+The target must be alive in survival/adventure inside the main-End combat arena. An eligible player
+entering the arena starts the encounter as usual. Triggers bypass cooldown and phase selection, so
+dives and smashes can be tested while the opening Anchors still shield the dragon. Terrain, escape
+routes, arrival protection, combat cancellation and the actual warning/damage paths still apply.
+
+`trigger` cancels the previous custom attack and enters manual mode. `pause`/`cancel` clear active
+effects, restore flight and leave automatic attacks paused. `resume` restarts the current phase's
+automatic schedule with fresh cadences. Neither command clears Anchors or changes dragon health.
+`status` reports mode, encounter phase/finale, active attack, queued families, hazard counts, landing
+and native flight state. Manual mode ends with the encounter; a reset starts normally.
+
+Paper 26.2 requires a Float payload for `DRAGON_BREATH`. Every Crown breath emission now goes through
+`CrownParticles` with an explicit `1.0f`. Tests exercise real Paper `CraftPlayer.spawnParticle`,
+registry conversion and outgoing particle construction, with the network connection mocked.
+Pool setup, refresh, damage and expiry share an isolated effect scope: a rendering/setup failure
+removes its indicator and active-area entry, releasing the rotation instead of leaving it busy.
+Fault-injection tests cover both initial rendering and later refresh failures.
+
 ## Earlier encounter contract
 
 Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four

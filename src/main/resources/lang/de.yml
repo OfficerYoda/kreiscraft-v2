@@ -362,6 +362,10 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  debug-result: "<prefix> <gray><result></gray>"
+  debug-disabled: "<prefix> <red>Die zersplitterte Krone ist deaktiviert. Aktiviere sie und starte den Server neu.</red>"
+  debug-target-required: "<prefix> <red>Die Konsole benötigt einen Spieler: /dragondebug trigger <attack> <player></red>"
+  debug-target-missing: "<prefix> <red>Spieler <player> ist nicht online.</red>"
   dive-warning: "<gold>Sturzflug — Verlasse den markierten Streifen! Die Pfeile zeigen die Flugrichtung.</gold>"
   smash-warning: "<gold>Bodenschlag — Verlasse den Flammenkreis! Greife nach dem Aufprall an.</gold>"
   opening: "<gold>Brecht die Krone:</gold> <gray>Teilt euch auf! Besiegt die Verteidiger jedes der vier Anker und zerstört dann seinen leuchtenden Bodenkristall. Verlasst markierte Bombardierungskreise vor dem Einschlag!</gray>"

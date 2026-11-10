@@ -362,6 +362,10 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  debug-result: "<prefix> <gray><result></gray>"
+  debug-disabled: "<prefix> <red>Shattered Crown is disabled. Enable it and restart first.</red>"
+  debug-target-required: "<prefix> <red>Console requires a player: /dragondebug trigger <attack> <player></red>"
+  debug-target-missing: "<prefix> <red>Player <player> is not online.</red>"
   dive-warning: "<gold>Dive incoming — Leave the marked strip! The arrows show the dragon's path.</gold>"
   smash-warning: "<gold>Ground smash — Leave the flaming circle! Attack after the impact.</gold>"
   opening: "<gold>Break the Crown:</gold> <gray>Split up! Defeat each of the four Anchors' defenders, then break its glowing ground-level crystal. Leave marked bombardment circles before impact!</gray>"

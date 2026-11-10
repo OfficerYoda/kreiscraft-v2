@@ -57,6 +57,8 @@ class HuntEncounterTest {
     private MockScheduler scheduler;
     private ShatteredCrownModule module;
     private ConfigurationNode config;
+    private CommandRegistrar commands;
+    private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -75,6 +77,11 @@ class HuntEncounterTest {
         player = server.addPlayer();
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler = new MockScheduler();
+        commands = mock(CommandRegistrar.class);
+        org.mockito.Mockito.doAnswer(call -> {
+            debugCommand = call.getArgument(0);
+            return null;
+        }).when(commands).register(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
@@ -115,22 +122,117 @@ class HuntEncounterTest {
     void tearDown() {
         module.disable();
         MockBukkit.unmock();
+        // Fault-injected static rendering calls must not retain prior mock worlds between scenarios.
+        org.mockito.Mockito.framework().clearInlineMocks();
     }
 
     private void hunt() throws Exception {
+        startEncounter();
+        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        });
+        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+    }
+
+    private void startEncounter() throws Exception {
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
         module.enable(new ModuleContext(plugin, config,
                 new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server,
                         recipient -> recipient.getName().equals("Deutsch") ? java.util.Optional.of("de")
                                 : java.util.Optional.empty()),
-                new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
+                new ServiceRegistry(), scheduler, commands, new EventBus(plugin)));
         scheduler.advance(Duration.ZERO);
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
-            defender.setHealth(0);
-            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
-        });
-        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+    }
+
+    private int debug(String command, org.bukkit.command.CommandSender sender) throws Exception {
+        var dispatcher =
+                new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
+        dispatcher.getRoot().addChild(debugCommand);
+        var source = mock(io.papermc.paper.command.brigadier.CommandSourceStack.class);
+        org.mockito.Mockito.when(source.getSender()).thenReturn(sender);
+        return dispatcher.execute("dragondebug " + command, source);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(EncounterController.DebugAttack.class)
+    void debugTriggersActualAttacksDuringOpeningAndCancelKeepsRotationPaused(EncounterController.DebugAttack attack)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        assertThat(debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player)).isEqualTo(1);
+        assertThat(messages(player)).anyMatch(text -> text.contains("Started " + attack));
+        assertThat(hit(dragon).isCancelled()).isTrue(); // Debugging attacks does not clear the shield.
+        switch (attack) {
+            case DIVE -> {
+                scheduler.advance(Duration.ofSeconds(6));
+                assertThat(player.getHealth()).isEqualTo(16);
+            }
+            case SMASH -> {
+                scheduler.advance(Duration.ofSeconds(5));
+                assertThat(player.getHealth()).isEqualTo(14);
+            }
+            case PREY -> {
+                scheduler.advance(Duration.ofSeconds(4));
+                assertThat(player.getHealth()).isEqualTo(17);
+            }
+            case BOMBARDMENT -> {
+                scheduler.advance(Duration.ofSeconds(3));
+                assertThat(player.getHealth()).isEqualTo(14);
+            }
+            case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        }
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("mode=manual") && text.contains("attack=none"));
+        debug("resume", player);
+        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+    }
+
+    @Test
+    void debugCommandEnforcesPermissionAndUsesExplicitTarget() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> debug("pause", player))
+                .isInstanceOf(com.mojang.brigadier.exceptions.CommandSyntaxException.class);
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        var target = server.addPlayer("PreyTarget");
+        target.teleport(new Location(end, 20, 64, 0));
+        debug("trigger prey PreyTarget", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(target.getHealth()).isEqualTo(17);
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("trigger dive MissingPlayer", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("MissingPlayer") && text.contains("not online"));
+        debug("cancel", player);
+        target.teleport(new Location(end, 100, 50, 0));
+        debug("trigger smash PreyTarget", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("outside protected arrival"));
+    }
+
+    @Test
+    void debugResumeReleasesManualHuntAndCommandsHandleConsoleAndDisabledModule() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        var console = server.getConsoleSender();
+        assertThat(debug("trigger dive", console)).isZero();
+        assertThat(debug("trigger dive " + player.getName(), console)).isEqualTo(1);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        debug("pause", console);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        debug("resume", console);
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        module.disable();
+        assertThat(debug("status", console)).isZero();
     }
 
     private EntityDamageEvent hit(org.bukkit.entity.Entity target) {
@@ -320,6 +422,30 @@ class HuntEncounterTest {
         assertThat(player.getHealth()).isEqualTo(17);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         assertThat(end.getEntitiesByClass(TextDisplay.class).iterator().next().getY()).isEqualTo(65.5);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void particleFailureReleasesPoolAndAllowsNextAttack(boolean duringRefresh) throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(12);
+        config.node("sweep-cadence-seconds").set(20);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(duringRefresh ? 16 : 15));
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(org.bukkit.Particle.DRAGON_BREATH),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble()))
+                    .thenThrow(new IllegalArgumentException("injected particle conversion failure"));
+            scheduler.advance(Duration.ofSeconds(1));
+        }
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
     }
 
     @Test

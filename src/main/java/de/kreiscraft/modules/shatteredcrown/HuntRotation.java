@@ -57,6 +57,11 @@ final class HuntRotation {
         }
     }
 
+    String queued() {
+        return java.util.Arrays.stream(Attack.values()).filter(attack -> due.get(attack) <= time)
+                .map(Enum::name).collect(java.util.stream.Collectors.joining(", "));
+    }
+
     private void diagnostic(Attack attack, String reason) {
         if (time - reported.getOrDefault(attack, -30.0) >= 30) {
             reported.put(attack, time);
