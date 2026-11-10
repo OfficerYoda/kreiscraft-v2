@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
 import org.junit.jupiter.api.AfterEach;
@@ -176,7 +176,7 @@ class ChatFormatListenerTest {
     }
 
     @Test
-    void onChat_nameIsColouredWithExactStatusColour() {
+    void onChat_uncoloredPrefixDoesNotForceStoredNameColour() {
         PlayerMock player = server.addPlayer("Heidi");
         when(statusService.get(player.getUniqueId()))
                 .thenReturn(new Status("[Owner]", "[/Owner]", 0xFF4400));
@@ -185,12 +185,11 @@ class ChatFormatListenerTest {
         List<ChatBridgeEvent> captured = new ArrayList<>();
         chatBridge.subscribe(captured::add);
 
-        listenerWith(new ChatFormatConfig()).onChat(event);
+        listenerWith(new ChatFormatConfig(false, "<player-prefix><name-colored><player-suffix>"))
+                .onChat(event);
 
         assertThat(captured).hasSize(1);
-        TextComponent name = findText(captured.getFirst().rendered(), "Heidi");
-        assertThat(name).isNotNull();
-        assertThat(name.style().color()).isEqualTo(TextColor.color(0xFF4400));
+        assertThat(captured.getFirst().rendered()).isEqualTo(Component.text("[Owner] Heidi [/Owner]"));
         assertThat(captured.getFirst().senderColor()).isEqualTo("#FF4400");
     }
 
@@ -208,18 +207,18 @@ class ChatFormatListenerTest {
     }
 
     @Test
-    void onChat_nameAndBridgeUseFinalPrefixColorWithoutColoringBody() {
+    void onChat_openPrefixContinuesOntoNameWithoutColoringBody() {
         PlayerMock player = server.addPlayer("Heidi");
         when(statusService.get(player.getUniqueId()))
-                .thenReturn(new Status("<red>Admin <gold>Owner</gold></red>", "<blue>suffix", 0xFF4400));
+                .thenReturn(new Status("<red>Admin <gold>Owner ", "<blue> suffix", 0xFF4400));
         List<ChatBridgeEvent> captured = new ArrayList<>();
         chatBridge.subscribe(captured::add);
 
         listenerWith(new ChatFormatConfig()).onChat(mockEvent(player, "hello"));
 
         Component rendered = captured.getFirst().rendered();
-        assertThat(findText(rendered, "Heidi").color()).isEqualTo(TextColor.color(0xFFAA00));
-        assertThat(captured.getFirst().senderColor()).isEqualTo("#FFAA00");
+        assertThat(LegacyComponentSerializer.legacySection()
+                .serialize(rendered)).contains("\u00a76Owner Heidi");
         assertThat(findText(rendered, "hello").color()).isNull();
     }
 

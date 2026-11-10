@@ -152,7 +152,7 @@ lists the known players in deterministic order.
 
 ### Description
 
-Intercepts `AsyncChatEvent` and reformats each message using a MiniMessage template. The template has access to `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, and `<body>`. Player affixes come from `StatusService`; present prefixes and suffixes supply their adjacent space while empty values remain spacing-neutral. Optionally allows players to use MiniMessage tags inside the chat body.
+Intercepts `AsyncChatEvent` and reformats each message using a MiniMessage template. The template has access to `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, and `<body>`. Player affixes come from `StatusService`; visible affixes receive a separating space when missing and retain their formatting around the literal player name. Optionally allows players to use MiniMessage tags inside the chat body.
 
 Messages that begin exactly with the Xaero waypoint payload token (`xaero-waypoint`, followed by the protocol's `:` separator) are passed through untouched: the event is left uncancelled so clients and the Xaero mod receive the raw payload, and no formatted message is broadcast or published to `ChatBridge`. Near-matches such as `xaero-waypoints` and ordinary chat are unaffected and formatted normally.
 
@@ -386,7 +386,7 @@ Triggers the season-start ceremony: a countdown (`countdown` down through `1`, e
 
 Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted in `data/statuses.yml`. Prefix, suffix, and color are applied to every online viewer's scoreboard team (the overhead/nametag presentation), to the Bukkit display name, and to the tab-list player name. A `StatusChangedEvent` is broadcast so other modules (`chat-format`, `tablist`) can react. On join and on every status change, each online viewer's scoreboard is rebuilt so all viewers stay synchronized, and the player's display/tab-list names are refreshed.
 
-Player names use the final visible prefix text's color, falling back to the stored color when that text is uncolored or the prefix is empty. Chat and the Tab player list show the same prefix, colored name, and suffix; overhead nametags use the nearest Minecraft team color.
+Chat and the Tab player list parse the concatenated MiniMessage prefix, literal player name, and suffix without inserting a color or reset. Open prefix tags continue onto the name; closing tags and resets retain their normal meaning. A separating space is added after a visible prefix and before a visible suffix when missing; empty affixes add no spaces. Overhead nametags use the stored Minecraft team color.
 
 ### Events published
 

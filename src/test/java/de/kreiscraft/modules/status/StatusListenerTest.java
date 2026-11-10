@@ -102,7 +102,7 @@ class StatusListenerTest {
     @Test
     void onJoin_setsPlayerListNameWithFullStatus() {
         PlayerMock player = new PlayerMock(server, "Bob");
-        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        Status status = new Status("<gold>Admin </gold>", " [A]", GOLD);
         when(service.get(player.getUniqueId())).thenReturn(status);
 
         server.addPlayer(player);
@@ -113,7 +113,7 @@ class StatusListenerTest {
 
     @Test
     void onJoin_reappliesIdentityToEveryOnlinePlayer() {
-        Status aliceStatus = new Status("<aqua>Alice</aqua>", " [A]", 0x5555FF);
+        Status aliceStatus = new Status("<aqua>Alice </aqua>", " [A]", 0x5555FF);
         PlayerMock alice = new PlayerMock(server, "Alice");
         when(service.get(alice.getUniqueId())).thenReturn(aliceStatus);
         server.addPlayer(alice);
@@ -137,7 +137,7 @@ class StatusListenerTest {
         Scoreboard aliceScoreboard = server.getScoreboardManager().getNewScoreboard();
         alice.setScoreboard(aliceScoreboard);
 
-        Status bobStatus = new Status("<gold>Bob</gold>", " [B]", GOLD);
+        Status bobStatus = new Status("<gold>Bob </gold>", " [B]", GOLD);
         PlayerMock bob = new PlayerMock(server, "Bob");
         when(service.get(bob.getUniqueId())).thenReturn(bobStatus);
         server.addPlayer(bob);
@@ -152,7 +152,7 @@ class StatusListenerTest {
 
     @Test
     void onJoin_appliesExistingPlayersToJoiningPlayersScoreboard() {
-        Status aliceStatus = new Status("<aqua>Alice</aqua>", " [A]", 0x5555FF);
+        Status aliceStatus = new Status("<aqua>Alice </aqua>", " [A]", 0x5555FF);
         PlayerMock alice = new PlayerMock(server, "Alice");
         when(service.get(alice.getUniqueId())).thenReturn(aliceStatus);
         server.addPlayer(alice);
@@ -169,7 +169,7 @@ class StatusListenerTest {
         assertThat(team.hasEntry(alice.getName())).isTrue();
         assertThat(plain(team.prefix())).isEqualTo("Alice ");
         assertThat(plain(team.suffix())).isEqualTo(" [A]");
-        assertThat(team.color()).isEqualTo(NamedTextColor.AQUA);
+        assertThat(team.color()).isEqualTo(NamedTextColor.BLUE);
     }
 
     @Test
@@ -177,7 +177,7 @@ class StatusListenerTest {
         PlayerMock player = server.addPlayer("OnlinePlayer");
         String teamName = teamName(player);
 
-        Status updated = new Status("<red>Admin</red>", " <gold>star", GOLD);
+        Status updated = new Status("<red>Admin </red>", " <gold>star", GOLD);
         when(service.get(player.getUniqueId())).thenReturn(updated);
 
         StatusChangedEvent event =
@@ -188,14 +188,14 @@ class StatusListenerTest {
         assertThat(team).isNotNull();
         assertThat(plain(team.prefix())).isEqualTo("Admin ");
         assertThat(plain(team.suffix())).isEqualTo(" star");
-        assertThat(team.color()).isEqualTo(NamedTextColor.RED);
+        assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
     }
 
     @Test
     void onStatusChanged_updatesDisplayNameAndPlayerListName() {
         PlayerMock player = server.addPlayer("OnlinePlayer");
 
-        Status updated = new Status("<red>Admin</red>", " [A]", GOLD);
+        Status updated = new Status("<red>Admin </red>", " [A]", GOLD);
         when(service.get(player.getUniqueId())).thenReturn(updated);
 
         server.getPluginManager()
@@ -215,7 +215,7 @@ class StatusListenerTest {
         Scoreboard bobScoreboard = server.getScoreboardManager().getNewScoreboard();
         bob.setScoreboard(bobScoreboard);
 
-        Status updated = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        Status updated = new Status("<gold>Admin </gold>", " [A]", GOLD);
         when(service.get(bob.getUniqueId())).thenReturn(updated);
 
         server.getPluginManager()

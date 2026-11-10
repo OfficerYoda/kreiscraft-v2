@@ -20,7 +20,7 @@ public final class StatusData extends DataFile<Map<UUID, Status>> {
         for (var entry : node.childrenMap().entrySet()) {
             UUID id = UUID.fromString(String.valueOf(entry.getKey()));
             ConfigurationNode n = entry.getValue();
-            String prefix = n.node("prefix").getString("<gray>Player</gray>");
+            String prefix = n.node("prefix").getString(Status.defaults().prefix());
             String suffix = n.node("suffix").getString("");
             int color = n.node("color").getInt(0xAAAAAA);
             map.put(id, new Status(prefix, suffix, color));

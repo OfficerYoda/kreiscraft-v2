@@ -2,6 +2,7 @@ package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -68,7 +69,7 @@ public final class StatusListener implements PriorityListener {
         }
         team.prefix(status.prefixComponent());
         team.suffix(status.suffixComponent());
-        team.color(NamedTextColor.nearestTo(status.nameColor()));
+        team.color(NamedTextColor.nearestTo(TextColor.color(status.color() & 0x00FFFFFF)));
         team.addEntry(subject.getName());
     }
 

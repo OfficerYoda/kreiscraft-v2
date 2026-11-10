@@ -86,16 +86,11 @@ public final class ChatFormatListener implements PriorityListener {
         // Look up the sender's status for prefix, suffix and name colour.
         Status status = statusService.get(sender.getUniqueId());
 
-        // Keep the final visible prefix colour on the player name.
-        TextColor nameColor = status.nameColor();
-        TextComponent nameColored = Component.text(sender.getName()).color(nameColor);
+        TextColor nameColor = TextColor.color(status.color() & 0x00FFFFFF);
+        TextComponent nameColored = Component.text(sender.getName());
 
         // Resolve custom MiniMessage tags from the format string.
         TagResolver resolver = TagResolver.builder()
-                .resolver(TagResolver.resolver(
-                        "player-prefix", Tag.selfClosingInserting(status.prefixComponent())))
-                .resolver(TagResolver.resolver(
-                        "player-suffix", Tag.selfClosingInserting(status.suffixComponent())))
                 .resolver(TagResolver.resolver(
                         "kc-prefix", Tag.selfClosingInserting(messages.render("prefix"))))
                 .resolver(TagResolver.resolver(
@@ -103,7 +98,10 @@ public final class ChatFormatListener implements PriorityListener {
                 .resolver(TagResolver.resolver("body", Tag.selfClosingInserting(bodyComponent)))
                 .build();
 
-        Component rendered = MINI_MESSAGE.deserialize(config.format(), resolver);
+        String format = config.format()
+                .replace("<player-prefix>", status.spacedPrefix())
+                .replace("<player-suffix>", status.spacedSuffix());
+        Component rendered = MINI_MESSAGE.deserialize(format, resolver);
 
         // Cancel the vanilla chat event and take over delivery ourselves.
         event.setCancelled(true);

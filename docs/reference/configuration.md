@@ -232,7 +232,7 @@ marked **restart-only**. The admin API key remains YAML-only and is never shown 
 | Key (relative to `modules.chat-format`) | Type | Default | Description |
 |---|---|---|---|
 | `allow-mini-message-in-body` | boolean | `false` | Whether players can use MiniMessage tags in their message body. |
-| `format` | String | `<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, `<body>`. Present player prefixes include one trailing space; present suffixes include one leading space. Empty affixes add no whitespace. |
+| `format` | String | `<kc-prefix> <player-prefix><name-colored><player-suffix><gray> » <reset><body>` | MiniMessage chat format template. Available placeholders: `<kc-prefix>`, `<player-prefix>`, `<name-colored>`, `<player-suffix>`, `<body>`. A separating space is added after a visible prefix and before a visible suffix when missing. Open prefix tags continue onto the literal player name. |
 
 ---
 

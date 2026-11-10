@@ -55,7 +55,7 @@ class TablistStatusCoexistenceTest {
 
     @Test
     void tablistJoinRefresh_doesNotDisturbStatusScoreboardTeam() {
-        Status status = new Status("<gold>Admin</gold>", " <gray>star", GOLD);
+        Status status = new Status("<gold>Admin </gold>", " <gray>star", GOLD);
         when(statusService.get(any(UUID.class))).thenReturn(status);
 
         TablistUpdater updater =
@@ -78,7 +78,7 @@ class TablistStatusCoexistenceTest {
 
     @Test
     void tablistJoinRefresh_doesNotDisturbStatusIdentity() {
-        Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
+        Status status = new Status("<gold>Admin </gold>", " [A]", GOLD);
         when(statusService.get(any(UUID.class))).thenReturn(status);
 
         TablistUpdater updater =
