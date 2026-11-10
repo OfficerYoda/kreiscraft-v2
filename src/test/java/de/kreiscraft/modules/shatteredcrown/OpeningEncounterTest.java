@@ -92,6 +92,10 @@ class OpeningEncounterTest {
                 // Only the unsupported native despawn setter and absent Husk metadata are adapted.
                 defender.registerAttribute(Attribute.ATTACK_DAMAGE);
                 defender.registerAttribute(Attribute.SPAWN_REINFORCEMENTS);
+                defender.registerAttribute(Attribute.FOLLOW_RANGE);
+                defender.getAttribute(Attribute.FOLLOW_RANGE).addModifier(new org.bukkit.attribute.AttributeModifier(
+                        new org.bukkit.NamespacedKey("test", "random_follow_range"), -0.1,
+                        org.bukkit.attribute.AttributeModifier.Operation.ADD_SCALAR));
             }
 
             @Override
@@ -153,6 +157,119 @@ class OpeningEncounterTest {
     private void defeat(Zombie defender) {
         defender.setHealth(0);
         server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+    }
+
+    @Test
+    void modeAndArrivalTransitionsDropTargetsImmediatelyAndRetargetEligibleAdventurePlayers() throws Exception {
+        enable();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == player);
+        player.setGameMode(org.bukkit.GameMode.CREATIVE);
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == null);
+        var teammate = server.addPlayer();
+        teammate.setGameMode(org.bukkit.GameMode.ADVENTURE);
+        teammate.teleport(new Location(end, -150, 64, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == teammate);
+        teammate.teleport(new Location(end, 100, 50, 0));
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == null);
+        player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == player);
+        player.setHealth(0);
+        server.getPluginManager().callEvent(new EntityDeathEvent(player, mock(DamageSource.class), List.of()));
+        assertThat(defenders()).allMatch(mob -> mob.getTarget() == null);
+    }
+
+    @Test
+    void ownedMeleeProjectilesCloudsAndAttributedDelayedDamageCannotHurtAllies() throws Exception {
+        enable();
+        var mob = defenders().getFirst();
+        var enderman = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        var arrow = end.spawn(mob.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(mob);
+        var cloud = end.spawn(mob.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(mob);
+        for (Entity effect : List.of(mob, arrow, cloud)) {
+            for (Entity ally : List.of(enderman, defenders().getLast(), dragon)) {
+                var event = new EntityDamageByEntityEvent(effect, ally, EntityDamageEvent.DamageCause.MAGIC,
+                        mock(DamageSource.class), 10);
+                server.getPluginManager().callEvent(event);
+                assertThat(event.isCancelled()).as("%s -> %s", effect.getType(), ally.getType()).isTrue();
+            }
+            var hitPlayer = new EntityDamageByEntityEvent(effect, player, EntityDamageEvent.DamageCause.MAGIC,
+                    mock(DamageSource.class), 10);
+            server.getPluginManager().callEvent(hitPlayer);
+            assertThat(hitPlayer.isCancelled()).isFalse();
+        }
+        var delayedSource = DamageSource.builder(org.bukkit.damage.DamageType.EXPLOSION)
+                .withDirectEntity(mob).withCausingEntity(mob).build();
+        var delayed =
+                new EntityDamageEvent(enderman, EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, delayedSource, 10);
+        server.getPluginManager().callEvent(delayed);
+        assertThat(delayed.isCancelled()).isTrue();
+        var applied = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud,
+                new java.util.ArrayList<>(List.of(enderman, defenders().getLast(), dragon, player)));
+        server.getPluginManager().callEvent(applied);
+        assertThat(applied.getAffectedEntities()).containsExactly(player);
+        var unrelated = end.spawn(player.getLocation(), Zombie.class);
+        var normal = new EntityDamageByEntityEvent(unrelated, enderman, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(DamageSource.class), 10);
+        server.getPluginManager().callEvent(normal);
+        assertThat(normal.isCancelled()).isFalse();
+    }
+
+    @Test
+    void retaliationAndNativeRetargetingCannotChooseAlliesOrIneligiblePlayers() throws Exception {
+        enable();
+        var mob = defenders().getFirst();
+        var enderman = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        var observer = server.addPlayer();
+        observer.teleport(player.getLocation());
+        observer.setGameMode(org.bukkit.GameMode.CREATIVE);
+        var arrival = server.addPlayer();
+        arrival.teleport(new Location(end, 100, 50, 0));
+        for (var reason : List.of(org.bukkit.event.entity.EntityTargetEvent.TargetReason.TARGET_ATTACKED_ENTITY,
+                org.bukkit.event.entity.EntityTargetEvent.TargetReason.CLOSEST_ENTITY,
+                org.bukkit.event.entity.EntityTargetEvent.TargetReason.REINFORCEMENT_TARGET)) {
+            for (var ally : List.of(enderman, defenders().getLast(), dragon, observer, arrival)) {
+                var targeting = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(mob, ally, reason);
+                server.getPluginManager().callEvent(targeting);
+                assertThat(targeting.isCancelled()).as("%s -> %s", reason, ally.getType()).isTrue();
+            }
+            var permitted = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(mob, player, reason);
+            server.getPluginManager().callEvent(permitted);
+            assertThat(permitted.isCancelled()).isFalse();
+        }
+        var ordinary = end.spawn(player.getLocation(), Zombie.class);
+        var nativeTarget = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(ordinary, enderman,
+                org.bukkit.event.entity.EntityTargetEvent.TargetReason.TARGET_ATTACKED_ENTITY);
+        server.getPluginManager().callEvent(nativeTarget);
+        assertThat(nativeTarget.isCancelled()).isFalse();
+    }
+
+    @Test
+    void defendersRoamTheWholeCylinderWithoutChangingTheirOriginalAnchorGate() throws Exception {
+        enable();
+        var objective = anchors().getFirst();
+        var team = defenders().stream().filter(mob -> mob.getLocation().distance(objective.getLocation()) < 5).toList();
+        var roaming = new Location(end, -150, end.getMaxHeight() - 1, 0);
+        player.teleport(roaming);
+        team.forEach(mob -> mob.teleport(roaming));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(team).allSatisfy(mob -> {
+            assertThat(mob.getLocation()).isEqualTo(roaming);
+            assertThat(mob.getTarget()).isEqualTo(player);
+            assertThat(mob.getAttribute(Attribute.FOLLOW_RANGE).getValue()).isGreaterThanOrEqualTo(384);
+        });
+        hit(objective);
+        assertThat(objective.isValid()).isTrue();
+        team.forEach(this::defeat);
+        assertThat(objective.isGlowing()).isTrue();
+        assertThat(anchors().stream().filter(anchor -> anchor != objective)).noneMatch(Entity::isGlowing);
+        hit(objective);
+        assertThat(objective.isValid()).isFalse();
+        assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
     @Test

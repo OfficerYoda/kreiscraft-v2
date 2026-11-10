@@ -36,6 +36,11 @@ final class EncounterWork implements AutoCloseable {
         return entities.contains(entity) || children.stream().anyMatch(child -> child.owns(entity));
     }
 
+    /** An unloaded replacement must not make a later stale entity look like active work. */
+    void forget(Entity entity) {
+        entities.remove(entity);
+    }
+
     boolean hasWork() {
         return !tasks.isEmpty() || !entities.isEmpty() || !children.isEmpty();
     }
