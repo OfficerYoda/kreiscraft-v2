@@ -183,10 +183,10 @@ modules:
     landing-window-seconds: 12.0
     landing-approach-seconds: 20.0
     landing-radius: 12.0
-    prey-count: 3
+    prey-percentage: 35.0
     prey-cadence-seconds: 20.0
     prey-countdown-seconds: 4.0
-    pool-radius: 3.0
+    pool-radius: 5.0
     pool-damage: 3.0
     pool-damage-cadence-seconds: 1.0
     pool-lifetime-seconds: 6.0

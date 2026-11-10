@@ -90,6 +90,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     private int targetCursor;
     private final List<BreathLane> lanes = new ArrayList<>();
     private final List<HuntArea> areas = new ArrayList<>();
+    private final Set<HuntArea> pools = new HashSet<>();
+    private final java.util.Map<UUID, Long> poolCooldowns = new java.util.HashMap<>();
+    private long encounterTicks;
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
     private boolean finalEntered;
@@ -187,6 +190,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private boolean busy() {
         return mainWork != null;
+    }
+
+    private boolean pendingArea() {
+        return areas.stream().anyMatch(area -> !pools.contains(area));
     }
 
     void debugStatus(CommandSender sender) {
@@ -290,6 +297,8 @@ public final class EncounterController implements Listener, AutoCloseable {
         lanes.clear();
         marks.clear();
         areas.clear();
+        pools.clear();
+        poolCooldowns.clear();
         rotation = null;
         debugAttack = null;
         debugTarget = null;
@@ -495,7 +504,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (config.movementAttacks()) {
             rotation = new HuntRotation(
                     attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5),
-                    attackCadence(config.preyCadenceSeconds(), config.preyCountdownSeconds() + poolLifetime() + 0.5),
+                    attackCadence(config.preyCadenceSeconds(), config.preyCountdownSeconds() + 0.5),
                     attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5),
                     attackCadence(config.landingCadenceSeconds(), 10),
                     this::busy,
@@ -533,7 +542,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
         });
         Duration preyCadence = seconds(attackCadence(config.preyCadenceSeconds(),
-                config.preyCountdownSeconds() + poolLifetime() + 0.5));
+                config.preyCountdownSeconds() + 0.5));
         attackWork.repeating(preyCadence, preyCadence, this::markPrey);
         Duration sweepCadence =
                 seconds(attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5));
@@ -552,6 +561,8 @@ public final class EncounterController implements Listener, AutoCloseable {
     private void startExplosionClock() {
         // One fixed-size tick ring, not one expiry task per hit: even fractional bed hits stay bounded.
         runRepeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            encounterTicks++;
+            poolCooldowns.values().removeIf(expiry -> expiry <= encounterTicks);
             explosionCursor = (explosionCursor + 1) % explosionBuckets.length;
             explosionBuckets[explosionCursor] = 0;
         });
@@ -609,7 +620,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     private void requestLanding(EncounterWork owner) {
         if (flight != null || !attacking() || dragon == null || debugAttack == null && !anchors.isEmpty()
                 || landingRequested || !lanes.isEmpty()
-                || !marks.isEmpty() || !areas.isEmpty()
+                || !marks.isEmpty() || pendingArea()
                 || dragon.getWorld().getPlayers().stream().noneMatch(arena::participant) || !arena.landingSafe()
                 || dragon.getPhase() == EnderDragon.Phase.DYING) {
             return;
@@ -719,7 +730,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (!attacking() || landingRequested || landingDue || dragon == null
                 || debugAttack == null && !anchors.isEmpty()
                 || lanes.size() >= 2
-                || !marks.isEmpty() || !areas.isEmpty()
+                || !marks.isEmpty() || pendingArea()
                 || lanes.stream().anyMatch(lane -> !lane.active)) {
             return;
         }
@@ -859,14 +870,18 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (flight != null) {
             return;
         }
-        // ponytail: serialize attack families; add concurrent combinations only with route-planning evidence.
-        if (!attacking() || landingRequested || landingDue || !marks.isEmpty() || !areas.isEmpty()
+        // Main actions serialize; sibling pools do not occupy the main-action slot.
+        if (!attacking() || landingRequested || landingDue || !marks.isEmpty() || pendingArea()
                 || !lanes.isEmpty()) {
             return;
         }
         var targets = attackTargets();
+        if (targets.isEmpty()) {
+            return;
+        }
         EnderDragon source = dragon;
-        for (int index = 0; index < Math.min(config.preyCount(), targets.size()); index++) {
+        int count = (int) Math.ceil(scalingPopulation() * config.preyPercentage() / 100);
+        for (int index = 0; index < Math.min(count, targets.size()); index++) {
             Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
             TextDisplay mark = source.getWorld().spawn(target.getLocation().add(0, 2.5, 0), TextDisplay.class);
             if (owner.isClosed() || dragon != source || !attacking() || !mark.isValid()) {
@@ -887,8 +902,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             final Scheduler.Task[] refresh = new Scheduler.Task[1];
             refresh[0] = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
                 if (!isParticipant(target) || !mark.isValid()) {
-                    mark.remove();
-                    marks.remove(target.getUniqueId(), mark);
+                    cancelMark(target);
                     refresh[0].cancel();
                     return;
                 }
@@ -908,7 +922,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 mark.remove();
                 marks.remove(target.getUniqueId(), mark);
                 refresh[0].cancel();
-                if (!valid || landingRequested || areas.size() >= config.preyCount()) {
+                if (!valid || landingRequested) {
                     return;
                 }
                 Location ground = arena.groundBelow(target.getLocation());
@@ -923,10 +937,8 @@ public final class EncounterController implements Listener, AutoCloseable {
                 var participants = source.getWorld().getPlayers().stream().filter(arena::participant).toList();
                 var combined = new ArrayList<>(areas);
                 combined.add(pool);
-                if (combined.stream().allMatch(candidate -> arena.areaSafe(candidate,
-                        combined.stream().filter(other -> other != candidate).toList(), lanes, participants,
-                        config.preyCountdownSeconds()))) {
-                    activatePool(pool, source);
+                if (arena.poolsSafe(combined, lanes, participants, config.preyCountdownSeconds())) {
+                    activatePool(pool, source, poolLifetime());
                 } else {
                     server.getLogger().fine("[Shattered Crown] Prey pool skipped: terrain, overlap or escape route");
                 }
@@ -935,9 +947,29 @@ public final class EncounterController implements Listener, AutoCloseable {
         owner.later(seconds(config.preyCountdownSeconds()), owner::close);
     }
 
-    private void activatePool(HuntArea pool, EnderDragon source) {
+    /** Shared Prey/Rain hazard, with effect-specific geometry and lifetime but unchanged raw pool damage.
+     * Returns false when there is no live owner, footing or a startup failure. Call on the server thread.
+     */
+    public boolean depositBreathPool(Location ground, double radius, double lifetimeSeconds) {
+        if (!Double.isFinite(radius) || radius <= 0 || radius > 32
+                || !Double.isFinite(lifetimeSeconds) || lifetimeSeconds <= 0 || lifetimeSeconds > 120) {
+            throw new IllegalArgumentException("Breath pools require radius (0,32] and lifetime (0,120] seconds");
+        }
+        if (closed || dragon == null || attackWork == null || attackWork.isClosed() || !arena.contains(ground)
+                || arena.protectedArrival(ground)) {
+            return false;
+        }
+        var pool = new HuntArea(ground, radius);
+        if (config.movementAttacks() && !arena.surface(pool)) {
+            return false;
+        }
+        return activatePool(pool, dragon, lifetimeSeconds);
+    }
+
+    private boolean activatePool(HuntArea pool, EnderDragon source, double lifetimeSeconds) {
         EncounterWork poolWork = attackWork.child(() -> {
             areas.remove(pool);
+            pools.remove(pool);
             if (pool.indicator != null) {
                 pool.indicator.remove();
             }
@@ -946,7 +978,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         poolWork.onCleanup(() -> hazards.remove(poolWork));
         poolWork.run(() -> {
             pool.indicator = source.getWorld().spawn(pool.center.clone().add(0, 1.5, 0), TextDisplay.class);
-            if (poolWork.isClosed() || dragon != source || !attacking() || !pool.indicator.isValid()) {
+            if (poolWork.isClosed() || dragon != source || !pool.indicator.isValid()) {
                 pool.indicator.remove();
                 poolWork.close();
                 return;
@@ -957,11 +989,12 @@ public final class EncounterController implements Listener, AutoCloseable {
                 return;
             }
             areas.add(pool);
-            pool.indicator.text(Component.text(poolLifetime() + "s", NamedTextColor.LIGHT_PURPLE));
+            pools.add(pool);
+            pool.indicator.text(Component.text(lifetimeSeconds + "s", NamedTextColor.LIGHT_PURPLE));
             drawAreaRing(pool, Particle.DRAGON_BREATH);
             drawPool(pool);
             source.getWorld().playSound(pool.center, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 0.7f);
-            poolWork.later(seconds(poolLifetime()), poolWork::close);
+            poolWork.later(seconds(lifetimeSeconds), poolWork::close);
             poolWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
                 if (!pool.indicator.isValid()) {
                     poolWork.close();
@@ -969,7 +1002,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 }
                 pool.age += 0.25;
                 pool.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                        Math.max(0, poolLifetime() - pool.age)), NamedTextColor.LIGHT_PURPLE));
+                        Math.max(0, lifetimeSeconds - pool.age)), NamedTextColor.LIGHT_PURPLE));
                 drawAreaRing(pool, Particle.DRAGON_BREATH);
                 drawPool(pool);
             });
@@ -982,12 +1015,18 @@ public final class EncounterController implements Listener, AutoCloseable {
                     if (dragon != source || poolWork.isClosed()) {
                         break;
                     }
-                    if (isParticipant(recipient) && pool.contains(recipient.getLocation(), 0)) {
+                    if (isParticipant(recipient) && pool.contains(recipient.getLocation(), 0)
+                            && !poolCooldowns.containsKey(recipient.getUniqueId())) {
+                        UUID id = recipient.getUniqueId();
+                        // One rolling cooldown across sibling hazards, not one independent clock per pool.
+                        poolCooldowns.put(id, encounterTicks
+                                + (long) Math.ceil(Math.max(1, config.poolDamageCadenceSeconds()) * 20));
                         battles.bombardmentDamage(recipient, source, config.poolDamage());
                     }
                 }
             });
         });
+        return !poolWork.isClosed();
     }
 
     private void drawAreaRing(HuntArea area, Particle particle) {
@@ -1294,7 +1333,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (flight != null) {
             return;
         }
-        if (!hunting || landingRequested || landingDue || !marks.isEmpty() || !areas.isEmpty() || !lanes.isEmpty()) {
+        if (!hunting || landingRequested || landingDue || !marks.isEmpty() || pendingArea() || !lanes.isEmpty()) {
             return;
         }
         EnderDragon source = dragon;
@@ -2071,6 +2110,9 @@ public final class EncounterController implements Listener, AutoCloseable {
         var mark = marks.remove(player.getUniqueId());
         if (mark != null) {
             mark.remove();
+            if (marks.isEmpty() && mainAttack == DebugAttack.PREY && mainWork != null) {
+                mainWork.close();
+            }
         }
     }
 
@@ -2127,6 +2169,9 @@ public final class EncounterController implements Listener, AutoCloseable {
         lanes.clear();
         marks.clear();
         areas.clear();
+        pools.clear();
+        poolCooldowns.clear();
+        encounterTicks = 0;
         debugAttack = null;
         debugTarget = null;
         manualMode = false;
