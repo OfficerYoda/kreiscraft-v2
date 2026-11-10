@@ -288,6 +288,9 @@ identified by the session cookie.
     "name": "PlayerName",
     "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "health": 20,
+    "maxHealth": 20,
+    "absorption": 0.0,
+    "effects": [],
     "deaths": 3,
     "playerKills": 1,
     "playtimeSeconds": 86400

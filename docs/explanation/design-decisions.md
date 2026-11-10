@@ -123,10 +123,10 @@ the `Javalin` instance and exposes `start()` / `stop()` methods. `ApiModule.disa
   and no port is bound.
 - The bound port must be managed (default configured in `ApiConfig`); two running instances on
   the same host would conflict.
-- `ApiModule.onConfigReload()` detects changes to `host`, `port`, or `corsOrigins` and restarts
-  the Javalin instance; other config changes (timeouts, intervals) do not cause a restart because
-  the sub-services that consume them are baked in at construction and are not rebuilt — this is a
-  deliberate simplification documented in the `ApiModule` Javadoc.
+- `ApiModule.onConfigReload()` detects changes to `host`, `port`, `corsOrigins`, the session
+  cookie, the heartbeat interval, or the HTTP async timeout and restarts the Javalin instance;
+  metrics refresh and verification timeouts are baked into longer-lived services and require a
+  full plugin restart.
 
 ---
 

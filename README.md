@@ -8,7 +8,7 @@ A combined Paper 26.x plugin for the kreiscraft.de Minecraft server — a single
 - **Modern Paper APIs.** Brigadier commands via `LifecycleEvents.COMMANDS`, Adventure + MiniMessage everywhere, no legacy `CommandExecutor` / `§`-code strings.
 - **Clean lifecycle.** Every module registers through a `ModuleContext` dependency bag; teardown is tracked so `disable()` cleans up listeners, commands, scheduled tasks, and GUIs.
 - **Config vs. state.** Admin-managed settings live in `config.yml`; runtime state lives in dirty-tracked `DataFile<T>` YAMLs under `data/` with periodic auto-save.
-- **Embedded web bridge.** The `api` module runs Javalin 6 (shadow-relocated) with 8 REST endpoints, a `/chat` WebSocket, and an in-game GUI account-linking flow.
+- **Embedded web bridge.** The `api` module runs Javalin 6 (shadow-relocated) with 9 REST endpoints, `/chat` and `/events` WebSockets, and an in-game GUI account-linking flow.
 - **Tested.** JUnit Jupiter 6, MockBukkit, Mockito, AssertJ, and Javalin TestTools cover core logic, listeners, and API routes. `LangParityTest` and `MessageKeyReferenceTest` prevent i18n drift.
 
 ## Quick start

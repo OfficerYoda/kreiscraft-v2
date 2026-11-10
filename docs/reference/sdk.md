@@ -312,6 +312,7 @@ public record ChatBridgeEvent(
     ChatSource source,      // PLAYER, WEB, or AI
     UUID senderUuid,        // null for console/system messages
     String senderName,      // raw display name at time of send
+    String senderColor,     // player-name colour as #rrggbb, or null for non-player messages
     Component rendered,     // fully-rendered Adventure component broadcast in-game
     String plainText,       // pre-serialized plain text for external consumers
     Instant timestamp       // when the line was produced

@@ -57,8 +57,7 @@ example, attempt a text value that is not valid MiniMessage for `chat-format →
 
 Confirm the editor never shows a control for:
 
-- any `modules.api.*` value except its `enabled` toggle (host, port, CORS origins, session cookie,
-  timeouts, admin API key),
+- `modules.api.admin-api-key` (the other `modules.api.*` values are editable under **HTTP API**),
 - the anti-cheat plugin-messaging channel,
 - the tab-list header or footer,
 - `core.timezone` or `core.auto-save-interval`,

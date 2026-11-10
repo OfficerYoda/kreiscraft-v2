@@ -114,7 +114,7 @@ Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for rep
 
 ### Description
 
-Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data, whitelist management, browser↔player account linking, and real-time metrics. A WebSocket endpoint relays in-game chat to connected browser clients. Configuration parameters that affect Javalin internals (host, port, CORS origins) restart the server on reload; other parameters (timeouts, intervals) require a full plugin restart.
+Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data, whitelist management, browser↔player account linking, and real-time metrics. WebSocket endpoints relay in-game chat and publish a read-only scene event stream to connected browser clients. Configuration parameters that affect Javalin internals (host, port, CORS origins, session cookie, heartbeat interval, HTTP async timeout) restart the server on reload; metrics refresh and verification timeouts require a full plugin restart.
 
 ### Services published
 
