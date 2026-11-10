@@ -87,8 +87,8 @@ public final class ChatFormatListener implements PriorityListener {
         Status status = statusService.get(sender.getUniqueId());
 
         // Player display name coloured with their status colour.
-        TextComponent nameColored =
-                Component.text(sender.getName()).color(TextColor.color(status.color() & 0x00FFFFFF));
+        TextColor nameColor = TextColor.color(status.color() & 0x00FFFFFF);
+        TextComponent nameColored = Component.text(sender.getName()).color(nameColor);
 
         // Resolve custom MiniMessage tags from the format string.
         TagResolver resolver = TagResolver.builder()
@@ -113,7 +113,8 @@ public final class ChatFormatListener implements PriorityListener {
 
         // Publish to ChatBridge for the API module (also safe on any thread).
         chatBridge.publish(new ChatBridgeEvent(
-                ChatSource.PLAYER, sender.getUniqueId(), sender.getName(), rendered, plainBody, Instant.now()));
+                ChatSource.PLAYER, sender.getUniqueId(), sender.getName(), nameColor.asHexString(), rendered, plainBody,
+                Instant.now()));
     }
 
     /**

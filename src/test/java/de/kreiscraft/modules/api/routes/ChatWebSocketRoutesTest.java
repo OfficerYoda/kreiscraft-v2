@@ -210,7 +210,8 @@ class ChatWebSocketRoutesTest {
         ArgumentCaptor<String> receiverCaptor = ArgumentCaptor.forClass(String.class);
         verify(receiverCtx, times(2)).send(receiverCaptor.capture());
         assertThat(receiverCaptor.getAllValues())
-                .anyMatch(s -> s.contains("\"type\":\"CHAT\"") && s.contains("hello world"));
+                .anyMatch(s -> s.contains("\"type\":\"CHAT\"") && s.contains("hello world")
+                        && s.contains("\"source\":\"web\"") && !s.contains("playerName") && !s.contains("playerColor"));
 
         // Sender: only VERIFICATION on connect, NO CHAT echo
         verify(senderCtx, never()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
@@ -270,15 +271,25 @@ class ChatWebSocketRoutesTest {
                 new ChatBridgeEvent(
                         ChatSource.PLAYER,
                         UUID.randomUUID(),
-                        "Alice",
-                        Component.text("hello"),
-                        "hello",
+                        "OfficerYoda",
+                        "#aaaaaa",
+                        Component.text("[Player OfficerYoda » ")
+                                .color(net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                                .append(Component.text("hi")),
+                        "hi",
                         Instant.now());
         realBridge.publish(event);
 
         // Both clients must receive a CHAT message from the bridge publish
-        verify(client1, atLeastOnce()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
-        verify(client2, atLeastOnce()).send(argThat((String s) -> s.contains("\"type\":\"CHAT\"")));
+        String expected =
+                "{\"type\":\"CHAT\",\"content\":\"hi\",\"source\":\"player\",\"playerName\":\"OfficerYoda\",\"playerColor\":\"#aaaaaa\"}";
+        verify(client1).send(expected);
+        verify(client2).send(expected);
+        realBridge.publish(
+                new ChatBridgeEvent(ChatSource.AI, null, "AI", null, Component.text("[AI] reply"), "reply",
+                        Instant.now()));
+        verify(client1, atLeastOnce()).send(argThat((String s) -> s.contains("\"source\":\"system\"")
+                && s.contains("\"content\":\"reply\"") && !s.contains("playerName") && !s.contains("playerColor")));
     }
 
     // -------------------------------------------------------------------------
@@ -288,7 +299,11 @@ class ChatWebSocketRoutesTest {
 
     @Test
     void chatBridgePublish_withTranslatableComponent_doesNotThrow() {
-        ChatWebSocketRoutes routes = makeRoutes(mock(ChatBridge.class), new MockScheduler());
+        ChatBridge bridge = new ChatBridge();
+        ChatWebSocketRoutes routes = makeRoutes(bridge, new MockScheduler());
+        routes.register(mock(Javalin.class));
+        WsContext client = simpleMockCtx();
+        routes.handleConnect(client);
 
         Component translatable = Component.translatable("chat.type.text");
         ChatBridgeEvent event =
@@ -296,15 +311,14 @@ class ChatWebSocketRoutesTest {
                         ChatSource.PLAYER,
                         UUID.randomUUID(),
                         "Bob",
+                        "#ff4400",
                         translatable,
                         "plain fallback text",
                         Instant.now());
 
-        // Must not throw; must return the plain-text fallback (non-null, non-empty)
-        String result = routes.renderChatEventForWeb(event);
-
-        assertThat(result).isNotNull().isNotEmpty();
-        assertThat(result).isEqualTo("plain fallback text");
+        bridge.publish(event);
+        verify(client).send(
+                "{\"type\":\"CHAT\",\"content\":\"plain fallback text\",\"source\":\"player\",\"playerName\":\"Bob\",\"playerColor\":\"#ff4400\"}");
     }
 
     // -------------------------------------------------------------------------

@@ -156,7 +156,7 @@ public final class DefaultAiChatService implements AiChatService {
         Component rendered = responseComponent(response);
         platform.server().sendMessage(rendered);
         chatBridge.publish(new ChatBridgeEvent(
-                ChatSource.AI, null, "AI Claude", rendered, response, Instant.now()));
+                ChatSource.AI, null, "AI Claude", null, rendered, response, Instant.now()));
     }
 
     private Component responseComponent(String response) {

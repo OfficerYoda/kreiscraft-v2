@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.kreiscraft.core.config.serializers.KreiscraftSerializers;
 import java.util.List;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -100,6 +101,35 @@ class ConfigValidatorsTest {
     void duration_usesRegisteredSerializer() {
         assertThat(ConfigValidators.duration().validate(node("5s"))).isEmpty();
         assertThat(ConfigValidators.duration().validate(node("not-a-duration"))).isPresent();
+    }
+
+    @Test
+    void apiValidatorsAcceptValidNetworkingValuesAndRejectUnsafeInputs() {
+        for (String host : List.of("0.0.0.0", "localhost", "127.0.0.1", "::1", "[::1]")) {
+            assertThat(ConfigValidators.bindAddress().validate(node(host))).as(host).isEmpty();
+        }
+        for (String host : List.of("", "http://localhost", "localhost:8080", "user@localhost", "localhost/path")) {
+            assertThat(ConfigValidators.bindAddress().validate(node(host))).as(host).isPresent();
+        }
+        assertThat(ConfigValidators.httpOrigins()
+                .validate(node(List.of("https://kreiscraft.de", "http://localhost:3000", "http://[::1]:5173"))))
+                        .isEmpty();
+        for (String origin : List.of("*", "https://*.example.com", "localhost:3000", "https://example.com/",
+                "https://example.com/path", "https://example.com?query", "https://user@example.com",
+                "http://localhost:65536")) {
+            assertThat(ConfigValidators.httpOrigins().validate(node(List.of(origin)))).as(origin).isPresent();
+        }
+        assertThat(ConfigValidators.httpOrigins().validate(node(List.of()))).isPresent();
+        assertThat(ConfigValidators.cookieName().validate(node("website_user_uuid"))).isEmpty();
+        for (String name : List.of("", "bad name", "bad;name", "bad\nname")) {
+            assertThat(ConfigValidators.cookieName().validate(node(name))).isPresent();
+        }
+        var duration = ConfigValidators.durationRange(Duration.ofMillis(50), Duration.ofSeconds(Integer.MAX_VALUE));
+        assertThat(duration.validate(node("1t"))).isEmpty();
+        assertThat(duration.validate(node("30d"))).isEmpty();
+        for (String value : List.of("0s", "-1s", "1ms", "9999999999d", "bad")) {
+            assertThat(duration.validate(node(value))).as(value).isPresent();
+        }
     }
 
     @Test

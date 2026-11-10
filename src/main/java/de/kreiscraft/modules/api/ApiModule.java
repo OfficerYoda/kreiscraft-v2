@@ -10,6 +10,8 @@ import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.api.metrics.ServerMetricsCollector;
 import de.kreiscraft.modules.api.verification.LinkGuiPrompt;
 import de.kreiscraft.modules.api.verification.VerificationService;
+import de.kreiscraft.modules.api.verification.WhitelistRequests;
+import de.kreiscraft.modules.api.scene.SceneEvents;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.whitelist.WhitelistService;
@@ -25,14 +27,9 @@ import org.spongepowered.configurate.serialize.SerializationException;
  * <p>Wires together {@link ApiServer}, {@link VerificationService}, {@link ServerMetricsCollector},
  * and {@link LinkGuiPrompt}, then starts the Javalin server on the configured host/port.
  *
- * <p><b>Config-fields-that-take-effect-only-on-restart:</b> {@link ApiConfig} parameters other
- * than {@code host}, {@code port}, and {@code corsOrigins} (e.g. {@code heartbeatInterval},
- * {@code asyncTimeout}, {@code metricsRefreshInterval}, {@code verificationTimeout}) are baked
- * into sub-services at construction time and cannot be hot-updated. A change to any of these
- * fields requires a plugin reload that triggers a full server restart via
- * {@link #onConfigReload(ConfigurationNode)}. This is a deliberate design choice — the complexity
- * of partially reconstructing sub-services is not worth it for rarely-changed operational tuning
- * parameters.
+ * <p>Networking, cookies, heartbeat and HTTP timeout changes rebuild the embedded server on
+ * reload. Metrics refresh and verification timeouts are baked into longer-lived services and
+ * require a full plugin restart; existing browser links survive embedded-server restarts.
  */
 public final class ApiModule implements Module {
 
@@ -41,6 +38,8 @@ public final class ApiModule implements Module {
     private ApiServer server;
     private VerificationService verification;
     private ServerMetricsCollector metricsCollector;
+    private SceneEvents scene;
+    private WhitelistRequests whitelistRequests;
 
     // ---- stored from enable() for use in onConfigReload() ----
     private LinkGuiPrompt linkPrompt;
@@ -78,6 +77,11 @@ public final class ApiModule implements Module {
         this.metricsCollector =
                 new ServerMetricsCollector(bukkitServer, scheduler, config.metricsRefreshInterval());
         this.linkPrompt = new LinkGuiPrompt(gui, messages);
+        this.scene = new SceneEvents(bukkitServer, scheduler);
+        ctx.events().register(scene);
+        this.whitelistRequests = new WhitelistRequests(
+                ctx.plugin().getDataFolder().toPath().resolve("whitelist-requests"),
+                new ObjectMapper(), Clock.systemUTC());
 
         this.server = buildServer(config);
         this.server.start();
@@ -107,7 +111,10 @@ public final class ApiModule implements Module {
         boolean requiresRestart =
                 !java.util.Objects.equals(newConfig.host(), config.host())
                         || newConfig.port() != config.port()
-                        || !newConfig.corsOrigins().equals(config.corsOrigins());
+                        || !newConfig.corsOrigins().equals(config.corsOrigins())
+                        || !newConfig.sessionCookie().equals(config.sessionCookie())
+                        || !newConfig.heartbeatInterval().equals(config.heartbeatInterval())
+                        || !newConfig.asyncTimeout().equals(config.asyncTimeout());
         this.config = newConfig;
         if (requiresRestart && server != null) {
             server.stop();
@@ -136,6 +143,8 @@ public final class ApiModule implements Module {
                 scheduler,
                 bukkitServer,
                 mapper,
-                logger);
+                logger,
+                scene,
+                whitelistRequests);
     }
 }

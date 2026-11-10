@@ -3,6 +3,11 @@ package de.kreiscraft.modules.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 
 import de.kreiscraft.core.command.CommandRegistrar;
 import de.kreiscraft.core.config.serializers.KreiscraftSerializers;
@@ -25,6 +30,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Logger;
 import org.bukkit.Server;
@@ -32,10 +38,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 class ApiModuleTest {
+    @TempDir
+    Path dataDirectory;
 
     private MockScheduler scheduler;
     private ServiceRegistry services;
@@ -60,6 +71,7 @@ class ApiModuleTest {
         server = mock(Server.class);
         when(plugin.getServer()).thenReturn(server);
         when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
+        when(plugin.getDataFolder()).thenReturn(dataDirectory.toFile());
         when(server.getTPS()).thenReturn(new double[] {20.0, 20.0, 20.0});
         when(server.getOnlinePlayers()).thenReturn(List.of());
 
@@ -161,6 +173,29 @@ class ApiModuleTest {
                                         .build(),
                                 HttpResponse.BodyHandlers.ofString());
         assertThat(resp.statusCode()).isEqualTo(200);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"session-cookie.name,custom_sid", "session-cookie.max-age,7d", "heartbeat-interval,30s",
+            "async-timeout,20s"})
+    void onConfigReload_rebuildsServerForGuiEditableRuntimeSettings(String path, String value) throws Exception {
+        scheduler = spy(scheduler);
+        module.enable(makeContext(defaultConfig));
+        VerificationService original = services.get(VerificationService.class);
+        ConfigurationNode changed = buildConfig(testPort, "https://kreiscraft.de");
+        changed.node((Object[]) path.split("\\.")).set(value);
+        module.onConfigReload(changed);
+        verify(scheduler, times(2)).runRepeating(eq(Duration.ZERO), eq(Duration.ofSeconds(1)), any());
+        assertThat(services.get(VerificationService.class)).isSameAs(original);
+        var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
+                URI.create("http://127.0.0.1:" + testPort + "/initialize")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        if (path.equals("session-cookie.name")) {
+            assertThat(response.headers().firstValue("Set-Cookie").orElseThrow()).contains("custom_sid=");
+        } else if (path.equals("session-cookie.max-age")) {
+            assertThat(response.headers().firstValue("Set-Cookie").orElseThrow()).contains("Max-Age=604800");
+        }
     }
 
     // ---- helpers ----

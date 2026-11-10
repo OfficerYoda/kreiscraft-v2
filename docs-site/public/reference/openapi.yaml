@@ -4,52 +4,81 @@ info:
   version: 0.1.0-SNAPSHOT
   description: |
     REST API exposed by Kreiscraft's optional `api` module.
-    The `/chat` WebSocket protocol is documented separately in the
-    [HTTP and WebSocket API reference](/reference/http-api/#websocket-endpoint-get-chat).
+    WebSocket message payloads for `/chat` and `/events` are included as
+    component schemas; their upgrade handshakes and protocol behaviour are
+    documented in the
+    [HTTP and WebSocket API reference](/reference/http-api/), because OpenAPI
+    does not model WebSocket upgrades.
 servers:
   - url: http://{host}:{port}
     variables:
       host:
         default: localhost
-        description: Reachable API host. The module binds to `0.0.0.0` by default.
+        description:
+          Reachable API host. The module binds to `0.0.0.0` by default.
       port:
-        default: '8080'
-        description: '`modules.api.port`.'
+        default: "8080"
+        description: "`modules.api.port`."
 paths:
+  /ping:
+    get:
+      operationId: ping
+      summary: Measure browser-to-API round-trip latency
+      description: |
+        Respond immediately on the HTTP handler thread, without waiting for
+        Minecraft's tick thread. This measures API latency, not gameplay ping.
+        Requests require no authentication and follow the configured CORS rules.
+      security: []
+      responses:
+        "200":
+          description: Immediate plain-text pong response.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: pong
+          headers:
+            Cache-Control:
+              description: Always `no-store` to prevent cached measurements.
+              required: true
+              schema:
+                type: string
+                const: no-store
   /status:
     get:
       operationId: getStatus
       summary: Get current server metrics
       security: []
       responses:
-        '200':
+        "200":
           description: Current metrics snapshot.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Metrics'
+                $ref: "#/components/schemas/Metrics"
   /players:
     get:
       operationId: getPlayers
       summary: List online players
       security: []
       responses:
-        '200':
+        "200":
           description: Current online player data.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/PlayerData'
+                  $ref: "#/components/schemas/PlayerData"
   /initialize:
     get:
       operationId: initializeSession
       summary: Initialize or resume a browser session
       security: []
       responses:
-        '200':
-          description: Session initialized. A session cookie is issued when needed.
+        "200":
+          description:
+            Session initialized. A session cookie is issued when needed.
           headers:
             Set-Cookie:
               description: Set for a new or malformed browser session cookie.
@@ -58,7 +87,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InitializationData'
+                $ref: "#/components/schemas/InitializationData"
   /link-player:
     post:
       operationId: linkPlayer
@@ -70,28 +99,29 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LinkRequest'
+              $ref: "#/components/schemas/LinkRequest"
       responses:
-        '202':
+        "202":
           description: Confirmation prompt opened for the online player.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerificationSent'
-        '400':
-          $ref: '#/components/responses/InvalidLinkRequest'
-        '401':
-          $ref: '#/components/responses/MissingSession'
-        '409':
-          description: A verification request is already pending for this browser session.
+                $ref: "#/components/schemas/VerificationSent"
+        "400":
+          $ref: "#/components/responses/InvalidLinkRequest"
+        "401":
+          $ref: "#/components/responses/MissingSession"
+        "409":
+          description:
+            A verification request is already pending for this browser session.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AlreadyPending'
-        '422':
-          $ref: '#/components/responses/PlayerOffline'
-        '500':
-          $ref: '#/components/responses/UnexpectedResult'
+                $ref: "#/components/schemas/AlreadyPending"
+        "422":
+          $ref: "#/components/responses/PlayerOffline"
+        "500":
+          $ref: "#/components/responses/UnexpectedResult"
   /linked-player:
     get:
       operationId: getLinkedPlayer
@@ -99,14 +129,16 @@ paths:
       security:
         - BrowserSession: []
       responses:
-        '200':
-          description: Current link status. `playerData` is included only when an accepted player is online.
+        "200":
+          description:
+            Current link status. `playerData` is included only when an accepted
+            player is online.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LinkedPlayerResponse'
-        '401':
-          $ref: '#/components/responses/MissingSession'
+                $ref: "#/components/schemas/LinkedPlayerResponse"
+        "401":
+          $ref: "#/components/responses/MissingSession"
   /unlink-player:
     post:
       operationId: unlinkPlayer
@@ -114,16 +146,16 @@ paths:
       security:
         - BrowserSession: []
       responses:
-        '200':
+        "200":
           description: Player link removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Unlinked'
-        '400':
-          $ref: '#/components/responses/NotLinked'
-        '401':
-          $ref: '#/components/responses/MissingSession'
+                $ref: "#/components/schemas/Unlinked"
+        "400":
+          $ref: "#/components/responses/NotLinked"
+        "401":
+          $ref: "#/components/responses/MissingSession"
   /whitelist:
     get:
       operationId: getWhitelist
@@ -131,7 +163,7 @@ paths:
       security:
         - AdminApiKey: []
       responses:
-        '200':
+        "200":
           description: Sorted whitelist entries.
           content:
             application/json:
@@ -139,10 +171,10 @@ paths:
                 type: array
                 items:
                   type: string
-        '401':
+        "401":
           description: Missing or invalid admin API key.
-        '503':
-          $ref: '#/components/responses/AdminApiDisabled'
+        "503":
+          $ref: "#/components/responses/AdminApiDisabled"
     post:
       operationId: addWhitelistEntry
       summary: Add a Java player to the whitelist
@@ -153,83 +185,169 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WhitelistRequest'
+              $ref: "#/components/schemas/WhitelistRequest"
       responses:
-        '202':
+        "202":
           description: Player added to the whitelist.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Whitelisted'
-        '400':
-          $ref: '#/components/responses/InvalidWhitelistRequest'
-        '401':
+                $ref: "#/components/schemas/Whitelisted"
+        "400":
+          $ref: "#/components/responses/InvalidWhitelistRequest"
+        "401":
           description: Missing or invalid admin API key.
-        '503':
-          $ref: '#/components/responses/AdminApiDisabled'
+        "503":
+          $ref: "#/components/responses/AdminApiDisabled"
+  /whitelist/{playerName}:
+    parameters:
+      - name: playerName
+        in: path
+        required: true
+        description: Exact Minecraft Java username.
+        schema:
+          type: string
+          pattern: "^[a-zA-Z0-9_]{1,16}$"
+    get:
+      operationId: getWhitelistRequest
+      summary: Whitelist request state for one player name
+      security: []
+      responses:
+        "200":
+          description:
+            Current request state from the website backend. If Minecraft and
+            local storage have no knowledge of the name, it reports
+            `unavailable`, never an invented `not_requested`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhitelistRequestStatus"
+        "400":
+          $ref: "#/components/responses/InvalidPlayerName"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
+    post:
+      operationId: createWhitelistRequest
+      summary: Request a player name to be whitelisted
+      security: []
+      parameters:
+        - name: reopen
+          in: query
+          required: false
+          description: Reopen an existing declined request when `true`.
+          schema:
+            type: boolean
+      responses:
+        "202":
+          description: Request durably recorded as `pending`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhitelistRequestStatus"
+        "200":
+          description:
+            The name already has a request; the body reports its current state.
+            A declined name remains declined unless `reopen=true`; that
+            explicitly reopens it as `pending`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhitelistRequestStatus"
+        "400":
+          $ref: "#/components/responses/InvalidPlayerName"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
 components:
   securitySchemes:
     BrowserSession:
       type: apiKey
       in: cookie
       name: website_user_uuid
-      description: Browser-session UUID cookie. Its name is configurable through `modules.api.session-cookie.name`.
+      description:
+        Browser-session UUID cookie. Its name is configurable through
+        `modules.api.session-cookie.name`.
     AdminApiKey:
       type: apiKey
       in: header
       name: X-Kreiscraft-Api-Key
-      description: Value of `modules.api.admin-api-key`. A blank configuration disables whitelist endpoints.
+      description:
+        Value of `modules.api.admin-api-key`. A blank configuration disables
+        whitelist endpoints.
   responses:
     MissingSession:
       description: Browser session cookie is absent or invalid.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/MissingSessionError'
+            $ref: "#/components/schemas/MissingSessionError"
     PlayerOffline:
       description: No online player exactly matches the requested username.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/PlayerOfflineError'
+            $ref: "#/components/schemas/PlayerOfflineError"
     UnexpectedResult:
       description: An unexpected verification result occurred.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/UnexpectedResultError'
+            $ref: "#/components/schemas/UnexpectedResultError"
     NotLinked:
       description: The session has no accepted player link.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/NotLinkedError'
+            $ref: "#/components/schemas/NotLinkedError"
     AdminApiDisabled:
-      description: Whitelist administration is disabled because no admin API key is configured.
+      description:
+        Whitelist administration is disabled because no admin API key is
+        configured.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/AdminApiDisabledError'
+            $ref: "#/components/schemas/AdminApiDisabledError"
     InvalidLinkRequest:
       description: Request JSON is invalid or `username` is missing or blank.
       content:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/InvalidBodyError'
-              - $ref: '#/components/schemas/MissingUsernameError'
+              - $ref: "#/components/schemas/InvalidBodyError"
+              - $ref: "#/components/schemas/MissingUsernameError"
+    InvalidPlayerName:
+      description: The `playerName` path segment is not a valid Java username.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InvalidNameError"
     InvalidWhitelistRequest:
-      description: Request JSON is invalid or `playerName` is not a valid Java username.
+      description:
+        Request JSON is invalid or `playerName` is not a valid Java username.
       content:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/InvalidBodyError'
-              - $ref: '#/components/schemas/InvalidNameError'
+              - $ref: "#/components/schemas/InvalidBodyError"
+              - $ref: "#/components/schemas/InvalidNameError"
+    RateLimited:
+      description: Too many whitelist requests were submitted from this client.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RateLimitedError"
+    StorageUnavailable:
+      description: The website request store is temporarily unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StorageUnavailableError"
   schemas:
     Metrics:
       type: object
-      required: [status, tps, onlinePlayerCount, memoryUsedMB, memoryMaxMB, cpuUsage]
+      required:
+        [status, tps, onlinePlayerCount, memoryUsedMB, memoryMaxMB, cpuUsage]
       properties:
         status:
           type: string
@@ -251,7 +369,18 @@ components:
           description: Process CPU usage from 0 to 100, or -1 when unavailable.
     PlayerData:
       type: object
-      required: [name, uuid, health, deaths, playerKills, playtimeSeconds]
+      required:
+        [
+          name,
+          uuid,
+          health,
+          maxHealth,
+          absorption,
+          effects,
+          deaths,
+          playerKills,
+          playtimeSeconds
+        ]
       properties:
         name:
           type: string
@@ -260,6 +389,14 @@ components:
           format: uuid
         health:
           type: integer
+        maxHealth:
+          type: integer
+        absorption:
+          type: number
+        effects:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerEffect"
         deaths:
           type: integer
         playerKills:
@@ -292,14 +429,14 @@ components:
           type: string
           enum: [not_linked, pending, declined, accepted]
         playerData:
-          $ref: '#/components/schemas/PlayerData'
+          $ref: "#/components/schemas/PlayerData"
     WhitelistRequest:
       type: object
       required: [playerName]
       properties:
         playerName:
           type: string
-          pattern: '^[a-zA-Z0-9_]{1,16}$'
+          pattern: "^[a-zA-Z0-9_]{1,16}$"
     VerificationSent:
       type: object
       required: [status]
@@ -328,6 +465,43 @@ components:
         status:
           type: string
           const: whitelisted
+    WhitelistRequestStatus:
+      type: object
+      required: [playerName, status]
+      properties:
+        playerName:
+          type: string
+        status:
+          type: string
+          enum: [not_requested, pending, whitelisted, declined, unavailable]
+        requestedAt:
+          type: string
+          format: date-time
+          description: When the name was requested. Absent for `not_requested`.
+        resolvedAt:
+          type: string
+          format: date-time
+          description:
+            When an in-game admin approved or declined the request. Present only
+            for `whitelisted` and `declined`.
+        delivery:
+          type: string
+          enum: [awaiting_delivery, awaiting_review]
+          description:
+            Delivery progress, independent from the in-game decision state. A
+            locally saved request awaits delivery until a compatible plugin
+            acknowledges its persistent submission ID.
+        submissionId:
+          type: string
+          format: uuid
+          description: Persistent idempotency key for later plugin delivery.
+        verifiedAt:
+          type: string
+          format: date-time
+          description: Last successful upstream status verification time.
+        deliveryError:
+          type: string
+          description: Last delivery failure category.
     MissingSessionError:
       type: object
       required: [error]
@@ -384,3 +558,327 @@ components:
         error:
           type: string
           const: invalid_name
+    RateLimitedError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: rate_limited
+    StorageUnavailableError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: storage_unavailable
+    # WebSocket /chat payloads. OpenAPI does not model the upgrade handshake,
+    # but these schemas keep the browser message types tied to the contract in
+    # docs/kreiscraft-api/http-api.md.
+    PlayerChatMessage:
+      type: object
+      required: [type, content, source, playerName, playerColor]
+      properties:
+        type:
+          type: string
+          const: CHAT
+        content:
+          type: string
+          description: Plain message body without in-game prefixes, sender names, or colour codes.
+          example: hi
+        source:
+          type: string
+          const: player
+        playerName:
+          type: string
+        playerColor:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+          description: Player-name colour matching the in-game status colour at send time.
+          example: "#aaaaaa"
+    NonPlayerChatMessage:
+      type: object
+      required: [type, content, source]
+      properties:
+        type:
+          type: string
+          const: CHAT
+        content:
+          type: string
+          description: Plain message body without in-game formatting.
+        source:
+          type: string
+          enum: [web, system]
+    ChatMessage:
+      description:
+        Server-to-browser `CHAT` messages. Client messages and the
+        heartbeat/handshake types are documented in `http-api.md`.
+      oneOf:
+        - $ref: "#/components/schemas/PlayerChatMessage"
+        - $ref: "#/components/schemas/NonPlayerChatMessage"
+    # WebSocket /events payloads, as documented in
+    # docs/kreiscraft-api/http-api.md#websocket-endpoint-get-events.
+    PlayerEffect:
+      type: string
+      enum: [freezing, wither, poison, burning]
+    PlayerState:
+      type: object
+      required:
+        [
+          playerId,
+          playerName,
+          isInvisible,
+          isPumpkinWorn,
+          health,
+          maxHealth,
+          absorption,
+          effects,
+          level
+        ]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        playerName:
+          type: string
+        isInvisible:
+          type: boolean
+        isPumpkinWorn:
+          type: boolean
+        health:
+          type: number
+        maxHealth:
+          type: number
+        absorption:
+          type: number
+        effects:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerEffect"
+        level:
+          type: integer
+    PlayerRef:
+      type: object
+      required: [playerId, playerName]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        playerName:
+          type: string
+    SceneSnapshotMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: scene_snapshot
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [overworldTimeTicks, players]
+          properties:
+            overworldTimeTicks:
+              type: integer
+            players:
+              type: array
+              items:
+                $ref: "#/components/schemas/PlayerState"
+    PlayerJoinedMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: player_joined
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+    PlayerStateChangedMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: player_state_changed
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+    PlayerLeftMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: player_left
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          $ref: "#/components/schemas/PlayerRef"
+    DamageMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: damage
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [attacker, victim, finalDamage]
+          properties:
+            attacker:
+              $ref: "#/components/schemas/PlayerRef"
+            victim:
+              $ref: "#/components/schemas/PlayerRef"
+            finalDamage:
+              type: number
+    FireStateChangedMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: fire_state_changed
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player, state]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+            state:
+              type: string
+              enum: [onfire, firepanic, none]
+    ExplosionDamageMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          enum: [creeper_damage, tnt_damage]
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player, finalDamage]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+            finalDamage:
+              type: number
+    FoodEatenMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: food_eaten
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player, kind]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+            kind:
+              type: string
+              enum: [food, golden_apple]
+    LevelMilestoneReachedMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          const: level_milestone_reached
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player, level]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+            level:
+              type: integer
+    PlayerEventMessage:
+      type: object
+      required: [version, type, occurredAt, data]
+      properties:
+        version:
+          type: integer
+          const: 1
+        type:
+          type: string
+          enum: [death, totem_used, pumpkin_equipped, potion_drank]
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required: [player]
+          properties:
+            player:
+              $ref: "#/components/schemas/PlayerState"
+    SceneMessage:
+      oneOf:
+        - $ref: "#/components/schemas/SceneSnapshotMessage"
+        - $ref: "#/components/schemas/PlayerJoinedMessage"
+        - $ref: "#/components/schemas/PlayerStateChangedMessage"
+        - $ref: "#/components/schemas/PlayerLeftMessage"
+        - $ref: "#/components/schemas/DamageMessage"
+        - $ref: "#/components/schemas/FireStateChangedMessage"
+        - $ref: "#/components/schemas/ExplosionDamageMessage"
+        - $ref: "#/components/schemas/FoodEatenMessage"
+        - $ref: "#/components/schemas/LevelMilestoneReachedMessage"
+        - $ref: "#/components/schemas/PlayerEventMessage"

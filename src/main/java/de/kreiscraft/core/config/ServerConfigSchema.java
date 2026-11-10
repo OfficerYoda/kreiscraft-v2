@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.time.Duration;
 import org.bukkit.Particle;
 import org.spongepowered.configurate.ConfigurationNode;
 
@@ -47,14 +48,13 @@ public final class ServerConfigSchema {
     /**
      * The complete safe, GUI-editable field set.
      *
-     * <p>Every non-secret, non-infrastructure module tunable is declared here with the value shape,
+     * <p>Every approved non-secret module tunable is declared here with the value shape,
      * validation bounds, GUI exposure and lifecycle that match how the owning module actually reads
      * it. A field is {@link ConfigLifecycle#HOT_RELOAD} only when the owning module re-reads the
      * value on {@code /kreiscraft reload}; anything read once at enable time is {@link
      * ConfigLifecycle#RESTART_REQUIRED}.
      *
-     * <p>Deliberately absent so they stay YAML-only: the HTTP API's bind address, port, CORS
-     * origins, session cookie, timeouts and {@code admin-api-key}; the anti-cheat plugin-messaging
+     * <p>Deliberately absent so they stay YAML-only: the HTTP API's {@code admin-api-key}; the anti-cheat plugin-messaging
      * channel; the tab-list header and footer; the {@code core} timezone and auto-save settings;
      * and the operator-owned runtime state written by commands ({@code update-mode.active} and
      * {@code start-sequence.has-started}).
@@ -127,6 +127,29 @@ public final class ServerConfigSchema {
                 ConfigFieldType.STRING_LIST,
                 ConfigValidators.stringList(),
                 ConfigLifecycle.HOT_RELOAD));
+
+        // ── api ─────────────────────────────────────────────────────────────
+        fields.add(field(path("modules", "api", "host"), ConfigFieldType.STRING,
+                ConfigValidators.bindAddress(), ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(path("modules", "api", "port"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 65535), ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(path("modules", "api", "cors-origins"), ConfigFieldType.STRING_LIST,
+                ConfigValidators.httpOrigins(), ConfigLifecycle.HOT_RELOAD));
+        fields.add(field(path("modules", "api", "session-cookie", "name"), ConfigFieldType.STRING,
+                ConfigValidators.cookieName(), ConfigLifecycle.HOT_RELOAD));
+        fields.add(new ConfigField(path("modules", "api", "session-cookie", "max-age"), ConfigFieldType.DURATION,
+                ConfigValidators.durationRange(Duration.ofSeconds(1), Duration.ofSeconds(Integer.MAX_VALUE)),
+                true, ConfigLifecycle.HOT_RELOAD, List.of("1d", "7d", "30d", "90d", "365d")));
+        for (String key : List.of("heartbeat-interval", "async-timeout", "metrics-refresh-interval",
+                "verification-timeout")) {
+            boolean restartOnly = key.equals("metrics-refresh-interval") || key.equals("verification-timeout");
+            fields.add(new ConfigField(path("modules", "api", key), ConfigFieldType.DURATION,
+                    ConfigValidators.durationRange(Duration.ofMillis(key.equals("verification-timeout") ? 200 : 50),
+                            Duration.ofSeconds(Integer.MAX_VALUE)),
+                    true, restartOnly ? ConfigLifecycle.RESTART_REQUIRED : ConfigLifecycle.HOT_RELOAD,
+                    key.equals("metrics-refresh-interval") ? List.of("1t", "5t", "10t", "1s", "2s", "5s", "10s")
+                            : List.of("1s", "5s", "10s", "20s", "30s", "1m", "2m", "5m")));
+        }
 
         // ── anti-cheat ──────────────────────────────────────────────────────
         // `channel` is a plugin-messaging channel (networking) and stays YAML-only.

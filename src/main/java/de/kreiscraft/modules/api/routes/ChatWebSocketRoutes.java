@@ -6,6 +6,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.api.ApiConfig;
 import de.kreiscraft.modules.api.dto.WebSocketMessage;
+import de.kreiscraft.modules.api.dto.ChatMessage;
 import de.kreiscraft.modules.api.dto.WebSocketMessageType;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.chat.ChatBridgeEvent;
@@ -13,7 +14,6 @@ import de.kreiscraft.shared.chat.ChatSource;
 import java.time.Instant;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
-import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -22,8 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
 
 /**
  * WebSocket {@code /chat} endpoint. Bridges in-game chat (via {@link ChatBridge}) to browser
@@ -105,8 +103,11 @@ public final class ChatWebSocketRoutes {
                 chatBridge.subscribe(
                         event -> {
                             if (event.source() != ChatSource.WEB) {
-                                broadcastToWsClients(new WebSocketMessage(
-                                        WebSocketMessageType.CHAT, renderChatEventForWeb(event)));
+                                boolean player = event.source() == ChatSource.PLAYER;
+                                broadcastToWsClients(new ChatMessage(
+                                        WebSocketMessageType.CHAT, event.plainText(),
+                                        player ? "player" : "system", player ? event.senderName() : null,
+                                        player ? event.senderColor() : null));
                             }
                         });
 
@@ -188,13 +189,14 @@ public final class ChatWebSocketRoutes {
                                     ChatSource.WEB,
                                     null,
                                     "WEB",
+                                    null,
                                     rendered,
                                     msg.content(),
                                     Instant.now()));
                         });
                 // Echo to OTHER connected clients (sender's UI already showed it optimistically)
                 broadcastToWsClientsExcept(
-                        ctx, new WebSocketMessage(WebSocketMessageType.CHAT, msg.content()));
+                        ctx, new ChatMessage(WebSocketMessageType.CHAT, msg.content(), "web", null, null));
             }
             case VERIFICATION, EXCEPTION -> {
                 // ignore
@@ -205,25 +207,6 @@ public final class ChatWebSocketRoutes {
     /** Removes the client from the connected set. */
     void handleClose(WsContext ctx) {
         connectedClients.remove(ctx);
-    }
-
-    // -------------------------------------------------------------------------
-    // Package-private for tests
-    // -------------------------------------------------------------------------
-
-    /**
-     * Renders a {@link ChatBridgeEvent} for the web frontend using the legacy {@code §}-prefixed
-     * colour scheme. Non-{@link TextComponent} roots fall back to {@link ChatBridgeEvent#plainText}
-     * to prevent {@link ClassCastException} on {@code TranslatableComponent} children.
-     */
-    String renderChatEventForWeb(ChatBridgeEvent event) {
-        Component component = event.rendered();
-        if (component instanceof TextComponent textComponent) {
-            return textComponentToColoredString(textComponent);
-        }
-        // Fallback: use pre-computed plain text; never throws
-        String plain = event.plainText();
-        return (plain != null) ? plain : component.toString();
     }
 
     // -------------------------------------------------------------------------
@@ -247,17 +230,17 @@ public final class ChatWebSocketRoutes {
                         new WebSocketMessage(WebSocketMessageType.PING, "heartbeat ping")));
     }
 
-    private void broadcastToWsClients(WebSocketMessage msg) {
+    private void broadcastToWsClients(Object msg) {
         connectedClients.forEach(ctx -> sendToClient(ctx, msg));
     }
 
-    private void broadcastToWsClientsExcept(WsContext except, WebSocketMessage msg) {
+    private void broadcastToWsClientsExcept(WsContext except, Object msg) {
         connectedClients.stream()
                 .filter(ctx -> !ctx.equals(except))
                 .forEach(ctx -> sendToClient(ctx, msg));
     }
 
-    private void sendToClient(WsContext ctx, WebSocketMessage msg) {
+    private void sendToClient(WsContext ctx, Object msg) {
         try {
             ctx.send(mapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {
@@ -267,44 +250,4 @@ public final class ChatWebSocketRoutes {
         }
     }
 
-    /**
-     * Ported verbatim from legacy {@code ChatWebsocketHandler.java}:
-     * {@code de.officeryoda.kreiscraftApi.ChatWebsocketHandler#textComponentToColoredString}.
-     *
-     * <p>Keeps the {@code §}-prefixed colour scheme for zero-downtime frontend compatibility.
-     * Migration to MiniMessage may happen in the future.
-     *
-     * <p>The original code cast every child to {@link TextComponent} unconditionally, which threw
-     * {@link ClassCastException} on {@code TranslatableComponent} children. This
-     * port adds an {@code instanceof} guard to skip non-{@link TextComponent} children safely.
-     */
-    private String textComponentToColoredString(TextComponent textComponent) {
-        ArrayList<TextComponent> components = new ArrayList<>();
-        components.add(textComponent);
-        for (Component child : textComponent.children()) {
-            // instanceof guard: skip non-TextComponent children (e.g. TranslatableComponent) to avoid ClassCastException
-            if (child instanceof TextComponent tc) {
-                components.add(tc);
-            }
-        }
-
-        StringBuilder coloredString = new StringBuilder();
-        for (TextComponent comp : components) {
-            String colorPrefix = getColorPrefix(comp.color());
-            coloredString.append(colorPrefix).append(comp.content());
-        }
-
-        return coloredString.toString();
-    }
-
-    private String getColorPrefix(TextColor color) {
-        // § cannot be typed in Minecraft chat — use as escape character (legacy frontend protocol)
-        String colorPrefix = "§";
-        if (color != null) {
-            colorPrefix += color.asHexString(); // e.g. §#ff5500
-        } else {
-            colorPrefix += "§"; // no color → double escape
-        }
-        return colorPrefix;
-    }
 }

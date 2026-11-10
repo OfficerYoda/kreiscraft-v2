@@ -113,6 +113,7 @@ class ChatFormatListenerTest {
         ChatBridgeEvent bridgeEvent = captured.getFirst();
         assertThat(bridgeEvent.senderUuid()).isEqualTo(player.getUniqueId());
         assertThat(bridgeEvent.senderName()).isEqualTo("Bob");
+        assertThat(bridgeEvent.senderColor()).isEqualTo("#AAAAAA");
         assertThat(bridgeEvent.plainText()).isEqualTo("world");
         assertThat(bridgeEvent.timestamp()).isNotNull();
     }
@@ -190,6 +191,7 @@ class ChatFormatListenerTest {
         TextComponent name = findText(captured.getFirst().rendered(), "Heidi");
         assertThat(name).isNotNull();
         assertThat(name.style().color()).isEqualTo(TextColor.color(0xFF4400));
+        assertThat(captured.getFirst().senderColor()).isEqualTo("#FF4400");
     }
 
     private static TextComponent findText(Component component, String content) {

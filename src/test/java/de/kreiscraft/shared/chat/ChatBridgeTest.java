@@ -16,7 +16,7 @@ class ChatBridgeTest {
 
     private static ChatBridgeEvent sample(String text) {
         return new ChatBridgeEvent(
-                ChatSource.PLAYER, UUID.randomUUID(), "Alice", Component.text(text), text, Instant.now());
+                ChatSource.PLAYER, UUID.randomUUID(), "Alice", "#aaaaaa", Component.text(text), text, Instant.now());
     }
 
     @Test

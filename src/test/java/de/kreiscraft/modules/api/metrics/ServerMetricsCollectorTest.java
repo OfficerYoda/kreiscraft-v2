@@ -1,6 +1,8 @@
 package de.kreiscraft.modules.api.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import de.kreiscraft.modules.api.dto.Metrics;
 import de.kreiscraft.modules.api.dto.PlayerData;
@@ -9,6 +11,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.Statistic;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +32,9 @@ class ServerMetricsCollectorTest {
     void setUp() {
         server = MockBukkit.mock();
         scheduler = new MockScheduler();
-        collector = new ServerMetricsCollector(server, scheduler, REFRESH_INTERVAL);
+        ServerMock metricsServer = spy(server);
+        doReturn(new double[] {20, 20, 20}).when(metricsServer).getTPS();
+        collector = new ServerMetricsCollector(metricsServer, scheduler, REFRESH_INTERVAL);
     }
 
     @AfterEach
@@ -69,6 +75,8 @@ class ServerMetricsCollectorTest {
     void refresh_snapshotsOnlinePlayersHealth_deaths_kills_playtime() {
         PlayerMock player = server.addPlayer("Alice");
         player.setHealth(10.0);
+        player.setAbsorptionAmount(4);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 0));
         player.setStatistic(Statistic.DEATHS, 3);
         player.setStatistic(Statistic.PLAYER_KILLS, 7);
         // PLAY_ONE_MINUTE counts in ticks (20 ticks = 1 second)
@@ -84,6 +92,9 @@ class ServerMetricsCollectorTest {
         assertThat(snapshot.name()).isEqualTo("Alice");
         assertThat(snapshot.uuid()).isEqualTo(player.getUniqueId().toString());
         assertThat(snapshot.health()).isEqualTo(10); // Math.round(10.0f) = 10
+        assertThat(snapshot.maxHealth()).isEqualTo(20);
+        assertThat(snapshot.absorption()).isEqualTo(4);
+        assertThat(snapshot.effects()).containsExactly("poison");
         assertThat(snapshot.deaths()).isEqualTo(3);
         assertThat(snapshot.playerKills()).isEqualTo(7);
         assertThat(snapshot.playtimeSeconds()).isEqualTo(10L); // 200 / 20 = 10

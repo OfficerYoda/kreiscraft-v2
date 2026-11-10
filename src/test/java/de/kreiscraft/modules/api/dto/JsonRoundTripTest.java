@@ -3,6 +3,7 @@ package de.kreiscraft.modules.api.dto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class JsonRoundTripTest {
@@ -19,7 +20,8 @@ class JsonRoundTripTest {
 
     @Test
     void playerData_roundTrips() throws Exception {
-        var original = new PlayerData("Alice", "550e8400-e29b-41d4-a716-446655440000", 20, 5, 2, 3600);
+        var original = new PlayerData("Alice", "550e8400-e29b-41d4-a716-446655440000", 20, 20, 4, List.of("poison"), 5,
+                2, 3600);
         assertThat(mapper.readValue(mapper.writeValueAsString(original), PlayerData.class)).isEqualTo(original);
     }
 
@@ -33,7 +35,7 @@ class JsonRoundTripTest {
 
     @Test
     void linkedPlayerResponse_includesPlayerDataWhenPresent() throws Exception {
-        var pd = new PlayerData("Alice", "u", 20, 0, 0, 0);
+        var pd = new PlayerData("Alice", "u", 20, 20, 0, List.of(), 0, 0, 0);
         var accepted = LinkedPlayerResponse.accepted(pd);
         var json = mapper.writeValueAsString(accepted);
         assertThat(json).contains("\"playerData\"");
@@ -43,6 +45,19 @@ class JsonRoundTripTest {
     void webSocketMessage_roundTrips() throws Exception {
         var original = new WebSocketMessage(WebSocketMessageType.CHAT, "hello");
         assertThat(mapper.readValue(mapper.writeValueAsString(original), WebSocketMessage.class)).isEqualTo(original);
+    }
+
+    @Test
+    void outgoingChatIncludesOriginAndOnlyPlayerMessagesIncludeNamesAndColors() throws Exception {
+        var player = new ChatMessage(WebSocketMessageType.CHAT, "hello", "player", "Alice", "#aaaaaa");
+        assertThat(mapper.writeValueAsString(player))
+                .contains("\"source\":\"player\"", "\"playerName\":\"Alice\"", "\"playerColor\":\"#aaaaaa\"");
+        assertThat(mapper.readValue(mapper.writeValueAsString(player), ChatMessage.class)).isEqualTo(player);
+        for (String source : List.of("web", "system")) {
+            assertThat(
+                    mapper.writeValueAsString(new ChatMessage(WebSocketMessageType.CHAT, "hello", source, null, null)))
+                            .contains("\"source\":\"" + source + "\"").doesNotContain("playerName", "playerColor");
+        }
     }
 
     @Test

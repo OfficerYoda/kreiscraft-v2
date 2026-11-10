@@ -33,7 +33,7 @@ If `onConfigReload` throws for a particular module, `ModuleRegistry.reloadConfig
 
 - **Does not enable or disable modules.** A module that was disabled before the reload stays disabled. New `enabled: true` entries take effect only on the next server start.
 - **Does not restart the server.**
-- **Does not restart the Javalin HTTP server** — *unless* `host`, `port`, or `cors-origins` changed, in which case `ApiModule.onConfigReload()` stops and restarts Javalin automatically. All other API config fields (`heartbeat-interval`, `async-timeout`, etc.) require a full server restart.
+- **Does not restart the Javalin HTTP server** — *unless* bind address, port, CORS origins, session cookies, heartbeat interval, or HTTP async timeout changed. `ApiModule.onConfigReload()` then restarts only Javalin. Metrics refresh and verification timeouts still require a full server restart.
 - **Does not reschedule repeating tasks.** Modules that hold a scheduler task read the new values but keep the old schedule. For example, `tablist` hot-reloads its header/footer templates, but a changed `update-interval` only takes effect after a restart.
 - **Does not apply module enable/disable edits.** Module enablement is restart-only. In-game configuration edits are validated and saved atomically on save, so a reload simply observes the values that were already persisted.
 
