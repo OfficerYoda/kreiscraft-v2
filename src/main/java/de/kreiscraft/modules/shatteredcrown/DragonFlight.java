@@ -100,17 +100,30 @@ final class DragonFlight implements AutoCloseable {
         return from.clone().add(to.toVector().subtract(from.toVector()).multiply(progress));
     }
 
+    boolean isClosed() {
+        return closed;
+    }
+
     @Override
     public void close() {
         if (closed) {
             return;
         }
         closed = true;
-        watchdog.cancel();
-        release.run();
-        finished.run();
-        if (control != null) {
-            control.close();
+        try {
+            watchdog.cancel();
+        } finally {
+            try {
+                release.run();
+            } finally {
+                try {
+                    if (control != null) {
+                        control.close();
+                    }
+                } finally {
+                    finished.run();
+                }
+            }
         }
     }
 }

@@ -25,15 +25,23 @@ final class EncounterWork implements AutoCloseable {
 
     void own(Entity entity, String kind) {
         if (closed) {
+            entity.remove();
             throw new IllegalStateException("Encounter has ended");
         }
-        entities.removeIf(owned -> !owned.isValid());
-        entity.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT, PersistentDataType.STRING, kind);
         entities.add(entity);
+        entity.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT, PersistentDataType.STRING, kind);
     }
 
     boolean owns(Entity entity) {
         return entities.contains(entity) || children.stream().anyMatch(child -> child.owns(entity));
+    }
+
+    boolean hasWork() {
+        return !tasks.isEmpty() || !entities.isEmpty() || !children.isEmpty();
+    }
+
+    boolean isClosed() {
+        return closed;
     }
 
     /** A failed effect releases its own hazards while the encounter coordinator keeps running. */
@@ -112,8 +120,16 @@ final class EncounterWork implements AutoCloseable {
                 }
             }
         };
-        owned.delegate = period == null ? scheduler.runLater(delay, guarded)
-                : scheduler.runRepeating(delay, period, guarded);
+        try {
+            owned.delegate = period == null ? scheduler.runLater(delay, guarded)
+                    : scheduler.runRepeating(delay, period, guarded);
+            if (owned.isCancelled()) {
+                cleanSafely(owned.delegate::cancel);
+            }
+        } catch (RuntimeException error) {
+            owned.cancel();
+            throw error;
+        }
         return owned;
     }
 
@@ -123,7 +139,7 @@ final class EncounterWork implements AutoCloseable {
             return;
         }
         closed = true;
-        Set.copyOf(children).forEach(EncounterWork::close);
+        Set.copyOf(children).forEach(child -> cleanSafely(child::close));
         children.clear();
         Set.copyOf(tasks).forEach(task -> cleanSafely(task::cancel));
         tasks.clear();
@@ -146,10 +162,13 @@ final class EncounterWork implements AutoCloseable {
 
         @Override
         public void cancel() {
+            if (cancelled) {
+                return;
+            }
             cancelled = true;
             tasks.remove(this);
             if (delegate != null) {
-                delegate.cancel();
+                cleanSafely(delegate::cancel);
             }
         }
 
