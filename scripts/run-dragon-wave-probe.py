@@ -51,7 +51,7 @@ for index, line in enumerate(lines):
         lines[index] = "    enabled: " + ("true" if module == "shattered-crown" else "false")
     if mode == "smash" and module == "shattered-crown":
         key = line.strip().split(":", 1)[0]
-        overrides = {"opening-grace-seconds": 0, "arrival-x": 45.5, "arrival-z": 0.5,
+        overrides = {"opening-grace-seconds": 0, "arrival-x": 45.5, "arrival-z": 40.5,
                      "arrival-y": 64, "arrival-radius": 3, "arrival-height": 64,
                      "lane-cadence-seconds": 120, "prey-cadence-seconds": 120,
                      "landing-cadence-seconds": 120, "bombardment-cadence-seconds": 120,

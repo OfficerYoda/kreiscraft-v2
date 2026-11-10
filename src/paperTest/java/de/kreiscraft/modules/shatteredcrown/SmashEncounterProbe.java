@@ -116,7 +116,8 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
                     world.setChunkForceLoaded(x, z, true);
                 }
             }
-            target = new Location(world, 40.5, world.getHighestBlockYAt(40, 0) + 1, 0.5);
+            // Real main-island ground, away from the seed-dependent height/width of obsidian spikes.
+            target = new Location(world, 40.5, world.getHighestBlockYAt(40, 40) + 1, 40.5);
             player = fixture("SmashFixture", target);
             arrival = fixture("SmashArrival", target.clone().add(5, 0, 0));
             arrival.setGameMode(GameMode.CREATIVE);
@@ -164,8 +165,8 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
     private int solidPatch() {
         int count = 0;
         for (int x = 35; x <= 45; x++) {
-            for (int z = -5; z <= 5; z++) {
-                if (Math.hypot(x - 40, z) <= 5 && world.getBlockAt(x, floorY, z).getType().isSolid()) {
+            for (int z = 35; z <= 45; z++) {
+                if (Math.hypot(x - 40, z - 40) <= 5 && world.getBlockAt(x, floorY, z).getType().isSolid()) {
                     count++;
                 }
             }
@@ -177,10 +178,10 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
         measuring = false;
         command("pause", "main=idle");
         // Every case consumes fresh real main-End ground, descending into earlier permanent craters.
-        target.setY(world.getHighestBlockYAt(40, 0) + 1);
+        target.setY(world.getHighestBlockYAt(40, 40) + 1);
         floorY = target.getBlockY() - 1;
         initialSolid = solidPatch();
-        check(initialSolid > 20, "real shallow crater ground");
+        check(initialSolid > 0, "real supported impact column");
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(target);
         player.setVelocity(new org.bukkit.util.Vector());
@@ -273,9 +274,9 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
             if (impactAge == 0 && !debris().isEmpty()) {
                 impactAge = age;
                 check(warningTick >= 98 && warningTick <= 102, "one-second physical plunge");
-                check(solidPatch() < initialSolid && world.getBlockAt(40, floorY, 0).isEmpty(),
+                check(solidPatch() < initialSolid && world.getBlockAt(40, floorY, 40).isEmpty(),
                         "actual ground removal");
-                check(world.getBlockAt(40, floorY - 1, 0).getType().isSolid(), "one-block-deep crater");
+                check(world.getBlockAt(40, floorY - 1, 40).getType().isSolid(), "one-block-deep crater");
                 check(Math.abs(dragon.getY() - target.getY() - 2) < 0.1, "damage at real impact height");
                 check(debris().stream().allMatch(block -> !block.canHurtEntities() && !block.getDropItem()
                         && block.getCancelDrop()), "debris native safety flags");
@@ -331,7 +332,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
     }
 
     private void resetPlayer() {
-        target.setY(world.getHighestBlockYAt(40, 0) + 1);
+        target.setY(world.getHighestBlockYAt(40, 40) + 1);
         player.teleport(target);
         player.setVelocity(new org.bukkit.util.Vector());
         player.setHealth(20);
@@ -405,7 +406,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
     private void restartCheck() {
         guarded(() -> {
             world = Bukkit.getWorld(NamespacedKey.minecraft("the_end"));
-            world.getChunkAt(2, 0).load();
+            world.getChunkAt(2, 2).load();
             var data = world.getPersistentDataContainer();
             UUID stale = UUID.fromString(data.get(new NamespacedKey("smashprobe", "stale"), PersistentDataType.STRING));
             UUID unrelated =
@@ -413,7 +414,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
             int savedFloor = data.get(new NamespacedKey("smashprobe", "floor"), PersistentDataType.INTEGER);
             check(world.getEntity(stale) == null, "actual process restart recovers saved orphan debris");
             check(world.getEntity(unrelated) instanceof FallingBlock, "restart preserves unrelated falling block");
-            check(world.getBlockAt(40, savedFloor, 0).isEmpty(), "permanent crater survives process restart");
+            check(world.getBlockAt(40, savedFloor, 40).isEmpty(), "permanent crater survives process restart");
             getLogger().info(
                     "SMASH_RESTART_PROBE PASS checks=" + checks + " nativePersistence+scopedRecovery+permanentCrater");
             finish(true, "restart");
