@@ -1,0 +1,5 @@
+name: OpeningRosterProbe
+version: 1.0
+main: de.kreiscraft.modules.shatteredcrown.OpeningRosterProbe
+api-version: '26.2'
+depend: [Kreiscraft]

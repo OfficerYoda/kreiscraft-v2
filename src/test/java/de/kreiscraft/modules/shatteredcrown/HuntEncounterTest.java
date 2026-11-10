@@ -155,6 +155,11 @@ class HuntEncounterTest {
         config.node("sweep-cadence-seconds").set(120);
     }
 
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(org.bukkit.entity.Entity::isValid)
+                .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
+    }
+
     @AfterEach
     void tearDown() {
         module.disable();
@@ -165,7 +170,7 @@ class HuntEncounterTest {
 
     private void hunt() throws Exception {
         startEncounter();
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        defenders().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -608,7 +613,7 @@ class HuntEncounterTest {
             assertThat(crossing.isCancelled()).isFalse();
             dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
             scheduler.advance(Duration.ZERO);
-            end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+            defenders().forEach(defender -> {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -1217,7 +1222,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        defenders().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -1273,13 +1278,13 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
             assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
-            assertThat(end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid))
+            assertThat(defenders().stream().filter(org.bukkit.entity.Entity::isValid))
                     .isEmpty();
             assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
             assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isEqualTo(1); // Discovery only.
             end.getPlayers().forEach(participant -> participant.teleport(new Location(end, 10.5, 64, 0.5)));
             scheduler.advance(Duration.ofSeconds(1));
-            end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid)
+            defenders().stream().filter(org.bukkit.entity.Entity::isValid)
                     .forEach(defender -> {
                         defender.setHealth(0);
                         server.getPluginManager()
@@ -1812,7 +1817,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
+        defenders().stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });

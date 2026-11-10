@@ -43,13 +43,53 @@ spectator and outside-arena players. Later joins/leaves never resize existing de
 
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
 Ground Smash after wave three. Unlocks survive later shields. Rain choreography and complete
-rotation redesign remain downstream work. The current configured defender roster remains the
-playable placeholder in every wave until #153–155 supply content. The explicit extension point is
+rotation redesign remain downstream work. Wave one is the mounted-undead roster below; the configured
+defender roster remains the playable placeholder in waves two/three until #154–155 supply content.
+The explicit extension point is
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
 content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
 Use the parent overload for descendants and `inheritOwnership` in projectile/effect pre-spawn consumers.
 All are owned by `waveWork`; do not scale again or equate defender deaths with crystal completion.
+
+### Wave one: mounted undead
+
+Each complete unit at **each** Anchor contains four Defender Groups:
+
+- Adult Zombie with an unenchanted `IRON_SPEAR` riding a Zombie Horse.
+- Skeleton with a bow riding a Spider.
+- Bogged with a bow riding a Cave Spider.
+- An actual chain of4–6 undead passengers, rotating through Husk, Zombie, Drowned, Skeleton,
+  Stray, Bogged and Wither Skeleton across the wave. Archers retain bows; Wither Skeletons have swords.
+
+At12 initial online players each Anchor has three units:12 groups, not12 individual defenders.
+Four online players produce16 groups/43 members across all four Anchors;12 produce48 groups/132 members.
+Tower height/species rotate deterministically by Anchor and unit. About35% of armor-capable undead
+receive one or two unenchanted leather/chainmail pieces with occasional iron (11/31 at one unit/Anchor).
+No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup
+disabled. Armor choice is captured for species-preserving recovery, never rerolled into another life.
+`defender-health` applies to every mount/passenger; `defender-damage` tunes supported native melee
+attributes, not bow/spear item damage. The roster is active during the30-second Opening Grace.
+
+Every mount and passenger must die before its crystal glows. Dismounting, broken towers and roaming
+do not clear a member; missing/unloaded members get only the existing bounded replacements, and
+accepted deaths are never replenished. Zombie reinforcements are zero and owned transformations
+are cancelled. Reset/debug replacement/disable/unload clean all members and inherited projectiles.
+The native build132 probe exercises real mount pursuit, spear melee and physical mounted/tower arrows;
+it does not substitute teleports or direct scripted damage for AI combat.
+
+Operator native check, using a fresh owned evidence directory and accepted Paper132 cache:
+
+```sh
+./gradlew check build openingRosterProbeJar --max-workers=2
+python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR \
+  build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar opening
+```
+
+Set `JAVA_HOME` to Java25. The probe's native registered player uses synthetic transport, not a human
+client; its raised calibration path leaves Anchor terrain unchanged and proves server AI/physical
+damage, not rendered readability, multiplayer balance or a complete fight. `/dragondebug wave 1`
+uses the same production roster and pauses automatic dragon attacks, not defenders.
 
 All waves reuse four fixed horizontal sites. Crystals use the current highest block plus one-block
 placement clearance, or their last known height for an empty column (podium height on first use).
@@ -204,8 +244,9 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, per placeholder Roster Unit; complete units scale per Anchor |
-| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
+| `defender-count` | 4 | 1–32, per later-wave placeholder unit; ignored by wave one |
+| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, later-wave placeholder only |
+| `opening-armor-percentage` | 35 | integer0–50; balanced armor-capable opening undead with1–2 light pieces |
 | `defender-health` | 40 | 1–1000 |
 | `defender-damage` | 6 | 0–100, native attack attribute |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
@@ -298,12 +339,13 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   catches late world/dragon availability and returning players. No teleport, inventory or travel
   policy is changed.
 - Every wave has four independent Anchors with population-scaled complete Roster Units. At four
-  online players the current placeholder is four configured defenders per Anchor (16 total).
+  online players wave one has four groups per Anchor (43 members total); later placeholders have
+  four configured defenders per Anchor (16 total).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement
   spawning and transformations are disabled for owned defenders. Missing defenders are replaced
-  within the remaining wave budget, escaped defenders return to the objective, and missing Anchors
+  within the remaining wave budget, only arena/arrival escape causes recovery (not roaming), and missing Anchors
   are recreated without clearing the defender gate. Refused spawns abort and restore the battle.
 - Glowing exposed crystals, floating Attack Warning countdowns, visuals and sounds communicate
   Encounter state without automatic chat or action bars. The vanilla dragon boss bar is untouched.

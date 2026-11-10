@@ -75,6 +75,11 @@ One complete set of a wave's defenders assigned to an Anchor. Population scaling
 not individual defenders or groups within a unit.
 _Avoid_: Defender count, group count
 
+**Defender Group**:
+A mounted pair or passenger tower within a Roster Unit. Every surviving member remains a defender
+of the same Anchor even when the group separates.
+_Avoid_: Roster Unit, extra life
+
 **Attack Warning**:
 A visible cue identifying an impending Encounter attack before it deals damage.
 _Avoid_: Telegraph, attack notification

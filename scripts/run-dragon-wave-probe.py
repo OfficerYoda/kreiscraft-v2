@@ -35,7 +35,9 @@ with socket.socket() as sock:
 plugins = server / "plugins"
 plugins.mkdir()
 production = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
-probe = next((repo / "build/paper-probe").glob("dragon-wave-probe-*.jar"))
+opening = len(sys.argv) > 4 and sys.argv[4] == "opening"
+stem = "opening-roster-probe" if opening else "dragon-wave-probe"
+probe = next((repo / "build/paper-probe").glob(stem + "-*.jar"))
 shutil.copy2(production, plugins / "Kreiscraft.jar")
 shutil.copy2(probe, plugins / "DragonWaveProbe.jar")
 with zipfile.ZipFile(production) as jar:
@@ -58,7 +60,8 @@ for index, line in enumerate(lines):
 with (root / "console.log").open("w") as log:
     process = subprocess.Popen([
         str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
-        "-Dterminal.jline=false", "-Dterminal.ansi=false", "-Dkreiscraft.wave-probe=true",
+        "-Dterminal.jline=false", "-Dterminal.ansi=false",
+        "-Dkreiscraft.opening-probe=true" if opening else "-Dkreiscraft.wave-probe=true",
         "-jar", "paper-26.2-132.jar", "--nogui",
     ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
     (root / "owned-pid.txt").write_text(str(process.pid))
@@ -75,5 +78,6 @@ with (root / "console.log").open("w") as log:
     (root / "exit.txt").write_text(str(code))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-sys.exit(0 if code == 0 and "DRAGON_WAVE_PROBE PASS" in text and "DRAGON_WAVE_PROBE FAIL" not in text
+marker = "OPENING_ROSTER_PROBE" if opening else "DRAGON_WAVE_PROBE"
+sys.exit(0 if code == 0 and marker + " PASS" in text and marker + " FAIL" not in text
          and not re.search(r"\bERROR\]", text) else 1)

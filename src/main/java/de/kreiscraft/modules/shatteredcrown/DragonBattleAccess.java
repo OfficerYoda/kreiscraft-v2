@@ -21,6 +21,7 @@ public interface DragonBattleAccess {
 
     default void preventDespawn(Mob defender) {
         defender.setRemoveWhenFarAway(false);
+        defender.setCanPickupItems(false);
     }
 
     /** Raw native dragon-breath units; retains the separately configured pool/lane/sweep semantics. */
