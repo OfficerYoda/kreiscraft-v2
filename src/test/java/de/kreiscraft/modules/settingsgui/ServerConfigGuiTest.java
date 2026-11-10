@@ -324,7 +324,11 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(51);
+        assertThat(names).hasSize(53);
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Dive pass (seconds)"
+                : "Sturzflugpassage (Sekunden)"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Dive climb (seconds)"
+                : "Sturzflugaufstieg (Sekunden)"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening grace (seconds)"
                 : "Vorbereitungszeit (Sekunden)"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
