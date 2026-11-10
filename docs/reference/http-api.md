@@ -105,7 +105,7 @@ round trip; this is browser-to-API latency, **not Minecraft gameplay ping**.
 
 **Auth required:** No. The configured `cors-origins` allowlist still applies.
 
-**Response:** `204 No Content`, no response body, with
+**Response:** `200 OK`, plain-text body `pong`, with
 `Cache-Control: no-store`. Reverse proxies must not cache this route. The
 frontend also disables caching, times out after five seconds, and displays `N/A`
 on failure.

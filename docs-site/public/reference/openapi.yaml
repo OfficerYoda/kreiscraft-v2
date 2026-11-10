@@ -30,8 +30,13 @@ paths:
         Requests require no authentication and follow the configured CORS rules.
       security: []
       responses:
-        "204":
-          description: Immediate response with no body.
+        "200":
+          description: Immediate plain-text pong response.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: pong
           headers:
             Cache-Control:
               description: Always `no-store` to prevent cached measurements.

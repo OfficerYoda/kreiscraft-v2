@@ -128,8 +128,8 @@ class ApiServerTest {
         var ping = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
                 URI.create("http://127.0.0.1:" + apiServer.port() + "/ping"))
                 .header("Origin", ALLOWED_ORIGIN).GET().build(), HttpResponse.BodyHandlers.ofString());
-        assertThat(ping.statusCode()).isEqualTo(204);
-        assertThat(ping.body()).isEmpty();
+        assertThat(ping.statusCode()).isEqualTo(200);
+        assertThat(ping.body()).isEqualTo("pong");
         assertThat(ping.headers().firstValue("Cache-Control").orElseThrow()).isEqualTo("no-store");
         assertThat(ping.headers().firstValue("Access-Control-Allow-Origin").orElseThrow()).isEqualTo(ALLOWED_ORIGIN);
     }

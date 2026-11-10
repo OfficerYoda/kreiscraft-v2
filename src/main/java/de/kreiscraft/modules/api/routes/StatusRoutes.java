@@ -13,7 +13,7 @@ public final class StatusRoutes {
             ctx.header("Cache-Control", "no-store");
             // Preserve errors already set by the CORS before-handler.
             if (ctx.status() == HttpStatus.OK) {
-                ctx.status(204);
+                ctx.result("pong");
             }
         });
         app.get("/status", ctx -> ctx.json(metrics.currentMetrics()));

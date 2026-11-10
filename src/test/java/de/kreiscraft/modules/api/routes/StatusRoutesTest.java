@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class StatusRoutesTest {
 
     @Test
-    void get_ping_returnsUncached204WithoutReadingMetrics() {
+    void get_ping_returnsUncachedPongWithoutReadingMetrics() {
         var metrics = mock(ServerMetricsCollector.class);
         var app = Javalin.create(cfg -> cfg.bundledPlugins.enableCors(
                 cors -> cors.addRule(rule -> {
@@ -25,8 +25,8 @@ class StatusRoutesTest {
         JavalinTest.test(app, (server, client) -> {
             for (int i = 0; i < 2; i++) {
                 try (var response = client.get("/ping", req -> req.header("Origin", "http://localhost:3000"))) {
-                    assertThat(response.code()).isEqualTo(204);
-                    assertThat(response.body().string()).isEmpty();
+                    assertThat(response.code()).isEqualTo(200);
+                    assertThat(response.body().string()).isEqualTo("pong");
                     assertThat(response.header("Cache-Control")).isEqualTo("no-store");
                     assertThat(response.header("Access-Control-Allow-Origin")).isEqualTo("http://localhost:3000");
                 }
