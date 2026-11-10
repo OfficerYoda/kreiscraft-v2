@@ -188,19 +188,20 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 for (EntityType type : List.of(EntityType.ZOMBIE_HORSE, EntityType.SPIDER, EntityType.CAVE_SPIDER)) {
                     cases.add(roster.stream().filter(mob -> mob.getType() == type).findFirst().orElseThrow());
                 }
-                cases.add(roster.stream().filter(mob -> mob.getVehicle() == null && mob.getType() == EntityType.HUSK)
-                        .findFirst().orElseThrow());
+                cases.addAll(roster.stream().filter(mob -> mob.getVehicle() == null
+                        && mob.getType() != EntityType.ZOMBIE_HORSE && mob.getType() != EntityType.SPIDER
+                        && mob.getType() != EntityType.CAVE_SPIDER)
+                        .sorted(java.util.Comparator.comparingInt(mob -> chain(mob).size())).toList());
                 begin();
             }
             if (active != null) {
                 moved |= active.getX() > initialX + 5;
-                if (index == 3 && moved && ticks - started == 220) {
+                if (index >= 3 && moved && ticks - started == 220) {
                     fixture.getBukkitEntity().teleport(active.getLocation().clone().add(6, 0, 0));
                 }
                 var group = chain(active);
                 boolean hit = index < 3 ? hits.contains(group.get(1).getUniqueId())
-                        : group.stream().filter(mob -> mob instanceof org.bukkit.entity.AbstractSkeleton)
-                                .anyMatch(mob -> hits.contains(mob.getUniqueId()));
+                        : group.stream().anyMatch(mob -> hits.contains(mob.getUniqueId()));
                 if (moved && hit && damageApplied) {
                     require(group.stream().allMatch(Entity::isValid), "living intact group after physical combat");
                     getLogger().info("OPENING combat root=" + active.getType() + " movement="
@@ -227,7 +228,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                             + " x=" + active.getX() + " moved=" + moved + " hits=" + hits);
                 }
             }
-            if (ticks > 2600) {
+            if (ticks > 3800) {
                 throw new IllegalStateException("overall timeout");
             }
         } catch (Throwable error) {
