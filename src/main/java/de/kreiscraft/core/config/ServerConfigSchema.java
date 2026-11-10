@@ -354,8 +354,7 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("landing-window-seconds", 8, 30));
         fields.add(crownNumber("landing-approach-seconds", 5, 45));
         fields.add(crownNumber("landing-radius", 8, 24));
-        fields.add(field(path("modules", "shattered-crown", "prey-count"), ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, 4), ConfigLifecycle.HOT_RELOAD));
+        fields.add(crownNumber("prey-percentage", 1, 100));
         fields.add(crownNumber("prey-cadence-seconds", 5, 120));
         fields.add(crownNumber("prey-countdown-seconds", 2, 15));
         fields.add(crownNumber("pool-radius", 1, 6));

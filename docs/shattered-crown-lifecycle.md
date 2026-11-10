@@ -130,7 +130,7 @@ membership. Repeated completion/cancellation is harmless; it does not close sibl
 | Main action | Completion boundary | Lingering work |
 | --- | --- | --- |
 | Dive / Ground Smash | Native movement recovery releases flight control; cancellation/failure also completes | None in the current moving attacks |
-| Prey | All countdown deposition callbacks finish (including skipped targets) | Each deposited pool owns its display, rendering, damage and exclusive expiry independently |
+| Prey | All countdown deposition callbacks finish (including skipped targets) | Each pool owns its display/render/expiry independently; all owned pools share the per-player damage-rate rule |
 | Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
 | Landing | Native approach deadline or melee-window end releases the reservation | None |
 | Legacy stationary lane | Warning resolves into an active lane | Lane rendering/damage/expiry remain separately owned; existing two-lane limit is retained |
@@ -155,6 +155,13 @@ No new lifecycle toggle or timing knob is needed. Existing validated, per-attemp
 movement, pool-lifetime/damage and landing tuning remains authoritative; rotation redesign follows
 in the approved successor tickets. Automated command/event tests are not live Paper combat evidence;
 integrated #163 must verify active pool cancellation, native release and real rendering on Paper.
+
+Prey #160 now uses this separation for scheduling: existing pools do not hold the executing slot or
+delay a melee landing, and are not removed by ordinary main completion/landing. The shared production
+`depositBreathPool(ground, radius, lifetimeSeconds)` boundary lets Rain supply its own size/lifetime
+without duplicating ownership or damage policy. Overlapping/staggered pools share one rolling
+per-player cooldown on the attempt's game-tick clock; cleanup clears both hazard and rate membership.
+See the [Prey configuration and operator checks](/shattered-crown-hunt/#marked-prey-and-shared-pools-160).
 
 ## Historical automated evidence (#139 baseline)
 

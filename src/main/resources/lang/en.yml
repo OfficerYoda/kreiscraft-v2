@@ -132,7 +132,7 @@ server-config:
     shattered-crown-landing-window-seconds: "Landed melee window (seconds)"
     shattered-crown-landing-approach-seconds: "Landing approach timeout (seconds)"
     shattered-crown-landing-radius: "Clear melee approach radius"
-    shattered-crown-prey-count: "Marked Prey count"
+    shattered-crown-prey-percentage: "Marked Prey (% of End population)"
     shattered-crown-prey-cadence-seconds: "Marked Prey cadence (seconds)"
     shattered-crown-prey-countdown-seconds: "Marked Prey countdown (seconds)"
     shattered-crown-pool-radius: "Breath pool radius"

@@ -132,7 +132,7 @@ server-config:
     shattered-crown-landing-window-seconds: "Nahkampffenster (Sekunden)"
     shattered-crown-landing-approach-seconds: "Landeanflug-Zeitlimit (Sekunden)"
     shattered-crown-landing-radius: "Freier Nahkampf-Anflugradius"
-    shattered-crown-prey-count: "Anzahl markierter Spieler"
+    shattered-crown-prey-percentage: "Markierte Spieler (% der End-Population)"
     shattered-crown-prey-cadence-seconds: "Beutemarkierungstakt (Sekunden)"
     shattered-crown-prey-countdown-seconds: "Beutemarkierungs-Countdown (Sekunden)"
     shattered-crown-pool-radius: "Atemflächenradius"

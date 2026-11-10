@@ -903,13 +903,13 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         moveParticipants(16.5, 12.5); // Diagonal escape clears either cardinal lane orientation.
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(3);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(7);
         moveParticipants(20.5, 10.5);
         scheduler.advance(Duration.ofMillis(3999));
         assertParticipantHealth(20);
         scheduler.advance(Duration.ofMillis(1));
         assertParticipantHealth(17);
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Co-located marks do not stack pools.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(7); // Independent pools share one damage pulse.
         moveParticipants(26.5, 10.5);
         scheduler.advance(Duration.ofMillis(6250));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
@@ -1024,7 +1024,7 @@ class FinalEncounterTest {
                 org.mockito.ArgumentMatchers.any());
         org.mockito.Mockito.doAnswer(track).when(scheduler).runRepeating(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
-        config.node("prey-count").set(4);
+        config.node("prey-percentage").set(35);
         var cancelledHits = new java.util.concurrent.atomic.AtomicInteger();
         server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
@@ -1055,8 +1055,8 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(4);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(21);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertParticipantHealth(20);
                 assertThat(participants).allSatisfy(participant -> assertThat(participant.getVelocity().lengthSquared())
                         .isZero()); // Cancelled sweeps never shove players.
@@ -1076,8 +1076,8 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(4);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(21);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertParticipantHealth(20);
             }
             participants.forEach(participant -> participant.teleport(new Location(end, 100, 50, 0)));
