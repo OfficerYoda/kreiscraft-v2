@@ -7,11 +7,15 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import de.kreiscraft.core.message.MessageService;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +38,11 @@ class StatusListenerTest {
     @Mock
     private StatusService service;
 
+    @Mock
+    private MessageService messages;
+
+    private StatusConfig config;
+
     private ServerMock server;
     private PluginMock plugin;
 
@@ -42,7 +51,9 @@ class StatusListenerTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         lenient().when(service.get(any(UUID.class))).thenReturn(Status.defaults());
-        server.getPluginManager().registerEvents(new StatusListener(service, server), plugin);
+        lenient().when(messages.render("prefix")).thenReturn(Component.text("[Kreiscraft]"));
+        config = new StatusConfig();
+        server.getPluginManager().registerEvents(new StatusListener(service, server, () -> config, messages), plugin);
     }
 
     @AfterEach
@@ -77,17 +88,43 @@ class StatusListenerTest {
 
         server.getPluginManager().callEvent(event);
 
-        assertThat(event.joinMessage()).isEqualTo(
-                Component.translatable("multiplayer.player.joined", status.displayName("Bob"))
-                        .color(NamedTextColor.YELLOW));
+        assertThat(plain(event.joinMessage())).isEqualTo("[Kreiscraft] » Admin Bob [A]");
+        assertThat(event.joinMessage()).isEqualTo(MiniMessage.miniMessage()
+                .deserialize("<kc-prefix><gray> » <gold>Admin Bob <blue>[A]",
+                        Placeholder.component(
+                                "kc-prefix", Component.text("[Kreiscraft]"))));
 
         PlayerJoinEvent custom = new PlayerJoinEvent(player, Component.text("Welcome Bob!"));
         server.getPluginManager().callEvent(custom);
-        assertThat(plain(custom.joinMessage())).isEqualTo("Welcome Admin Bob [A]!");
+        assertThat(plain(custom.joinMessage())).isEqualTo("[Kreiscraft] » Admin Bob [A]");
 
         PlayerJoinEvent suppressed = new PlayerJoinEvent(player, (Component) null);
         server.getPluginManager().callEvent(suppressed);
         assertThat(suppressed.joinMessage()).isNull();
+    }
+
+    @Test
+    void onQuit_usesReverseArrowAndCurrentConfiguration() {
+        PlayerMock player = server.addPlayer("Bob");
+        when(service.get(player.getUniqueId())).thenReturn(new Status("<gold>Admin", "[A]", GOLD));
+        PlayerQuitEvent event = new PlayerQuitEvent(player, Component.text("Bob left"),
+                PlayerQuitEvent.QuitReason.DISCONNECTED);
+
+        server.getPluginManager().callEvent(event);
+        assertThat(plain(event.quitMessage())).isEqualTo("[Kreiscraft] « Admin Bob [A]");
+
+        config = new StatusConfig("Hello <name-colored>", "Bye <player-prefix><name-colored><player-suffix>");
+        server.getPluginManager().callEvent(event);
+        assertThat(plain(event.quitMessage())).isEqualTo("Bye Admin Bob [A]");
+
+        PlayerJoinEvent join = new PlayerJoinEvent(player, Component.text("Bob joined"));
+        server.getPluginManager().callEvent(join);
+        assertThat(plain(join.joinMessage())).isEqualTo("Hello Bob");
+
+        PlayerQuitEvent suppressed = new PlayerQuitEvent(player, (Component) null,
+                PlayerQuitEvent.QuitReason.DISCONNECTED);
+        server.getPluginManager().callEvent(suppressed);
+        assertThat(suppressed.quitMessage()).isNull();
     }
 
     @Test

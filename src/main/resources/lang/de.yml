@@ -105,6 +105,8 @@ server-config:
     start-sequence-initial-border-size: "Anfängliche Weltgrenze"
     start-sequence-target-border-size: "Ziel-Weltgrenze"
     start-sequence-border-duration: "Weltgrenzen-Dauer"
+    status-join-format: "Format der Beitrittsnachricht"
+    status-leave-format: "Format der Verlassensnachricht"
     tablist-update-interval: "Aktualisierungsintervall"
     update-mode-bypass-permission: "Bypass-Berechtigung"
     update-mode-bypass-names: "Bypass-Namen"

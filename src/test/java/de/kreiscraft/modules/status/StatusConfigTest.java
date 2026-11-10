@@ -19,11 +19,15 @@ class StatusConfigTest {
         StatusConfig config = root.node("status").get(StatusConfig.class);
         assertThat(config).isNotNull();
         assertThat(config).isEqualTo(new StatusConfig());
+        assertThat(config.joinFormat())
+                .isEqualTo("<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>");
+        assertThat(config.leaveFormat())
+                .isEqualTo("<kc-prefix><gray> « <player-prefix><name-colored><player-suffix>");
     }
 
     @Test
-    void roundTrip_preservesEmptyRecord() throws Exception {
-        StatusConfig original = new StatusConfig();
+    void roundTrip_preservesFormats() throws Exception {
+        StatusConfig original = new StatusConfig("Hello <name-colored>", "Bye <name-colored>");
         YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
                 .source(() -> new BufferedReader(new StringReader("status: {}")))
                 .build();

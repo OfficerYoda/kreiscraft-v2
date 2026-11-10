@@ -1,14 +1,19 @@
 package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
+import de.kreiscraft.core.message.MessageService;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
@@ -16,10 +21,15 @@ public final class StatusListener implements PriorityListener {
 
     private final StatusService service;
     private final Server server;
+    private final Supplier<StatusConfig> config;
+    private final MessageService messages;
 
-    public StatusListener(StatusService service, Server server) {
+    public StatusListener(StatusService service, Server server, Supplier<StatusConfig> config,
+            MessageService messages) {
         this.service = service;
         this.server = server;
+        this.config = config;
+        this.messages = messages;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -35,12 +45,25 @@ public final class StatusListener implements PriorityListener {
         for (Player viewer : server.getOnlinePlayers()) {
             applyStatusToScoreboard(joiner, viewer.getScoreboard());
         }
-        Component joinMessage = event.joinMessage();
-        if (joinMessage != null) {
-            event.joinMessage(joinMessage.replaceText(builder -> builder
-                    .matchLiteral(joiner.getName())
-                    .replacement(joiner.displayName())));
+        if (event.joinMessage() != null) {
+            event.joinMessage(render(config.get().joinFormat(), joiner));
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onQuit(PlayerQuitEvent event) {
+        if (event.quitMessage() != null) {
+            event.quitMessage(render(config.get().leaveFormat(), event.getPlayer()));
+        }
+    }
+
+    private Component render(String format, Player player) {
+        Status status = service.get(player.getUniqueId());
+        return MiniMessage.miniMessage().deserialize(format
+                .replace("<player-prefix>", status.spacedPrefix())
+                .replace("<player-suffix>", status.spacedSuffix()),
+                Placeholder.component("kc-prefix", messages.render("prefix")),
+                Placeholder.unparsed("name-colored", player.getName()));
     }
 
     @EventHandler

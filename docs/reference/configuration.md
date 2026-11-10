@@ -341,6 +341,17 @@ Durations accept the suffixes `ms` (milliseconds), `t` (ticks, 20 ticks = 1 seco
 
 ---
 
+### `status`
+
+| Key (relative to `modules.status`) | Type | Default | Description |
+|---|---|---|---|
+| `join-format` | String | `<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>` | MiniMessage join announcement. Hot-reloaded. |
+| `leave-format` | String | `<kc-prefix><gray> « <player-prefix><name-colored><player-suffix>` | MiniMessage leave announcement. Hot-reloaded. |
+
+Both formats support the server prefix, player prefix, literal player name, and player suffix placeholders shown above. Visible player affixes receive separating spaces when missing; open prefix formatting continues onto the name. Announcements suppressed by another plugin remain suppressed.
+
+---
+
 ### `tablist`
 
 | Key (relative to `modules.tablist`) | Type | Default | Description |

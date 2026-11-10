@@ -331,6 +331,12 @@ public final class ServerConfigSchema {
                 path("modules", "start-sequence", "border-duration"),
                 List.of("600s", "3600s", "30000s")));
 
+        // ── status ──────────────────────────────────────────────────────────
+        for (String key : List.of("join-format", "leave-format")) {
+            fields.add(field(path("modules", "status", key), ConfigFieldType.STRING,
+                    ConfigValidators.miniMessage(), ConfigLifecycle.HOT_RELOAD));
+        }
+
         // ── tablist ─────────────────────────────────────────────────────────
         // Header and footer templates stay YAML-only; the refresh interval is a restart-only
         // duration because the shared repeating task is not rescheduled on reload.

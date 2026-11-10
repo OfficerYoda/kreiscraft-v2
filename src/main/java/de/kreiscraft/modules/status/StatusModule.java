@@ -44,7 +44,7 @@ public final class StatusModule implements Module {
                 ctx.plugin().getServer().getPluginManager(), data);
         ctx.services().publish(StatusService.class, service);
 
-        ctx.events().register(new StatusListener(service, ctx.plugin().getServer()));
+        ctx.events().register(new StatusListener(service, ctx.plugin().getServer(), () -> config, ctx.messages()));
 
         ctx.commands().register(
                 StatusCommand.build(service, ctx.messages()),
@@ -53,6 +53,10 @@ public final class StatusModule implements Module {
 
     @Override
     public void onConfigReload(ConfigurationNode moduleConfig) {
-        // StatusConfig is empty — nothing to reload
+        try {
+            config = moduleConfig.get(StatusConfig.class);
+        } catch (org.spongepowered.configurate.serialize.SerializationException e) {
+            throw new ModuleException("failed to reload config for module " + id(), e);
+        }
     }
 }

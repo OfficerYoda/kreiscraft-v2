@@ -98,6 +98,8 @@ class ServerConfigSchemaTest {
                         List.of("modules", "spawn", "glide", "enabled"),
                         List.of("modules", "spawn", "glide-boost", "boost-strength"),
                         List.of("modules", "start-sequence", "border-duration"),
+                        List.of("modules", "status", "join-format"),
+                        List.of("modules", "status", "leave-format"),
                         List.of("modules", "tablist", "update-interval"),
                         List.of("modules", "update-mode", "bypass-names"),
                         List.of("modules", "wither", "spawn-explosion-power"),
@@ -152,6 +154,10 @@ class ServerConfigSchemaTest {
         assertThat(lifecycle(schema, "modules", "firework", "custom-model-data"))
                 .isEqualTo(ConfigLifecycle.RESTART_REQUIRED);
         assertThat(lifecycle(schema, "modules", "combat", "tag-duration"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "status", "join-format"))
+                .isEqualTo(ConfigLifecycle.HOT_RELOAD);
+        assertThat(lifecycle(schema, "modules", "status", "leave-format"))
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);
         assertThat(lifecycle(schema, "modules", "spawn", "spawn-radius"))
                 .isEqualTo(ConfigLifecycle.HOT_RELOAD);

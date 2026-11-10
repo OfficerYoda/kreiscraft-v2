@@ -5,10 +5,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import de.kreiscraft.core.message.PlaceholderResolver;
+import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.modules.status.StatusConfig;
 import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusListener;
 import de.kreiscraft.modules.status.StatusService;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.scoreboard.Team;
@@ -38,6 +41,9 @@ class TablistStatusCoexistenceTest {
     @Mock
     private PlaceholderResolver resolver;
 
+    @Mock
+    private MessageService messages;
+
     private ServerMock server;
     private PluginMock plugin;
 
@@ -46,6 +52,7 @@ class TablistStatusCoexistenceTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.createMockPlugin();
         when(resolver.resolveString(any(), any())).thenReturn("resolved");
+        when(messages.render("prefix")).thenReturn(Component.text("[Kreiscraft]"));
     }
 
     @AfterEach
@@ -60,7 +67,8 @@ class TablistStatusCoexistenceTest {
 
         TablistUpdater updater =
                 new TablistUpdater(server, resolver, () -> new TablistConfig(null, "header", "footer"));
-        server.getPluginManager().registerEvents(new StatusListener(statusService, server), plugin);
+        server.getPluginManager().registerEvents(
+                new StatusListener(statusService, server, StatusConfig::new, messages), plugin);
         server.getPluginManager().registerEvents(new TablistListener(updater), plugin);
 
         PlayerMock alice = server.addPlayer("Alice");
@@ -83,7 +91,8 @@ class TablistStatusCoexistenceTest {
 
         TablistUpdater updater =
                 new TablistUpdater(server, resolver, () -> new TablistConfig(null, "header", "footer"));
-        server.getPluginManager().registerEvents(new StatusListener(statusService, server), plugin);
+        server.getPluginManager().registerEvents(
+                new StatusListener(statusService, server, StatusConfig::new, messages), plugin);
         server.getPluginManager().registerEvents(new TablistListener(updater), plugin);
 
         PlayerMock alice = server.addPlayer("Alice");

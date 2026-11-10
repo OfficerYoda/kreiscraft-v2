@@ -105,6 +105,8 @@ server-config:
     start-sequence-initial-border-size: "Initial border size"
     start-sequence-target-border-size: "Target border size"
     start-sequence-border-duration: "Border duration"
+    status-join-format: "Join message format"
+    status-leave-format: "Leave message format"
     tablist-update-interval: "Update interval"
     update-mode-bypass-permission: "Bypass permission"
     update-mode-bypass-names: "Bypass names"
