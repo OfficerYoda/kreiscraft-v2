@@ -112,8 +112,8 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
 
 ## Marked Prey and shared pools (#160)
 
-Each automatic selection counts all connected players in the managed End, including Creative,
-Spectator, protected arrivals and outer-island occupants. Four request two marks, eight request three,
+Each automatic selection counts all connected players in the managed End, including dead players
+awaiting respawn, Creative, Spectator, protected arrivals and outer-island occupants. Four request two marks, eight request three,
 twenty request seven; only living online Survival/Adventure combat participants may actually be marked.
 The old `prey-count` key is retired and ignored: remove it and use `prey-percentage`, without a fixed
 three/four-target ceiling. Valid configuration changes take effect on the next attempt.
