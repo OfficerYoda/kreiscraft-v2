@@ -483,7 +483,7 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 ```json
 {
   "type": "CHAT",
-  "content": "§#ff5500PlayerName§§: hello",
+  "content": "hello",
   "source": "player",
   "playerName": "PlayerName"
 }
@@ -492,7 +492,7 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 | Field        | Type                          | Description                                                                      |
 | ------------ | ----------------------------- | -------------------------------------------------------------------------------- |
 | `type`       | String                        | Always `CHAT`.                                                                   |
-| `content`    | String                        | Rendered chat content in the legacy colour encoding.                             |
+| `content`    | String                        | Plain message body, without in-game prefixes, sender names, or colour codes.      |
 | `source`     | `player` \| `web` \| `system` | Origin of the chat message.                                                      |
 | `playerName` | String, optional              | Exact Minecraft username. Required when `source` is `player`; omitted otherwise. |
 
@@ -500,7 +500,7 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 
 | Type           | Direction       | Description                                                                                                                                                                                                      |
 | -------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CHAT`         | Server → Client | Chat forwarded to the browser. Player messages include `source: "player"` and `playerName`; content uses the legacy `§`-prefixed colour scheme (e.g. `§#ff5500PlayerName§§: hello`).                             |
+| `CHAT`         | Server → Client | Chat forwarded to the browser. Player messages include `source: "player"` and `playerName`; `content` contains only the plain message body. |
 | `CHAT`         | Client → Server | A chat message sent from the browser. Content is broadcast to in-game chat via `MessageService.broadcast("api.chat-format-from-web", "content", <content>)` and echoed to all other connected WebSocket clients. |
 | `PING`         | Server → Client | Heartbeat ping sent every `heartbeat-interval`. Content: `"heartbeat ping"`.                                                                                                                                     |
 | `PONG`         | Client → Server | Expected reply to `PING`. Server ignores this message.                                                                                                                                                           |
@@ -508,19 +508,11 @@ Server-to-browser `CHAT` messages use the following breaking v0.1 format:
 | `VERIFICATION` | Server → Client | Handshake on connection, or future auth messages. Content: `"Connection successful."`. Clients must not send this type.                                                                                          |
 | `EXCEPTION`    | Server → Client | Sent when the server cannot parse an incoming message. Content: `"bad message"`. Clients must not send this type.                                                                                                |
 
-### Colour Encoding
+### Message Content
 
-In-game chat events received from `ChatBridge` are rendered using a legacy
-`§`-prefixed encoding:
-
-- Each `TextComponent` segment is prefixed with `§#rrggbb` (hex colour, e.g.
-  `§#ff5500`).
-- Segments with no colour use `§§` as a double-escape.
-- Non-`TextComponent` children (e.g. `TranslatableComponent`) fall back to the
-  pre-computed plain text string.
-
-This encoding is retained for zero-downtime frontend compatibility. Migration to
-MiniMessage may happen in the future.
+Browser messages use the pre-computed plain message body from `ChatBridge`, not
+the rendered in-game chat line. For example, OfficerYoda sending `hi` produces
+`content: "hi"` and `playerName: "OfficerYoda"`. In-game formatting is unchanged.
 
 ### Heartbeat
 

@@ -584,6 +584,8 @@ components:
           const: CHAT
         content:
           type: string
+          description: Plain message body without in-game prefixes, sender names, or colour codes.
+          example: hi
         source:
           type: string
           const: player
@@ -598,6 +600,7 @@ components:
           const: CHAT
         content:
           type: string
+          description: Plain message body without in-game formatting.
         source:
           type: string
           enum: [web, system]
