@@ -73,6 +73,7 @@ _Avoid_: Final pair, defender wave
 **Roster Unit**:
 One complete set of a wave's defenders assigned to an Anchor. Population scaling repeats whole units,
 not individual defenders or groups within a unit.
+Wave two's unit is one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze; none is optional.
 _Avoid_: Defender count, group count
 
 **Attack Warning**:

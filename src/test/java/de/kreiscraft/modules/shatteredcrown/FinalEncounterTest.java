@@ -103,6 +103,17 @@ class FinalEncounterTest {
             }
 
             @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
+            }
+
+            @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
@@ -151,11 +162,12 @@ class FinalEncounterTest {
     }
 
     private void clearAnchors() {
-        List.copyOf(end.getEntitiesByClass(Zombie.class)).forEach(this::defeat);
+        end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon).toList()
+                .forEach(this::defeat);
         crystals().forEach(target -> damage(target, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10));
     }
 
-    private void defeat(Zombie defender) {
+    private void defeat(org.bukkit.entity.Mob defender) {
         defender.setHealth(0);
         server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
     }
@@ -203,7 +215,7 @@ class FinalEncounterTest {
                     end.getBlockAt(crystal.getLocation().getBlockX(), 63, crystal.getLocation().getBlockZ()).isEmpty())
                             .isTrue();
         }
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16)
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon)).hasSize(24)
                 .allSatisfy(defender -> assertThat(defender.getLocation().getBlock().getRelative(0, -1, 0).getType())
                         .isEqualTo(Material.END_STONE));
         clearAnchors();
@@ -244,7 +256,7 @@ class FinalEncounterTest {
         assertThat(dragon.getHealth()).isEqualTo(650);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).containsExactlyInAnyOrderElementsOf(openingLocations);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon)).hasSize(24);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount).isCancelled()).isTrue();
         clearAnchors();
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);
@@ -707,7 +719,8 @@ class FinalEncounterTest {
             clearAnchors();
             damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
             if (!stage.equals("protected")) {
-                List.copyOf(end.getEntitiesByClass(Zombie.class)).forEach(this::defeat);
+                end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon).toList()
+                        .forEach(this::defeat);
             }
             if (stage.equals("one")) {
                 damage(crystals().getFirst(), EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10);
