@@ -83,9 +83,10 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
   damage has inclusive horizontal edges and at most three blocks' vertical distance from its ground.
 - A native flame rectangle (44 boundary particles per refresh) and a viewer-facing native TextDisplay
   countdown show shape and timing. The same immutable rectangle produces active dragon-breath
-  boundary particles and a purple remaining-lifetime countdown. English/German action bars announce
-  warning time and the short-side escape; a dragon growl provides a secondary audio cue. No client
-  mods, resource packs, mandatory audio or repeated chat instruction spam are required.
+   boundary particles and a purple remaining-lifetime countdown. A dragon growl provides a secondary
+   audio cue. No automatic chat, action bars or replacement titles are sent (including refreshed
+   countdowns); see the [Encounter communication policy](/shattered-crown/#encounter-communication-policy-156).
+   No client mods, resource packs or mandatory audio are required.
 - Before warning **and** activation, placement checks solid footing, clear player-sized body space,
   actual arena boundaries and arrival exclusion over the full footprint. No custom effect changes
   blocks or creates terrain. The implementation conservatively skips uneven/obstructed areas rather
@@ -111,8 +112,8 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
 - UUID-sorted round-robin selection marks distinct current participants. Each has a native viewer-facing
   TextDisplay above their head with their name and remaining seconds, plus a moving flame circle of the
   future pool radius. Teammates see marks without a glowing-state mutation, resource pack or sound.
-  The marked recipient receives an English/German action-bar countdown and a secondary warning growl.
-  Refresh is 250 ms; no attack countdown floods chat.
+   The marked recipient hears a secondary warning growl. The in-world name/countdown refreshes every
+   250 ms; it sends no chat or action-bar messages.
 - At expiry, revalidate death, logout, world/mode/arena departure and protected arrival entry before
   projecting a pool at the player's **current** location. Entering an excluded area removes the mark;
   stepping back out cannot resurrect it. Invalid terrain or arrival overlap omits the pool, never

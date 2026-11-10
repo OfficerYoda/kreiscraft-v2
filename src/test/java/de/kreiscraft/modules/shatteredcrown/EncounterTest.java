@@ -233,16 +233,26 @@ class EncounterTest {
     }
 
     @Test
-    void objectiveInstructionsAndOngoingShieldStatusUseEachRecipientsLanguage() throws Exception {
+    void openingExposureAndShieldReleaseStayQuietForBothLanguages() throws Exception {
         PlayerMock german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(player.nextMessage()).contains("defenders", "Anchors");
-        assertThat(german.nextMessage()).contains("Verteidiger", "Anker");
-        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(player.nextActionBar())).contains("4", "shielded");
-        assertThat(plain.serialize(german.nextActionBar())).contains("4", "geschützt");
+        assertThat(crystals()).hasSize(4);
+        var bossBar = dragon.getDragonBattle().getBossBar();
+        for (Zombie defender : defenders()) {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        }
+        assertThat(crystals()).allMatch(EnderCrystal::isGlowing);
+        crystals().forEach(this::hit);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(dragon.getDragonBattle().getBossBar()).isSameAs(bossBar);
+        for (PlayerMock recipient : List.of(player, german)) {
+            assertThat(recipient.nextMessage()).isNull();
+            assertThat(recipient.nextActionBar()).isNull();
+        }
     }
 
     @Test
