@@ -241,8 +241,7 @@ class HuntEncounterTest {
         debug("status", player);
         assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         debug("resume", player);
-        scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isNotEmpty();
     }
 
     @Test
@@ -554,9 +553,11 @@ class HuntEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         debug("pause", console);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        while (console.nextMessage() != null) {
+            // Drain earlier explicit replies before checking resume.
+        }
         debug("resume", console);
-        scheduler.advance(Duration.ofSeconds(10));
-        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        assertThat(console.nextMessage()).contains("mode=automatic", "main=executing");
         module.disable();
         assertThat(debug("status", console)).isZero();
     }
@@ -566,6 +567,12 @@ class HuntEncounterTest {
                 mock(DamageSource.class), 10);
         server.getPluginManager().callEvent(event);
         return event;
+    }
+
+    private void trigger(String attack) throws Exception {
+        player.setOp(true);
+        debug("trigger " + attack, player);
+        messages(player); // Geometry checks deliberately isolate an action from randomized scheduling.
     }
 
     @Test
@@ -645,7 +652,8 @@ class HuntEncounterTest {
         config.node("movement-attacks").set(true);
         hunt();
         Location origin = dragon.getLocation();
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         assertThat(dragon.getLocation()).isNotEqualTo(origin);
         assertThat(player.getHealth()).isEqualTo(20);
@@ -675,13 +683,14 @@ class HuntEncounterTest {
             }
         }
         player.teleport(player.getLocation().add(0, 1.2, 0));
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         assertThat(messages(player)).isEmpty();
     }
 
     @Test
-    void owedSmashRunsAsSoonAsPreyClearsInsteadOfWaitingForAnotherCadence() throws Exception {
+    void unlockedSmashRemainsTriggerableAfterPreyCompletes() throws Exception {
         config.node("movement-attacks").set(true);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -690,7 +699,9 @@ class HuntEncounterTest {
         config.node("pool-damage").set(0);
         hunt();
         clearFinalGate();
-        scheduler.advance(Duration.ofSeconds(22));
+        trigger("prey");
+        scheduler.advance(Duration.ofSeconds(4));
+        trigger("smash");
         assertWarningKind("sweep");
     }
 
@@ -747,12 +758,14 @@ class HuntEncounterTest {
         hunt();
         // A void trench cuts through both candidate orientations, not a climbable one-block rise.
         end.getBlockAt(11, 63, 0).setType(Material.AIR);
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         end.getBlockAt(11, 63, 0).setType(Material.END_STONE);
         var cloud = end.spawn(new Location(end, 15, 64, 5), org.bukkit.entity.AreaEffectCloud.class);
         cloud.setParticle(org.bukkit.Particle.DRAGON_BREATH);
         cloud.setRadius(8);
+        trigger("dive");
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
@@ -761,7 +774,8 @@ class HuntEncounterTest {
     void diveCanBeDodgedSidewaysAndDisableStopsMovement() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
         player.teleport(player.getLocation().add(0, 0, 5));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(20);
@@ -780,7 +794,8 @@ class HuntEncounterTest {
         config.node("sweep-cadence-seconds").set(10);
         hunt();
         clearFinalGate();
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("smash");
+        scheduler.advance(Duration.ofSeconds(4));
         assertThat(dragon.getLocation().getY()).isEqualTo(82);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
@@ -814,7 +829,8 @@ class HuntEncounterTest {
         config.node("prey-cadence-seconds").set(12);
         config.node("sweep-cadence-seconds").set(20);
         hunt();
-        scheduler.advance(Duration.ofSeconds(duringRefresh ? 16 : 15));
+        trigger("prey");
+        scheduler.advance(Duration.ofSeconds(duringRefresh ? 4 : 3));
         try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class,
                 org.mockito.Mockito.CALLS_REAL_METHODS)) {
             particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
@@ -836,13 +852,15 @@ class HuntEncounterTest {
     void finalGateCancelsInFlightDiveAndFinalHuntCanStartANewOne() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         clearFinalGate();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(player.getHealth()).isEqualTo(20);
+        trigger("dive");
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         scheduler.advance(Duration.ofSeconds(6));
@@ -853,7 +871,8 @@ class HuntEncounterTest {
     void removedFlightWarningCancelsMovementWithoutInvisibleImpact() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
         end.getEntitiesByClass(TextDisplay.class).forEach(TextDisplay::remove);
         Location stopped = dragon.getLocation();
         scheduler.advance(Duration.ofSeconds(5));
@@ -888,7 +907,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void landingWaitsForNativeArrivalThenReservesTwelveSecondsOfMeleeTimeBeforeTakingOff() throws Exception {
+    void landingWaitsForNativeArrivalThenReservesSixSecondsOfMeleeTimeBeforeTakingOff() throws Exception {
         config.node("lane-damage").set(0);
         hunt();
         scheduler.advance(Duration.ofMillis(29999));
@@ -904,7 +923,7 @@ class HuntEncounterTest {
         nativePhase(EnderDragon.Phase.LEAVE_PORTAL);
         nativePhase(EnderDragon.Phase.BREATH_ATTACK);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5749));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
@@ -1485,7 +1504,7 @@ class HuntEncounterTest {
         config.node("pool-lifetime-seconds").set(15);
         config.node("lane-cadence-seconds").set(120);
         config.node("prey-cadence-seconds").set(20);
-        config.node("movement-attacks").set(true);
+        // Historical stationary seam; exact new rotation/arrival bounds live in LifecycleEncounterTest.
         hunt();
         scheduler.advance(Duration.ofSeconds(24));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
@@ -1785,13 +1804,16 @@ class HuntEncounterTest {
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
         assertThat(hit(dragon).isCancelled()).isFalse();
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5749));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         player.teleport(new Location(end, 0.5, 64, 10.5));
-        scheduler.advance(Duration.ofMillis(7500)); // Hunt time 50 seconds.
+        player.teleport(new Location(end, 100, 50, 0)); // Omit the now-earlier next Prey before the sector geometry check.
+        scheduler.advance(Duration.ofMillis(12750));
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        scheduler.advance(Duration.ofSeconds(1));
         assertWarningKind("sweep");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane postponed, not combined unsafely.
         player.teleport(new Location(end, 10.5, 64, 0.5)); // Reachable sector-side escape.
@@ -1841,9 +1863,12 @@ class HuntEncounterTest {
         dragon.teleport(new Location(end, 0, 67, 0));
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
+        player.teleport(new Location(end, 100, 50, 0));
+        german.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofMillis(18500));
         player.teleport(new Location(end, 0.5, 64, 10.5));
         german.teleport(new Location(end, 0.5, 64, 10.5));
-        scheduler.advance(Duration.ofMillis(19500));
+        scheduler.advance(Duration.ofSeconds(1));
         assertWarningKind("sweep");
         assertThat(actionBars(player)).isEmpty();
         assertThat(actionBars(german)).isEmpty();

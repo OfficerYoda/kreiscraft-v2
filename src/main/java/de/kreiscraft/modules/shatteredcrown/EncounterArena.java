@@ -351,17 +351,20 @@ final class EncounterArena {
 
     boolean landingSafe() {
         // Native landing uses the real podium. Require ground-level melee approaches, not a void perch.
+        Location podium = landingPodium();
         int distance = (int) Math.min(8, config.landingRadius() - 3);
         for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance}, new int[] {-distance, 0},
                 new int[] {0, -distance})) {
-            Location approach = groundBelow(center.clone().add(offset[0] + 0.5, 0, offset[1] + 0.5));
+            Location column = podium.clone().add(offset[0] + 0.5, 0, offset[1] + 0.5);
+            column.setY(center.getWorld().getHighestBlockYAt(column.getBlockX(), column.getBlockZ()) + 1);
+            Location approach = groundBelow(column);
             if (approach == null || Math.sqrt(horizontalSquared(approach, center.getX(), center.getZ())) + 3 > config
-                    .landingRadius()) {
+                    .landingRadius() || Math.abs(approach.getY() - podium.getY()) > 8) {
                 return false;
             }
         }
         double reach = config.landingRadius() + 32;
-        var clouds = nearbyBreath(center, reach, 32);
+        var clouds = nearbyBreath(podium, reach, 32);
         return clouds.size() <= 32 && clouds.stream().noneMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || horizontalSquared(cloud.getLocation(), center.getX(),
                         center.getZ()) <= Math.pow(config.landingRadius() + cloud.getRadius(), 2));
@@ -376,7 +379,17 @@ final class EncounterArena {
 
     boolean atPodium(Location dragon) {
         return contains(dragon) && horizontalSquared(dragon, center.getX(), center.getZ()) <= 64
-                && Math.abs(dragon.getY() - center.getY()) <= 8;
+                && Math.abs(dragon.getY() - landingPodium().getY()) <= 8;
+    }
+
+    private Location landingPodium() {
+        // Paper's getPodium() is the fight origin (normally Y=0), not the actual portal surface.
+        Location podium = center.clone();
+        int highest = center.getWorld().getHighestBlockYAt(center.getBlockX(), center.getBlockZ());
+        if (!center.getWorld().getBlockAt(center.getBlockX(), highest, center.getBlockZ()).isEmpty()) {
+            podium.setY(highest + 1);
+        }
+        return podium;
     }
 
     private boolean rectanglesOverlap(BreathLane lane, BreathLane other) {

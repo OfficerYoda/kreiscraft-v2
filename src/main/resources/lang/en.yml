@@ -131,6 +131,8 @@ server-config:
     shattered-crown-lane-damage-cadence-seconds: "Breath damage interval (seconds)"
     shattered-crown-landing-cadence-seconds: "Landing cadence (seconds)"
     shattered-crown-landing-window-seconds: "Landed melee window (seconds)"
+    shattered-crown-attack-gap-min-seconds: "Minimum post-action gap (seconds)"
+    shattered-crown-attack-gap-max-seconds: "Maximum post-action gap (seconds)"
     shattered-crown-landing-approach-seconds: "Landing approach timeout (seconds)"
     shattered-crown-landing-radius: "Clear melee approach radius"
     shattered-crown-prey-percentage: "Marked Prey (% of End population)"

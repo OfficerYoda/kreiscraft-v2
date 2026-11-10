@@ -120,6 +120,7 @@ class OpeningEncounterTest {
         });
         config = BasicConfigurationNode.root();
         config.node("opening-grace-seconds").set(0); // Isolate existing attack timing; grace has its own lifecycle test.
+        config.node("movement-attacks").set(false); // Historical stationary bombardment/geometry seam, not new rotation.
     }
 
     @AfterEach

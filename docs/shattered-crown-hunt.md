@@ -9,6 +9,57 @@ See the [live-playtest follow-up](/shattered-crown/#live-playtest-follow-up-movi
 behavior and tuning. The stationary lane/sweep contract below remains available with
 `movement-attacks: false`.
 
+## Unlocked rotation (#157, native movement profile)
+
+With the default `movement-attacks: true`, one coordinator runs throughout shielded and vulnerable
+phases. Bombardment and Prey are initially available. Destroying all four crystals in waves one,
+two and three permanently unlocks Dive, Rain and Smash respectively; later shields do not relock
+them. Rain appears in `unlocked` status but not `available` until #162 installs its main action.
+The compatibility stationary profile below retains its old diagnostic cadence/shape contract.
+
+Each round shuffles every available family once. Newly available families join the unfinished
+round once, without replaying its already consumed families. Round boundaries do not immediately
+repeat a selection. Failed/rejected placements consume their turn too, so an impossible family
+cannot starve the others. A new attempt/manual resume starts a fresh round; ordinary wave changes
+retain the unfinished round. The first warning starts **at Opening Grace expiry** (normally 30s),
+not an additional cadence later. Manual triggers bypass grace; pause/resume never refill it.
+
+After main completion, a uniformly selected **inclusive 100–200 server-tick (5–10s) delay** precedes
+the next warning. Dive/Smash include recovery, Prey includes all deposition, Bombardment includes
+impact; #162 must complete Rain only after its last projectile resolves. Sibling pools do not hold
+the main-action slot. Cancellation, setup/native-flight/render failures and lost targets release
+that slot and receive the same bounded delay. Pausing cancels all automatic work and hazards.
+No per-family cadence or final cadence factor controls this native rotation.
+
+Vulnerable landing opportunities use `landing-cadence-seconds` (default 30s, 10–120s). A due
+opportunity takes the next idle main slot, independently of the ranged round/gap; it neither consumes
+a family nor clears/waits out existing pools. Failed landing geometry/setup/approach consumes only
+that opportunity. The next opportunity is due one configured cadence after landing completion,
+and at least one ranged-family turn must intervene, including when cadence and gap deadlines tie.
+An overdue opportunity cannot replace the first grace-expiry warning. Native approach has its existing
+5–45s timeout. The melee window is **exactly six seconds from actual podium arrival**, not from the
+approach request. Native phase events start the clock immediately; a one-tick monitor handles
+already-sitting arrivals. Paper's podium Y is normally the fight origin (zero), not portal height:
+landing checks use the current terrain surface and nearby approaches within eight vertical blocks.
+No new ranged/main attack starts until release; old owned pools keep their
+rendering, damage and independent expiry. Release restores native flight and starts the next
+post-completion delay. Normal wave-gate replacement cancels applicable work without stuck reservations.
+
+`attack-gap-min-seconds` and `attack-gap-max-seconds` default to 5 and 10; each must be finite within
+5–10 and minimum must not exceed maximum. They are rounded to server ticks and snapshotted per
+attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
+Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
+`hazards`, remaining round `queued`, and `next-warning-seconds` (`paused` without a coordinator).
+The remaining gap can reach zero while landing/main work owns the slot; zero does not override it.
+
+Controlled Encounter/public-event regressions cover seeded rounds, cross-round nonrepetition,
+both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain unavailability,
+grace, and the six-second window with damaging old pools. `rotationProbeJar` is a disposable real
+Paper probe, never part of the production JAR; it uses real registered native players/battle/AI,
+production commands and public pool ownership. Its extended-lifetime pool is a bounded fixture for
+natural landing arrival, not a claim that ordinary Prey lasts 60s. Synthetic transport is not human
+rendering, multiplayer balance or a full-fight acceptance claim.
+
 Ticket #136 extends the four-Anchor opening of [The Shattered Crown](/shattered-crown/).
 The final opening Anchor starts Hunt scheduling once, cancels pending bombardments and releases the
 shield immediately. Permitted ordinary melee and ranged flight damage remain native combat events;
@@ -34,7 +85,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `lane-damage` | 4 | 0–100 health points per eligible cadence pulse, native dragon-breath damage |
 | `lane-damage-cadence-seconds` | 1 | 0.5–5 seconds; no pulse at exclusive expiry |
 | `landing-cadence-seconds` | 30 | 10–120 seconds between landing opportunities |
-| `landing-window-seconds` | 12 | 8–30 seconds, starting **after actual native arrival**, not the approach request |
+| `landing-window-seconds` | 6 | exactly 6 seconds, starting **after actual native arrival**, not the approach request |
 | `landing-approach-seconds` | 20 | 5–45 seconds to wait for native arrival, then abandon this opportunity |
 | `landing-radius` | 12 | 8–24 blocks around the real podium reserved against native breath clouds |
 | `prey-percentage` | 35 | 1–100%; ceil(percentage × everyone connected in the managed End), capped only by eligible targets |
@@ -57,7 +108,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `explosion-window-budget` | 40 | 1–200 health points across accepted explosions/parts |
 
 Final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**, pool lifetime **3s**. Ordinary
-warning durations, lane lifetime, knockback and the complete 12s actual-arrival melee window stay
+warning durations, lane lifetime and knockback stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
 forced-wipe timer is introduced. During each four-Anchor shield, learned opening bombardments
 run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
@@ -152,7 +203,7 @@ player command uses its sender as the single debug target. Use automatic schedul
    reserves the complete native-arrival melee window. Already deposited pools remain active. Bounded deferral covers
   the longest configured lane, prey/pool or sweep lifetime plus native approach timeout. The automated
   full sequence demonstrates lane at 10s → marks at 20s → pools at 24s → clear landing approach at
-  30.25s → native arrival and 12s melee window → fixed sweep at 50s. Callback ordering may defer an
+   30.25s → native arrival and a six-second melee window. Historical cadence examples are not the new shuffled rotation. Callback ordering may defer an
   opportunity by one 250 ms coordinator interval. Cadences are opportunities, not guaranteed hits.
 - Arrival-origin arrows, primed TNT and attributable clouds cannot damage the managed dragon,
   Anchors or defenders after moving into combat. Lingering-potion splash transfers protected
@@ -167,7 +218,8 @@ player command uses its sender as the single debug target. Use automatic schedul
 - Marks scale with population and lingering pool count depends on cadence/lifetime, not a fixed cap.
    Rendering retains its 64-recipient limit and finite per-effect tasks; reset returns to discovery alone.
    Repeated 20-player fixtures now permit seven marks/pools and check a 30-task ceiling. Those fixture
-   bounds are **not measured Paper tick/performance evidence**.
+   bounds are **not measured Paper tick/performance evidence**. The shorter compatibility landing now
+   permits seven marks/pools plus one lane and a 31-task ceiling in that repeated-attempt fixture.
 
 ### Production pool boundary and verification
 
@@ -202,7 +254,7 @@ overlap path, a full attempt or four-player balance acceptance. #163 still owns 
 At a landing opportunity the controller reserves the next clear interval: no new lane warnings start
 while existing lanes expire. It checks four usable ground-level approaches around the real podium
 and nearby native breath danger. Terrain/native danger can defer or omit a landing rather than force
-players onto a void perch. Deferral is bounded by the longest custom warning/hazard lifetime + approach timeout; native
+players onto a void perch. Stationary-profile deferral is bounded by the longest custom warning/hazard lifetime + approach timeout; native
 movement is subsequently allowed its configured approach timeout. New warnings resume on omission.
 
 The controller uses only supported `EnderDragon.setPhase` and `EnderDragonChangePhaseEvent`:
@@ -210,7 +262,7 @@ The controller uses only supported `EnderDragon.setPhase` and `EnderDragonChange
 1. Request `FLY_TO_PORTAL`; native AI controls flight and `LAND_ON_PORTAL` movement. No teleport or
    velocity scripting occurs in production.
 2. Observe a native sitting phase **and** proximity to the podium (within eight blocks horizontally
-   and vertically). Only then announce arrival and begin the complete melee window. A premature
+   and vertically). Only then begin the six-second melee window, without an automatic chat message. A premature
    sitting callback while still flying elsewhere cannot consume the attack window.
 3. Hold `SEARCH_FOR_BREATH_ATTACK_TARGET` through the window, preventing competing native takeoff,
    charge/strafe and breath transitions from immediately cancelling or covering it. This is a native

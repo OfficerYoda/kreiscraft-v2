@@ -1,71 +1,65 @@
 package de.kreiscraft.modules.shatteredcrown;
 
-import java.util.EnumMap;
-import java.util.function.BooleanSupplier;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.random.RandomGenerator;
 
-/** Oldest owed attack wins; failed placement retries without losing its place or starving others. */
+/** One shuffled round; rejected setups consume a turn rather than starving the other families. */
 final class HuntRotation {
-    enum Attack {
-        DIVE, PREY, SMASH, LANDING
+    private final RandomGenerator random;
+    private final List<EncounterController.AttackFamily> remaining = new ArrayList<>();
+    private final Set<EncounterController.AttackFamily> round = EnumSet.noneOf(EncounterController.AttackFamily.class);
+    private EncounterController.AttackFamily last;
+    private long nextWarning;
+
+    HuntRotation(RandomGenerator random) {
+        this.random = random;
     }
 
-    private final EnumMap<Attack, Double> cadence = new EnumMap<>(Attack.class);
-    private final EnumMap<Attack, Double> due = new EnumMap<>(Attack.class);
-    private final EnumMap<Attack, Double> retry = new EnumMap<>(Attack.class);
-    private final EnumMap<Attack, Double> reported = new EnumMap<>(Attack.class);
-    private final BooleanSupplier busy;
-    private final Predicate<Attack> start;
-    private final BiConsumer<Attack, String> report;
-    private double time;
-
-    HuntRotation(double dive, double prey, double smash, double landing, BooleanSupplier busy,
-            Predicate<Attack> start, BiConsumer<Attack, String> report) {
-        cadence.put(Attack.DIVE, dive);
-        cadence.put(Attack.PREY, prey);
-        cadence.put(Attack.SMASH, smash);
-        cadence.put(Attack.LANDING, landing);
-        due.putAll(cadence);
-        this.busy = busy;
-        this.start = start;
-        this.report = report;
+    EncounterController.AttackFamily next(Set<EncounterController.AttackFamily> available) {
+        remaining.removeIf(attack -> !available.contains(attack));
+        var added = new ArrayList<>(available.stream().filter(attack -> !round.contains(attack)).sorted().toList());
+        shuffle(added);
+        remaining.addAll(added); // New unlocks join the unfinished round exactly once.
+        round.addAll(available);
+        if (remaining.isEmpty()) {
+            remaining.addAll(available.stream().sorted().toList());
+            shuffle(remaining);
+            round.clear();
+            round.addAll(available);
+        }
+        if (remaining.size() > 1 && remaining.getFirst() == last) {
+            var first = remaining.removeFirst();
+            remaining.add(first);
+        }
+        last = remaining.removeFirst();
+        return last;
     }
 
-    void tick() {
-        time += 0.25;
-        Attack chosen = null;
-        for (Attack attack : Attack.values()) {
-            if (due.get(attack) <= time && retry.getOrDefault(attack, 0.0) <= time
-                    && (chosen == null || due.get(attack) < due.get(chosen))) {
-                chosen = attack;
-            }
+    private void shuffle(List<EncounterController.AttackFamily> attacks) {
+        for (int index = attacks.size() - 1; index > 0; index--) {
+            int other = random.nextInt(index + 1);
+            var saved = attacks.get(index);
+            attacks.set(index, attacks.get(other));
+            attacks.set(other, saved);
         }
-        if (chosen == null) {
-            return;
-        }
-        if (busy.getAsBoolean()) {
-            diagnostic(chosen, "another attack or landing is active; remains queued");
-            return;
-        }
-        if (start.test(chosen)) {
-            due.put(chosen, time + cadence.get(chosen));
-            reported.remove(chosen);
-        } else {
-            retry.put(chosen, time + 1);
-            diagnostic(chosen, "no eligible target, terrain/escape route or flight clearance; retry in 1s");
-        }
+    }
+
+    void completed(long tick, int minimumTicks, int maximumTicks) {
+        nextWarning = tick + random.nextInt(minimumTicks, maximumTicks + 1);
+    }
+
+    boolean ready(long tick) {
+        return tick >= nextWarning;
     }
 
     String queued() {
-        return java.util.Arrays.stream(Attack.values()).filter(attack -> due.get(attack) <= time)
-                .map(Enum::name).collect(java.util.stream.Collectors.joining(", "));
+        return remaining.toString();
     }
 
-    private void diagnostic(Attack attack, String reason) {
-        if (time - reported.getOrDefault(attack, -30.0) >= 30) {
-            reported.put(attack, time);
-            report.accept(attack, reason);
-        }
+    long remainingTicks(long tick) {
+        return Math.max(0, nextWarning - tick);
     }
 }
