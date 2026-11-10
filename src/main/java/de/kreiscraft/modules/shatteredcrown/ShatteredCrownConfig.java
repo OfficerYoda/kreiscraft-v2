@@ -24,7 +24,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double sweepRadius, Double sweepAngle, Double sweepWarningSeconds, Double sweepCadenceSeconds,
         Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
-        Double explosionWindowSeconds, Double explosionWindowBudget) {
+        Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -66,10 +66,18 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
                         "shattered-crown.enabled " + invalid.get());
             }
         }
+        if (!node.node("movement-attacks").virtual()) {
+            var invalid = de.kreiscraft.core.config.ConfigValidators.booleanValue()
+                    .validate(node.node("movement-attacks"));
+            if (invalid.isPresent()) {
+                throw new SerializationException("shattered-crown.movement-attacks " + invalid.get());
+            }
+        }
         return node.get(ShatteredCrownConfig.class);
     }
 
     public ShatteredCrownConfig {
+        movementAttacks = movementAttacks == null ? true : movementAttacks;
         worldKey = worldKey == null ? "minecraft:the_end" : worldKey;
         maxHealth = maxHealth == null ? 1000.0 : maxHealth;
         defenderCount = defenderCount == null ? 4 : defenderCount;

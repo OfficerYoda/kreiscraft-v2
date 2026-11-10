@@ -4,6 +4,11 @@ title: Shattered Crown hunt
 
 # Weather the Hunt: coordinated attacks and melee windows
 
+The current default replaces stationary lanes/sectors with moving dives and ground smashes.
+See the [live-playtest follow-up](/shattered-crown/#live-playtest-follow-up-moving-attacks) for current
+behavior and tuning. The stationary lane/sweep contract below remains available with
+`movement-attacks: false`.
+
 Ticket #136 extends the four-Anchor opening of [The Shattered Crown](/shattered-crown/).
 The final opening Anchor starts Hunt scheduling once, cancels pending bombardments and releases the
 shield immediately. Permitted ordinary melee and ranged flight damage remain native combat events;

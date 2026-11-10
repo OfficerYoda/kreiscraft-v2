@@ -105,6 +105,7 @@ class FinalEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
     }

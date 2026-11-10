@@ -20,7 +20,8 @@ public interface DragonBattleAccess {
     }
 
     default void bombardmentDamage(Player player, EnderDragon dragon, double damage) {
-        player.damage(damage, DamageSource.builder(DamageType.DRAGON_BREATH).withCausingEntity(dragon).build());
+        player.damage(damage, DamageSource.builder(DamageType.DRAGON_BREATH)
+                .withDirectEntity(dragon).withCausingEntity(dragon).build());
     }
 
     default void faceWarningToViewer(TextDisplay warning) {

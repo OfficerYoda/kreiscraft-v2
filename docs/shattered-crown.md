@@ -4,6 +4,35 @@ title: The Shattered Crown
 
 # The Shattered Crown: complete encounter
 
+## Live-playtest follow-up: moving attacks
+
+The current default is `movement-attacks: true` (YAML-only, snapshotted per attempt).
+This replaces stationary Hunt lanes with a **marked-strip dive** and stationary wing sectors
+with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
+
+- **Dive:** uses lane length, width, warning, cadence and damage settings. Direction arrows mark the
+  strip while the dragon lines up; a three-second pass deals damage once per player when the low
+  dragon reaches them, followed by a two-second climb. Lane lifetime/damage cadence apply only to
+  legacy stationary lanes. Knockback uses `sweep-knockback`.
+- **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
+  blocks; warning time is at least `(radius + 2) / 3` seconds. The dragon rises, plunges for one second,
+  impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
+  `sweep-angle` applies only to legacy sectors.
+- Flight uses tick-sized Paper teleports in `HOVER`, retaining native hitbox updates. Native contact
+  damage, push and block destruction are suppressed during the scripted move. Custom hits follow
+  encounter eligibility and combat cancellation. Attack cleanup restores native flight; existing
+  persistent phase recovery handles restarts. New attack warnings wait while flight is active.
+- Prey now resolves nearby ground below a jumping player and renders a filled purple breath disk
+  with an activation sound. The shared damage source supplies both direct and causing dragon entities,
+  fixing Paper's `Direct entity must be set if causing entity is set` exception. Unsafe placements
+  still cancel; reasons are available through the plugin logger at `FINE` level.
+
+Automated checks cover production damage-source attribution, dive timing/dodging/disable, smash
+impact/recovery, and jumping at Prey expiry. **Client-visible flight smoothness, model alignment,
+real combat and multiplayer balance still require a new live Paper playtest.**
+
+## Earlier encounter contract
+
 Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
 immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt now adds

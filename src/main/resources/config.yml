@@ -146,6 +146,7 @@ modules:
     bypass-names: []
   shattered-crown:
     enabled: false
+    movement-attacks: true
     world-key: minecraft:the_end
     max-health: 1000.0
     defender-count: 4

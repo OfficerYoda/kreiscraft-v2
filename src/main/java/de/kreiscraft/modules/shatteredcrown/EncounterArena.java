@@ -219,10 +219,14 @@ final class EncounterArena {
             }
         }
         return participants.stream().filter(player -> area.contains(player.getLocation(), 1)).allMatch(player -> {
+            Location start = groundBelow(player.getLocation());
+            if (start == null) {
+                return false;
+            }
             for (int direction = 0; direction < 16; direction++) {
                 double angle = direction * Math.PI * 2 / 16;
                 for (double distance = 0; distance <= warningSeconds * 3; distance += 0.5) {
-                    Location step = player.getLocation().clone().add(Math.cos(angle) * distance, 0,
+                    Location step = start.clone().add(Math.cos(angle) * distance, 0,
                             Math.sin(angle) * distance);
                     if (!walkable(step) || existing.stream().anyMatch(other -> other.contains(step, 0.5))
                             || lanes.stream().anyMatch(lane -> lane.contains(step, 0.5))
@@ -236,6 +240,18 @@ final class EncounterArena {
             }
             return false;
         });
+    }
+
+    /** Resolve feet to nearby footing, including a player jumping when a mark expires. */
+    Location groundBelow(Location feet) {
+        Location ground = feet.clone();
+        for (int y = feet.getBlockY(); y >= feet.getBlockY() - 3; y--) {
+            ground.setY(y);
+            if (walkable(ground)) {
+                return ground.clone();
+            }
+        }
+        return null;
     }
 
     boolean landingSafe() {

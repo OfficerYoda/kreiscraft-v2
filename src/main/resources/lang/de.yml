@@ -362,6 +362,8 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  dive-warning: "<gold>Sturzflug — Verlasse den markierten Streifen! Die Pfeile zeigen die Flugrichtung.</gold>"
+  smash-warning: "<gold>Bodenschlag — Verlasse den Flammenkreis! Greife nach dem Aufprall an.</gold>"
   opening: "<gold>Brecht die Krone:</gold> <gray>Teilt euch auf! Besiegt die Verteidiger jedes der vier Anker und zerstört dann seinen leuchtenden Bodenkristall. Verlasst markierte Bombardierungskreise vor dem Einschlag!</gray>"
   exposed: "<green>Der Anker ist verwundbar! Zerstört den leuchtenden Kristall.</green>"
   unshielded: "<green>Übersteht die Jagd: Alle vier Anker zerstört! Der Drachenschild ist gebrochen. Greift den Drachen an!</green>"

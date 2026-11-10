@@ -100,6 +100,7 @@ class HuntEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
         // Lane-focused scenarios defer the newly coordinated attacks; dedicated cases set their cadences.
         config.node("prey-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
@@ -168,6 +169,103 @@ class HuntEncounterTest {
         assertThat(warning.isValid()).isFalse();
         assertThat(player.getHealth()).isEqualTo(16);
         assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
+    }
+
+    @Test
+    void diveMovesAlongWarningAndHitsOnlyWhenItPassesThenRestoresFlight() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        Location origin = dragon.getLocation();
+        scheduler.advance(Duration.ofSeconds(11));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        assertThat(dragon.getLocation()).isNotEqualTo(origin);
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(player.getHealth()).isEqualTo(16);
+        assertThat(dragon.getLocation().getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveCanBeDodgedSidewaysAndDisableStopsMovement() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(12));
+        player.teleport(player.getLocation().add(0, 0, 5));
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(player.getHealth()).isEqualTo(20);
+        module.disable();
+        Location stopped = dragon.getLocation();
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(dragon.getLocation()).isEqualTo(stopped);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void smashWarnsRisesImpactsAndLeavesAGroundedRecovery() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(10);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(14));
+        assertThat(dragon.getLocation().getY()).isEqualTo(82);
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(dragon.getLocation().getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(dragon.getLocation().getY()).isEqualTo(66);
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+    }
+
+    @Test
+    void preyStillDepositsOnGroundWhenPlayerJumpsAtExpiry() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(12);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(15));
+        player.teleport(player.getLocation().add(0, 1.2, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class).iterator().next().getY()).isEqualTo(65.5);
+    }
+
+    @Test
+    void finalGateCancelsInFlightDiveAndFinalHuntCanStartANewOne() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        clearFinalGate();
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.HOVER);
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(player.getHealth()).isEqualTo(16);
+    }
+
+    @Test
+    void removedFlightWarningCancelsMovementWithoutInvisibleImpact() throws Exception {
+        config.node("movement-attacks").set(true);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(12));
+        end.getEntitiesByClass(TextDisplay.class).forEach(TextDisplay::remove);
+        Location stopped = dragon.getLocation();
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(dragon.getLocation()).isEqualTo(stopped);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(player.getHealth()).isEqualTo(20);
     }
 
     @Test
