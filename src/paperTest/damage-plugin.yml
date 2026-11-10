@@ -1,0 +1,4 @@
+name: DragonDamageProbe
+version: '1'
+main: de.kreiscraft.modules.shatteredcrown.DragonDamageProbe
+api-version: '26.2'

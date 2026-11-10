@@ -140,7 +140,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `defender-leash` | 16 | 4–32 blocks from the Anchor |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
 | `bombardment-cadence-seconds` | 8 | 2–120 seconds between warning starts; first warning after this interval |
-| `bombardment-damage` | 6 | 0–100 health points, native dragon-breath damage and normal combat protections |
+| `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |
 | `bombardment-radius` | 4 | 1–12 blocks; circular impact, at most 3 blocks vertically from warned ground |
 | `arena-radius` | 80 | 16–256 blocks, horizontal cylinder around the battle podium |
 | `arena-min-y` / `arena-max-y` | 40 / 160 | World heights, −64–320, strictly increasing |

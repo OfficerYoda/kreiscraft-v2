@@ -142,6 +142,18 @@ tasks.register<Jar>("dragonFlightProbeJar") {
     }
 }
 
+tasks.register<Jar>("dragonDamageProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dragon-damage-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { exclude("plugin.yml") }
+    from(sourceSets.main.get().output) {
+        include("de/kreiscraft/modules/shatteredcrown/DragonBattleAccess*.class")
+        include("de/kreiscraft/platform/NmsDragonFlight*.class", "de/kreiscraft/platform/DragonFlightControl.class")
+    }
+    from("src/paperTest/damage-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.compileJava {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
