@@ -9,9 +9,7 @@ import de.kreiscraft.modules.status.Status;
 import de.kreiscraft.modules.status.StatusListener;
 import de.kreiscraft.modules.status.StatusService;
 import java.util.UUID;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.scoreboard.Team;
 import org.junit.jupiter.api.AfterEach;
@@ -92,7 +90,6 @@ class TablistStatusCoexistenceTest {
 
         assertThat(PlainTextComponentSerializer.plainText().serialize(alice.displayName()))
                 .isEqualTo("Admin Alice [A]");
-        assertThat(alice.playerListName())
-                .isEqualTo(Component.text("Alice").color(TextColor.color(GOLD)));
+        assertThat(alice.playerListName()).isEqualTo(status.displayName("Alice"));
     }
 }

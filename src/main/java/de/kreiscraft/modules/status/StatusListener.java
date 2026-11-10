@@ -1,7 +1,6 @@
 package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -51,12 +50,13 @@ public final class StatusListener implements PriorityListener {
     /**
      * Applies the status prefix, coloured name, and suffix to the surfaces that are global to the
      * player rather than per-viewer: the Bukkit display name and the tab-list (player list) name.
-     * The player-list name carries the same name colour as the display name.
+     * A custom list name replaces the client's scoreboard-team formatting, so it must include
+     * the full status too. Teams still format the overhead nametag.
      */
     private void applyIdentity(Player player) {
         Status status = service.get(player.getUniqueId());
         player.displayName(status.displayName(player.getName()));
-        player.playerListName(Component.text(player.getName()).color(status.nameColor()));
+        player.playerListName(status.displayName(player.getName()));
     }
 
     private void applyStatusToScoreboard(Player subject, Scoreboard scoreboard) {

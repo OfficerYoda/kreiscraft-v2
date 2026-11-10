@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scoreboard.Scoreboard;
@@ -101,15 +100,15 @@ class StatusListenerTest {
     }
 
     @Test
-    void onJoin_setsPlayerListNameWithStatusColourOnly() {
+    void onJoin_setsPlayerListNameWithFullStatus() {
         PlayerMock player = new PlayerMock(server, "Bob");
         Status status = new Status("<gold>Admin</gold>", " [A]", GOLD);
         when(service.get(player.getUniqueId())).thenReturn(status);
 
         server.addPlayer(player);
 
-        assertThat(player.playerListName())
-                .isEqualTo(Component.text("Bob").color(TextColor.color(GOLD)));
+        assertThat(plain(player.playerListName())).isEqualTo("Admin Bob [A]");
+        assertThat(player.playerListName()).isEqualTo(player.displayName());
     }
 
     @Test
@@ -123,8 +122,7 @@ class StatusListenerTest {
         server.addPlayer("Bob");
 
         assertThat(plain(alice.displayName())).isEqualTo("Alice Alice [A]");
-        assertThat(alice.playerListName())
-                .isEqualTo(Component.text("Alice").color(NamedTextColor.AQUA));
+        assertThat(alice.playerListName()).isEqualTo(aliceStatus.displayName("Alice"));
     }
 
     @Test
@@ -204,8 +202,7 @@ class StatusListenerTest {
                 .callEvent(new StatusChangedEvent(player.getUniqueId(), Status.defaults(), updated));
 
         assertThat(plain(player.displayName())).isEqualTo("Admin OnlinePlayer [A]");
-        assertThat(player.playerListName())
-                .isEqualTo(Component.text("OnlinePlayer").color(NamedTextColor.RED));
+        assertThat(player.playerListName()).isEqualTo(updated.displayName("OnlinePlayer"));
     }
 
     @Test
