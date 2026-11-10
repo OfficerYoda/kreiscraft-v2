@@ -47,7 +47,8 @@ final class EncounterArena {
         return center.getWorld().equals(location.getWorld())
                 && horizontalSquared(location, center.getX(), center.getZ()) <= config.arenaRadius()
                         * config.arenaRadius()
-                && location.getY() >= config.arenaMinY() && location.getY() <= config.arenaMaxY();
+                && location.getY() >= center.getWorld().getMinHeight()
+                && location.getY() < center.getWorld().getMaxHeight();
     }
 
     boolean protectedArrival(Location location) {

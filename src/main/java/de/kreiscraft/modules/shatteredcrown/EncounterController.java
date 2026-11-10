@@ -101,6 +101,53 @@ public final class EncounterController implements Listener, AutoCloseable {
     private DebugAttack debugAttack;
     private Player debugTarget;
     private HuntRotation rotation;
+    private UUID populationWorld;
+    private int entryPopulation;
+    private long graceTicks;
+    private Scheduler.Task entryDiscovery;
+
+    private boolean openingGrace() {
+        return graceTicks > 0 && debugAttack == null;
+    }
+
+    private void discoverSoon() {
+        if (!closed && dragon == null && entryDiscovery == null) {
+            entryDiscovery = scheduler.runLater(Duration.ZERO, () -> {
+                entryDiscovery = null;
+                pulse();
+            });
+        }
+    }
+
+    /** Frozen server-wide population at first entry; occupied-End recovery snapshots discovery. */
+    public int firstEntryPopulation() {
+        return entryPopulation;
+    }
+
+    /** Everyone connected in the managed End, regardless of mode, health or arena position. */
+    public int scalingPopulation() {
+        if (closed) {
+            return 0;
+        }
+        World world = dragon == null ? server.getWorld(NamespacedKey.fromString(nextConfig.worldKey()))
+                : dragon.getWorld();
+        return world == null || unavailableWorlds.contains(world.getUID()) ? 0
+                : (int) world.getPlayers().stream().filter(Player::isOnline).count();
+    }
+
+    public int combatPopulation() {
+        return arena == null ? 0 : (int) dragon.getWorld().getPlayers().stream().filter(arena::participant).count();
+    }
+
+    private void recordEntry(World world) {
+        if (!closed && dragon == null && entryPopulation == 0 && world != null
+                && world.getKey().toString().equals(nextConfig.worldKey())
+                && world.getEnvironment() == World.Environment.THE_END
+                && !unavailableWorlds.contains(world.getUID())) {
+            populationWorld = world.getUID();
+            entryPopulation = server.getOnlinePlayers().size();
+        }
+    }
 
     enum DebugAttack {
         DIVE, SMASH, PREY, BOMBARDMENT, LANDING
@@ -129,7 +176,9 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     String debugStatus() {
         if (dragon == null) {
-            return "No active encounter; enter the configured End arena in survival/adventure.";
+            return "No active encounter; enter the configured End arena in survival/adventure."
+                    + "; combat-population=0, scaling-population=" + scalingPopulation()
+                    + ", entry-snapshot=" + entryPopulation + ", grace-seconds=0.0";
         }
         return "mode=" + (manualMode ? "manual" : "automatic") + ", phase="
                 + (hunting ? "hunt" : "anchors") + ", final=" + finalEntered
@@ -137,7 +186,9 @@ public final class EncounterController implements Listener, AutoCloseable {
                 + ", queued=[" + (rotation == null ? "" : rotation.queued()) + "]"
                 + ", lanes=" + lanes.size() + ", marks=" + marks.size() + ", areas=" + areas.size()
                 + ", landing=" + landingRequested + ", flight=" + (flight != null)
-                + ", native=" + dragon.getPhase();
+                + ", native=" + dragon.getPhase()
+                + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
+                + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + graceTicks / 20.0;
     }
 
     private String activeAttack() {
@@ -239,7 +290,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void scheduleBombardments() {
-        if (!manualMode) {
+        if (!manualMode && !openingGrace()) {
             Duration cadence = seconds(config.bombardmentCadenceSeconds());
             bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
         }
@@ -272,6 +323,10 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         server.getWorlds().forEach(world -> world.getEntities().forEach(this::recoverStale));
+        World occupied = server.getWorld(NamespacedKey.fromString(nextConfig.worldKey()));
+        if (occupied != null && !occupied.getPlayers().isEmpty()) {
+            recordEntry(occupied);
+        }
         if (discovery == null) {
             discovery = scheduler.runRepeating(Duration.ZERO, Duration.ofSeconds(1), this::pulse);
         }
@@ -279,6 +334,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     /** Validated Server Configuration takes effect only when a fresh attempt starts. */
     public void configure(ShatteredCrownConfig next) {
+        if (dragon == null && !next.worldKey().equals(nextConfig.worldKey())) {
+            populationWorld = null;
+            entryPopulation = 0;
+        }
         nextConfig = next;
         retryDelay = 0;
     }
@@ -314,10 +373,15 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         config = nextConfig;
         World world = server.getWorld(NamespacedKey.fromString(config.worldKey()));
+        if (world == null || world.getPlayers().isEmpty()) {
+            populationWorld = null;
+            entryPopulation = 0;
+        }
         if (world == null || unavailableWorlds.contains(world.getUID())
                 || world.getEnvironment() != World.Environment.THE_END || world.getPlayers().isEmpty()) {
             return;
         }
+        recordEntry(world);
         var battle = battles.battle(world);
         if (battle == null || battle.getEnderDragon() == null
                 || battle.getEnderDragon().getUniqueId().equals(completed)) {
@@ -356,7 +420,29 @@ public final class EncounterController implements Listener, AutoCloseable {
         announce("shattered-crown.opening");
         showStatus();
         targetCursor = 0;
-        scheduleBombardments();
+        graceTicks = Math.round(config.openingGraceSeconds() * 20);
+        if (graceTicks == 0) {
+            scheduleBombardments();
+        } else {
+            ownDragonPhase();
+            dragon.setPhase(EnderDragon.Phase.CIRCLING);
+            final Scheduler.Task[] clock = new Scheduler.Task[1];
+            clock[0] = work.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+                if (--graceTicks == 0) {
+                    clock[0].cancel();
+                    if (!manualMode) {
+                        if (hunting) {
+                            hunting = false;
+                            startHunt();
+                            warnLane();
+                        } else {
+                            warnBombardment();
+                            scheduleBombardments();
+                        }
+                    }
+                }
+            });
+        }
     }
 
     private static Duration seconds(double value) {
@@ -408,7 +494,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         hunting = true;
-        if (manualMode) {
+        if (manualMode || openingGrace()) {
             return;
         }
         if (config.movementAttacks()) {
@@ -561,6 +647,11 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDragonPhase(org.bukkit.event.entity.EnderDragonChangePhaseEvent event) {
+        if (event.getEntity().equals(dragon) && openingGrace()
+                && event.getNewPhase() != EnderDragon.Phase.CIRCLING) {
+            event.setCancelled(true);
+            return;
+        }
         if (event.getEntity().equals(dragon) && flight != null
                 && event.getNewPhase() != EnderDragon.Phase.CHARGE_PLAYER
                 && event.getNewPhase() != EnderDragon.Phase.DYING) {
@@ -1073,9 +1164,13 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFlightPush(io.papermc.paper.event.entity.EntityKnockbackEvent event) {
-        if (flight != null && event instanceof io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent pushed
-                && pushed.getPushedBy().equals(dragon)) {
-            event.setCancelled(true);
+        if (event instanceof io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent pushed) {
+            Entity source = pushed.getPushedBy();
+            if ((flight != null || openingGrace()) && source.equals(dragon)
+                    || encounterEnemy(source) && event.getEntity() instanceof Player player
+                            && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player))) {
+                event.setCancelled(true);
+            }
         }
     }
 
@@ -1308,6 +1403,10 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorldUnload(WorldUnloadEvent event) {
         unavailableWorlds.add(event.getWorld().getUID());
+        if (event.getWorld().getUID().equals(populationWorld)) {
+            populationWorld = null;
+            entryPopulation = 0;
+        }
         if (dragon != null && dragon.getWorld().equals(event.getWorld())) {
             cleanup(false);
         }
@@ -1488,6 +1587,13 @@ public final class EncounterController implements Listener, AutoCloseable {
                 && cloud.getSource() instanceof Entity owner) {
             source = owner;
         }
+        if (target instanceof Player player
+                && (source != null && encounterEnemy(source) || direct != null && encounterEnemy(direct))
+                && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
+                        || openingGrace() && (dragon.equals(source) || dragon.equals(direct)))) {
+            event.setCancelled(true);
+            return;
+        }
         if (dragon == null && target instanceof EnderDragon candidate && isManagedDragon(candidate)) {
             if (protectedSource(source) || protectedSource(direct)
                     || protectedSource(event.getDamageSource().getDirectEntity())) {
@@ -1599,6 +1705,12 @@ public final class EncounterController implements Listener, AutoCloseable {
             event.getAffectedEntities().stream().filter(this::encounterEnemy)
                     .forEach(entity -> event.setIntensity(entity, 0));
         }
+        if (event.getEntity().getShooter() instanceof Entity source && encounterEnemy(source)) {
+            event.getAffectedEntities().stream().filter(entity -> entity instanceof Player player
+                    && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
+                            || openingGrace() && source.equals(dragon)))
+                    .forEach(entity -> event.setIntensity(entity, 0));
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -1606,11 +1718,20 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (protectedSource(event.getEntity())) {
             event.getAffectedEntities().removeIf(this::encounterEnemy);
         }
+        if (event.getEntity().getSource() instanceof Entity source && encounterEnemy(source)) {
+            event.getAffectedEntities().removeIf(entity -> entity instanceof Player player
+                    && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
+                            || openingGrace() && source.equals(dragon)));
+        }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onLaunch(ProjectileLaunchEvent event) {
         Projectile projectile = event.getEntity();
+        if (openingGrace() && dragon.equals(projectile.getShooter())) {
+            event.setCancelled(true);
+            return;
+        }
         if (isProtectedArrival(projectile.getLocation())
                 || projectile.getShooter() instanceof Entity shooter && protectedSource(shooter)) {
             projectile.getPersistentDataContainer().set(PROTECTED_SHOT, PersistentDataType.BYTE, (byte) 1);
@@ -1707,6 +1828,12 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
+        if (!event.getFrom().getWorld().equals(event.getTo().getWorld())) {
+            recordEntry(event.getTo().getWorld());
+        }
+        if (dragon == null && event.getTo().getWorld().getKey().toString().equals(nextConfig.worldKey())) {
+            discoverSoon();
+        }
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getTo(), event.getPlayer().getGameMode())) {
                 cancelMark(event.getPlayer());
@@ -1727,8 +1854,15 @@ public final class EncounterController implements Listener, AutoCloseable {
         updateAbsence(event.getPlayer(), false);
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        recordEntry(event.getPlayer().getWorld());
+        discoverSoon();
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameMode(PlayerGameModeChangeEvent event) {
+        discoverSoon();
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getPlayer().getLocation(), event.getNewGameMode())) {
                 cancelMark(event.getPlayer());
@@ -1766,6 +1900,11 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void cleanup(boolean reset) {
+        graceTicks = 0;
+        if (entryDiscovery != null) {
+            entryDiscovery.cancel();
+            entryDiscovery = null;
+        }
         hunting = false;
         endLanding();
         lanes.clear();
@@ -1811,6 +1950,8 @@ public final class EncounterController implements Listener, AutoCloseable {
         dragon = null;
         arena = null;
         attemptMaxHealth = 0;
+        populationWorld = null;
+        entryPopulation = 0;
     }
 
     @Override

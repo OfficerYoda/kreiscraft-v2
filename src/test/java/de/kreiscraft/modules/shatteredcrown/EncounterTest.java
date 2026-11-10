@@ -143,6 +143,33 @@ class EncounterTest {
     }
 
     @Test
+    void ownedPotionEffectsCannotReachArrivalsAndCombatProtectionDoesNotProtectTerrain() throws Exception {
+        enable();
+        scheduler.advance(Duration.ZERO);
+        var defender = defenders().getFirst();
+        player.teleport(new Location(end, 100, 50, 0));
+        var potion = end.spawn(defender.getLocation(), org.bukkit.entity.ThrownPotion.class);
+        potion.setShooter(defender);
+        var splash = new org.bukkit.event.entity.PotionSplashEvent(potion,
+                new java.util.HashMap<>(java.util.Map.of(player, 1.0)));
+        server.getPluginManager().callEvent(splash);
+        assertThat(splash.getIntensity(player)).isZero();
+        var cloud = end.spawn(defender.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(defender);
+        var affected = new java.util.ArrayList<org.bukkit.entity.LivingEntity>(List.of(player));
+        var applied = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud, affected);
+        server.getPluginManager().callEvent(applied);
+        assertThat(applied.getAffectedEntities()).isEmpty();
+        var block = player.getLocation().getBlock();
+        block.setType(Material.OBSIDIAN);
+        var explosion = new org.bukkit.event.entity.EntityExplodeEvent(defender, player.getLocation(),
+                new java.util.ArrayList<>(List.of(block)), 1, org.bukkit.ExplosionResult.DESTROY);
+        server.getPluginManager().callEvent(explosion);
+        assertThat(explosion.isCancelled()).isFalse();
+        assertThat(explosion.blockList()).containsExactly(block);
+    }
+
+    @Test
     void ownedDefenderProjectilesAndAttributedCloudsCannotHitArrivalsButUnrelatedProjectilesRemainNative()
             throws Exception {
         enable();
@@ -221,7 +248,9 @@ class EncounterTest {
     void noUsableGroundRefusesAnAttemptWithoutBuildingAnObjectiveInTheVoid() throws Exception {
         for (int x = -40; x <= 40; x++) {
             for (int z = -40; z <= 40; z++) {
-                end.getBlockAt(x, 63, z).setType(Material.AIR);
+                for (int y = end.getMinHeight(); y <= 63; y++) {
+                    end.getBlockAt(x, y, z).setType(Material.AIR);
+                }
             }
         }
         enable();

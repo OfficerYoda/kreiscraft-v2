@@ -7,6 +7,41 @@ title: Shattered Crown lifecycle and recovery
 Ticket #139 extends the playable #134 baseline without requiring unfinished attack tickets.
 The [encounter guide](/shattered-crown/) lists the shipped profile and current combat scope.
 
+## Combat coverage, population and opening grace (#150)
+
+The combat area is a horizontal cylinder of radius 192 by default, centered on the actual managed
+main-End battle podium, across that world's entire build height. Protected arrival is excluded;
+other End worlds and outer islands beyond the configured radius are not combat areas. The retired
+`arena-min-y` / `arena-max-y` keys no longer restrict combat.
+
+Only online, living Survival/Adventure players inside that area can be attack targets or keep an
+attempt alive. Creative/spectator occupancy and waiting in protected arrival do not prevent the
+existing 60-second absence reset.
+
+Population for difficulty is different: the first entry into the managed End freezes **everyone
+online server-wide**, including creative/spectator players, before combat starts. Waiting on arrival
+does not delay or replace this snapshot. If enable/restart discovers an already-occupied End, recovery
+uses everyone online at that discovery; it cannot reconstruct a historical entry. An empty End before
+an attempt, reset, victory, disable, world unload or a changed next-attempt world clears stale entry
+state. Later wave snapshots and Prey use the live **all-End population**, including observers and
+players outside combat, without target or defender count caps. `/dragondebug status` reports
+`combat-population`, `scaling-population`, `entry-snapshot` and `grace-seconds` even before combat.
+
+The first eligible arena entry starts a fresh Encounter's 30-second Opening Grace. Anchors and
+defenders are active immediately. The dragon circles: native attack phase changes, dragon projectile
+launches, contact/indirect damage and breath effects are suppressed, as are automatic custom attacks.
+The first automatic Attack Warning begins at expiry, not one cadence later. Later arrivals, waves and
+pause/resume do not restart grace. A manual `/dragondebug trigger` explicitly bypasses scheduling/grace
+but still requires an eligible target and safe geometry; cancel/resume does not replenish time.
+
+Arrival combat protection works in both directions, including marked protected-origin projectiles,
+TNT and lingering effects after the shooter leaves arrival. Enemy potions/clouds and direct/attributed
+damage cannot hit protected arrivals. This is **not terrain protection**: normal destructive
+explosions may still destroy the platform and its surroundings.
+
+`arena-radius` and `opening-grace-seconds` are validated Server Configuration fields (also available
+in the GUI); reload affects only the next fresh attempt. Disable/unload cancels pending grace work.
+
 ## Server Configuration
 
 Use the existing permission-controlled Server Configuration GUI or YAML and `/kreiscraft reload`.

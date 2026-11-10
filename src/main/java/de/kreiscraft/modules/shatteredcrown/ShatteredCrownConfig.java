@@ -10,7 +10,7 @@ import org.spongepowered.configurate.serialize.SerializationException;
 /** Fixed encounter tuning, snapshotted at the start of an attempt. */
 @ConfigSerializable
 public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer defenderCount,
-        Double arenaRadius, Double arenaMinY, Double arenaMaxY,
+        Double arenaRadius,
         Double arrivalX, Double arrivalY, Double arrivalZ, Double arrivalRadius,
         Double arrivalHeight, Double anchorDistance, Integer groundSearchRadius, Double groundMaxY,
         String defenderType, Double defenderHealth, Double defenderDamage, Double defenderLeash,
@@ -24,7 +24,8 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double sweepRadius, Double sweepAngle, Double sweepWarningSeconds, Double sweepCadenceSeconds,
         Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
-        Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks) {
+        Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks,
+        Double openingGraceSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -78,12 +79,12 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
 
     public ShatteredCrownConfig {
         movementAttacks = movementAttacks == null ? true : movementAttacks;
+        openingGraceSeconds = openingGraceSeconds == null ? 30.0 : openingGraceSeconds;
+        bounded("opening-grace-seconds", openingGraceSeconds, 0, 120);
         worldKey = worldKey == null ? "minecraft:the_end" : worldKey;
         maxHealth = maxHealth == null ? 1000.0 : maxHealth;
         defenderCount = defenderCount == null ? 4 : defenderCount;
-        arenaRadius = arenaRadius == null ? 80.0 : arenaRadius;
-        arenaMinY = arenaMinY == null ? 40.0 : arenaMinY;
-        arenaMaxY = arenaMaxY == null ? 160.0 : arenaMaxY;
+        arenaRadius = arenaRadius == null ? 192.0 : arenaRadius;
         arrivalX = arrivalX == null ? 100.0 : arrivalX;
         arrivalY = arrivalY == null ? 50.0 : arrivalY;
         arrivalZ = arrivalZ == null ? 0.0 : arrivalZ;
@@ -178,8 +179,6 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("max-health", maxHealth, 1, 1024);
         bounded("defender-count", defenderCount, 1, 32);
         bounded("arena-radius", arenaRadius, 16, 256);
-        bounded("arena-min-y", arenaMinY, -64, 320);
-        bounded("arena-max-y", arenaMaxY, -64, 320);
         bounded("arrival-x", arrivalX, -512, 512);
         bounded("arrival-y", arrivalY, -64, 320);
         bounded("arrival-z", arrivalZ, -512, 512);
@@ -200,8 +199,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
             throw new IllegalArgumentException(
                     "shattered-crown bombardments must leave warning time to walk clear and cannot overlap");
         }
-        if (arenaMinY >= arenaMaxY || groundMaxY < arenaMinY || groundMaxY > arenaMaxY
-                || anchorDistance + groundSearchRadius + 3 >= arenaRadius) {
+        if (anchorDistance + groundSearchRadius + 3 >= arenaRadius) {
             throw new IllegalArgumentException(
                     "shattered-crown geometry must leave ground objectives inside the arena");
         }

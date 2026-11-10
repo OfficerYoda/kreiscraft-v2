@@ -112,6 +112,7 @@ class HuntEncounterTest {
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("opening-grace-seconds").set(0); // Isolate attack timing from the separately tested opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
         // Lane-focused scenarios defer the newly coordinated attacks; dedicated cases set their cadences.
         config.node("prey-cadence-seconds").set(120);
@@ -1050,7 +1051,7 @@ class HuntEncounterTest {
             case "world" -> player.teleport(new Location(server.addSimpleWorld("other"), 0, 64, 0));
             case "death" -> player.setHealth(0);
             case "quit" -> player.kick();
-            case "arena" -> player.teleport(new Location(end, 81, 64, 0));
+            case "arena" -> player.teleport(new Location(end, 193, 64, 0));
             case "creative" -> player.setGameMode(org.bukkit.GameMode.CREATIVE);
             case "spectator" -> player.setGameMode(org.bukkit.GameMode.SPECTATOR);
             default -> throw new AssertionError(departure);
@@ -1079,7 +1080,7 @@ class HuntEncounterTest {
         switch (departure) {
             case "arrival", "arrival-teleport", "world", "arena" -> {
                 var destination = departure.startsWith("arrival") ? new Location(end, 100, 50, 0)
-                        : departure.equals("arena") ? new Location(end, 81, 64, 0)
+                        : departure.equals("arena") ? new Location(end, 193, 64, 0)
                                 : new Location(server.addSimpleWorld("other"), 0, 64, 0);
                 // Paper dispatches before committing destination: the participant is still at origin.
                 server.getPluginManager().callEvent(departure.equals("arrival") || departure.equals("arena")

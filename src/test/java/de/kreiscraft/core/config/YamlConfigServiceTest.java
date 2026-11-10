@@ -44,7 +44,7 @@ class YamlConfigServiceTest {
         var result = cfg.edit(new ConfigEdit(radius, 20.0));
         assertThat(result).isInstanceOf(ConfigEditResult.Rejected.class);
         assertThat(((ConfigEditResult.Rejected) result).reason()).contains("geometry");
-        assertThat(cfg.module("shattered-crown").node("arena-radius").getDouble()).isEqualTo(80);
+        assertThat(cfg.module("shattered-crown").node("arena-radius").getDouble()).isEqualTo(192);
         assertThat(Files.readString(tmp.resolve("config.yml"))).isEqualTo(original);
     }
 

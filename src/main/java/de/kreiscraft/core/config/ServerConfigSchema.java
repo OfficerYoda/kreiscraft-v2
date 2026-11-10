@@ -374,7 +374,8 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("explosion-window-seconds", 0.25, 5));
         fields.add(crownNumber("explosion-window-budget", 1, 200));
         fields.add(crownNumber("arena-radius", 16, 256));
-        for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
+        fields.add(crownNumber("opening-grace-seconds", 0, 120));
+        for (String key : List.of("ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));
         }
         fields.add(crownNumber("arrival-x", -512, 512));
