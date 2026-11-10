@@ -303,8 +303,12 @@ Target: Java 25 / Paper 26.2. At the #138 checkpoint, no running Paper server or
 participants were available in this worktree environment; **no live combat, rendering, AI or balance
 evidence is claimed**.
 
-No disposable Paper server exists in this worktree and no listener was available on local port 25565
-at #138 verification. No multiplayer session was performed. Before deployment validation, run the
+At #138 verification, no disposable Paper server existed in this worktree and no listener was
+available on local port 25565. The final `789e29d` clientless Paper retest now **passed** on the
+reviewed artifact; see the [current evidence and limits](/shattered-crown-validation/).
+It verifies startup, configuration and native stale-artifact cleanup, not combat, managed-dragon
+health/phase restoration, active-interruption restart or multiplayer acceptance. No multiplayer
+session was performed. Before deployment validation, run the
 **complete encounter** on the supported Paper server and record:
 
 1. Main-End initial and ritual dragon discovery, real podium/platform alignment, all four accessible Anchor

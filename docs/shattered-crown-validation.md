@@ -22,8 +22,17 @@ Final independent Standards + Spec reviews covered the **entire PR** against
 are fixed, including the additional synchronous-abort follow-up; neither axis has remaining
 agent-fix findings. See [PR #133 evidence](https://forgejo.officeryoda.dev/OfficerYoda/kreiscraft-java/pulls/133)
 for reports and actual native artifact snapshots. The earlier `937` clientless Paper run passed,
-but does **not** verify this new hash. The `789e29d` clientless Paper retest is **running at this
-checkpoint**, not completed evidence. None of these checks validates the approximately 20-player
+but does **not** verify this new hash. The **`789e29d` clientless Paper retest passed** on this exact
+artifact with Temurin Java **25.0.4.1** / Paper **26.2.build.132-stable**: nine owned processes exited
+0 with zero module failures and all isolated ports released. Both crown-only and full-default setups
+rejected four invalid profiles and recovered after each corrected reload. Native stale-PDC recovery
+removed **16 tagged fixtures → 0** across enabled/disabled restarts and later-loaded chunks,
+preserving all **16 original unrelated control UUIDs**. Each full-default process retained exactly
+four known SLF4J ERROR-level stderr payloads; there were no additional unexpected ERROR or SEVERE
+lines. This is **clientless startup/configuration/stale-artifact evidence only**: the in-flight abort
+guard still has automated public-event proof, not actual native combat proof. Managed-dragon
+health/phase recovery, active-interruption restart, combat/AI/landing/rendering/rewards and
+representative performance remain unvalidated. None of these checks validates the approximately 20-player
 mixed enchanted diamond/netherite **15–20-minute** target; death and normal rejoining remain allowed.
 No tuning changed. Keep WIP and #140 open; hand off as `ready-for-human` only after remaining agent
 work is finalized. The functional, lifecycle and representative multiplayer checklist below remains
