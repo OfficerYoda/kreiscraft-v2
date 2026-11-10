@@ -41,7 +41,7 @@ public final class CombatListener implements PriorityListener {
             }
         }
 
-        if (attackerPlayer == null) {
+        if (attackerPlayer == null || attackerPlayer.getUniqueId().equals(victimPlayer.getUniqueId())) {
             return;
         }
 
@@ -64,6 +64,10 @@ public final class CombatListener implements PriorityListener {
 
         ProjectileSource shooter = event.getEntity().getShooter();
         if (!(shooter instanceof Player attacker)) {
+            return;
+        }
+
+        if (attacker.getUniqueId().equals(victim.getUniqueId())) {
             return;
         }
 

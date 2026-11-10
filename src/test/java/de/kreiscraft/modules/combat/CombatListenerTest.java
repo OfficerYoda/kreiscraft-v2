@@ -121,6 +121,31 @@ class CombatListenerTest {
     // --- ProjectileHitEvent ---
 
     @Test
+    void projectileDamage_selfHit_doesNotTag() {
+        PlayerMock player = server.addPlayer("alice");
+        Arrow arrow = mock(Arrow.class);
+        when(arrow.getShooter()).thenReturn(player);
+
+        EntityDamageByEntityEvent event = new EntityDamageByEntityEvent(
+                arrow, player, EntityDamageEvent.DamageCause.PROJECTILE, 2.0);
+        listener.onEntityDamageByEntity(event);
+
+        verify(service, never()).tag(any(UUID.class), any(Duration.class));
+    }
+
+    @Test
+    void projectileHit_selfHit_doesNotTag() {
+        PlayerMock player = server.addPlayer("alice");
+        Arrow arrow = mock(Arrow.class);
+        when(arrow.getShooter()).thenReturn(player);
+        when(arrow.getWorld()).thenReturn(player.getWorld());
+
+        listener.onProjectileHit(new ProjectileHitEvent(arrow, player, null, null));
+
+        verify(service, never()).tag(any(UUID.class), any(Duration.class));
+    }
+
+    @Test
     void projectileHit_bothPlayers_tagsBoth() {
         PlayerMock shooter = server.addPlayer("alice");
         PlayerMock hitPlayer = server.addPlayer("bob");
