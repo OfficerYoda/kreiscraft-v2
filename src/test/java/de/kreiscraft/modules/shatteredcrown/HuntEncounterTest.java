@@ -88,9 +88,6 @@ class HuntEncounterTest {
             @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 var nativeControl = new SimulatedDragonFlight(source, scheduler, tick);
-                if (beforeNativeRelease == null) {
-                    return nativeControl;
-                }
                 return new de.kreiscraft.platform.DragonFlightControl() {
                     @Override
                     public boolean active() {
@@ -99,13 +96,18 @@ class HuntEncounterTest {
 
                     @Override
                     public void move(Location destination) {
+                        if (source.getLocation().distanceSquared(destination) > 64) {
+                            throw new IllegalArgumentException("Scripted dragon step exceeds eight blocks");
+                        }
                         nativeControl.move(destination);
                     }
 
                     @Override
                     public void close() {
                         try {
-                            beforeNativeRelease.run();
+                            if (beforeNativeRelease != null) {
+                                beforeNativeRelease.run();
+                            }
                         } finally {
                             nativeControl.close();
                         }
@@ -171,6 +173,14 @@ class HuntEncounterTest {
     }
 
     private void startEncounter() throws Exception {
+        if (!config.node("movement-attacks").getBoolean(true)) {
+            if (config.node("lane-warning-seconds").virtual()) {
+                config.node("lane-warning-seconds").set(3);
+            }
+            if (config.node("lane-damage").virtual()) {
+                config.node("lane-damage").set(4);
+            }
+        }
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
         module.enable(new ModuleContext(plugin, config,
@@ -203,7 +213,7 @@ class HuntEncounterTest {
         switch (attack) {
             case DIVE -> {
                 scheduler.advance(Duration.ofSeconds(6));
-                assertThat(player.getHealth()).isEqualTo(16);
+                assertThat(player.getHealth()).isEqualTo(12);
             }
             case SMASH -> {
                 scheduler.advance(Duration.ofSeconds(5));
@@ -367,6 +377,125 @@ class HuntEncounterTest {
     }
 
     @Test
+    void diveTimingOverridesAreSnapshottedAndValidatedAtModuleBoundary() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-warning-seconds").set(4);
+        config.node("dive-pass-seconds").set(3);
+        config.node("dive-climb-seconds").set(2);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        config.node("dive-pass-seconds").set(1);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(dragon.getY()).isEqualTo(78);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        module.disable();
+        config.node("dive-climb-seconds").set(0.1);
+        org.assertj.core.api.Assertions.assertThatThrownBy(this::startEncounter)
+                .hasMessageContaining("dive-climb-seconds");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"world", "mode", "terrain", "phase", "cancel", "disable"})
+    void diveInvalidityReleasesMainAndNativeControlWithQueuedCallbacksInert(String change) throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(1));
+        switch (change) {
+            case "world" -> player.teleport(new Location(server.addSimpleWorld("elsewhere"), 0, 64, 0));
+            case "mode" -> player.setGameMode(org.bukkit.GameMode.CREATIVE);
+            case "terrain" -> end.getBlockAt(11, 63, 0).setType(Material.AIR);
+            case "phase" -> dragon.setPhase(EnderDragon.Phase.CIRCLING);
+            case "cancel" -> debug("cancel", player);
+            case "disable" -> module.disable();
+            default -> throw new AssertionError(change);
+        }
+        scheduler.advance(Duration.ofMillis(250));
+        Location stopped = dragon.getLocation();
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(dragon.getLocation()).isEqualTo(stopped);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
+        if (!change.equals("disable")) {
+            debug("status", player);
+            assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("flight=false"));
+        }
+    }
+
+    @Test
+    void diveAcrossExpandedArenaStagesLongApproachWithinNativeStepBounds() throws Exception {
+        config.node("movement-attacks").set(true);
+        for (int x = 155; x <= 191; x++) {
+            for (int z = -18; z <= 18; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        player.teleport(new Location(end, 178.5, 64, 0.5));
+        dragon.teleport(new Location(end, -180, 80, 0));
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(7));
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(player.getHealth()).isEqualTo(12);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(dragon.getX()).isGreaterThan(178);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveUsesOnlyWorldCountdownAndSoundWithoutParticleRendering() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class)) {
+            debug("trigger dive", player);
+            messages(player); // The explicit operator reply is not an automatic attack announcement.
+            scheduler.advance(Duration.ofMillis(250));
+            var display = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+            assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(display.text())).isEqualTo("1.8s");
+            scheduler.advance(Duration.ofMillis(4250));
+            particles.verifyNoInteractions();
+            assertThat(messages(player)).isEmpty();
+            assertThat(actionBars(player)).isEmpty();
+            assertThat(referenceHits).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void fasterDiveHasTwoSecondWarningThirtyTickPassAndTwentyTickClimb() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofMillis(1950));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(dragon.getY()).isGreaterThan(77);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(dragon.getY()).isEqualTo(78);
+        scheduler.advance(Duration.ofMillis(1500));
+        assertThat(dragon.getY()).isEqualTo(66);
+        assertThat(player.getHealth()).isEqualTo(12);
+        assertThat(referenceHits).isEqualTo(1);
+        scheduler.advance(Duration.ofMillis(950));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(dragon.getY()).isEqualTo(82);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+    }
+
+    @Test
     void diveSignalsCompletionOnlyAfterReleasingNativeControl() throws Exception {
         config.node("movement-attacks").set(true);
         config.node("lane-damage").set(0);
@@ -517,12 +646,12 @@ class HuntEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         assertThat(dragon.getLocation()).isNotEqualTo(origin);
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(16);
+        scheduler.advance(Duration.ofMillis(1500));
+        assertThat(player.getHealth()).isEqualTo(12);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
@@ -709,7 +838,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         scheduler.advance(Duration.ofSeconds(6));
-        assertThat(player.getHealth()).isEqualTo(16);
+        assertThat(player.getHealth()).isEqualTo(12);
     }
 
     @Test

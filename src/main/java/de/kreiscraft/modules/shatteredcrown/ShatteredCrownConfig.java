@@ -25,7 +25,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
         Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks,
-        Double openingGraceSeconds) {
+        Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -103,10 +103,14 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bombardmentRadius = bombardmentRadius == null ? 4.0 : bombardmentRadius;
         laneLength = laneLength == null ? 24.0 : laneLength;
         laneWidth = laneWidth == null ? 6.0 : laneWidth;
-        laneWarningSeconds = laneWarningSeconds == null ? 3.0 : laneWarningSeconds;
+        laneWarningSeconds = laneWarningSeconds == null ? 2.0 : laneWarningSeconds;
         laneLifetimeSeconds = laneLifetimeSeconds == null ? 6.0 : laneLifetimeSeconds;
         laneCadenceSeconds = laneCadenceSeconds == null ? 10.0 : laneCadenceSeconds;
-        laneDamage = laneDamage == null ? 4.0 : laneDamage;
+        laneDamage = laneDamage == null ? 8.0 : laneDamage;
+        divePassSeconds = divePassSeconds == null ? 1.5 : divePassSeconds;
+        diveClimbSeconds = diveClimbSeconds == null ? 1.0 : diveClimbSeconds;
+        bounded("dive-pass-seconds", divePassSeconds, 1, 10);
+        bounded("dive-climb-seconds", diveClimbSeconds, 0.5, 10);
         laneDamageCadenceSeconds = laneDamageCadenceSeconds == null ? 1.0 : laneDamageCadenceSeconds;
         landingCadenceSeconds = landingCadenceSeconds == null ? 30.0 : landingCadenceSeconds;
         landingWindowSeconds = landingWindowSeconds == null ? 12.0 : landingWindowSeconds;
