@@ -8,7 +8,28 @@ title: Shattered Crown live validation
 actual supported-Paper combat and a representative multiplayer session before PR #133 can leave
 WIP. Completing an agent run is not completing this acceptance. Do not merge while it is pending.
 
-## #140 agent-executable integration evidence
+## Current agent verification checkpoint (2026-11-10)
+
+Reviewed runtime: `789e29db5a1084f4088f91b70781efade32619cb`. Java 25 `check -x testNms`
+passed **1,611 tests**, zero failures/errors, with five existing `ServerMetricsCollectorTest` skips.
+The targeted run passed **524 tests**, including **296 encounter tests**, zero failures/errors/skips.
+Spotless, Checkstyle, production `-Werror`, shadow JAR, InvUI compatibility and `git diff --check`
+passed; NMS execution was excluded because no version-specific code changed. Shaded JAR SHA-256:
+`34eb6d56dfffd9061a1bee63321a6715b27226904ac94d304481c1f1b37c21be` (matches the reviewed runtime).
+
+Final independent Standards + Spec reviews covered the **entire PR** against
+`13c36cf37ab8a080ee83372bf7bb4c6f3ac7c972`: all three Standards findings and both Spec P2 findings
+are fixed, including the additional synchronous-abort follow-up; neither axis has remaining
+agent-fix findings. See [PR #133 evidence](https://forgejo.officeryoda.dev/OfficerYoda/kreiscraft-java/pulls/133)
+for reports and actual native artifact snapshots. The earlier `937` clientless Paper run passed,
+but does **not** verify this new hash. The `789e29d` clientless Paper retest is **running at this
+checkpoint**, not completed evidence. None of these checks validates the approximately 20-player
+mixed enchanted diamond/netherite **15–20-minute** target; death and normal rejoining remain allowed.
+No tuning changed. Keep WIP and #140 open; hand off as `ready-for-human` only after remaining agent
+work is finalized. The functional, lifecycle and representative multiplayer checklist below remains
+required, not full gameplay/spec acceptance already completed.
+
+## Historical #140 agent-executable integration evidence (`81da751`)
 
 Base: `81da751` with native #138/#139 implementation integrated. This work adds **11 encounter
 cases** and expands the existing repeated-attempt and shortened-pool regressions, at the approved module/public-event/
@@ -91,8 +112,9 @@ MockBukkit does not run dragon AI or render effects, and public death-event payl
 XP, portals, eggs, gateways or rituals. Simulated timing and scripted fixture movement are not a
 15–20-minute fight, native armor evidence or numerical balance validation. The shipped fixed ~20-player
 mixed enchanted diamond/netherite profile is unchanged; death and normal rejoining remain allowed.
-Real supported-Paper validation is coordinated separately. Final Standards + Spec reviews are still
-required after integrated checks; this document does not mark #140 complete or authorize merge.
+At this earlier checkpoint, real supported-Paper validation and final Standards + Spec reviews were
+still pending. The current agent verification above supersedes only that review/check status, not
+the live acceptance requirement; this document does not mark #140 complete or authorize merge.
 
 ## Prepare a disposable supported-Paper server
 
@@ -196,9 +218,11 @@ Tune only documented numeric health, damage, defender, timing and geometry value
 evidence. Preserve four opening Anchors, the once-only two-Anchor 30% interlude, rejoining and native
 rewards. A required design change needs explicit approval, not silent numerical evasion.
 
-Run the final Standards + Spec review against the integration branch, address findings, and publish
+The final Standards + Spec reviews at the current checkpoint are complete; repeat them if the
+integration changes, address findings, and publish
 actual test/live evidence, shipped configuration assumptions, remaining limitations and the gameplay
 blast-radius assessment in #140 and PR #133. Leave final merge to the normal project workflow.
 Until this session and functional acceptance are complete,
-leave #140 open and `ready-for-human`, retain WIP, and state that balance, first-attempt readability,
+leave #140 open, set `ready-for-human` only after remaining agent work is finalized, retain WIP,
+and state that balance, first-attempt readability,
 real AI/rendering/rewards and representative performance remain unvalidated where not observed.

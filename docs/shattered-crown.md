@@ -254,7 +254,10 @@ tests**, zero failures/errors, with five existing `ServerMetricsCollectorTest` s
 Checkstyle, production compilation with `-Werror`, shadow JAR creation and InvUI compatibility
 verification passed. Version-specific NMS test execution was excluded because no NMS code changed.
 
-## Current #138 automated evidence and verification
+## Historical #138 automated evidence and verification
+
+These counts describe the #138 checkpoint; see the
+[current agent verification and required live acceptance](/shattered-crown-validation/).
 
 `FinalEncounterTest` drives the same approved module/public-event/MockScheduler boundary. Nine
 vertical red→green slices established: exact/oversized/lethal threshold gate; accelerated prey and
@@ -275,7 +278,7 @@ completion. It does not generate a real exit portal, egg, XP or ritual: those re
 The existing unsupported-operation envelopes are unchanged; no new dragon adapter method, NMS,
 test engine or real-server automation framework was added.
 
-Current verification uses the installed macOS Java **25.0.4** launcher:
+Verification at that checkpoint used the installed macOS Java **25.0.4** launcher:
 
 ```sh
 JAVA_HOME=/Users/I767799/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4.1+1/Contents/Home \
@@ -296,8 +299,9 @@ discovery alone after reset. These are automated bounds, not measured Paper perf
 
 ## Paper evidence and remaining live checklist
 
-Target: Java 25 / Paper 26.2. No running Paper server or multiplayer participants were available in
-this worktree environment; **no live combat, rendering, AI or balance evidence is claimed**.
+Target: Java 25 / Paper 26.2. At the #138 checkpoint, no running Paper server or multiplayer
+participants were available in this worktree environment; **no live combat, rendering, AI or balance
+evidence is claimed**.
 
 No disposable Paper server exists in this worktree and no listener was available on local port 25565
 at #138 verification. No multiplayer session was performed. Before deployment validation, run the
