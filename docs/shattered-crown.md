@@ -95,6 +95,9 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   award nothing; never relocate an objective into the void. The accepted, capped hit has already
   applied before setup/abort, so it cannot subsequently kill the restored native dragon. Termination
   cancels pending acceptance work with the rest of the attempt.
+- If disable, disabling reload, unload or reset happens synchronously inside a later combat listener,
+  cleanup cancels still-in-flight managed hits before restoring native health, including multipart
+  and explosive hits after the final shield has cleared. Accepted events are never edited at MONITOR.
 - Entering the gate closes only the attack scope: pending Hunt warnings, hazards and landings stop.
   Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
   remain intact. Familiar 8-second bombardment opportunities with 3-second visible warnings pressure

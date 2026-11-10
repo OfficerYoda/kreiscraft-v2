@@ -479,6 +479,93 @@ class FinalEncounterTest {
         assertThat(crossings).hasSize(1).noneMatch(EntityDamageEvent::isCancelled);
     }
 
+    @Test
+    void laterHighestDisableCancelsTheInFlightHitBeforeRestoringTheNativeDragon() throws Exception {
+        hunt();
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void abort(EntityDamageEvent event) {
+                if (event.getEntity() == dragon) {
+                    assertThat(event.isCancelled()).isFalse();
+                    assertThat(event.getFinalDamage()).isEqualTo(700);
+                    module.disable();
+                    assertThat(event.isCancelled()).isTrue(); // Still HIGHEST, before damage acceptance/MONITOR.
+                }
+            }
+        }, plugin);
+        var hit = damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
+        assertThat(hit.isCancelled()).isTrue();
+        assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getValue()).isEqualTo(200);
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(dragon.isDead()).isFalse();
+        scheduler.advance(Duration.ofSeconds(65));
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"final,disable,ENTITY_ATTACK", "final,unload,ENTITY_ATTACK",
+            "hunt,reload,PROJECTILE", "hunt,reset,ENTITY_ATTACK", "final,disable,BLOCK_EXPLOSION",
+            "hunt,unload,ENTITY_ATTACK"})
+    void everySynchronousAbortEntryPointCancelsPendingManagedDamageIncludingAfterTheFinalGate(String stage,
+            String termination, String route) throws Exception {
+        hunt();
+        boolean finale = stage.equals("final");
+        if (finale) {
+            damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 700);
+            clearAnchors();
+        }
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        when(part.getParent()).thenReturn(dragon);
+        var deaths = new java.util.concurrent.atomic.AtomicInteger();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+            public void abort(EntityDamageEvent event) {
+                if (event.getEntity() == dragon || event.getEntity() == part) {
+                    assertThat(event.isCancelled()).isFalse();
+                    switch (termination) {
+                        case "disable" -> module.disable();
+                        case "reload" -> {
+                            config.node("enabled").raw(false);
+                            module.onConfigReload(config);
+                        }
+                        case "unload" -> server.getPluginManager()
+                                .callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+                        case "reset" -> {
+                            player.teleport(new Location(end, 200, 80, 0));
+                            scheduler.advance(Duration.ofSeconds(60));
+                        }
+                        default -> throw new AssertionError(termination);
+                    }
+                    assertThat(event.isCancelled()).isTrue();
+                }
+            }
+
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+            public void death(EntityDeathEvent event) {
+                if (event.getEntity() == dragon) {
+                    deaths.incrementAndGet();
+                }
+            }
+        }, plugin);
+        var hit = damage(finale ? part : dragon, EntityDamageEvent.DamageCause.valueOf(route), 10000);
+        assertThat(hit.isCancelled()).isTrue();
+        assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getValue()).isEqualTo(200);
+        assertThat(dragon.getHealth()).isEqualTo(finale ? 60 : 200);
+        assertThat(dragon.isDead()).isFalse();
+        scheduler.advance(Duration.ofSeconds(65));
+        assertThat(dragon.getHealth()).isEqualTo(finale ? 60 : 200);
+        assertThat(deaths.get()).isZero();
+        assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
     @ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"opening,reset", "hunt,reset", "protected,reset", "exposed,reset",
             "one,reset",

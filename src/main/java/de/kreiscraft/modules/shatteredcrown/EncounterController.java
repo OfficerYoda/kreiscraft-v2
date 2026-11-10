@@ -87,7 +87,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     private double[] explosionBuckets;
     private int explosionCursor;
     private final java.util.Map<EntityDamageEvent, Double> explosionReservations = new java.util.IdentityHashMap<>();
-    private final java.util.Map<EntityDamageEvent, Double> thresholdReservations = new java.util.IdentityHashMap<>();
+    private final java.util.Map<EntityDamageEvent, Double> damageReservations = new java.util.IdentityHashMap<>();
     private boolean landingRequested;
     private boolean landingDue;
     private Scheduler.Task landingDeferral;
@@ -320,7 +320,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDamageAccepted(EntityDamageEvent event) {
-        thresholdReservations.remove(event);
+        damageReservations.remove(event);
         Double reserved = explosionReservations.remove(event);
         if (reserved != null && !event.isCancelled() && explosionBuckets != null) {
             explosionBuckets[explosionCursor] += Math.min(reserved, event.getFinalDamage());
@@ -1062,12 +1062,12 @@ public final class EncounterController implements Listener, AutoCloseable {
                 capDamage(event, config.explosionWindowBudget() - spent);
             }
             if (!event.isCancelled() && !finalEntered) {
-                double pending = thresholdReservations.values().stream().mapToDouble(Double::doubleValue).sum();
+                double pending = damageReservations.values().stream().mapToDouble(Double::doubleValue).sum();
                 capDamage(event, Math.max(0,
                         dragon.getHealth() - attemptMaxHealth * config.finalHealthFraction() - pending));
-                if (!event.isCancelled()) {
-                    thresholdReservations.put(event, event.getFinalDamage());
-                }
+            }
+            if (!event.isCancelled()) {
+                damageReservations.put(event, event.getFinalDamage());
             }
             if (!event.isCancelled() && explosive(event)) {
                 explosionReservations.put(event, event.getFinalDamage());
@@ -1333,7 +1333,9 @@ public final class EncounterController implements Listener, AutoCloseable {
         explosionBuckets = null;
         explosionCursor = 0;
         explosionReservations.clear();
-        thresholdReservations.clear();
+        // Abort may run inside a later damage listener, before native damage applies.
+        damageReservations.keySet().forEach(event -> event.setCancelled(true));
+        damageReservations.clear();
         if (dragon != null && !dragon.getUniqueId().equals(completed) && !dragon.isDead()) {
             double fraction = dragon.getHealth() / dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
             dragon.getAttribute(Attribute.MAX_HEALTH).setBaseValue(originalMaxHealth);
