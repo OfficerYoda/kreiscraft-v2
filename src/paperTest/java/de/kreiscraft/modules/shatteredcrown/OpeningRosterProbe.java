@@ -53,6 +53,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
     private int checks;
     private double initialX;
     private boolean moved;
+    private boolean damageApplied;
     private boolean done;
     private int recoveryTick;
 
@@ -137,12 +138,18 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
             ticks++;
             fixture.connection.tick();
             var player = fixture.getBukkitEntity();
+            damageApplied |= !hits.isEmpty() && player.getHealth() < 20;
             player.setHealth(20);
             player.setNoDamageTicks(0);
             if (recoveryTick > 0) {
                 if (ticks >= recoveryTick + 21) {
-                    require(Math.abs(cases.getFirst().getX()) < 192, "mounted arena escape recovery");
-                    require(roster.stream().allMatch(Entity::isValid), "escape is not a defeat or extra life");
+                    var current = player.getWorld().getEntitiesByClass(Mob.class).stream().filter(this::owned).toList();
+                    getLogger().info("OPENING recovery original=" + cases.getFirst().getLocation()
+                            + " valid=" + cases.getFirst().isValid() + " ownedLives=" + current.size() + " spawns="
+                            + spawns);
+                    require(current.stream().allMatch(mob -> Math.abs(mob.getX()) < 192),
+                            "mounted arena escape recovery");
+                    require(current.size() == 43, "escape/unload recovery is not a defeat or extra life");
                     verifyCleanup();
                 }
                 return;
@@ -177,7 +184,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 boolean hit = index < 3 ? hits.contains(group.get(1).getUniqueId())
                         : group.stream().filter(mob -> mob instanceof org.bukkit.entity.AbstractSkeleton)
                                 .anyMatch(mob -> hits.contains(mob.getUniqueId()));
-                if (moved && hit) {
+                if (moved && hit && damageApplied) {
                     require(group.stream().allMatch(Entity::isValid), "living intact group after physical combat");
                     getLogger().info("OPENING combat root=" + active.getType() + " movement="
                             + (active.getX() - initialX) + " chain=" + group.stream().map(Entity::getType).toList()
@@ -271,6 +278,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
         initialX = active.getX();
         hits.clear();
         moved = false;
+        damageApplied = false;
         started = ticks;
         getLogger().info(
                 "OPENING begin " + active.getType() + " chain=" + chain(active).stream().map(Entity::getType).toList());
