@@ -304,6 +304,8 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         work = new EncounterWork(scheduler, server.getLogger());
         waveWork = null;
+        combatOwners.clear();
+        defenderInitializers.clear();
         clearedWaves = selected - 1;
         entryPopulation = server.getOnlinePlayers().size();
         dragon.setHealth(attemptMaxHealth * (selected == 1 ? 1 : selected == 2 ? 0.65 : 0.30));
@@ -590,7 +592,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             defenders.clear();
             anchors.clear();
-            combatOwners.clear();
             defenderInitializers.clear();
             waveWork = requireWork().child(() -> {
             });

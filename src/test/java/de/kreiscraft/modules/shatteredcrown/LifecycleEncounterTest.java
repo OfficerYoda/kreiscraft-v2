@@ -182,6 +182,33 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
     }
 
+    @Test
+    void deadParentAttributionSurvivesNormalWaveTransitionsButNotDebugReplacement() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var originalAnchor = encounter.anchorId(parent);
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.EXPLOSION)
+                .withDirectEntity(parent).withCausingEntity(parent).build();
+        for (int wave = 2; wave <= 3; wave++) {
+            clearWave();
+            acceptedDragonHit(100000);
+            assertThat(encounter.waveNumber()).isEqualTo(wave);
+            assertThat(encounter.anchorId(parent)).isEqualTo(originalAnchor);
+            var blast = new org.bukkit.event.entity.EntityDamageEvent(unrelated,
+                    org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, source, 10);
+            server.getPluginManager().callEvent(blast);
+            assertThat(blast.isCancelled()).isTrue();
+        }
+        encounter.debugWave(1, server.getConsoleSender());
+        assertThat(encounter.ownsCombatant(parent)).isFalse();
+        encounter.close();
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"4,1,16", "5,2,32", "8,2,32", "12,3,48", "20,5,80", "68,17,272"})
     void populationUsesFullUncappedRosterUnitsAtEveryAnchor(int population, int units, int total) throws Exception {

@@ -33,6 +33,7 @@ public final class DragonWaveProbe extends JavaPlugin {
     private final List<ServerPlayer> fixtures = new ArrayList<>();
     private World end;
     private EnderDragon dragon;
+    private Mob retiredDefender;
     private int ticks;
     private int stage;
     private boolean finished;
@@ -143,6 +144,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 require(anchors().size() == 4 && defenders().size() == 16, "first-entry wave1 population4");
                 command("pause");
                 dragon.setAI(false); // Native battle/adoption established; isolate native damage from flight.
+                retiredDefender = defenders().getFirst();
                 clearWave();
                 for (var observer : fixtures.subList(1, 4)) {
                     observer.getBukkitEntity().teleport(new Location(end, 250, 151, 0));
@@ -153,6 +155,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 stage = 1;
             } else if (stage == 1 && anchors().size() == 4) {
                 require(defenders().size() == 32, "wave2 allEnd population5 frozen units2");
+                verifyRetiredAttribution();
                 hitDragon(false);
                 require(dragon.getHealth() == 650, "shield protects native followup");
                 clearWave();
@@ -162,6 +165,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 stage = 2;
             } else if (stage == 2 && anchors().size() == 4) {
                 require(defenders().size() == 32, "wave3 frozen units2");
+                verifyRetiredAttribution();
                 clearWave();
                 require(dragon.getHealth() == 300, "crystals cannot damage managed dragon");
                 for (int wave : new int[] {1, 2, 3}) {
@@ -178,13 +182,28 @@ public final class DragonWaveProbe extends JavaPlugin {
                 getServer().getPluginManager().disablePlugin(getServer().getPluginManager().getPlugin("Kreiscraft"));
                 require(anchors().isEmpty() && defenders().isEmpty(), "disable removes owned waves");
                 getLogger()
-                        .info("DRAGON_WAVE_PROBE PASS ticks=" + ticks + " nativeBattle+population+gates+debug+cleanup");
+                        .info("DRAGON_WAVE_PROBE PASS ticks=" + ticks
+                                + " nativeBattle+population+gates+retiredAttribution+debug+cleanup");
                 finished = true;
                 getServer().shutdown();
             }
         } catch (Throwable error) {
             fail(error);
         }
+    }
+
+    private void verifyRetiredAttribution() {
+        var unrelated =
+                end.spawn(fixtures.getFirst().getBukkitEntity().getLocation(), org.bukkit.entity.Enderman.class);
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.EXPLOSION)
+                .withDirectEntity(retiredDefender).withCausingEntity(retiredDefender).build();
+        for (org.bukkit.entity.LivingEntity ally : List.of(unrelated, defenders().getFirst(), dragon)) {
+            double health = ally.getHealth();
+            ally.setNoDamageTicks(0);
+            ally.damage(5, source);
+            require(ally.getHealth() == health, "native retired-parent blast remains allied after gate");
+        }
+        unrelated.remove();
     }
 
     private static void require(boolean condition, String message) {
