@@ -314,7 +314,7 @@ class ServerConfigGuiTest {
         assertThat(stackAt(gui, 53).getType()).isEqualTo(Material.ARROW);
         var names = new ArrayList<String>();
         int thresholdSlot = -1;
-        String threshold = locale.equals("en") ? "Final Anchor health fraction" : "Lebensanteil für finale Anker";
+        String threshold = locale.equals("en") ? "Legacy health fraction (ignored)" : "Alter Lebensanteil (ignoriert)";
         for (int slot = 0; slot < 54; slot++) {
             if (gui.getItem(slot) != null) {
                 String name = plain(stackAt(gui, slot));

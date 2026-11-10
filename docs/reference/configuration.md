@@ -8,6 +8,16 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 ## File Locations
 
+### Shattered Crown fixed mechanics
+
+The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
+Population freezes once per wave and scales complete Roster Units with `ceil(population/4)`, without
+a cap. These are not configuration knobs. `defender-count` controls each placeholder Roster Unit,
+not the total scaled defenders per Anchor; #153–155 supply the actual rosters. `ground-search-radius`
+finds nearby surviving defender footing; Anchors use fixed X/Z and current highest/last-known height.
+Legacy `final-health-fraction` and `ground-max-y` remain accepted for configuration compatibility but
+are ignored. Reload still takes effect on the next attempt; debug jumps refresh populations, not config.
+
 | Purpose | Path |
 |---|---|
 | Default/template (in JAR) | `src/main/resources/config.yml` |

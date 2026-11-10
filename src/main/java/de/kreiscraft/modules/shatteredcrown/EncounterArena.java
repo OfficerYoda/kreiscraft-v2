@@ -63,49 +63,45 @@ final class EncounterArena {
         int distance = config.anchorDistance().intValue();
         for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance},
                 new int[] {-distance, 0}, new int[] {0, -distance})) {
-            Location ground = anchorGround(center.getBlockX() + offset[0], center.getBlockZ() + offset[1], locations);
-            if (ground == null) {
-                return List.of();
-            }
-            locations.add(ground);
+            Location fallback = center.clone().add(offset[0] + 0.5, 0, offset[1] + 0.5);
+            locations.add(anchorSite(fallback));
         }
         return locations;
     }
 
-    private Location anchorGround(int x, int z, List<Location> occupied) {
+    /** Fixed horizontal objective site; empty columns retain the last known placement height. */
+    Location anchorSite(Location previous) {
+        Location site = previous.clone();
         World world = center.getWorld();
+        int highest = world.getHighestBlockYAt(site.getBlockX(), site.getBlockZ());
+        if (highest >= world.getMinHeight()
+                && !world.getBlockAt(site.getBlockX(), highest, site.getBlockZ()).isEmpty()) {
+            site.setY(Math.min(world.getMaxHeight() - 3, highest + 1));
+        }
+        return site;
+    }
+
+    /** Defenders prefer nearby surviving footing; objectives themselves need no foundation. */
+    Location defenderSite(Location home) {
+        Location preferred = home.clone().add(2, 0, 0);
+        World world = home.getWorld();
         for (int radius = 0; radius <= config.groundSearchRadius(); radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
                         continue;
                     }
-                    int y = world.getHighestBlockYAt(x + dx, z + dz) + 1;
-                    Location candidate = new Location(world, x + dx + 0.5, y, z + dz + 0.5);
-                    if (y <= config.groundMaxY() && usable(candidate)
-                            && occupied.stream().noneMatch(other -> other.distanceSquared(candidate) <= 144)) {
-                        return candidate;
+                    int x = preferred.getBlockX() + dx;
+                    int z = preferred.getBlockZ() + dz;
+                    Location feet = new Location(world, x + 0.5, world.getHighestBlockYAt(x, z) + 1, z + 0.5);
+                    if (feet.getY() > world.getMinHeight() && feet.getY() < world.getMaxHeight() - 1
+                            && walkable(feet)) {
+                        return feet;
                     }
                 }
             }
         }
-        return null;
-    }
-
-    boolean usable(Location location) {
-        // Enough flat footing for the objective, defenders and a melee approach; never build terrain.
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-                Location spot = location.clone().add(x, 0, z);
-                if (!contains(spot) || protectedArrival(spot)
-                        || !spot.getBlock().getRelative(0, -1, 0).getType().isSolid()
-                        || !spot.getBlock().isEmpty() || !spot.getBlock().getRelative(0, 1, 0).isEmpty()
-                        || !spot.getBlock().getRelative(0, 2, 0).isEmpty()) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return preferred;
     }
 
     boolean inBombardment(Location location, Location impact, double radius) {
@@ -346,7 +342,7 @@ final class EncounterArena {
         int distance = (int) Math.min(8, config.landingRadius() - 3);
         for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance}, new int[] {-distance, 0},
                 new int[] {0, -distance})) {
-            Location approach = anchorGround(center.getBlockX() + offset[0], center.getBlockZ() + offset[1], List.of());
+            Location approach = groundBelow(center.clone().add(offset[0] + 0.5, 0, offset[1] + 0.5));
             if (approach == null || Math.sqrt(horizontalSquared(approach, center.getX(), center.getZ())) + 3 > config
                     .landingRadius()) {
                 return false;

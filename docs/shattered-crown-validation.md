@@ -4,6 +4,21 @@ title: Shattered Crown live validation
 
 # Required live acceptance: The Shattered Crown
 
+## Redesign checkpoint (#149–163)
+
+The historical evidence below predates the approved redesign and is **not** release acceptance
+for three four-Anchor waves. Current phase/population/debug rules and the executable native fixture
+are documented in [the Encounter guide](/shattered-crown/#three-anchor-waves-151).
+Run Java25 `check build dragonWaveProbeJar --max-workers=2` (including `testNms`) and the disposable
+`scripts/run-dragon-wave-probe.py` runner. It requires the actual production plugin and explicit PASS;
+it exercises native main-End battle adoption, real native damage/death/crystal events, frozen
+4→1 / 5→2 Roster Units, both gates, all debug waves and cleanup without human clients.
+This narrower fixture is not defender AI, full ritual/reward delivery, client rendering or balance proof.
+#163 separates agent-executable integrated runtime evidence from remaining four-maxed-player human
+readability/balance observations. Missing human clients is not a hidden agent implementation blocker.
+
+## Historical pre-redesign acceptance and evidence
+
 **Not validated by automated tests or zero-player startup.** Spec #132 and ticket #140 require
 actual supported-Paper combat and a representative multiplayer session before PR #133 can leave
 WIP. Completing an agent run is not completing this acceptance. Do not merge while it is pending.
@@ -172,7 +187,7 @@ evidence for each step; fix failures and repeat affected steps rather than merel
 | Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify world cues without automatic chat/action bars and localized explicit debug replies, without mandatory audio/resource packs. |
 | Safe placement | React at normal walking speed on representative island terrain. Check existing native/custom danger, overlapping authored attacks, protected arrival exclusion and route deferrals; unsafe combinations must be omitted rather than fill remaining routes. |
 | Landings | Observe repeated native flight, approach, actual podium arrival, meaningful approach/melee duration, sitting hit/phase callbacks, takeoff and ranged flight contribution. A window must not expire before arrival or be cancelled immediately by competing phases. |
-| Final gate | Cross 30% and also try an oversized lethal hit, multipart callbacks and simultaneous explosions. Exactly two Anchors reactivate once before death; both independently gate shielding. After both clear, healing/duplicate events cannot replay the interlude. |
+| Wave gates (current #151) | Cross 65% and 30% with oversized melee/ranged/explosive/multipart hits. Exactly four independently defended Anchors spawn once at each gate. All four crystals must be destroyed; prior attack unlocks survive shields, and healing/duplicate events cannot replay a wave. |
 | Final race | Verify familiar attacks accelerate and pools expire sooner. No new vocabulary, forced-duration wipe or permanent terrain changes from custom effects; objective routes and landing opportunities stay usable. |
 | Arrival/provenance | Attack from protection with melee/arrows/primed TNT and any supported attributable indirect source. Fire from protection, then step into the arena before impact. Dragon, Anchors and defenders must reject safe-origin damage; custom danger cannot strike arrivals. |
 | Mark invalidation | During a countdown separately die, disconnect, change world/mode, leave the arena and enter arrival protection. No stale pool may resolve. Rejoining through normal server travel resumes participation without teleport/inventory assistance. |

@@ -471,16 +471,19 @@ class HuntEncounterTest {
     }
 
     private void clearFinalGate() {
-        dragon.setHealth(310);
-        var crossing = hit(dragon);
-        assertThat(crossing.isCancelled()).isFalse();
-        dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
-        scheduler.advance(Duration.ZERO);
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
-            defender.setHealth(0);
-            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
-        });
-        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+        for (int wave = 2; wave <= 3; wave++) {
+            dragon.setHealth(wave == 2 ? 660 : 310);
+            var crossing = hit(dragon);
+            assertThat(crossing.isCancelled()).isFalse();
+            dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
+            scheduler.advance(Duration.ZERO);
+            end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+                defender.setHealth(0);
+                server.getPluginManager()
+                        .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+            });
+            end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+        }
     }
 
     @Test
@@ -555,7 +558,8 @@ class HuntEncounterTest {
         config.node("landing-cadence-seconds").set(120);
         config.node("pool-damage").set(0);
         hunt();
-        scheduler.advance(Duration.ofSeconds(31));
+        clearFinalGate();
+        scheduler.advance(Duration.ofSeconds(22));
         assertWarningKind("sweep");
     }
 
@@ -568,6 +572,7 @@ class HuntEncounterTest {
         config.node("lane-damage").set(0);
         config.node("sweep-damage").set(0);
         hunt();
+        clearFinalGate();
         for (int x = 5; x < 18; x++) {
             for (int z = 4; z < 9; z++) {
                 end.getBlockAt(x, 64, z).setType(Material.END_STONE);
@@ -643,7 +648,8 @@ class HuntEncounterTest {
         config.node("lane-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(10);
         hunt();
-        scheduler.advance(Duration.ofSeconds(14));
+        clearFinalGate();
+        scheduler.advance(Duration.ofSeconds(11));
         assertThat(dragon.getLocation().getY()).isEqualTo(82);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
@@ -689,7 +695,9 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofSeconds(1));
         }
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        scheduler.advance(Duration.ofSeconds(5));
+        clearFinalGate();
+        player.setOp(true);
+        debug("trigger smash", player); // Manual probe of recovery after the failed pool, not a locked attack.
         assertWarningKind("sweep");
     }
 

@@ -212,15 +212,15 @@ class EncounterTest {
     }
 
     private void clearFinalGate() {
-        for (int stage = 0; stage < 2; stage++) {
+        for (int stage = 0; stage < 3; stage++) {
             for (Zombie defender : defenders()) {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
             }
             crystals().forEach(this::hit);
-            if (stage == 0) {
-                dragon.setHealth(310);
+            if (stage < 2) {
+                dragon.setHealth(stage == 0 ? 660 : 310);
                 var crossing = hit(dragon);
                 assertThat(crossing.isCancelled()).isFalse();
                 dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
@@ -251,7 +251,7 @@ class EncounterTest {
     }
 
     @Test
-    void noUsableGroundRefusesAnAttemptWithoutBuildingAnObjectiveInTheVoid() throws Exception {
+    void emptyColumnsUseFloatingObjectivesWithoutRebuildingTerrain() throws Exception {
         for (int x = -40; x <= 40; x++) {
             for (int z = -40; z <= 40; z++) {
                 for (int y = end.getMinHeight(); y <= 63; y++) {
@@ -261,10 +261,10 @@ class EncounterTest {
         }
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(crystals()).isEmpty();
-        assertThat(defenders()).isEmpty();
-        assertThat(dragon.getHealth()).isEqualTo(200);
-        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(crystals()).hasSize(4).allMatch(crystal -> crystal.getY() == 64);
+        assertThat(defenders()).hasSize(16);
+        assertThat(dragon.getHealth()).isEqualTo(1000);
+        assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
     @Test
@@ -493,7 +493,7 @@ class EncounterTest {
             player.teleport(new Location(end, 10, 64, 0));
             scheduler.advance(Duration.ofSeconds(1));
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(16);
+            assertThat(defenders()).hasSize(new int[] {16, 16, 16, 32, 32, 32, 32, 48}[attempt]);
             player.setHealth(0);
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(crystals()).isEmpty();
