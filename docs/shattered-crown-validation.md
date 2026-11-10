@@ -147,6 +147,18 @@ the live acceptance requirement; this document does not mark #140 complete or au
 
 ## Functional combat session
 
+### Quiet UI regression (#156)
+
+Run opening → exposed Anchors → shield release → Hunt → final pair → final Hunt, and native landing
+approach/arrival/takeoff with English and German clients. There must be no unsolicited Encounter chat,
+text above the hotbar or replacement title feed, including repeatedly refreshed Prey countdowns.
+Floating world labels/countdowns, appropriate attack visuals and sounds must remain; verify the
+vanilla dragon boss bar and enhanced-Wither boss/countdown presentation when that encounter is active.
+Request `/dragondebug status`, `pause`, each supported `trigger`, `cancel` and `resume`; replies must
+reach only the caller, with localized results/errors (also test an offline or ineligible target).
+Record client observations separately: automated encounter sequences verify public output queues,
+world displays, sounds and phases, not native client rendering or subjective readability.
+
 Capture console logs and timestamped observer notes/video where possible. Record pass/fail and
 evidence for each step; fix failures and repeat affected steps rather than merely ticking boxes.
 
@@ -157,7 +169,7 @@ evidence for each step; fix failures and repeat affected steps rather than merel
 | Native defenders | Observe targeting, leash/escape recovery, finite waves, despawn/chunk discovery and crystal recovery. No missing entity may leave an impossible gate. |
 | Damage routes | Try swords, arrows, multipart hits and simultaneous bed/explosion bursts while shielded and damageable. Cancellation/protection must be respected, ordinary combat applied once, and explosion restrictions scoped to the managed dragon. |
 | Crystal interactions | Confirm ordinary crystal healing cannot reverse active progression; outside an attempt, vanilla ritual crystals remain usable. |
-| Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify both English and German recipient instructions and native visuals without mandatory audio/resource packs. |
+| Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify world cues without automatic chat/action bars and localized explicit debug replies, without mandatory audio/resource packs. |
 | Safe placement | React at normal walking speed on representative island terrain. Check existing native/custom danger, overlapping authored attacks, protected arrival exclusion and route deferrals; unsafe combinations must be omitted rather than fill remaining routes. |
 | Landings | Observe repeated native flight, approach, actual podium arrival, meaningful approach/melee duration, sitting hit/phase callbacks, takeoff and ranged flight contribution. A window must not expire before arrival or be cancelled immediately by competing phases. |
 | Final gate | Cross 30% and also try an oversized lethal hit, multipart callbacks and simultaneous explosions. Exactly two Anchors reactivate once before death; both independently gate shielding. After both clear, healing/duplicate events cannot replay the interlude. |
