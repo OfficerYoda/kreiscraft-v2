@@ -16,6 +16,11 @@ cancelled restoration events. A native DYING phase or later owner is not replace
 the encounter's flight scope if participation, its warning, or native phase ownership is lost.
 The global phase registry and AI flag are untouched. See the [primary-source research](research/dragon-ai-control.md).
 
+Dive retains the native eight-block step ceiling across the expanded arena. If the current
+dragon-to-lane distance cannot fit within the configured warning ticks, it first approaches at
+at most 7.5 blocks per native tick, then begins the full visible warning. Both stages remain
+owned/cancellable; lost targets, changed ground or replaced phases release the main action.
+
 ## Selection and terrain
 
 `HuntRotation` maintains one due timestamp per family, retries failed placement after one second,
@@ -64,3 +69,20 @@ The test artifact contains the production native driver and does not require loa
 
 This is clientless evidence. Stock-client flight animation, rendered warning alignment, melee
 reach during the moving attacks, and representative multiplayer balance still need in-game testing.
+
+## Integrated physical Dive probe
+
+Build `./gradlew shadowJar diveEncounterProbeJar --max-workers=2 --console=plain` with Java 25.
+Install the production shadow JAR and `build/paper-probe/dive-encounter-probe-0.1.0-SNAPSHOT.jar`
+only in a disposable Paper 26.2 build 132 server with fresh worlds and a loopback-only port.
+Enable Crown alone; defer Prey/sweep/landing cadences to 120 seconds to isolate automatic Dive.
+Start with `-Dkreiscraft.dive-probe=true` and require `DIVE_ENCOUNTER_PROBE PASS` in the log.
+The probe shuts down the server itself. Never install this test plugin in production.
+
+The fixture registers a real native player using the existing clientless transport recipe,
+lets the real main-End battle spawn its dragon, verifies production adoption, and drives
+actual `/dragondebug` commands. It checks the three-difficulty Protection IV netherite matrix,
+automatic dispatch after the real opening objectives are destroyed, native moving body/low-hit
+timing, once-only damage, zero particle packets/dragon teleports, public cancellation, invalid
+target cleanup and native AI restoration. A raised isolated pad supplies deterministic footing;
+this is not rendered-client, representative terrain or human multiplayer acceptance.

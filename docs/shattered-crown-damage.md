@@ -37,10 +37,10 @@ unit now means reference health loss; `6` previously lost only about `2.16` heal
 ## Boundary for subsequent attacks
 
 Use `referenceDamage` for the approved single-hit targets: **Dive 8**, **Ground Smash 12**,
-**Fireball Rain impact 4** reference health points. This ticket establishes and tests their
-units; it does not change those attack families' existing implementation or configure their
-future defaults. The legacy `bombardmentDamage` operation remains **raw native dragon-breath
-damage**, including existing lane/pool/sweep calls. Pool damage keeps its separately configured
+**Fireball Rain impact 4** reference health points. Physical Dive now uses that path with
+`lane-damage: 8`, once when the low dragon passes the recipient. Its automatic and debug routes
+share the same calibrated call. The legacy `bombardmentDamage` operation remains **raw native dragon-breath
+damage**, including stationary lane/pool/sweep calls. Pool damage keeps its separately configured
 raw units and cadence; do not pass pool damage through the reference-health converter.
 
 ## Runnable supported-Paper regression

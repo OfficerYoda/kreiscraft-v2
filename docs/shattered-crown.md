@@ -32,10 +32,18 @@ The bundled module is **enabled by default**, with `movement-attacks: true`
 This replaces stationary Hunt lanes with a **marked-strip dive** and stationary wing sectors
 with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
 
-- **Dive:** uses lane length, width, warning, cadence and damage settings. Direction arrows mark the
-  strip while the dragon lines up; a three-second pass deals damage once per player when the low
-  dragon reaches them, followed by a two-second climb. Lane lifetime/damage cadence apply only to
-  legacy stationary lanes. Knockback uses `sweep-knockback`.
+- **Dive:** a **two-second Attack Warning**, **1.5-second physical pass** and **one-second climb**.
+  Defaults are a six-block-wide, 24-block-long lane. `lane-length`, `lane-width`,
+  `lane-warning-seconds`, `dive-pass-seconds` and `dive-climb-seconds` are validated tuning.
+  There are **no Dive particles**: only the floating countdown, growl and real approaching dragon.
+  A low passing dragon hits each eligible player at most once; `lane-damage: 8` targets four hearts
+  lost against full Protection IV netherite on Easy/Normal/Hard, preserving other defenses and
+  public combat cancellation. Existing numeric damage overrides retain their values but physical
+  Dive now interprets them as reference-health units. Lane lifetime/damage cadence and raw damage
+  semantics apply only to legacy stationary lanes. Knockback uses `sweep-knockback`.
+  Very long approaches stage native movement before the visible warning, keeping every native step
+  below eight blocks without stretching the two-second countdown. Main action completes only after
+  the climb restores native flight; the rotation's next gap can begin then.
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
   blocks; warning time is at least `(radius + 2) / 3` seconds. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
@@ -46,7 +54,7 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   encounter eligibility and combat cancellation. Attack cleanup restores native flight; existing
   persistent phase recovery handles restarts. New attack warnings wait while flight is active.
 - Dive strips, smash disks and Prey pools now snapshot local ground heights (up to six blocks of
-  relief from the center). Warning particles and damage use the same surface. Escape checks follow
+  relief from the center). Warning geometry and damage use the same surface. Escape checks follow
   one-block steps with player-body clearance, additional uphill time, and void/cloud exclusion.
   Changed footing cancels the attack instead of silently moving its warning.
 - The default Hunt rotation retains overdue attacks through other attacks and landings. Oldest due
@@ -198,7 +206,7 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   the two objectives, using the same walking-route/native-cloud checks and no lingering pools or
   terrain changes. Clearing the final pair cancels them immediately and starts the final Hunt once.
 - Default final cadence opportunities are **7s lanes, 14s Marked Prey, 17.5s sweeps and 21s landings**;
-  default breath pools last **3s**, not 6s. Warnings remain 3s/4s/4s, lanes last 6s, landing approach
+  default breath pools last **3s**, not 6s. Dive/Prey/sweep warnings are 2s/4s/4s; legacy lanes last 6s, landing approach
   remains 20s and the melee window remains a full 12s **after actual native arrival**. Cadences are
   opportunities, not guaranteed simultaneous attacks. The same serial composition, route checks,
   hazard ceilings and landing reservation apply. Final cadence never falls below warning + 0.5s,

@@ -172,10 +172,12 @@ modules:
     bombardment-radius: 4.0
     lane-length: 24.0
     lane-width: 6.0
-    lane-warning-seconds: 3.0
+    lane-warning-seconds: 2.0
+    dive-pass-seconds: 1.5
+    dive-climb-seconds: 1.0
     lane-lifetime-seconds: 6.0
     lane-cadence-seconds: 10.0
-    lane-damage: 4.0
+    lane-damage: 8.0
     lane-damage-cadence-seconds: 1.0
     landing-cadence-seconds: 30.0
     landing-window-seconds: 12.0

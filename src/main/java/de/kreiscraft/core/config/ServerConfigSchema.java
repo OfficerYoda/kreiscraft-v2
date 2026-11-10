@@ -345,6 +345,8 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("lane-length", 8, 40));
         fields.add(crownNumber("lane-width", 2, 12));
         fields.add(crownNumber("lane-warning-seconds", 1, 15));
+        fields.add(crownNumber("dive-pass-seconds", 1, 10));
+        fields.add(crownNumber("dive-climb-seconds", 0.5, 10));
         fields.add(crownNumber("lane-lifetime-seconds", 1, 20));
         fields.add(crownNumber("lane-cadence-seconds", 2, 120));
         fields.add(crownNumber("lane-damage", 0, 100));

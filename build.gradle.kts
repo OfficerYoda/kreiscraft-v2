@@ -162,6 +162,14 @@ tasks.register<Jar>("defenderRoamingProbeJar") {
     from("src/paperTest/defender-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("diveEncounterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dive-encounter-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { exclude("plugin.yml") }
+    from("src/paperTest/dive-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.compileJava {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
