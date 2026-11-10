@@ -366,15 +366,15 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void aBombardmentFootprintCannotOverlapTheProtectedArrivalArea() throws Exception {
+    void bombardmentMayOverlapAnArrivalRimWithoutProtectingTerrainOrNearbyCombatants() throws Exception {
         config.node("arrival-x").set(16);
         config.node("arrival-y").set(64);
         config.node("arrival-radius").set(3);
         enable();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(14);
     }
 
     @Test
@@ -451,7 +451,7 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void unsafeVoidBoundPlacementIsOmittedButAUsableWalkingCorridorAllowsAnEscape() throws Exception {
+    void supportedBombardmentNeedsNoWalkingCorridorOffAnIsolatedPatch() throws Exception {
         // A tiny isolated patch supports the target but no route out of a four-block impact circle.
         for (int x = 5; x <= 16; x++) {
             for (int z = -6; z <= 6; z++) {
@@ -463,7 +463,7 @@ class OpeningEncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(11));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(14);
         // Restore only a westward corridor. Safety must use actual footing, not an empty arena sector.
         for (int x = 4; x <= 11; x++) {
             for (int z = -1; z <= 1; z++) {
@@ -474,7 +474,7 @@ class OpeningEncounterTest {
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         player.teleport(new Location(end, 4.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(14);
     }
 
     @Test
@@ -603,7 +603,7 @@ class OpeningEncounterTest {
     @org.junit.jupiter.params.provider.CsvSource({
             "bombardment-warning-seconds,0", "bombardment-cadence-seconds,0", "bombardment-damage,NaN",
             "bombardment-damage,-1", "bombardment-damage,101", "bombardment-damage,Infinity",
-            "bombardment-radius,Infinity", "bombardment-radius,13", "bombardment-warning-seconds,1",
+            "bombardment-radius,Infinity", "bombardment-radius,13", "bombardment-warning-seconds,0",
             "bombardment-cadence-seconds,3"
     })
     void invalidBombardmentReloadsAreRejectedWithoutDiscardingThePlayableOpening(String key, double value)
@@ -758,7 +758,7 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void pointSizedDiagonalGapsBetweenWallsAreNotTreatedAsPlayerSizedEscapeRoutes() throws Exception {
+    void supportedBombardmentIsNotVetoedByBodySizedWalkingRouteValidation() throws Exception {
         for (int x = 1; x <= 19; x++) {
             for (int z = -10; z <= 10; z++) {
                 end.getBlockAt(x, 64, z).setType(Material.OBSIDIAN);
@@ -773,8 +773,8 @@ class OpeningEncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(anchors()).hasSize(4);
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(14);
     }
 }

@@ -190,12 +190,15 @@ modules:
     pool-damage: 3.0
     pool-damage-cadence-seconds: 1.0
     pool-lifetime-seconds: 6.0
-    sweep-radius: 12.0
+    sweep-radius: 8.0
     sweep-angle: 90.0
     sweep-warning-seconds: 4.0
     sweep-cadence-seconds: 25.0
-    sweep-damage: 6.0
+    sweep-damage: 12.0
     sweep-knockback: 1.2
+    smash-crater-radius: 5.0
+    smash-crater-depth: 1
+    debris-lifetime-seconds: 4.0
     final-health-fraction: 0.3
     final-cadence-factor: 0.7
     final-pool-lifetime-factor: 0.5

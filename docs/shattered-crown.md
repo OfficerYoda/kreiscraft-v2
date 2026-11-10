@@ -107,8 +107,11 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   below eight blocks without stretching the two-second countdown. Main action completes only after
   the climb restores native flight; the rotation's next gap can begin then.
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
-  blocks; warning time is at least `(radius + 2) / 3` seconds. The dragon rises, plunges for one second,
+  blocks; the FULL four-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
+  Main completion follows the climb. `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
+  The impact permanently removes roughly radius-five, one-block-deep ground. Debris cannot hurt, place
+  or drop; no arrival/portal/tower/Anchor terrain is preserved. See [terrain impacts](/shattered-crown-terrain/).
   `sweep-angle` applies only to legacy sectors.
 - Flight uses an owned native **airborne charge phase**, applying movement inside the dragon tick
   before multipart repositioning, with no repeated teleports or no-AI state. Native contact
@@ -116,8 +119,8 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   encounter eligibility and combat cancellation. Attack cleanup restores native flight; existing
   persistent phase recovery handles restarts. New attack warnings wait while flight is active.
 - Dive strips, smash disks and Prey pools now snapshot local ground heights (up to six blocks of
-  relief from the center). Warning geometry and damage use the same surface. Escape checks follow
-  one-block steps with player-body clearance, additional uphill time, and void/cloud exclusion.
+  relief from the center). Warning geometry and damage use the same surface. Surviving columns and
+  hazard/arena bounds remain valid; holes or missing walking escapes no longer veto attacks.
   Changed footing cancels the attack instead of silently moving its warning.
 - The default Hunt rotation retains overdue attacks through other attacks and landings. Oldest due
   attacks get priority; refused placement retries after one second and does not block other families.
@@ -151,8 +154,9 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 The target defaults to the player running the command; console must name an online player.
 The target must be alive in survival/adventure inside the main-End combat arena. An eligible player
 entering the arena starts the encounter as usual. Triggers bypass cooldown and phase selection, so
-dives and smashes can be tested while the opening Anchors still shield the dragon. Terrain, escape
-routes, arrival protection, combat cancellation and the actual warning/damage paths still apply.
+dives and smashes can be tested while the opening Anchors still shield the dragon. Valid geometry,
+arrival PLAYER protection, combat cancellation and actual warning/damage paths still apply.
+`pause`/`cancel` remove temporary debris but never rebuild committed craters.
 
 `trigger` cancels the previous custom attack and enters manual mode. `pause`/`cancel` clear active
 effects, restore flight and leave automatic attacks paused. `resume` restarts the current phase's
@@ -229,7 +233,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 
 Damage is in health points (two per heart). All numeric values must be finite. The complete Anchor
 search footprint must fit within the arena. Cadence must exceed warning duration by at least
-0.5 seconds; `radius + 2 <= warning-seconds * 3` reserves conservative walking time to escape.
+0.5 seconds. Walking-route guarantees are retired by the permanent-terrain redesign (#161).
 Invalid combinations reject the reload atomically, leaving the running profile unchanged.
 The absence reset is fixed at **60 continuous seconds**
 of scheduler time (1200 game ticks), not a population-based timer or a forced fight duration.
@@ -320,17 +324,16 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   Impact uses a distinct explosion visual/sound, not a real explosion.
   Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
   attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters
-  arrival protection, or if its warning disappears. No impact footprint may overlap the protected
-  arrival cylinder. Native damage is applied once and honors other plugins' combat cancellation.
-- Placement and resolution check actual footing and a reachable straight walking corridor for
-  every endangered participant (16 directions, half-block samples with player-body clearance,
-  conservative 3 blocks/second). Point-sized diagonal gaps between walls do not count as routes.
+  arrival protection, or if its warning disappears. Footprint rims may overlap arrival geometry;
+  protected PLAYERS remain excluded. Native damage is applied once and honors combat cancellation.
+- Placement/resolution require supported target footing, arena/build-height bounds and valid geometry,
+  not straight walking corridors off cratered ground.
   Nearby native dragon-breath clouds are considered existing danger: overlapping bombardments
-  and routes through those pools are omitted. More than 32 nearby clouds also refuses the pattern.
+  are omitted. More than 32 nearby clouds also refuses the pattern.
   Terrain that changes during the warning is checked again at impact. Unsafe placements are
   omitted rather than stacking danger or constructing terrain; another cadence may try again.
-  Custom bombardments leave no persistent damaging pool and never change blocks. This conservative
-  placement can skip attacks on steep or obstructed terrain; live geometry/rendering remains unvalidated.
+  Custom bombardments leave no persistent damaging pool and never change blocks; permanent destruction
+  belongs to Smash and Rain, without duplicate native explosions.
 - Victory clears custom artifacts without editing XP, drops, portal, egg, gateway or ritual state.
   It never removes or simulates a kill of the dragon. Reset restores the existing dragon's original
   native maximum and full health; the next participant begins a fresh configured-health attempt.
