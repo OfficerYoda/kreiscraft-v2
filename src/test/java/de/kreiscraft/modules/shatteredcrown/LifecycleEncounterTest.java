@@ -153,14 +153,14 @@ class LifecycleEncounterTest {
         config.node("prey-cadence-seconds").set(5);
         config.node("lane-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
+        deadPlayers.forEach(connected -> connected.setHealth(0));
         var encounter = new EncounterController(server, battles, ShatteredCrownConfig.load(config),
-                scheduler, context.messages());
+                scheduler, context.messages(), new java.util.Random(4096)); // First production round starts Prey.
         context.events().register(encounter);
         try {
             encounter.start();
             scheduler.advance(Duration.ZERO);
             assertThat(encounter.firstEntryPopulation()).isEqualTo(5); // Server-wide snapshot stays unchanged.
-            deadPlayers.forEach(connected -> connected.setHealth(0));
             assertThat(deadPlayers).allSatisfy(connected -> {
                 assertThat(connected.isOnline()).isTrue();
                 assertThat(connected.isDead()).isTrue();
@@ -170,7 +170,7 @@ class LifecycleEncounterTest {
             assertThat(end.getPlayers()).containsExactlyInAnyOrder(player, teammate);
             assertThat(encounter.combatPopulation()).isEqualTo(2);
             clearWave();
-            scheduler.advance(Duration.ofSeconds(5));
+            scheduler.advance(Duration.ZERO);
             assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(2); // Four connected → two marks.
             assertThat(encounter.scalingPopulation()).isEqualTo(4);
             acceptedDragonHit(100000);

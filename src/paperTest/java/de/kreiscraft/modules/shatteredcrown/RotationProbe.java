@@ -68,15 +68,16 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     end.setChunkForceLoaded(x, z, true);
                 }
             }
+            int floor = end.getHighestBlockYAt(40, 40);
             for (int x = 15; x <= 70; x++) {
                 for (int z = 13; z <= 67; z++) {
-                    end.getBlockAt(x, 150, z).setType(Material.END_STONE);
-                    for (int y = 151; y <= 175; y++) {
+                    end.getBlockAt(x, floor, z).setType(Material.END_STONE);
+                    for (int y = floor + 1; y <= floor + 25; y++) {
                         end.getBlockAt(x, y, z).setType(Material.AIR);
                     }
                 }
             }
-            pad = new Location(end, 40.5, 151, 40.5);
+            pad = new Location(end, 40.5, floor + 1, 40.5);
             var server = ((CraftServer) getServer()).getServer();
             var profile = new GameProfile(UUID.randomUUID(), "RotationFixture");
             fixture = new ServerPlayer(server, ((CraftWorld) end).getHandle(), profile,
@@ -225,7 +226,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     finished = true;
                     getLogger().info("ROTATION_PROBE PASS ticks=" + ticks + " starts=" + starts + " landingHits="
                             + landingHits
-                            + " nativeBattle+grace+rounds+postCompletion+unlocks+nativeArrival120+oldPoolDamage+cleanup AI=true");
+                            + (starts.isEmpty() ? " landingOnly" : " nativeGrace+openingRounds+postCompletion")
+                            + " nativeBattle+unlocks+nativeArrival120+oldPoolDamage+cleanup AI=true");
                     getServer().shutdown();
                 }
             }
