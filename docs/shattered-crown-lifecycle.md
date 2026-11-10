@@ -23,7 +23,7 @@ online server-wide**, including creative/spectator players, before combat starts
 does not delay or replace this snapshot. If enable/restart discovers an already-occupied End, recovery
 uses everyone online at that discovery; it cannot reconstruct a historical entry. An empty End before
 an attempt, reset, victory, disable, world unload or a changed next-attempt world clears stale entry
-state. Later wave snapshots and Prey use the live **all-End population**, including observers and
+state. Later wave snapshots and Prey can obtain the live **all-End population**, including observers and
 players outside combat, without target or defender count caps. `/dragondebug status` reports
 `combat-population`, `scaling-population`, `entry-snapshot` and `grace-seconds` even before combat.
 

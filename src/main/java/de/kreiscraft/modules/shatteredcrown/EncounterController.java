@@ -1164,7 +1164,8 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFlightPush(io.papermc.paper.event.entity.EntityKnockbackEvent event) {
         if (event instanceof io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent pushed) {
-            Entity source = pushed.getPushedBy();
+            Entity source = pushed.getPushedBy() instanceof ComplexEntityPart part ? part.getParent()
+                    : pushed.getPushedBy();
             if ((flight != null || openingGrace()) && source.equals(dragon)
                     || encounterEnemy(source) && event.getEntity() instanceof Player player
                             && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player))) {
@@ -1582,6 +1583,8 @@ public final class EncounterController implements Listener, AutoCloseable {
                 && cloud.getSource() instanceof Entity owner) {
             source = owner;
         }
+        source = source instanceof ComplexEntityPart part ? part.getParent() : source;
+        direct = direct instanceof ComplexEntityPart part ? part.getParent() : direct;
         if (target instanceof Player player
                 && (source != null && encounterEnemy(source) || direct != null && encounterEnemy(direct))
                 && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)

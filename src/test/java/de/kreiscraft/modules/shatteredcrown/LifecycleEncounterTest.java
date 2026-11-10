@@ -198,6 +198,13 @@ class LifecycleEncounterTest {
                 mock(org.bukkit.damage.DamageSource.class), 10);
         server.getPluginManager().callEvent(nativeHit);
         assertThat(nativeHit.isCancelled()).isTrue();
+        var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+        org.mockito.Mockito.when(part.getParent()).thenReturn(dragon);
+        var multipartHit = new org.bukkit.event.entity.EntityDamageByEntityEvent(part, player,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(org.bukkit.damage.DamageSource.class), 10);
+        server.getPluginManager().callEvent(multipartHit);
+        assertThat(multipartHit.isCancelled()).isTrue();
         var fireball = end.spawn(dragon.getLocation(), org.bukkit.entity.DragonFireball.class);
         fireball.setShooter(dragon);
         var launch = new org.bukkit.event.entity.ProjectileLaunchEvent(fireball);
