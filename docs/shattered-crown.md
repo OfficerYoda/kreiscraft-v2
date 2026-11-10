@@ -25,6 +25,68 @@ encounter seam; do not use announcement text as evidence that it ran. Assert no 
 action bars over a complete sequence, and retain command-reply coverage. Existing independent UI
 modules (for example a player's Combat Display preference) are not disabled by this Encounter rule.
 
+## Three Anchor Waves (#151)
+
+Exactly four defended Anchors appear at **100%, 65% and 30%** of the effective maximum health
+snapshotted at attempt start. Every gate is once-only. All damage routes (including oversized hits,
+explosions and multipart callbacks) stop at the next uncleared gate before native damage/death;
+accepted damage installs the shield before any objective spawn callback can reenter combat.
+Crystal healing is disabled. Defender deaths expose only their assigned crystal; all four crystals
+must then be destroyed by eligible player attacks, in any order. Mob damage, explosions, unrelated
+crystals and protected-origin attacks cannot complete an objective.
+
+Each Anchor receives **ceil(wave population / 4) complete Roster Units**, without a population cap:
+0→0, 4→1, 5/8→2, 12→3, 20→5, 68→17. An empty debug End still has four exposed crystals to destroy.
+Wave one freezes #150's first-End-entry server-wide population;
+waves two and three freeze everyone connected in the managed End at their starts, including creative,
+spectator and outside-arena players. Later joins/leaves never resize existing defenders.
+
+Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
+Ground Smash after wave three. Unlocks survive later shields. Rain choreography and complete
+rotation redesign remain downstream work. The current configured defender roster remains the
+playable placeholder in every wave until #153–155 supply content. The explicit extension point is
+`EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
+content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
+registers ownership and membership before public spawn callbacks; never add the returned Mob again.
+Use the parent overload for descendants and `inheritOwnership` in projectile/effect pre-spawn consumers.
+All are owned by `waveWork`; do not scale again or equate defender deaths with crystal completion.
+
+All waves reuse four fixed horizontal sites. Crystals use the current highest block plus one-block
+placement clearance, or their last known height for an empty column (podium height on first use).
+No flat foundation is required, preserved or rebuilt. Defenders prefer nearby surviving footing;
+missing/unloaded members are replaced, never counted as defeated. Refused spawns abort safely to a
+retryable native battle rather than leaving partial objectives. Reset, victory, unload, disable and
+restart recovery remove only Encounter-owned artifacts. Native dragon completion/rewards are retained.
+
+`/dragondebug wave <1|2|3>` uses the existing OP-default permission, replaces owned enemies,
+pending gate acceptance and attacks/effects, sets 100/65/30% health, grants earlier-wave unlocks and
+takes fresh scaling snapshots. It pauses automatic attacks; `/dragondebug resume` resumes the
+selected production shield/hunt phase. Opening Grace is not restarted or bypassed by phase jumps.
+Status reports wave, shield, destroyed crystals out of four, defenders, frozen population/units,
+unlocks and manual/automatic mode alongside existing population/grace/attack diagnostics.
+Explicit replies remain recipient-localized; automatic chat/actionbars remain absent.
+
+```text
+/dragondebug status
+/dragondebug pause
+/dragondebug wave 1
+/dragondebug wave 2
+/dragondebug wave 3
+/dragondebug trigger dive <player>
+/dragondebug cancel
+/dragondebug resume
+```
+
+Native fixture check (Java25/Paper26.2 build132, zero human clients):
+`./gradlew check build dragonWaveProbeJar --max-workers=2`, then
+`python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR` with `JAVA_HOME` set.
+The runner refuses existing evidence directories, copies only Paper caches/EULA, uses fresh worlds
+and loopback ports, stages the real shadow plugin plus a test-only probe, and requires an explicit
+PASS. Registered native ServerPlayers use a packet sink, not authenticated clients. This exercises
+native main-End battle creation/adoption, population snapshots, native damage/death/crystal paths,
+debug replacement and disable cleanup; it does not prove rendered warnings, defender AI, human
+balance, ritual completion or native reward delivery. Those remain integrated #163 evidence.
+
 ## Live-playtest follow-up: moving attacks
 
 The bundled module is **enabled by default**, with `movement-attacks: true`
@@ -80,6 +142,7 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 ```text
 /dragondebug status
 /dragondebug pause
+/dragondebug wave <1|2|3>
 /dragondebug trigger <dive|smash|prey|bombardment|landing> [player]
 /dragondebug cancel
 /dragondebug resume
@@ -104,7 +167,7 @@ Pool setup, refresh, damage and expiry share an isolated effect scope: a renderi
 removes its indicator and active-area entry, releasing the rotation instead of leaving it busy.
 Fault-injection tests cover both initial rendering and later refresh failures.
 
-## Earlier encounter contract
+## Historical earlier encounter contract (superseded by #151)
 
 Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
@@ -141,7 +204,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, per Anchor |
+| `defender-count` | 4 | 1–32, per placeholder Roster Unit; complete units scale per Anchor |
 | `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
 | `defender-health` | 40 | 1–1000 |
 | `defender-damage` | 6 | 0–100, native attack attribute |
@@ -157,8 +220,8 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `arrival-height` | 12 | Cylinder's total height, 4–64 |
 | `anchor-distance` | 24 | Desired cardinal ground objectives east/north/west/south of the podium, 8–192 |
 | `ground-search-radius` | 8 | Bounded horizontal search around each position, 0–16 |
-| `ground-max-y` | 90 | Highest allowed objective feet Y, −64–320; combat still covers the full build height |
-| `final-health-fraction` | 0.3 | 0.1–0.5 of the effective maximum snapshotted at attempt start; once-only final gate |
+| `ground-max-y` | 90 | Deprecated compatibility field, ignored; objective placement uses world build height |
+| `final-health-fraction` | 0.3 | Deprecated compatibility field; ignored. The 65% and 30% wave gates are fixed. |
 | `final-cadence-factor` | 0.7 | 0.5–0.9 multiplier for familiar Hunt/landing cadence opportunities |
 | `final-pool-lifetime-factor` | 0.5 | 0.25–0.9 multiplier for pool lifetime; warning and damage cadence unchanged |
 | `explosion-window-seconds` | 2 | 0.25–5 seconds, aggregate rolling game-time window for the managed dragon |
@@ -185,16 +248,15 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   actual native health before consuming the once-only gate or stopping Hunt. Later HIGHEST cancellation
   or reduction cannot activate the finale above its threshold. The health floor protects every hit
   until that work runs, and shielding is installed before spawning final objectives.
-  Premature native dying/death callbacks are rejected until the final pair is cleared; an already
+  Premature native dying/death callbacks are rejected until all three waves are cleared; an already
   cancelled combat, phase or death event remains cancelled.
   Native maximum-health modifiers are preserved: for a 1000 base with a −50 modifier, the attempt
   begins at 950 and the final gate is 285, not 300. Abort/reset keep those modifiers intact.
-- Exactly two established sites (the positive-X and positive-Z opening sites) reactivate, never the
-  other two. Both retain the opening's independent four-defender/exposure rules and can clear in
-  either order or the same tick. Final eligibility is consumed before spawning; healing and duplicate
-  callbacks cannot replay it. Missing defenders/crystals use established bounded recovery. If final
-  footing is no longer usable or a spawn is refused, abort to a full-health retryable native battle,
-  award nothing; never relocate an objective into the void. The accepted, capped hit has already
+- All four established sites reactivate at each gate, with independent defender/exposure rules.
+  Waves can clear in any order or the same tick. Eligibility is consumed before spawning;
+  healing and duplicate callbacks cannot replay it. Missing defenders/crystals use established
+  recovery. Missing footing permits floating crystals; a refused spawn aborts to a full-health
+  retryable native battle and awards nothing. The accepted, capped hit has already
   applied before setup/abort, so it cannot subsequently kill the restored native dragon. Termination
   cancels pending acceptance work with the rest of the attempt.
 - If disable, disabling reload, unload or reset happens synchronously inside a later combat listener,
@@ -203,8 +265,8 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
 - Entering the gate closes only the attack scope: pending Hunt warnings, hazards and landings stop.
   Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
   remain intact. Familiar 8-second bombardment opportunities with 3-second visible warnings pressure
-  the two objectives, using the same walking-route/native-cloud checks and no lingering pools or
-  terrain changes. Clearing the final pair cancels them immediately and starts the final Hunt once.
+  the four objectives, using the same walking-route/native-cloud checks. Clearing the final wave
+  cancels pending bombardments immediately and starts the final Hunt once.
 - Default final cadence opportunities are **7s lanes, 14s Marked Prey, 17.5s sweeps and 21s landings**;
   default breath pools last **3s**, not 6s. Dive/Prey/sweep warnings are 2s/4s/4s; legacy lanes last 6s, landing approach
   remains 20s and the melee window remains a full 12s **after actual native arrival**. Cadences are
@@ -221,15 +283,12 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   final interlude and resets only with a new attempt/termination.
 - Explicit command replies use existing Player Settings localization; phase/shield/attack output
   follows the quiet communication policy above. The Server Configuration GUI exposes all five new tuning fields. Reload validation
-  is atomic and the complete combat profile is snapshotted per attempt. Four opening and two final
-  Anchors are fixed mechanics, not extra configuration knobs.
+  is atomic and the complete combat profile is snapshotted per attempt. Three waves of four Anchors
+  are fixed mechanics, not extra configuration knobs. The old health-fraction field is compatibility-only.
 
-Ground resolution requires solid footing and three clear blocks over an entire 5×5 patch inside
-the combat arena and outside arrival protection. The four sites must be more than 12 blocks apart,
-and all four are preflighted before changing the dragon or spawning objectives.
-It never builds platforms or places blocks. If any site lacks usable ground, no encounter starts,
-the existing dragon remains unchanged, and a
-warning identifies the geometry/terrain problem. Discovery retries after 30 seconds or a reload.
+Ground resolution uses four fixed horizontal sites and highest-block placement, with last-height
+fallback for empty columns. It never builds platforms or places blocks. No 5×5 foundation or
+terrain preservation is required. Spawn refusal aborts safely; discovery retries after 30 seconds.
 
 ## Behavior and ownership
 
@@ -238,7 +297,8 @@ warning identifies the geometry/terrain problem. Discovery retries after 30 seco
   game-mode events update absence timing; a one-second module discovery/maintenance task also
   catches late world/dragon availability and returning players. No teleport, inventory or travel
   policy is changed.
-- The opening has exactly four independent Anchors, each with four defenders by default (16 total).
+- Every wave has four independent Anchors with population-scaled complete Roster Units. At four
+  online players the current placeholder is four configured defenders per Anchor (16 total).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement

@@ -9,6 +9,15 @@ The [encounter guide](/shattered-crown/) lists the shipped profile and current c
 
 ## Combat coverage, population and opening grace (#150)
 
+#151 consumes these APIs at three fixed four-Anchor boundaries (100%, 65%, 30%). It freezes
+`firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Each Anchor receives
+`ceil(population/4)` complete Roster Units. Missing/unloaded members are replaced, not defeated;
+only destruction of all four exposed crystals completes a wave. A wave owns its crystal/defender
+scope inside the attempt scope. Phase replacement closes attack, objective and extension-owned
+work, cancels accepted-but-pending damage and resets explosion reservations. Debug snapshots are fresh,
+but the remaining Opening Grace clock is preserved, not restarted. Native phase restoration,
+unrelated entities and reward payloads remain intact. See [wave rules and probe](/shattered-crown/).
+
 The combat area is a horizontal cylinder of radius 192 by default, centered on the actual managed
 main-End battle podium, across that world's entire build height. Protected arrival is excluded;
 other End worlds and outer islands beyond the configured radius are not combat areas. The retired

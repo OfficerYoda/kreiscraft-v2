@@ -513,11 +513,11 @@ class OpeningEncounterTest {
                 .filter(entity -> entity != unrelated).findFirst().orElseThrow();
         switch (termination) {
             case "victory" -> {
-                for (int stage = 0; stage < 2; stage++) {
+                for (int stage = 0; stage < 3; stage++) {
                     defenders().forEach(this::defeat);
                     anchors().forEach(this::hit);
-                    if (stage == 0) {
-                        dragon.setHealth(310);
+                    if (stage < 2) {
+                        dragon.setHealth(stage == 0 ? 660 : 310);
                         var crossing = hit(dragon);
                         assertThat(crossing.isCancelled()).isFalse();
                         dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
@@ -724,7 +724,7 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void threeUsableObjectivesCannotStartAPartialOrImpossibleFourAnchorEncounter() throws Exception {
+    void anEmptyFourthColumnStillStartsFourIndependentlyDefendedObjectives() throws Exception {
         for (int x = -12; x <= 12; x++) {
             for (int z = -36; z <= -12; z++) {
                 for (int y = end.getMinHeight(); y <= 63; y++) {
@@ -734,10 +734,9 @@ class OpeningEncounterTest {
         }
         enable();
         scheduler.advance(Duration.ofSeconds(11));
-        assertThat(anchors()).isEmpty();
-        assertThat(defenders()).isEmpty();
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
-        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(anchors()).hasSize(4);
+        assertThat(defenders()).hasSize(16);
+        assertThat(dragon.getHealth()).isEqualTo(1000);
     }
 
     @Test

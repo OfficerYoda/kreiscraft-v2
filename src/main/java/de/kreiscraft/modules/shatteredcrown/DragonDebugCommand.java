@@ -27,6 +27,21 @@ final class DragonDebugCommand {
             root.then(Commands.literal(action)
                     .executes(ctx -> control(action, ctx.getSource().getSender(), encounter, messages)));
         }
+        var wave = Commands.literal("wave");
+        for (int number = 1; number <= 3; number++) {
+            final int selected = number;
+            wave.then(Commands.literal(Integer.toString(number)).executes(ctx -> {
+                var controller = encounter.get();
+                var sender = ctx.getSource().getSender();
+                if (controller == null) {
+                    messages.send(sender, "shattered-crown.debug-disabled");
+                    return 0;
+                }
+                controller.debugWave(selected, sender);
+                return Command.SINGLE_SUCCESS;
+            }));
+        }
+        root.then(wave);
         var trigger = Commands.literal("trigger");
         for (var attack : EncounterController.DebugAttack.values()) {
             trigger.then(Commands.literal(attack.name().toLowerCase(Locale.ROOT))

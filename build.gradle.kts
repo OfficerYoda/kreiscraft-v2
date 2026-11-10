@@ -154,6 +154,14 @@ tasks.register<Jar>("dragonDamageProbeJar") {
     from("src/paperTest/damage-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("dragonWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dragon-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/DragonWaveProbe*.class") }
+    from("src/paperTest/wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.register<Jar>("defenderRoamingProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("defender-roaming-probe")
