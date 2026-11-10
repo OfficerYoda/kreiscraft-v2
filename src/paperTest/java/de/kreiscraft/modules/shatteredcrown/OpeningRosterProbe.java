@@ -155,7 +155,8 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                     if (recoveryStage == 1) {
                         require(cases.getFirst().isValid() && spawns == 86,
                                 "loaded escape retains original lives without replacement");
-                        require(cases.getFirst().addPassenger(escapedRider),
+                        require(escapedRider.getVehicle() == cases.getFirst()
+                                || cases.getFirst().addPassenger(escapedRider),
                                 "reattach same owned rider without another life");
                         player.getWorld().setChunkForceLoaded(-19, 0, false);
                         require(cases.getFirst().teleport(new Location(player.getWorld(), -300, 151, 0),

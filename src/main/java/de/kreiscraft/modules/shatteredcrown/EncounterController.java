@@ -1960,9 +1960,6 @@ public final class EncounterController implements Listener, AutoCloseable {
                 Location location = defender.getLocation();
                 if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
                         || arena.protectedArrival(location)) {
-                    // Paper refuses ordinary teleport while carrying passengers; separation never defeats a member.
-                    defender.eject();
-                    defender.leaveVehicle();
                     defender.teleport(arena.defenderSite(home));
                 }
                 Location targetOrigin = defender.getLocation();
