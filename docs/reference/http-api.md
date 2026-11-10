@@ -97,6 +97,23 @@ public and require no headers.
 
 ## HTTP Endpoints
 
+### `GET /ping`
+
+**Description:** Responds immediately on the HTTP handler thread, without
+dispatching work to Minecraft's tick thread. The browser times the request's
+round trip; this is browser-to-API latency, **not Minecraft gameplay ping**.
+
+**Auth required:** No. The configured `cors-origins` allowlist still applies.
+
+**Response:** `204 No Content`, no response body, with
+`Cache-Control: no-store`. Reverse proxies must not cache this route. The
+frontend also disables caching, times out after five seconds, and displays `N/A`
+on failure.
+
+The plugin implements this route directly on the HTTP handler thread.
+
+---
+
 ### `GET /status`
 
 **Description:** Returns a current snapshot of server metrics. Updated on the

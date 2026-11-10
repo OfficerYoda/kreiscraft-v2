@@ -20,6 +20,25 @@ servers:
         default: "8080"
         description: "`modules.api.port`."
 paths:
+  /ping:
+    get:
+      operationId: ping
+      summary: Measure browser-to-API round-trip latency
+      description: |
+        Respond immediately on the HTTP handler thread, without waiting for
+        Minecraft's tick thread. This measures API latency, not gameplay ping.
+        Requests require no authentication and follow the configured CORS rules.
+      security: []
+      responses:
+        "204":
+          description: Immediate response with no body.
+          headers:
+            Cache-Control:
+              description: Always `no-store` to prevent cached measurements.
+              required: true
+              schema:
+                type: string
+                const: no-store
   /status:
     get:
       operationId: getStatus
