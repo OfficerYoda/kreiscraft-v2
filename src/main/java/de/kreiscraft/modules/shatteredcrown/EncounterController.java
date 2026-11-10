@@ -1266,7 +1266,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 }
                 if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
                         config.bombardmentRadius())) {
-                    battles.bombardmentDamage(player, source, config.bombardmentDamage());
+                    battles.referenceDamage(player, source, config.bombardmentDamage());
                 }
             }
         });

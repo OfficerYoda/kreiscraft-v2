@@ -108,6 +108,12 @@ class FinalEncounterTest {
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
                                 .withCausingEntity(source).build());
             }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                // Encounter policy only; DragonDamageProbe verifies native reference-gear mitigation.
+                bombardmentDamage(recipient, source, healthPoints);
+            }
         });
         config = BasicConfigurationNode.root();
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.

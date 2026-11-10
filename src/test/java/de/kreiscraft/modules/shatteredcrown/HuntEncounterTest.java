@@ -59,6 +59,7 @@ class HuntEncounterTest {
     private ConfigurationNode config;
     private CommandRegistrar commands;
     private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
+    private int referenceHits;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -109,6 +110,13 @@ class HuntEncounterTest {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
                                 .withCausingEntity(source).build());
+            }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                referenceHits++;
+                // Encounter policy only; DragonDamageProbe verifies native reference-gear mitigation.
+                bombardmentDamage(recipient, source, healthPoints);
             }
         });
         config = BasicConfigurationNode.root();
@@ -181,6 +189,7 @@ class HuntEncounterTest {
             case BOMBARDMENT -> {
                 scheduler.advance(Duration.ofSeconds(3));
                 assertThat(player.getHealth()).isEqualTo(14);
+                assertThat(referenceHits).isEqualTo(1);
             }
             case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         }
