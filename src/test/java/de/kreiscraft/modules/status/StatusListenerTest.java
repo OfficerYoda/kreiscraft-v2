@@ -67,6 +67,30 @@ class StatusListenerTest {
     }
 
     @Test
+    void onJoin_formatsNameInJoinMessage() {
+        PlayerMock player = server.addPlayer("Bob");
+        Status status = new Status("<gold>Admin", "<blue>[A]", GOLD);
+        when(service.get(player.getUniqueId())).thenReturn(status);
+        PlayerJoinEvent event = new PlayerJoinEvent(player,
+                Component.translatable("multiplayer.player.joined", Component.text("Bob"))
+                        .color(NamedTextColor.YELLOW));
+
+        server.getPluginManager().callEvent(event);
+
+        assertThat(event.joinMessage()).isEqualTo(
+                Component.translatable("multiplayer.player.joined", status.displayName("Bob"))
+                        .color(NamedTextColor.YELLOW));
+
+        PlayerJoinEvent custom = new PlayerJoinEvent(player, Component.text("Welcome Bob!"));
+        server.getPluginManager().callEvent(custom);
+        assertThat(plain(custom.joinMessage())).isEqualTo("Welcome Admin Bob [A]!");
+
+        PlayerJoinEvent suppressed = new PlayerJoinEvent(player, (Component) null);
+        server.getPluginManager().callEvent(suppressed);
+        assertThat(suppressed.joinMessage()).isNull();
+    }
+
+    @Test
     void onJoin_appliesPrefixSuffixAndColor() {
         PlayerMock player = server.addPlayer("TestPlayer");
         Team team = player.getScoreboard().getTeam(teamName(player));

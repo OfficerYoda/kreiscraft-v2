@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.status;
 
 import de.kreiscraft.core.event.PriorityListener;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Server;
@@ -33,6 +34,12 @@ public final class StatusListener implements PriorityListener {
         // Every existing scoreboard needs the joining player's representation.
         for (Player viewer : server.getOnlinePlayers()) {
             applyStatusToScoreboard(joiner, viewer.getScoreboard());
+        }
+        Component joinMessage = event.joinMessage();
+        if (joinMessage != null) {
+            event.joinMessage(joinMessage.replaceText(builder -> builder
+                    .matchLiteral(joiner.getName())
+                    .replacement(joiner.displayName())));
         }
     }
 
