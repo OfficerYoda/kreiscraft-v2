@@ -108,8 +108,6 @@ class StatusListenerTest {
 
         server.addPlayer(player);
 
-        // The scoreboard team contributes prefix/suffix to the list entry; the list name
-        // carries only the exact status colour so the two are not duplicated.
         assertThat(player.playerListName())
                 .isEqualTo(Component.text("Bob").color(TextColor.color(GOLD)));
     }
@@ -126,7 +124,7 @@ class StatusListenerTest {
 
         assertThat(plain(alice.displayName())).isEqualTo("Alice Alice [A]");
         assertThat(alice.playerListName())
-                .isEqualTo(Component.text("Alice").color(TextColor.color(0x5555FF)));
+                .isEqualTo(Component.text("Alice").color(NamedTextColor.AQUA));
     }
 
     @Test
@@ -173,7 +171,7 @@ class StatusListenerTest {
         assertThat(team.hasEntry(alice.getName())).isTrue();
         assertThat(plain(team.prefix())).isEqualTo("Alice ");
         assertThat(plain(team.suffix())).isEqualTo(" [A]");
-        assertThat(team.color()).isEqualTo(NamedTextColor.BLUE);
+        assertThat(team.color()).isEqualTo(NamedTextColor.AQUA);
     }
 
     @Test
@@ -192,7 +190,7 @@ class StatusListenerTest {
         assertThat(team).isNotNull();
         assertThat(plain(team.prefix())).isEqualTo("Admin ");
         assertThat(plain(team.suffix())).isEqualTo(" star");
-        assertThat(team.color()).isEqualTo(NamedTextColor.GOLD);
+        assertThat(team.color()).isEqualTo(NamedTextColor.RED);
     }
 
     @Test
@@ -207,7 +205,7 @@ class StatusListenerTest {
 
         assertThat(plain(player.displayName())).isEqualTo("Admin OnlinePlayer [A]");
         assertThat(player.playerListName())
-                .isEqualTo(Component.text("OnlinePlayer").color(TextColor.color(GOLD)));
+                .isEqualTo(Component.text("OnlinePlayer").color(NamedTextColor.RED));
     }
 
     @Test

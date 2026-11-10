@@ -86,8 +86,8 @@ public final class ChatFormatListener implements PriorityListener {
         // Look up the sender's status for prefix, suffix and name colour.
         Status status = statusService.get(sender.getUniqueId());
 
-        // Player display name coloured with their status colour.
-        TextColor nameColor = TextColor.color(status.color() & 0x00FFFFFF);
+        // Keep the final visible prefix colour on the player name.
+        TextColor nameColor = status.nameColor();
         TextComponent nameColored = Component.text(sender.getName()).color(nameColor);
 
         // Resolve custom MiniMessage tags from the format string.

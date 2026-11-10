@@ -3,7 +3,6 @@ package de.kreiscraft.modules.status;
 import de.kreiscraft.core.event.PriorityListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -52,16 +51,12 @@ public final class StatusListener implements PriorityListener {
     /**
      * Applies the status prefix, coloured name, and suffix to the surfaces that are global to the
      * player rather than per-viewer: the Bukkit display name and the tab-list (player list) name.
-     * The scoreboard team contributes the prefix and suffix in the in-game list, so the list name
-     * carries only the exact status colour to avoid duplicating them.
+     * The player-list name carries the same name colour as the display name.
      */
     private void applyIdentity(Player player) {
         Status status = service.get(player.getUniqueId());
-        TextColor color = TextColor.color(status.color() & 0x00FFFFFF);
-        Component coloredName = Component.text(player.getName()).color(color);
-        player.displayName(
-                status.prefixComponent().append(coloredName).append(status.suffixComponent()));
-        player.playerListName(coloredName);
+        player.displayName(status.displayName(player.getName()));
+        player.playerListName(Component.text(player.getName()).color(status.nameColor()));
     }
 
     private void applyStatusToScoreboard(Player subject, Scoreboard scoreboard) {
@@ -73,7 +68,7 @@ public final class StatusListener implements PriorityListener {
         }
         team.prefix(status.prefixComponent());
         team.suffix(status.suffixComponent());
-        team.color(NamedTextColor.nearestTo(TextColor.color(status.color() & 0x00FFFFFF)));
+        team.color(NamedTextColor.nearestTo(status.nameColor()));
         team.addEntry(subject.getName());
     }
 

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
@@ -30,6 +31,28 @@ public record Status(String prefix, String suffix, int color) {
         return PLAIN.serialize(content).isEmpty()
                 ? Component.empty()
                 : Component.space().append(content);
+    }
+
+    public TextColor nameColor() {
+        return finalTextColor(prefixComponent(), TextColor.color(color & 0x00FFFFFF));
+    }
+
+    public Component displayName(String name) {
+        return prefixComponent()
+                .append(Component.text(name).color(nameColor()))
+                .append(suffixComponent());
+    }
+
+    private static TextColor finalTextColor(Component component, TextColor inherited) {
+        TextColor current = component.color() == null ? inherited : component.color();
+        List<Component> children = component.children();
+        for (int i = children.size() - 1; i >= 0; i--) {
+            Component child = children.get(i);
+            if (!PLAIN.serialize(child).isBlank()) {
+                return finalTextColor(child, current);
+            }
+        }
+        return current;
     }
 
     private static Component trimLeading(Component component) {

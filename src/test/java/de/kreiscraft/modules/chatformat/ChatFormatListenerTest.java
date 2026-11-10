@@ -208,6 +208,22 @@ class ChatFormatListenerTest {
     }
 
     @Test
+    void onChat_nameAndBridgeUseFinalPrefixColorWithoutColoringBody() {
+        PlayerMock player = server.addPlayer("Heidi");
+        when(statusService.get(player.getUniqueId()))
+                .thenReturn(new Status("<red>Admin <gold>Owner</gold></red>", "<blue>suffix", 0xFF4400));
+        List<ChatBridgeEvent> captured = new ArrayList<>();
+        chatBridge.subscribe(captured::add);
+
+        listenerWith(new ChatFormatConfig()).onChat(mockEvent(player, "hello"));
+
+        Component rendered = captured.getFirst().rendered();
+        assertThat(findText(rendered, "Heidi").color()).isEqualTo(TextColor.color(0xFFAA00));
+        assertThat(captured.getFirst().senderColor()).isEqualTo("#FFAA00");
+        assertThat(findText(rendered, "hello").color()).isNull();
+    }
+
+    @Test
     void onChat_allowMiniMessageFalse_treatsBodyAsLiteralText() {
         PlayerMock player = server.addPlayer("Eve");
         // Message contains a MiniMessage tag that should be treated as literal text
