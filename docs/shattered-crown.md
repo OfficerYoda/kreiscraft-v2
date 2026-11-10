@@ -36,7 +36,8 @@ must then be destroyed by eligible player attacks, in any order. Mob damage, exp
 crystals and protected-origin attacks cannot complete an objective.
 
 Each Anchor receives **ceil(wave population / 4) complete Roster Units**, without a population cap:
-4→1, 5/8→2, 12→3, 20→5, 68→17. Wave one freezes #150's first-End-entry server-wide population;
+0→0, 4→1, 5/8→2, 12→3, 20→5, 68→17. An empty debug End still has four exposed crystals to destroy.
+Wave one freezes #150's first-End-entry server-wide population;
 waves two and three freeze everyone connected in the managed End at their starts, including creative,
 spectator and outside-arena players. Later joins/leaves never resize existing defenders.
 
@@ -164,7 +165,7 @@ Pool setup, refresh, damage and expiry share an isolated effect scope: a renderi
 removes its indicator and active-area entry, releasing the rotation instead of leaving it busy.
 Fault-injection tests cover both initial rendering and later refresh failures.
 
-## Earlier encounter contract
+## Historical earlier encounter contract (superseded by #151)
 
 Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four
 independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
@@ -201,7 +202,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, per Anchor |
+| `defender-count` | 4 | 1–32, per placeholder Roster Unit; complete units scale per Anchor |
 | `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
 | `defender-health` | 40 | 1–1000 |
 | `defender-damage` | 6 | 0–100, native attack attribute |
@@ -218,7 +219,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `arrival-height` | 12 | Cylinder's total height, 4–64 |
 | `anchor-distance` | 24 | Desired cardinal ground objectives east/north/west/south of the podium, 8–192 |
 | `ground-search-radius` | 8 | Bounded horizontal search around each position, 0–16 |
-| `ground-max-y` | 90 | Highest allowed objective feet Y, −64–320; combat still covers the full build height |
+| `ground-max-y` | 90 | Deprecated compatibility field, ignored; objective placement uses world build height |
 | `final-health-fraction` | 0.3 | Deprecated compatibility field; ignored. The 65% and 30% wave gates are fixed. |
 | `final-cadence-factor` | 0.7 | 0.5–0.9 multiplier for familiar Hunt/landing cadence opportunities |
 | `final-pool-lifetime-factor` | 0.5 | 0.25–0.9 multiplier for pool lifetime; warning and damage cadence unchanged |

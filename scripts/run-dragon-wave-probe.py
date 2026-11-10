@@ -7,6 +7,7 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -74,4 +75,5 @@ with (root / "console.log").open("w") as log:
     (root / "exit.txt").write_text(str(code))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-sys.exit(0 if code == 0 and "DRAGON_WAVE_PROBE PASS" in text and "DRAGON_WAVE_PROBE FAIL" not in text else 1)
+sys.exit(0 if code == 0 and "DRAGON_WAVE_PROBE PASS" in text and "DRAGON_WAVE_PROBE FAIL" not in text
+         and not re.search(r"\bERROR\]", text) else 1)

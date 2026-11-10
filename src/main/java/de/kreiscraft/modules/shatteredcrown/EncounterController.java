@@ -560,7 +560,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         waveNumber = selected; // Install the shield before any public spawn callback can reenter damage.
         finalEntered = selected == 3;
         wavePopulation = population;
-        rosterUnits = Math.max(1, (int) Math.ceil(population / 4.0));
+        rosterUnits = (int) Math.ceil(population / 4.0);
         installingWave = true;
         EnderDragon source = dragon;
         hunting = false;
@@ -1726,6 +1726,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             spawnRosterUnit(objective, waveNumber, unit);
         }
         objective.waveInstalled = true;
+        objective.crystal.setGlowing(objective.wave.isEmpty());
     }
 
     /** #153–155 replace this unit's content, not wave scaling or objective completion. */
@@ -2008,7 +2009,8 @@ public final class EncounterController implements Listener, AutoCloseable {
     public void onPrematureDeath(EntityDeathEvent event) {
         if (event.getEntity().equals(dragon) && (clearedWaves < 3 || shielded())) {
             event.setCancelled(true);
-            event.setReviveHealth(attemptMaxHealth * nextGateFraction());
+            double floor = shielded() ? (waveNumber == 1 ? 1 : waveNumber == 2 ? 0.65 : 0.30) : nextGateFraction();
+            event.setReviveHealth(attemptMaxHealth * floor);
             if (anchors.isEmpty()) {
                 enterFinalGate();
             }

@@ -323,6 +323,20 @@ class FinalEncounterTest {
     }
 
     @Test
+    void prematureDeathDuringAnUnclearedOpeningRevivesAboveTheNextHealthGate() throws Exception {
+        opening();
+        var premature = new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000);
+        server.getPluginManager().callEvent(premature);
+        assertThat(premature.isCancelled()).isTrue();
+        assertThat(premature.getReviveHealth()).isEqualTo(1000);
+        assertThat(crystals()).hasSize(4);
+        clearAnchors();
+        damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 100000);
+        assertThat(dragon.getHealth()).isEqualTo(650);
+        assertThat(crystals()).hasSize(4);
+    }
+
+    @Test
     void prematureNativeDeathCannotAwardRewardsButClearedFinaleLeavesNormalCompletionUntouched() throws Exception {
         hunt();
         var premature = new EntityDeathEvent(dragon, mock(DamageSource.class), List.of(), 12000);

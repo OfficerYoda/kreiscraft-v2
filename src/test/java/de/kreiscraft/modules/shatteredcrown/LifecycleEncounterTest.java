@@ -204,6 +204,23 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void aDebugWaveWithNobodyInEndHasZeroRosterUnitsButStillRequiresFourCrystalDestructions() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        player.teleport(new Location(server.addSimpleWorld("empty-end-observer"), 0, 64, 0));
+        encounter.debugWave(3, server.getConsoleSender());
+        assertThat(encounter.wavePopulation()).isZero();
+        assertThat(encounter.rosterUnits()).isZero();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(crystals()).hasSize(4).allMatch(Entity::isGlowing);
+        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
+        encounter.close();
+    }
+
+    @Test
     void debugReplacementKeepsTheContinuousAbsenceDeadlineAndRemainingGrace() throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
