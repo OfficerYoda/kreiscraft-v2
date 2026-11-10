@@ -65,6 +65,16 @@ A destructible crystal objective whose survival shields the dragon and whose def
 defeated before it can be destroyed.
 _Avoid_: Shield generator, pylon
 
+**Anchor Wave**:
+A set of four independently defended Anchors that temporarily shields the dragon until every crystal
+is destroyed. Completing a wave permanently unlocks additional attacks.
+_Avoid_: Final pair, defender wave
+
+**Roster Unit**:
+One complete set of a wave's defenders assigned to an Anchor. Population scaling repeats whole units,
+not individual defenders or groups within a unit.
+_Avoid_: Defender count, group count
+
 **Attack Warning**:
 A visible cue identifying an impending Encounter attack before it deals damage.
 _Avoid_: Telegraph, attack notification

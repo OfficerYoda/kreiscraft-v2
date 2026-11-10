@@ -9,6 +9,15 @@ The [encounter guide](/shattered-crown/) lists the shipped profile and current c
 
 ## Combat coverage, population and opening grace (#150)
 
+#151 consumes these APIs at three fixed four-Anchor boundaries (100%, 65%, 30%). It freezes
+`firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Each Anchor receives
+`ceil(population/4)` complete Roster Units. Missing/unloaded members are replaced, not defeated;
+only destruction of all four exposed crystals completes a wave. A wave owns its crystal/defender
+scope inside the attempt scope. Phase replacement closes attack, objective and extension-owned
+work, cancels accepted-but-pending damage and resets explosion reservations. Debug snapshots are fresh,
+but the remaining Opening Grace clock is preserved, not restarted. Native phase restoration,
+unrelated entities and reward payloads remain intact. See [wave rules and probe](/shattered-crown/).
+
 The combat area is a horizontal cylinder of radius 192 by default, centered on the actual managed
 main-End battle podium, across that world's entire build height. Protected arrival is excluded;
 other End worlds and outer islands beyond the configured radius are not combat areas. The retired
@@ -43,6 +52,51 @@ explosions may still destroy the platform and its surroundings.
 in the GUI); reload affects only the next fresh attempt. Disable/unload cancels pending grace work.
 
 ## Server Configuration
+
+### Defender roaming and allegiance (#152)
+
+Owned defenders pursue only living, online Survival/Adventure participants throughout the configured
+radius-192, full-build-height combat cylinder. Moving away from an Anchor inside that cylinder never
+teleports a defender home. Leaving the cylinder/world or entering protected arrival does recover it
+to its original objective. Mode, arrival, world, death and quit transitions clear stale targets;
+native retaliation/retargeting cannot choose nonparticipants. The retired `defender-leash` setting
+is ignored and no longer exposed in Server Configuration.
+
+Anchor membership is independent of position and passengers. Owned descendants also gate the original
+Anchor after their parent dies; projectiles/effects carry allegiance but are not extra defender lives.
+Direct, projectile, attributed delayed damage, potion splash and cloud effects cannot harm Endermen,
+other owned combatants or the managed dragon. Ordinary mobs and separate Wither gameplay are unchanged.
+
+Later rosters must use the controller's existing attempt ownership:
+
+- `spawnCombatant(location, type, parent, initializer)` creates a recoverable descendant with ownership
+  and tuning installed **before** public Paper spawn callbacks. The initializer is replayed on recovery.
+- `inheritOwnership(child, parent)` belongs in Paper's pre-spawn consumer for owned projectiles/effects
+  or externally spawned descendants. It returns false for unrelated or expired parents. It never
+  transfers an entity to another Anchor. `ownsCombatant` and `anchorId` expose scoped attribution.
+- Native projectile launch/source-bearing spawn callbacks inherit ownership at LOWEST as a backstop;
+  custom spawning must still use the pre-spawn consumer. Keep a real causing/direct owned entity on
+  delayed `DamageSource` events, even after parent death, and schedule through `runLater/runRepeating`.
+  Unattributed source-less explosions cannot be distinguished safely from unrelated gameplay.
+
+Missing/unloaded defenders are replaced with their original species/tuning, not credited as defeats.
+Actual accepted death events remove lives permanently. Each Anchor allows three recovery passes;
+continued disappearance aborts cleanly and retries after 30 seconds instead of leaving a locked gate.
+Reset/disable/unload cancels owned delayed work and removes descendants/effects, preserving unowned mobs.
+
+The executable build132 native check is `defenderRoamingProbeJar`. Build with Java 25:
+`./gradlew spotlessApply check build defenderRoamingProbeJar --max-workers=2`.
+Stage its JAR **alongside** the production shadow JAR in a fresh disposable, loopback-only Paper
+server with Crown enabled (other modules disabled), then launch with `-Dkreiscraft.defender-probe=true`.
+It registers a genuine native player with synthetic transport, lets the native main-End battle create
+its dragon, and observes the production controller; it never instantiates a second encounter. The
+probe exits after `DEFENDER_ROAMING_PROBE PASS/FAIL`. Exit zero alone is not success. This fixture
+checks the current 16-Husk root profile; extend the selection/counts when later roster tickets land.
+It proves far-target native pursuit on an isolated elevated pad, actual attributed melee, public
+native ally/projectile/cloud damage cancellation before/after parent death, mode exclusion, no death
+replenishment, and owned-only cleanup. It does not prove human login/rendering or all-species natural
+terrain navigation; #163 must exercise the integrated mounted/Guardian/Warden/Wither roster and real
+projectile collisions, arrival/retaliation transitions and unload/reload on actual End terrain.
 
 Use the existing permission-controlled Server Configuration GUI or YAML and `/kreiscraft reload`.
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains

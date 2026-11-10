@@ -64,6 +64,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     private final Scheduler scheduler;
     private final MessageService messages;
     private final List<Mob> defenders = new ArrayList<>();
+    private final java.util.Map<UUID, Anchor> combatOwners = new java.util.HashMap<>();
+    private final java.util.Map<UUID, java.util.function.Consumer<Mob>> defenderInitializers =
+            new java.util.HashMap<>();
     private final Set<UUID> unavailableWorlds = new HashSet<>();
     private Scheduler.Task discovery;
     private Scheduler.Task absence;
@@ -75,6 +78,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     private double attemptMaxHealth;
     private int retryDelay;
     private EncounterWork work;
+    private EncounterWork clockWork;
     private EncounterWork attackWork;
     private EncounterWork mainWork;
     private DebugAttack mainAttack;
@@ -93,6 +97,55 @@ public final class EncounterController implements Listener, AutoCloseable {
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
     private boolean finalEntered;
+    private int waveNumber;
+    private int clearedWaves;
+    private int wavePopulation;
+    private int rosterUnits;
+    private boolean installingWave;
+    private EncounterWork waveWork;
+
+    public enum AttackFamily {
+        BOMBARDMENT, PREY, DIVE, RAIN, SMASH
+    }
+
+    /** Permanent unlocks, independent of the current wave's temporary shield. */
+    public Set<AttackFamily> unlockedAttacks() {
+        if (dragon == null) {
+            return Set.of();
+        }
+        var unlocked = java.util.EnumSet.of(AttackFamily.BOMBARDMENT, AttackFamily.PREY);
+        if (clearedWaves >= 1) {
+            unlocked.add(AttackFamily.DIVE);
+        }
+        if (clearedWaves >= 2) {
+            unlocked.add(AttackFamily.RAIN);
+        }
+        if (clearedWaves >= 3) {
+            unlocked.add(AttackFamily.SMASH);
+        }
+        return Set.copyOf(unlocked);
+    }
+
+    public int waveNumber() {
+        return waveNumber;
+    }
+
+    public int wavePopulation() {
+        return wavePopulation;
+    }
+
+    public int rosterUnits() {
+        return rosterUnits;
+    }
+
+    private double nextGateFraction() {
+        return waveNumber < 2 ? 0.65 : 0.30;
+    }
+
+    private boolean shielded() {
+        return installingWave || !anchors.isEmpty();
+    }
+
     private Scheduler.Task finalAcceptance;
     private final List<Location> openingGround = new ArrayList<>();
     private double[] explosionBuckets;
@@ -211,7 +264,56 @@ public final class EncounterController implements Listener, AutoCloseable {
                         + ", landing=" + landingRequested + ", flight=" + (flight != null)
                         + ", native=" + dragon.getPhase()
                         + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
-                        + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + remainingGraceSeconds());
+                        + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + remainingGraceSeconds()
+                        + ", wave=" + waveNumber + ", shield=" + shielded() + ", objectives=" + (4 - anchors.size())
+                        + "/4"
+                        + ", defenders=" + defenders.size() + ", wave-population=" + wavePopulation
+                        + ", roster-units=" + rosterUnits + ", unlocked=" + unlockedAttacks());
+    }
+
+    void debugWave(int selected, CommandSender sender) {
+        if (closed) {
+            messages.send(sender, "shattered-crown.debug-disabled");
+            return;
+        }
+        if (dragon == null) {
+            pulse();
+        }
+        if (dragon == null) {
+            messages.send(sender, "shattered-crown.debug-no-encounter");
+            return;
+        }
+        if (selected < 1 || selected > 3) {
+            throw new IllegalArgumentException("Wave must be 1, 2 or 3");
+        }
+        debugPause();
+        if (finalAcceptance != null) {
+            finalAcceptance.cancel();
+            finalAcceptance = null;
+        }
+        damageReservations.keySet().forEach(event -> event.setCancelled(true));
+        damageReservations.clear();
+        explosionReservations.clear();
+        poolCooldowns.clear();
+        java.util.Arrays.fill(explosionBuckets, 0);
+        EnderDragon source = dragon;
+        EncounterWork replaced = work;
+        work.close(); // Includes generic extension-owned entities/tasks, not just current attacks/Anchors.
+        if (closed || dragon != source || work != replaced) {
+            return;
+        }
+        work = new EncounterWork(scheduler, server.getLogger());
+        waveWork = null;
+        combatOwners.clear();
+        defenderInitializers.clear();
+        clearedWaves = selected - 1;
+        entryPopulation = server.getOnlinePlayers().size();
+        dragon.setHealth(attemptMaxHealth * (selected == 1 ? 1 : selected == 2 ? 0.65 : 0.30));
+        enterWave(selected, selected == 1 ? entryPopulation : scalingPopulation());
+        if (dragon != null) {
+            messages.send(sender, "shattered-crown.debug-wave", "wave", selected);
+            debugStatus(sender);
+        }
     }
 
     private String activeAttack() {
@@ -310,12 +412,15 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private static final class Anchor {
         private EnderCrystal crystal;
+        private final UUID id;
         private final Location home;
         private final List<Mob> wave = new ArrayList<>();
         private boolean waveInstalled;
+        private int recoveryPasses;
 
         private Anchor(EnderCrystal crystal, Location home) {
             this.crystal = crystal;
+            this.id = crystal.getUniqueId();
             this.home = home;
         }
     }
@@ -414,6 +519,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         dragon = candidate;
         work = new EncounterWork(scheduler, server.getLogger());
+        clockWork = new EncounterWork(scheduler, server.getLogger());
         attackWork = new EncounterWork(scheduler, server.getLogger());
         // Extra tick prevents a hit between clock pulses expiring before a full rolling window.
         explosionBuckets = new double[(int) Math.ceil(config.explosionWindowSeconds() * 20) + 1];
@@ -425,33 +531,36 @@ public final class EncounterController implements Listener, AutoCloseable {
         attemptMaxHealth = dragon.getAttribute(Attribute.MAX_HEALTH).getValue();
         dragon.setHealth(attemptMaxHealth);
         openingGround.addAll(grounds);
-        for (Location ground : grounds) {
-            installAnchor(ground);
+        graceTicks = Math.round(config.openingGraceSeconds() * 20);
+        enterWave(1, entryPopulation);
+        if (dragon != candidate || closed) {
+            return;
         }
         targetCursor = 0;
-        graceTicks = Math.round(config.openingGraceSeconds() * 20);
-        if (graceTicks == 0) {
-            scheduleBombardments();
-        } else {
-            ownDragonPhase();
-            dragon.setPhase(EnderDragon.Phase.CIRCLING);
-            final Scheduler.Task[] clock = new Scheduler.Task[1];
-            clock[0] = work.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
-                if (--graceTicks == 0) {
-                    clock[0].cancel();
-                    if (!manualMode) {
-                        if (hunting) {
-                            hunting = false;
-                            startHunt();
-                            warnLane();
-                        } else {
-                            warnBombardment();
-                            scheduleBombardments();
-                        }
+        if (graceTicks > 0) {
+            startGraceClock();
+        }
+    }
+
+    private void startGraceClock() {
+        ownDragonPhase();
+        dragon.setPhase(EnderDragon.Phase.CIRCLING);
+        final Scheduler.Task[] clock = new Scheduler.Task[1];
+        clock[0] = clockWork.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            if (--graceTicks == 0) {
+                clock[0].cancel();
+                if (!manualMode) {
+                    if (hunting) {
+                        hunting = false;
+                        startHunt();
+                        warnLane();
+                    } else {
+                        warnBombardment();
+                        scheduleBombardments();
                     }
                 }
-            });
-        }
+            }
+        });
     }
 
     private static Duration seconds(double value) {
@@ -459,10 +568,18 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void enterFinalGate() {
-        if (finalEntered || dragon == null) {
+        if (waveNumber >= 3 || dragon == null || shielded()) {
             return;
         }
-        finalEntered = true; // Set before spawning: public spawn callbacks may reenter combat.
+        enterWave(waveNumber + 1, scalingPopulation());
+    }
+
+    private void enterWave(int selected, int population) {
+        waveNumber = selected; // Install the shield before any public spawn callback can reenter damage.
+        finalEntered = selected == 3;
+        wavePopulation = population;
+        rosterUnits = (int) Math.ceil(population / 4.0);
+        installingWave = true;
         EnderDragon source = dragon;
         hunting = false;
         resetAttacks();
@@ -470,17 +587,25 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         try {
-            if (openingGround.subList(0, 2).stream().anyMatch(ground -> !arena.usable(ground))) {
-                throw new IllegalStateException("Final Anchor ground is no longer usable");
+            if (waveWork != null) {
+                waveWork.close();
             }
-            for (Location ground : openingGround.subList(0, 2)) {
+            defenders.clear();
+            anchors.clear();
+            defenderInitializers.clear();
+            waveWork = requireWork().child(() -> {
+            });
+            for (int index = 0; index < openingGround.size(); index++) {
+                Location ground = arena.anchorSite(openingGround.get(index));
+                openingGround.set(index, ground);
                 installAnchor(ground);
             }
+            installingWave = false;
         } catch (RuntimeException exception) {
             cleanup(true);
             retryDelay = 30;
             server.getLogger().log(java.util.logging.Level.WARNING,
-                    "[Shattered Crown] Final Anchor setup aborted; retry in 30 seconds", exception);
+                    "[Shattered Crown] Anchor wave setup aborted; retry in 30 seconds", exception);
             return;
         }
         scheduleBombardments();
@@ -554,7 +679,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private void startExplosionClock() {
         // One fixed-size tick ring, not one expiry task per hit: even fractional bed hits stay bounded.
-        runRepeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+        clockWork.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
             encounterTicks++;
             poolCooldowns.values().removeIf(expiry -> expiry <= encounterTicks);
             explosionCursor = (explosionCursor + 1) % explosionBuckets.length;
@@ -587,15 +712,15 @@ public final class EncounterController implements Listener, AutoCloseable {
             explosionBuckets[explosionCursor] += Math.min(reserved, event.getFinalDamage());
         }
         Entity target = event.getEntity() instanceof ComplexEntityPart part ? part.getParent() : event.getEntity();
-        if (!event.isCancelled() && target.equals(dragon) && !finalEntered && finalAcceptance == null
+        if (!event.isCancelled() && target.equals(dragon) && waveNumber < 3 && !shielded() && finalAcceptance == null
                 && Double.isFinite(event.getFinalDamage()) && event.getFinalDamage() > 0
-                && dragon.getHealth() - event.getFinalDamage() <= attemptMaxHealth * config.finalHealthFraction()) {
+                && dragon.getHealth() - event.getFinalDamage() <= attemptMaxHealth * nextGateFraction()) {
             // MONITOR only observes acceptance. Native damage applies before this owned callback;
             // the HIGHEST health floor protects subsequent hits until the Anchors are installed.
             finalAcceptance = runLater(Duration.ZERO, () -> {
                 finalAcceptance = null;
-                if (dragon != null && dragon.isValid() && !finalEntered
-                        && dragon.getHealth() <= attemptMaxHealth * config.finalHealthFraction()) {
+                if (dragon != null && dragon.isValid() && waveNumber < 3 && !shielded()
+                        && dragon.getHealth() <= attemptMaxHealth * nextGateFraction()) {
                     enterFinalGate();
                 }
             });
@@ -661,7 +786,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         if (event.getEntity().equals(dragon) && event.getNewPhase() == EnderDragon.Phase.DYING
-                && (!finalEntered || !anchors.isEmpty() || !hunting)) {
+                && (clearedWaves < 3 || shielded())) {
             event.setCancelled(true);
             if (anchors.isEmpty()) {
                 enterFinalGate();
@@ -714,6 +839,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void warnLane() {
+        if (debugAttack == null && !unlockedAttacks().contains(AttackFamily.DIVE)) {
+            return;
+        }
         startAction(DebugAttack.DIVE, this::warnLane);
     }
 
@@ -1140,6 +1268,9 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void smash() {
+        if (debugAttack == null && !unlockedAttacks().contains(AttackFamily.SMASH)) {
+            return;
+        }
         startAction(DebugAttack.SMASH, this::smash);
     }
 
@@ -1564,6 +1695,81 @@ public final class EncounterController implements Listener, AutoCloseable {
         requireWork().own(entity, kind);
     }
 
+    /** Combat attribution survives parent death, but never crosses an attempt boundary. */
+    public boolean ownsCombatant(Entity entity) {
+        return entity != null && combatOwners.containsKey(entity.getUniqueId());
+    }
+
+    /** Original objective identity; roaming, riding and parent death do not reassign it. */
+    public UUID anchorId(Entity entity) {
+        Anchor anchor = entity == null ? null : combatOwners.get(entity.getUniqueId());
+        return anchor == null ? null : anchor.id;
+    }
+
+    /** Call in Paper's pre-spawn consumer, not a post-spawn listener. Mobs also gate their parent's Anchor. */
+    public boolean inheritOwnership(Entity entity, Entity parent) {
+        Anchor anchor = parent == null ? null : combatOwners.get(parent.getUniqueId());
+        if (anchor == null || work == null || work.isClosed() || !anchors.contains(anchor)) {
+            return false;
+        }
+        registerCombatant(entity, anchor);
+        return true;
+    }
+
+    private void registerCombatant(Entity entity, Anchor anchor) {
+        Anchor previous = combatOwners.get(entity.getUniqueId());
+        if (previous != null && previous != anchor) {
+            throw new IllegalArgumentException("Combatants cannot change their original Anchor");
+        }
+        waveWork.own(entity, entity instanceof Mob ? "defender" : "defender-effect");
+        if (combatOwners.putIfAbsent(entity.getUniqueId(), anchor) == null && entity instanceof Mob mob) {
+            defenders.add(mob);
+            anchor.wave.add(mob);
+            mob.setPersistent(true);
+            setCombatRange(mob);
+            anchor.crystal.setGlowing(false);
+        }
+    }
+
+    private void setCombatRange(Mob mob) {
+        var range = mob.getAttribute(Attribute.FOLLOW_RANGE);
+        if (range != null) {
+            // Native zombie randomization must not shrink pursuit below the whole arena diameter.
+            range.getModifiers().stream().filter(modifier -> modifier.getAmount() < 0).forEach(range::removeModifier);
+            range.setBaseValue(config.arenaRadius() * 2);
+        }
+    }
+
+    /** Recoverable descendant spawn. Initialization and ownership run before public spawn callbacks. */
+    public Mob spawnCombatant(Location location, EntityType type, Entity parent,
+            java.util.function.Consumer<Mob> initialize) {
+        Anchor anchor = parent == null ? null : combatOwners.get(parent.getUniqueId());
+        if (anchor == null || !anchors.contains(anchor)) {
+            throw new IllegalArgumentException("Parent is not an active Encounter combatant");
+        }
+        return spawnCombatant(location, type, anchor, initialize);
+    }
+
+    private Mob spawnCombatant(Location location, EntityType type, Anchor anchor,
+            java.util.function.Consumer<Mob> initialize) {
+        EncounterWork owner = waveWork;
+        Entity entity = location.getWorld().spawnEntity(location, type,
+                org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM, spawned -> {
+                    if (!(spawned instanceof Mob mob)) {
+                        throw new IllegalArgumentException("Defenders must be mobs");
+                    }
+                    registerCombatant(mob, anchor);
+                    defenderInitializers.put(mob.getUniqueId(), initialize);
+                    initialize.accept(mob);
+                    setCombatRange(mob);
+                });
+        if (!entity.isValid() || entity.isDead() || waveWork != owner || owner.isClosed() || dragon == null) {
+            entity.remove();
+            throw new IllegalStateException("Defender spawn was refused");
+        }
+        return (Mob) entity;
+    }
+
     /** All delayed warnings, damage and landing effects must use this attempt-scoped scheduler. */
     public Scheduler.Task runLater(Duration delay, Runnable effect) {
         return requireWork().later(delay, effect);
@@ -1604,75 +1810,91 @@ public final class EncounterController implements Listener, AutoCloseable {
         return work;
     }
 
-    private Mob spawnDefender(Location ground) {
-        EncounterWork owner = requireWork();
-        Mob defender = (Mob) ground.getWorld().spawnEntity(ground.clone().add(2, 0, 0),
-                EntityType.valueOf(config.defenderType()));
-        try {
-            if (!defender.isValid() || work != owner || dragon == null) {
-                throw new IllegalStateException("Defender spawn was refused");
-            }
-            own(defender, "defender");
-            defender.setPersistent(true);
-            battles.preventDespawn(defender);
-            defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
-            defender.setHealth(config.defenderHealth());
-            defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
-            defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
-            return defender;
-        } catch (RuntimeException exception) {
-            defender.remove();
-            throw exception;
-        }
+    private Mob spawnDefender(Anchor anchor) {
+        return spawnCombatant(arena.defenderSite(anchor.home), EntityType.valueOf(config.defenderType()), anchor,
+                defender -> {
+                    battles.preventDespawn(defender);
+                    defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
+                    defender.setHealth(config.defenderHealth());
+                    defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
+                    defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
+                });
     }
 
     private EnderCrystal spawnAnchor(Location ground) {
-        EncounterWork owner = requireWork();
+        EncounterWork owner = waveWork;
         EnderCrystal crystal = ground.getWorld().spawn(ground, EnderCrystal.class);
-        if (!crystal.isValid() || work != owner || dragon == null) {
+        if (!crystal.isValid() || waveWork != owner || owner.isClosed() || dragon == null) {
             crystal.remove();
             throw new IllegalStateException("Anchor spawn was refused");
         }
-        own(crystal, "anchor");
+        owner.own(crystal, "anchor");
         return crystal;
     }
 
     private void installAnchor(Location ground) {
         var objective = new Anchor(spawnAnchor(ground), ground);
         anchors.add(objective);
-        for (int i = 0; i < config.defenderCount(); i++) {
-            Mob defender = spawnDefender(ground);
-            defenders.add(defender);
-            objective.wave.add(defender);
+        for (int unit = 0; unit < rosterUnits; unit++) {
+            spawnRosterUnit(objective, waveNumber, unit);
         }
         objective.waveInstalled = true;
+        objective.crystal.setGlowing(objective.wave.isEmpty());
+    }
+
+    /** #153–155 replace this unit's content, not wave scaling or objective completion. */
+    private void spawnRosterUnit(Anchor objective, int wave, int unit) {
+        // ponytail: existing configured roster is the playable placeholder until #153–155 supply each wave.
+        for (int index = 0; index < config.defenderCount(); index++) {
+            spawnDefender(objective);
+        }
     }
 
     private void maintainDefenders() {
         for (Anchor anchor : anchors) {
             Location home = anchor.home;
+            if ((!anchor.crystal.isValid() || anchor.wave.stream().anyMatch(mob -> !mob.isValid()))
+                    && ++anchor.recoveryPasses > 3) {
+                throw new IllegalStateException("Anchor recovery exhausted after three replacement passes");
+            }
             if (!anchor.crystal.isValid()) {
+                waveWork.forget(anchor.crystal);
+                anchor.crystal.remove();
                 anchor.crystal = spawnAnchor(home);
                 anchor.crystal.setGlowing(anchor.wave.isEmpty());
             }
             for (int i = 0; i < anchor.wave.size(); i++) {
                 Mob defender = anchor.wave.get(i);
                 if (!defender.isValid()) {
+                    var initialize = defenderInitializers.remove(defender.getUniqueId());
                     defenders.remove(defender);
+                    combatOwners.remove(defender.getUniqueId());
+                    waveWork.forget(defender);
+                    anchor.wave.remove(i--);
                     defender.remove();
-                    defender = spawnDefender(home);
-                    defenders.add(defender);
-                    anchor.wave.set(i, defender);
+                    spawnCombatant(arena.defenderSite(home), defender.getType(), anchor,
+                            initialize == null ? battles::preventDespawn : initialize);
+                    continue;
                 }
                 Location location = defender.getLocation();
                 if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
-                        || location.distanceSquared(home) > config.defenderLeash() * config.defenderLeash()) {
-                    defender.teleport(home.clone().add(2, 0, 0));
+                        || arena.protectedArrival(location)) {
+                    defender.teleport(arena.defenderSite(home));
                 }
+                Location targetOrigin = defender.getLocation();
                 defender.setTarget(home.getWorld().getPlayers().stream().filter(arena::participant)
-                        .min(java.util.Comparator.comparingDouble(player -> player.getLocation().distanceSquared(home)))
+                        .min(java.util.Comparator.comparingDouble(player -> player.getLocation()
+                                .distanceSquared(targetOrigin)))
                         .orElse(null));
             }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTarget(org.bukkit.event.entity.EntityTargetLivingEntityEvent event) {
+        if (ownsCombatant(event.getEntity()) && event.getTarget() != null
+                && (!(event.getTarget() instanceof Player player) || !isParticipant(player))) {
+            event.setCancelled(true);
         }
     }
 
@@ -1715,6 +1937,10 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         source = source instanceof ComplexEntityPart part ? part.getParent() : source;
         direct = direct instanceof ComplexEntityPart part ? part.getParent() : direct;
+        if ((ownsCombatant(source) || ownsCombatant(direct)) && combatAlly(target)) {
+            event.setCancelled(true);
+            return;
+        }
         if (target instanceof Player player
                 && (source != null && encounterEnemy(source) || direct != null && encounterEnemy(direct))
                 && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
@@ -1736,13 +1962,13 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         Anchor objective = anchors.stream().filter(anchor -> target.equals(anchor.crystal)).findFirst().orElse(null);
-        boolean enemy = target.equals(dragon) || objective != null || defenders.contains(target);
+        boolean enemy = target.equals(dragon) || objective != null || ownsCombatant(target);
         if (enemy && (protectedSource(source) || protectedSource(direct)
                 || protectedSource(event.getDamageSource().getDirectEntity()))) {
             event.setCancelled(true);
             return;
         }
-        if (target.equals(dragon) && (!anchors.isEmpty() || finalEntered && !hunting)) {
+        if (target.equals(dragon) && shielded()) {
             event.setCancelled(true);
         } else if (target.equals(dragon)) {
             if (!Double.isFinite(event.getFinalDamage()) || event.getFinalDamage() < 0) {
@@ -1754,10 +1980,10 @@ public final class EncounterController implements Listener, AutoCloseable {
                         + explosionReservations.values().stream().mapToDouble(Double::doubleValue).sum();
                 capDamage(event, config.explosionWindowBudget() - spent);
             }
-            if (!event.isCancelled() && !finalEntered) {
+            if (!event.isCancelled() && waveNumber < 3) {
                 double pending = damageReservations.values().stream().mapToDouble(Double::doubleValue).sum();
                 capDamage(event, Math.max(0,
-                        dragon.getHealth() - attemptMaxHealth * config.finalHealthFraction() - pending));
+                        dragon.getHealth() - attemptMaxHealth * nextGateFraction() - pending));
             }
             if (!event.isCancelled()) {
                 damageReservations.put(event, event.getFinalDamage());
@@ -1769,17 +1995,15 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (objective != null) {
             event.setCancelled(true); // Remove the objective without a terrain-damaging crystal explosion.
             if (objective.waveInstalled && objective.wave.isEmpty() && source instanceof Player player
-                    && isParticipant(player)) {
+                    && isParticipant(player) && !explosive(event) && !installingWave) {
                 objective.crystal.remove();
                 anchors.remove(objective);
                 if (anchors.isEmpty()) {
-                    stopBombardments();
+                    clearedWaves = waveNumber;
+                    resetAttacks();
                     startHunt();
                 }
             }
-        }
-        if (target instanceof Player player && isProtectedArrival(player.getLocation()) && defenders.contains(source)) {
-            event.setCancelled(true);
         }
     }
 
@@ -1814,7 +2038,12 @@ public final class EncounterController implements Listener, AutoCloseable {
     private boolean encounterEnemy(Entity entity) {
         Entity target = entity instanceof ComplexEntityPart part ? part.getParent() : entity;
         return target.equals(dragon) || target instanceof EnderDragon candidate && isManagedDragon(candidate)
-                || defenders.contains(target) || anchors.stream().anyMatch(anchor -> target.equals(anchor.crystal));
+                || ownsCombatant(target) || anchors.stream().anyMatch(anchor -> target.equals(anchor.crystal));
+    }
+
+    private boolean combatAlly(Entity entity) {
+        Entity target = entity instanceof ComplexEntityPart part ? part.getParent() : entity;
+        return target instanceof org.bukkit.entity.Enderman || ownsCombatant(target) || target.equals(dragon);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -1827,27 +2056,38 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPotion(org.bukkit.event.entity.PotionSplashEvent event) {
+        if (ownsCombatant(event.getEntity())
+                || event.getEntity().getShooter() instanceof Entity source && ownsCombatant(source)) {
+            event.getAffectedEntities().stream().filter(this::combatAlly)
+                    .forEach(entity -> event.setIntensity(entity, 0));
+        }
         if (protectedSource(event.getEntity())) {
             event.getAffectedEntities().stream().filter(this::encounterEnemy)
                     .forEach(entity -> event.setIntensity(entity, 0));
         }
-        if (event.getEntity().getShooter() instanceof Entity source && encounterEnemy(source)) {
+        Entity source = event.getEntity().getShooter() instanceof Entity owner ? owner : null;
+        if (ownsCombatant(event.getEntity()) || source != null && encounterEnemy(source)) {
             event.getAffectedEntities().stream().filter(entity -> entity instanceof Player player
                     && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
-                            || openingGrace() && source.equals(dragon)))
+                            || openingGrace() && dragon.equals(source)))
                     .forEach(entity -> event.setIntensity(entity, 0));
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCloud(org.bukkit.event.entity.AreaEffectCloudApplyEvent event) {
+        if (ownsCombatant(event.getEntity())
+                || event.getEntity().getSource() instanceof Entity source && ownsCombatant(source)) {
+            event.getAffectedEntities().removeIf(this::combatAlly);
+        }
         if (protectedSource(event.getEntity())) {
             event.getAffectedEntities().removeIf(this::encounterEnemy);
         }
-        if (event.getEntity().getSource() instanceof Entity source && encounterEnemy(source)) {
+        Entity source = event.getEntity().getSource() instanceof Entity owner ? owner : null;
+        if (ownsCombatant(event.getEntity()) || source != null && encounterEnemy(source)) {
             event.getAffectedEntities().removeIf(entity -> entity instanceof Player player
                     && (isProtectedArrival(player.getLocation()) || dragon != null && !isParticipant(player)
-                            || openingGrace() && source.equals(dragon)));
+                            || openingGrace() && dragon.equals(source)));
         }
     }
 
@@ -1861,6 +2101,31 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (isProtectedArrival(projectile.getLocation())
                 || projectile.getShooter() instanceof Entity shooter && protectedSource(shooter)) {
             projectile.getPersistentDataContainer().set(PROTECTED_SHOT, PersistentDataType.BYTE, (byte) 1);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatLaunch(ProjectileLaunchEvent event) {
+        if (event.getEntity().getShooter() instanceof Entity source) {
+            inheritOwnership(event.getEntity(), source);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatLingering(org.bukkit.event.entity.LingeringPotionSplashEvent event) {
+        inheritOwnership(event.getAreaEffectCloud(), event.getEntity());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCombatSpawn(EntitySpawnEvent event) {
+        Entity entity = event.getEntity();
+        if (entity instanceof Projectile projectile && projectile.getShooter() instanceof Entity source) {
+            inheritOwnership(entity, source);
+        } else if (entity instanceof TNTPrimed tnt && tnt.getSource() != null) {
+            inheritOwnership(entity, tnt.getSource());
+        } else if (entity instanceof org.bukkit.entity.AreaEffectCloud cloud
+                && cloud.getSource() instanceof Entity source) {
+            inheritOwnership(entity, source);
         }
     }
 
@@ -1898,11 +2163,13 @@ public final class EncounterController implements Listener, AutoCloseable {
     public void onDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Player player) {
             cancelMark(player);
+            clearDefenderTargets(player);
             updateAbsence(player, false);
         }
         if (defenders.remove(event.getEntity())) {
+            defenderInitializers.remove(event.getEntity().getUniqueId());
             for (Anchor anchor : anchors) {
-                if (anchor.wave.remove(event.getEntity()) && anchor.wave.isEmpty()) {
+                if (anchor.wave.remove(event.getEntity()) && anchor.waveInstalled && anchor.wave.isEmpty()) {
                     anchor.crystal.setGlowing(true);
                 }
             }
@@ -1915,9 +2182,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPrematureDeath(EntityDeathEvent event) {
-        if (event.getEntity().equals(dragon) && (!finalEntered || !anchors.isEmpty() || !hunting)) {
+        if (event.getEntity().equals(dragon) && (clearedWaves < 3 || shielded())) {
             event.setCancelled(true);
-            event.setReviveHealth(attemptMaxHealth * config.finalHealthFraction());
+            double floor = shielded() ? (waveNumber == 1 ? 1 : waveNumber == 2 ? 0.65 : 0.30) : nextGateFraction();
+            event.setReviveHealth(attemptMaxHealth * floor);
             if (anchors.isEmpty()) {
                 enterFinalGate();
             }
@@ -1935,6 +2203,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getTo(), event.getPlayer().getGameMode())) {
                 cancelMark(event.getPlayer());
+                clearDefenderTargets(event.getPlayer());
             }
             updateAbsence(event.getPlayer(),
                     arena.participantAt(event.getPlayer(), event.getTo(), event.getPlayer().getGameMode()));
@@ -1949,6 +2218,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         cancelMark(event.getPlayer());
+        clearDefenderTargets(event.getPlayer());
         updateAbsence(event.getPlayer(), false);
     }
 
@@ -1964,6 +2234,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         if (arena != null) {
             if (!arena.participantAt(event.getPlayer(), event.getPlayer().getLocation(), event.getNewGameMode())) {
                 cancelMark(event.getPlayer());
+                clearDefenderTargets(event.getPlayer());
             }
             updateAbsence(event.getPlayer(),
                     arena.participantAt(event.getPlayer(), event.getPlayer().getLocation(), event.getNewGameMode()));
@@ -1980,6 +2251,24 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
     }
 
+    private void clearDefenderTargets(Player player) {
+        for (Mob mob : List.copyOf(defenders)) {
+            if (!mob.isValid()) {
+                continue;
+            }
+            if (player.equals(mob.getTarget())) {
+                mob.setTarget(null);
+            }
+            if (mob instanceof org.bukkit.entity.Wither wither) {
+                for (var head : org.bukkit.entity.Wither.Head.values()) {
+                    if (player.equals(wither.getTarget(head))) {
+                        wither.setTarget(head, null);
+                    }
+                }
+            }
+        }
+    }
+
     private void updateAbsence(Player changed, boolean participates) {
         if (dragon == null) {
             return;
@@ -1992,7 +2281,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 absence = null;
             }
         } else if (absence == null) {
-            absence = runLater(Duration.ofSeconds(60), () -> {
+            absence = clockWork.later(Duration.ofSeconds(60), () -> {
                 if (dragon != null && dragon.getWorld().getPlayers().stream().noneMatch(arena::participant)) {
                     cleanup(true);
                 }
@@ -2002,6 +2291,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private void cleanup(boolean reset) {
         graceTicks = 0;
+        if (clockWork != null) {
+            clockWork.close();
+            clockWork = null;
+        }
         if (entryDiscovery != null) {
             entryDiscovery.cancel();
             entryDiscovery = null;
@@ -2032,9 +2325,17 @@ public final class EncounterController implements Listener, AutoCloseable {
             absence = null;
         }
         defenders.clear();
+        combatOwners.clear();
+        defenderInitializers.clear();
         anchors.clear();
         openingGround.clear();
         finalEntered = false;
+        waveNumber = 0;
+        clearedWaves = 0;
+        wavePopulation = 0;
+        rosterUnits = 0;
+        installingWave = false;
+        waveWork = null;
         finalAcceptance = null;
         explosionBuckets = null;
         explosionCursor = 0;

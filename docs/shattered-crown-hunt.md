@@ -50,7 +50,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `sweep-cadence-seconds` | 25 | 5–120 seconds between opportunities; first after this interval |
 | `sweep-damage` | 6 | 0–100 health points through the native damage/cancellation pathway |
 | `sweep-knockback` | 1.2 | 0–2 horizontal velocity, vertical component one-third of this value |
-| `final-health-fraction` | 0.3 | 0.1–0.5; exactly two cleared sites return once |
+| `final-health-fraction` | 0.3 | Deprecated compatibility value, ignored; waves are fixed at 100/65/30% |
 | `final-cadence-factor` | 0.7 | 0.5–0.9; familiar cadence acceleration with warning/serialization floors |
 | `final-pool-lifetime-factor` | 0.5 | 0.25–0.9; final pools expire sooner |
 | `explosion-window-seconds` | 2 | 0.25–5; shared rolling managed-dragon budget window |
@@ -59,7 +59,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 Final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**, pool lifetime **3s**. Ordinary
 warning durations, lane lifetime, knockback and the complete 12s actual-arrival melee window stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
-forced-wipe timer is introduced. During the two-Anchor shield, only learned opening bombardments
+forced-wipe timer is introduced. During each four-Anchor shield, learned opening bombardments
 run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
 
 `lane-cadence-seconds >= lane-warning-seconds + 0.5` serializes warnings.

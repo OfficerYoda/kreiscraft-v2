@@ -13,6 +13,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/kreiscraft reload` | `kc` | core | Reload config, messages, and all module configs. | `kreiscraft.admin` | op¹ |
 | `/dragondebug status` | — | `shattered-crown` | Show phase, active/queued attacks, hazards and native flight state. | `kreiscraft.shatteredcrown.debug` | op |
 | `/dragondebug pause\|cancel\|resume` | — | `shattered-crown` | Pause/cancel custom attacks or resume the automatic rotation. | `kreiscraft.shatteredcrown.debug` | op |
+| `/dragondebug wave <1\|2\|3>` | — | `shattered-crown` | Replace owned phase work, set 100/65/30% health and earlier unlocks, take fresh population snapshots, spawn four defended Anchors; automatic attacks paused. | `kreiscraft.shatteredcrown.debug` | op |
 | `/dragondebug trigger <dive\|smash\|prey\|bombardment\|landing> [player]` | — | `shattered-crown` | Enter manual mode and trigger an attack on yourself or the named eligible player. | `kreiscraft.shatteredcrown.debug` | op |
 | `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |

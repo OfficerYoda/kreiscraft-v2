@@ -116,6 +116,353 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void lateArrivalsCannotResizeOpeningRosterAndLaterWavesSnapshotEveryoneInEnd() throws Exception {
+        var overworld = server.addSimpleWorld("population-overworld");
+        player.teleport(new Location(overworld, 0, 64, 0));
+        var others = new java.util.ArrayList<PlayerMock>();
+        for (int index = 0; index < 11; index++) {
+            var observer = server.addPlayer();
+            observer.teleport(new Location(overworld, 0, 64, 0));
+            observer.setGameMode(org.bukkit.GameMode.CREATIVE);
+            others.add(observer);
+        }
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        player.teleport(new Location(end, 100, 50, 0));
+        server.addPlayer().teleport(new Location(overworld, 0, 64, 0)); // After first entry, before arena entry.
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ZERO);
+        assertThat(encounter.wavePopulation()).isEqualTo(12);
+        assertThat(encounter.rosterUnits()).isEqualTo(3);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(48);
+        for (var observer : others.subList(0, 4)) {
+            observer.teleport(new Location(end, 250, 64, 0));
+        }
+        assertThat(encounter.wavePopulation()).isEqualTo(12);
+        assertThat(encounter.scalingPopulation()).isEqualTo(5);
+        clearWave();
+        acceptedDragonHit(100000);
+        assertThat(encounter.waveNumber()).isEqualTo(2);
+        assertThat(encounter.wavePopulation()).isEqualTo(5);
+        assertThat(encounter.rosterUnits()).isEqualTo(2);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(32);
+        others.getFirst().teleport(new Location(overworld, 0, 64, 0));
+        assertThat(encounter.wavePopulation()).isEqualTo(5);
+        clearWave();
+        acceptedDragonHit(100000);
+        assertThat(encounter.waveNumber()).isEqualTo(3);
+        assertThat(encounter.wavePopulation()).isEqualTo(4);
+        assertThat(encounter.rosterUnits()).isEqualTo(1);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        encounter.close();
+    }
+
+    private void clearWave() {
+        List.copyOf(end.getEntitiesByClass(Zombie.class)).forEach(defender -> {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
+                    mock(org.bukkit.damage.DamageSource.class), List.of()));
+        });
+        for (var crystal : crystals()) {
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(player, crystal,
+                    org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                    mock(org.bukkit.damage.DamageSource.class), 10));
+        }
+    }
+
+    private void acceptedDragonHit(double amount) {
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(player, dragon,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                mock(org.bukkit.damage.DamageSource.class), amount);
+        server.getPluginManager().callEvent(hit);
+        assertThat(hit.isCancelled()).isFalse();
+        dragon.setHealth(dragon.getHealth() - hit.getFinalDamage());
+        scheduler.advance(Duration.ZERO);
+    }
+
+    @Test
+    void deadParentAttributionSurvivesNormalWaveTransitionsButNotDebugReplacement() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var originalAnchor = encounter.anchorId(parent);
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.EXPLOSION)
+                .withDirectEntity(parent).withCausingEntity(parent).build();
+        for (int wave = 2; wave <= 3; wave++) {
+            clearWave();
+            acceptedDragonHit(100000);
+            assertThat(encounter.waveNumber()).isEqualTo(wave);
+            assertThat(encounter.anchorId(parent)).isEqualTo(originalAnchor);
+            var blast = new org.bukkit.event.entity.EntityDamageEvent(unrelated,
+                    org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_EXPLOSION, source, 10);
+            server.getPluginManager().callEvent(blast);
+            assertThat(blast.isCancelled()).isTrue();
+        }
+        encounter.debugWave(1, server.getConsoleSender());
+        assertThat(encounter.ownsCombatant(parent)).isFalse();
+        encounter.close();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"4,1,16", "5,2,32", "8,2,32", "12,3,48", "20,5,80", "68,17,272"})
+    void populationUsesFullUncappedRosterUnitsAtEveryAnchor(int population, int units, int total) throws Exception {
+        for (int index = 1; index < population; index++) {
+            server.addPlayer();
+        }
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        assertThat(encounter.wavePopulation()).isEqualTo(population);
+        assertThat(encounter.rosterUnits()).isEqualTo(units);
+        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(total);
+        for (var anchor : crystals()) {
+            assertThat(end.getEntitiesByClass(Zombie.class).stream()
+                    .filter(defender -> defender.getLocation().distanceSquared(anchor.getLocation()) < 25))
+                            .hasSize(total / 4);
+        }
+        encounter.close();
+    }
+
+    @Test
+    void aDebugWaveWithNobodyInEndHasZeroRosterUnitsButStillRequiresFourCrystalDestructions() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        player.teleport(new Location(server.addSimpleWorld("empty-end-observer"), 0, 64, 0));
+        encounter.debugWave(3, server.getConsoleSender());
+        assertThat(encounter.wavePopulation()).isZero();
+        assertThat(encounter.rosterUnits()).isZero();
+        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(crystals()).hasSize(4).allMatch(Entity::isGlowing);
+        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
+        encounter.close();
+    }
+
+    @Test
+    void debugReplacementKeepsTheContinuousAbsenceDeadlineAndRemainingGrace() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        scheduler.advance(Duration.ofSeconds(10));
+        encounter.debugWave(2, player);
+        assertThat(encounter.remainingGraceSeconds()).isEqualTo(20);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(59));
+        encounter.debugWave(3, player);
+        assertThat(crystals()).hasSize(4);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(encounter.waveNumber()).isZero();
+        encounter.close();
+    }
+
+    @Test
+    void ownedWitherSideHeadsDropPlayersWhoBecomeProtectedOrIneligible() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var wither = (org.bukkit.entity.Wither) encounter.spawnCombatant(parent.getLocation(),
+                org.bukkit.entity.EntityType.WITHER, parent, battles::preventDespawn);
+        for (var head : org.bukkit.entity.Wither.Head.values()) {
+            wither.setTarget(head, player);
+        }
+        player.teleport(new Location(end, 100, 50, 0));
+        for (var head : org.bukkit.entity.Wither.Head.values()) {
+            assertThat(wither.getTarget(head)).isNull();
+        }
+        encounter.close();
+    }
+
+    @Test
+    void missingDescendantsRecoverTheirSpeciesAndTuningButRepeatedLossAbortsInsteadOfLockingAnAnchor()
+            throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var anchorId = encounter.anchorId(parent);
+        var originals = end.getEntitiesByClass(Mob.class).stream().map(Entity::getUniqueId).toList();
+        Mob missing = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent, mob -> {
+            battles.preventDespawn(mob);
+            mob.getAttribute(Attribute.MAX_HEALTH).setBaseValue(45);
+            mob.setHealth(45);
+        });
+        for (int loss = 0; loss < 3; loss++) {
+            var old = missing;
+            old.remove(); // Missing/unloaded is not an accepted death notification.
+            scheduler.advance(Duration.ofSeconds(1));
+            missing = end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
+                    .filter(mob -> mob.getType() == org.bukkit.entity.EntityType.HUSK && mob != old)
+                    .filter(mob -> !originals.contains(mob.getUniqueId()))
+                    .findFirst().orElseThrow();
+            assertThat(encounter.anchorId(missing)).isEqualTo(anchorId);
+            assertThat(missing.getHealth()).isEqualTo(45);
+            assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
+        }
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        missing.remove();
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid))
+                .containsExactlyInAnyOrder(dragon, unrelated);
+        scheduler.advance(Duration.ofSeconds(31));
+        assertThat(crystals()).hasSize(4);
+        assertThat(unrelated.isValid()).isTrue();
+        encounter.close();
+    }
+
+    @Test
+    void debugWaveCommandsReplaceOwnedWorkFreezePopulationAndKeepEarlierUnlocks() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var dispatcher =
+                new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
+        dispatcher.getRoot().addChild(DragonDebugCommand.build(() -> encounter, context.messages(), server));
+        var source = mock(io.papermc.paper.command.brigadier.CommandSourceStack.class);
+        org.mockito.Mockito.when(source.getSender()).thenReturn(server.getConsoleSender());
+        var unrelated = end.spawn(new Location(end, 50, 64, 0), Zombie.class);
+        var pending = new java.util.concurrent.atomic.AtomicInteger();
+        context.events().register(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void spawning(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof Zombie) {
+                    assertThat(encounter.ownsCombatant(event.getEntity())).isTrue();
+                    assertThat(encounter.anchorId(event.getEntity())).isNotNull();
+                }
+            }
+        });
+        for (int index = 0; index < 4; index++) {
+            var observer = server.addPlayer();
+            observer.teleport(new Location(end, 250, 64, 0));
+            observer.setGameMode(org.bukkit.GameMode.SPECTATOR);
+        }
+        for (int wave : new int[] {3, 1, 2, 3}) {
+            var old = crystals();
+            var parent = end.getEntitiesByClass(Zombie.class).stream().filter(encounter::ownsCombatant)
+                    .findFirst().orElseThrow();
+            var child = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
+                    battles::preventDespawn);
+            var projectile = end.spawn(child.getLocation(), org.bukkit.entity.Arrow.class,
+                    shot -> assertThat(encounter.inheritOwnership(shot, child)).isTrue());
+            var oldMembers = end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant).toList();
+            var externalEffect = end.spawn(new Location(end, 50, 64, 0), org.bukkit.entity.TextDisplay.class);
+            encounter.own(externalEffect, "wave-effect");
+            encounter.runLater(Duration.ofSeconds(1), pending::incrementAndGet);
+            dispatcher.execute("dragondebug wave " + wave, source);
+            assertThat(externalEffect.isValid()).isFalse();
+            assertThat(projectile.isValid()).isFalse();
+            assertThat(encounter.ownsCombatant(projectile)).isFalse();
+            assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
+            assertThat(old).noneMatch(Entity::isValid);
+            assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
+            assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(33).contains(unrelated);
+            assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
+            assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5", "roster-units=2",
+                    "mode=manual", "shield=true", "objectives=0/4");
+            assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.BOMBARDMENT,
+                    EncounterController.AttackFamily.PREY);
+            assertThat(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.DIVE)).isEqualTo(wave > 1);
+            assertThat(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.RAIN)).isEqualTo(wave > 2);
+            assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
+            scheduler.advance(Duration.ofSeconds(35));
+            assertThat(pending.get()).isZero();
+            assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        }
+        dispatcher.execute("dragondebug resume", source);
+        assertThat(status(encounter)).contains("mode=automatic", "wave=3", "shield=true");
+        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        encounter.close();
+        assertThat(crystals()).isEmpty();
+        assertThat(end.getEntitiesByClass(Zombie.class)).containsExactly(unrelated);
+        assertThat(encounter.unlockedAttacks()).isEmpty();
+        assertThat(encounter.wavePopulation()).isZero();
+    }
+
+    @Test
+    void ownershipExistsBeforeSpawnAndDescendantsKeepTheOriginalGateAfterParentDeath() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void spawning(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof Zombie) {
+                    assertThat(encounter.ownsCombatant(event.getEntity())).isTrue();
+                    var retaliate = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(event.getEntity(), dragon,
+                            org.bukkit.event.entity.EntityTargetEvent.TargetReason.TARGET_ATTACKED_ENTITY);
+                    server.getPluginManager().callEvent(retaliate);
+                    assertThat(retaliate.isCancelled()).isTrue();
+                }
+            }
+        }, plugin);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var anchorId = encounter.anchorId(parent);
+        var anchor =
+                crystals().stream().filter(crystal -> crystal.getUniqueId().equals(anchorId)).findFirst().orElseThrow();
+        var child = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
+                battles::preventDespawn);
+        assertThat(encounter.anchorId(child)).isEqualTo(anchorId);
+        var arrow = end.spawn(child.getLocation(), org.bukkit.entity.Arrow.class, shot -> {
+            assertThat(encounter.inheritOwnership(shot, child)).isTrue();
+            shot.setShooter(child);
+        });
+        assertThat(encounter.anchorId(arrow)).isEqualTo(anchorId);
+        var cloud = end.spawn(child.getLocation(), org.bukkit.entity.AreaEffectCloud.class,
+                effect -> assertThat(encounter.inheritOwnership(effect, child)).isTrue());
+        var arrival = server.addPlayer();
+        arrival.teleport(new Location(end, 100, 50, 0));
+        var apply = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud,
+                new java.util.ArrayList<>(List.of(arrival, player, dragon, child)));
+        server.getPluginManager().callEvent(apply);
+        assertThat(apply.getAffectedEntities()).containsExactly(player);
+        for (var mob : List.copyOf(end.getEntitiesByClass(Zombie.class))) {
+            if (mob != child && anchorId.equals(encounter.anchorId(mob))) {
+                mob.setHealth(0);
+                server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(mob,
+                        mock(org.bukkit.damage.DamageSource.class), List.of()));
+            }
+        }
+        assertThat(anchor.isGlowing()).isFalse();
+        child.teleport(new Location(end, -150, end.getMaxHeight() - 1, 0));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(child.getLocation().getX()).isEqualTo(-150);
+        assertThat(anchor.isGlowing()).isFalse();
+        var delayed = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
+                battles::preventDespawn);
+        assertThat(encounter.anchorId(delayed)).isEqualTo(anchorId);
+        var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
+        assertThat(encounter.inheritOwnership(unrelated, unrelated)).isFalse();
+        encounter.close();
+        assertThat(child.isValid()).isFalse();
+        assertThat(delayed.isValid()).isFalse();
+        assertThat(arrow.isValid()).isFalse();
+        assertThat(cloud.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+    }
+
+    @Test
     void combatCylinderCoversFullBuildHeightAtRadius192ButExcludesArrivalAndOtherWorlds() throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
@@ -218,6 +565,7 @@ class LifecycleEncounterTest {
         server.getPluginManager().callEvent(applied);
         assertThat(applied.getAffectedEntities()).isEmpty();
         scheduler.advance(Duration.ofSeconds(10));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         encounter.debugPause();
         encounter.debugResume();
         var arrival = server.addPlayer();
@@ -712,7 +1060,7 @@ class LifecycleEncounterTest {
         if (reset) {
             player.teleport(new Location(end, 100, 50, 0));
         } else {
-            for (int stage = 0; stage < 2; stage++) {
+            for (int stage = 0; stage < 3; stage++) {
                 end.getEntitiesByClass(Zombie.class).forEach(defender -> {
                     defender.setHealth(0);
                     server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
@@ -723,7 +1071,7 @@ class LifecycleEncounterTest {
                             crystal, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                             mock(org.bukkit.damage.DamageSource.class), 10));
                 }
-                if (stage == 0) {
+                if (stage < 2) {
                     var crossing = new org.bukkit.event.entity.EntityDamageByEntityEvent(player,
                             dragon, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                             mock(org.bukkit.damage.DamageSource.class), 1000);
