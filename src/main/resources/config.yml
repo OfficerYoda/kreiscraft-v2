@@ -81,7 +81,7 @@ modules:
     excluded-worlds: ["Lobby"]
     default-display: ACTIONBAR
   effects:
-    enabled: true
+    enabled: false
     default-particle: HAPPY_VILLAGER
     schedule: 5t
     count: 25
@@ -132,8 +132,10 @@ modules:
     border-duration: 30000s
   status:
     enabled: true
-    join-format: "<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>"
-    leave-format: "<kc-prefix><gray> « <player-prefix><name-colored><player-suffix>"
+    join-format:
+      "<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>"
+    leave-format:
+      "<kc-prefix><gray> « <player-prefix><name-colored><player-suffix>"
   tablist:
     enabled: true
     update-interval: 20t
