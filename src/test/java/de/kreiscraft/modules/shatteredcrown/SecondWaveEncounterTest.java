@@ -292,6 +292,42 @@ class SecondWaveEncounterTest {
         assertThat(encounter.waveNumber()).isZero();
     }
 
+    @Test
+    void disabledRestartRecoveryRemovesAllSixPersistedSpeciesAndLateLoadedEffectsButPreservesOrdinaryMobs()
+            throws Exception {
+        encounter.close();
+        var ordinary = end.spawn(player.getLocation(), org.bukkit.entity.Guardian.class);
+        var stale = staleRoster();
+        var plugin = MockBukkit.createMockPlugin("SecondWaveRecovery");
+        var config = BasicConfigurationNode.root();
+        config.node("enabled").set(false);
+        var module = new ShatteredCrownModule();
+        module.enable(new ModuleContext(plugin, config,
+                new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server),
+                new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
+        assertThat(stale).noneMatch(Entity::isValid);
+        var late = new java.util.ArrayList<>(staleRoster());
+        var shot = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+        shot.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                org.bukkit.persistence.PersistentDataType.STRING, "defender-effect");
+        late.add(shot);
+        server.getPluginManager().callEvent(new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0), late));
+        assertThat(late).noneMatch(Entity::isValid);
+        assertThat(ordinary.isValid()).isTrue();
+        assertThat(dragon.getHealth()).isEqualTo(200);
+        assertThat(crystals()).isEmpty();
+        module.disable();
+    }
+
+    private List<Entity> staleRoster() {
+        return UNIT.keySet().stream().map(type -> {
+            Entity entity = end.spawnEntity(player.getLocation(), type);
+            entity.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                    org.bukkit.persistence.PersistentDataType.STRING, "defender");
+            return entity;
+        }).toList();
+    }
+
     private List<Mob> defenders() {
         return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid).filter(encounter::ownsCombatant)
                 .toList();
