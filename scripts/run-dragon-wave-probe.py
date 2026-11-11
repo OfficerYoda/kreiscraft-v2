@@ -87,7 +87,8 @@ with (root / "console.log").open("w") as log:
     ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
     (root / "owned-pid.txt").write_text(str(process.pid))
     try:
-        code = process.wait(timeout=300 if mode == "rain" else 180)
+        # Rain's native tick bound is unchanged; allow one host/provider pause inside its wall-clock guard.
+        code = process.wait(timeout=900 if mode == "rain" else 180)
     except subprocess.TimeoutExpired:
         process.stdin.write("stop\n")
         process.stdin.flush()
