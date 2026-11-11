@@ -607,6 +607,52 @@ class HuntEncounterTest {
         assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=0"));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"cancel", "wave 2"})
+    void bombardmentStopsBetweenRecipientsWhenDamageListenerClosesItsOwner(String action) throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        var teammate = server.addPlayer();
+        teammate.teleport(player.getLocation());
+        int[] hits = {0};
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void replace(EntityDamageEvent event) throws Exception {
+                if (event.getEntity() instanceof org.bukkit.entity.Player
+                        && event.getDamageSource().getCausingEntity() == dragon && ++hits[0] == 1) {
+                    debug(action, player);
+                }
+            }
+        }, plugin);
+        debug("trigger bombardment", player);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(hits[0]).isEqualTo(1);
+        assertThat(List.of(player.getHealth(), teammate.getHealth())).containsExactlyInAnyOrder(14.0, 20.0);
+        assertThat(dragon.isValid()).isTrue();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("hazards=0"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(hits[0]).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"English,surface outside combat area",
+            "Deutsch,Oberfläche außerhalb des Kampfbereichs"})
+    void geometryRejectionUsesTheRequestersLanguage(String name, String reason) throws Exception {
+        startEncounter();
+        var requester = server.addPlayer(name);
+        requester.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        for (int x = 180; x <= 200; x++) {
+            for (int z = -10; z <= 10; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        player.teleport(new Location(end, 190, 64, 0));
+        debug("trigger smash " + player.getName(), requester);
+        assertThat(messages(requester)).singleElement().asString().contains(reason);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
     @Test
     void failedPreyRefreshClearsMainOwnershipAndAllowsAnotherProductionTrigger() throws Exception {
         startEncounter();

@@ -1,6 +1,6 @@
 """Run built production+probe JARs on fresh Paper132 worlds. Never use the shared run/ directory.
 
-Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|smash|opening|rain|release|rotation|second|dive|damage|flight|defender]
+Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|final|smash|opening|rain|release|rotation|second|dive|damage|flight|defender]
 The cache directory supplies libraries/, cache/, versions/, eula.txt and paper-26.2-132.jar.
 """
 from pathlib import Path
@@ -17,6 +17,7 @@ import threading
 import zipfile
 
 repo = Path(__file__).resolve().parents[1]
+mode = sys.argv[4] if len(sys.argv) > 4 else "wave"
 root = Path(sys.argv[1]).resolve()
 cache = Path(sys.argv[2]).resolve()
 root.mkdir(exist_ok=False)
@@ -31,15 +32,14 @@ with socket.socket() as sock:
     port = sock.getsockname()[1]
 (server / "server.properties").write_text(
     f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=true\nview-distance=3\n"
-    "simulation-distance=3\nlevel-name=wave_world\nspawn-protection=0\nmax-players=80\n"
+    f"simulation-distance=3\nlevel-name={'final_world' if mode == 'final' else 'wave_world'}\nspawn-protection=0\nmax-players=80\n"
     "enable-rcon=false\nenable-query=false\npause-when-empty-seconds=-1\n"
 )
 plugins = server / "plugins"
 plugins.mkdir()
 production = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
-mode = sys.argv[4] if len(sys.argv) > 4 else "wave"
-guard = {"second": "second-wave", "flight": "dragon"}.get(mode, mode)
-stems = {"wave": "dragon-wave", "smash": "smash-encounter", "opening": "opening-roster", "rain": "rain",
+guard = {"final": "final-wave", "second": "second-wave", "flight": "dragon"}.get(mode, mode)
+stems = {"wave": "dragon-wave", "final": "final-wave", "smash": "smash-encounter", "opening": "opening-roster", "rain": "rain",
          "release": "release-candidate", "rotation": "rotation", "second": "second-wave", "dive": "dive-encounter",
          "damage": "dragon-damage", "flight": "dragon-flight", "defender": "defender-roaming"}
 if mode not in stems:
@@ -115,6 +115,7 @@ if snapshot is not None:
     "paper_sha256": hashlib.sha256((server / "paper-26.2-132.jar").read_bytes()).hexdigest(),
 }, indent=2))
 with (root / "console.log").open("w") as log:
+    timed_out = False
     process = subprocess.Popen([
         str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
         "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{guard}-probe=true",
@@ -147,6 +148,7 @@ with (root / "console.log").open("w") as log:
         # Rain's native tick bound is unchanged; allow one host/provider pause inside its wall-clock guard.
         code = process.wait(timeout=1200 if mode == "release" else 900 if mode == "rain" else 300)
     except subprocess.TimeoutExpired:
+        timed_out = True
         process.stdin.write("stop\n")
         process.stdin.flush()
         try:
@@ -155,9 +157,10 @@ with (root / "console.log").open("w") as log:
             process.kill()
             code = process.wait()
     (root / "exit.txt").write_text(str(code))
+    (root / "timeout.txt").write_text(str(timed_out))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE", "rain": "RAIN_PROBE",
+marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "final": "FINAL_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE", "rain": "RAIN_PROBE",
           "release": "RELEASE_CANDIDATE_PROBE", "rotation": "ROTATION_PROBE", "second": "SECOND_WAVE_PROBE", "dive": "DIVE_ENCOUNTER_PROBE",
           "damage": "DRAGON_DAMAGE_PROBE", "flight": "DRAGON_FLIGHT_PROBE", "defender": "DEFENDER_ROAMING_PROBE"}[mode]
 passed = code == 0 and marker + " PASS" in text and marker + " FAIL" not in text and not re.search(r"\bERROR\]", text)
@@ -232,5 +235,5 @@ for owned_port in ports:
     with socket.socket() as sock:
         released[owned_port] = sock.connect_ex(("127.0.0.1", owned_port)) != 0
 (root / "ports-released.json").write_text(json.dumps(released, indent=2))
-passed = passed and all(released.values())
+passed = passed and not timed_out and all(released.values())
 sys.exit(0 if passed else 1)

@@ -185,7 +185,12 @@ class LifecycleEncounterTest {
         registry.register(module);
         registry.register(new de.kreiscraft.modules.wither.WitherModule());
         assertThat(registry.enableAll().enabled()).isEqualTo(2);
-        var encounter = context.services().get(EncounterController.class);
+        assertThat(context.services().find(EncounterService.class)).isPresent();
+        assertThat(context.services().find(EncounterController.class)).isEmpty();
+        var encounter = java.util.Arrays.stream(org.bukkit.event.entity.EntityDamageEvent.getHandlerList()
+                .getRegisteredListeners()).map(org.bukkit.plugin.RegisteredListener::getListener)
+                .filter(EncounterController.class::isInstance).map(EncounterController.class::cast)
+                .findFirst().orElseThrow();
         scheduler.advance(Duration.ZERO);
         encounter.debugWave(3, player);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
@@ -1087,6 +1092,53 @@ class LifecycleEncounterTest {
         assertThat(recovered.scalingPopulation()).isEqualTo(4);
         assertThat(recovered.firstEntryPopulation()).isEqualTo(4);
         recovered.close();
+    }
+
+    @Test
+    void openingSnapshotSurvivesWhenEveryConnectedEndPlayerDiesBeforeCombatEntry() throws Exception {
+        end = new WorldMock(new org.bukkit.WorldCreator("dead-arrival-end").environment(World.Environment.THE_END)) {
+            @Override
+            public List<org.bukkit.entity.Player> getPlayers() {
+                return super.getPlayers().stream().filter(connected -> !connected.isDead()).toList();
+            }
+        };
+        server.addWorld(end);
+        for (int x = -40; x <= 40; x++) {
+            for (int z = -40; z <= 40; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        dragon = end.spawn(new Location(end, 0, 80, 0), EnderDragon.class);
+        dragon.setPodium(new Location(end, 0, 64, 0));
+        var elsewhere = server.addSimpleWorld("before-arrival");
+        player.teleport(new Location(elsewhere, 0, 64, 0));
+        for (int count = 0; count < 3; count++) {
+            server.addPlayer().teleport(new Location(elsewhere, 0, 64, 0));
+        }
+        config.node("world-key").set(end.getKey().toString());
+        var encounter = new EncounterController(server, battles, ShatteredCrownConfig.load(config),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            player.teleport(new Location(end, 100, 50, 0));
+            assertThat(encounter.firstEntryPopulation()).isEqualTo(4);
+            player.setHealth(0);
+            assertThat(player.isOnline()).isTrue();
+            assertThat(end.getPlayers()).isEmpty();
+            scheduler.advance(Duration.ofSeconds(2));
+            assertThat(encounter.firstEntryPopulation()).isEqualTo(4);
+            var late = server.addPlayer();
+            late.teleport(new Location(end, 10, 64, 0));
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(server.getOnlinePlayers()).hasSize(5);
+            assertThat(encounter.waveNumber()).isEqualTo(1);
+            assertThat(encounter.wavePopulation()).isEqualTo(4);
+            assertThat(encounter.rosterUnits()).isEqualTo(1);
+            assertThat(defenders()).hasSize(43); // Replacing four with five would spawn two complete units.
+        } finally {
+            encounter.close();
+        }
     }
 
     @Test
