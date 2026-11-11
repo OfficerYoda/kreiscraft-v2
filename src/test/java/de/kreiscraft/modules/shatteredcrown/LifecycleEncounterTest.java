@@ -104,6 +104,17 @@ class LifecycleEncounterTest {
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock has no billboard setter; warning text, position and lifetime stay real.
             }
+
+            @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
+            }
         };
         module = new ShatteredCrownModule(battles);
         config = BasicConfigurationNode.root();
@@ -220,7 +231,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(2);
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         assertThat(encounter.rosterUnits()).isEqualTo(2);
-        assertThat(defenders()).hasSize(32);
+        assertThat(defenders()).hasSize(48);
         others.getFirst().teleport(new Location(overworld, 0, 64, 0));
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         clearWave();
@@ -233,11 +244,13 @@ class LifecycleEncounterTest {
     }
 
     private void clearWave() {
-        List.copyOf(defenders()).forEach(defender -> {
-            defender.setHealth(0);
-            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
-                    mock(org.bukkit.damage.DamageSource.class), List.of()));
-        });
+        end.getEntitiesByClass(Mob.class).stream()
+                .filter(mob -> mob.getPersistentDataContainer().has(new NamespacedKey("kreiscraft", "crown_artifact")))
+                .toList().forEach(defender -> {
+                    defender.setHealth(0);
+                    server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
+                            mock(org.bukkit.damage.DamageSource.class), List.of()));
+                });
         for (var crystal : crystals()) {
             server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(player, crystal,
                     org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
@@ -449,7 +462,7 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(defenders()).hasSize(wave == 1 ? 88 : 33).contains(unrelated);
+            assertThat(defenders()).hasSize(wave == 1 ? 88 : wave == 2 ? 49 : 33).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5", "roster-units=2",
                     "mode=manual", "shield=true", "objectives=0/4");

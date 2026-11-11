@@ -1908,7 +1908,28 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             return;
         }
-        // ponytail: configured roster remains the playable placeholder for #154–155 only.
+        if (wave == 2) {
+            for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
+                    EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE)) {
+                spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
+                    battles.preventDespawn(defender);
+                    defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
+                    defender.setHealth(config.defenderHealth());
+                    var damage = defender.getAttribute(Attribute.ATTACK_DAMAGE);
+                    if (damage != null) {
+                        damage.setBaseValue(config.defenderDamage());
+                    }
+                    if (defender instanceof org.bukkit.entity.PiglinBrute brute) {
+                        brute.setImmuneToZombification(true);
+                    }
+                    if (defender instanceof org.bukkit.entity.Guardian || defender instanceof org.bukkit.entity.Blaze) {
+                        battles.prepareRangedDefender(defender);
+                    }
+                });
+            }
+            return;
+        }
+        // ponytail: wave three keeps the configured placeholder until #155 supplies its content.
         for (int index = 0; index < config.defenderCount(); index++) {
             spawnDefender(objective);
         }
@@ -2003,7 +2024,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     defender.teleport(arena.defenderSite(home));
                 }
                 Location targetOrigin = defender.getLocation();
-                defender.setTarget(home.getWorld().getPlayers().stream().filter(arena::participant)
+                battles.targetDefender(defender, home.getWorld().getPlayers().stream().filter(arena::participant)
                         .min(java.util.Comparator.comparingDouble(player -> player.getLocation()
                                 .distanceSquared(targetOrigin)))
                         .orElse(null));
@@ -2378,7 +2399,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 continue;
             }
             if (player.equals(mob.getTarget())) {
-                mob.setTarget(null);
+                battles.targetDefender(mob, null);
             }
             if (mob instanceof org.bukkit.entity.Wither wither) {
                 for (var head : org.bukkit.entity.Wither.Head.values()) {

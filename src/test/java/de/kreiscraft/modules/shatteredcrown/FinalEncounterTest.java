@@ -108,6 +108,17 @@ class FinalEncounterTest {
             }
 
             @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
+            }
+
+            @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
@@ -215,7 +226,7 @@ class FinalEncounterTest {
                     end.getBlockAt(crystal.getLocation().getBlockX(), 63, crystal.getLocation().getBlockZ()).isEmpty())
                             .isTrue();
         }
-        assertThat(defenders()).hasSize(16)
+        assertThat(defenders()).hasSize(24)
                 .allSatisfy(defender -> assertThat(defender.getLocation().getBlock().getRelative(0, -1, 0).getType())
                         .isEqualTo(Material.END_STONE));
         clearAnchors();
@@ -256,7 +267,7 @@ class FinalEncounterTest {
         assertThat(dragon.getHealth()).isEqualTo(650);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).containsExactlyInAnyOrderElementsOf(openingLocations);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(24);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount).isCancelled()).isTrue();
         clearAnchors();
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);

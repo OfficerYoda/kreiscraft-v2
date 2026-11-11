@@ -154,7 +154,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 require(dragon.getHealth() == 650, "oversized native head melee clamped65");
                 stage = 1;
             } else if (stage == 1 && anchors().size() == 4) {
-                require(defenders().size() == 32, "wave2 allEnd population5 frozen units2");
+                require(defenders().size() == 48, "wave2 allEnd population5 frozen six-species units2");
                 verifyRetiredAttribution();
                 hitDragon(false);
                 require(dragon.getHealth() == 650, "shield protects native followup");
@@ -172,7 +172,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                     var old = anchors();
                     command("wave " + wave);
                     require(old.stream().noneMatch(org.bukkit.entity.Entity::isValid), "debug replaces old objectives");
-                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 87 : 32),
+                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 87 : wave == 2 ? 48 : 32),
                             "fresh defended debug wave" + wave);
                     require(dragon.getHealth() == (wave == 1 ? 1000 : wave == 2 ? 650 : 300), "debug health" + wave);
                     command("status");

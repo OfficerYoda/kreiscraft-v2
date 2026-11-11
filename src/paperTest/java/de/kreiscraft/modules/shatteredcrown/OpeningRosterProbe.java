@@ -105,6 +105,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
         try {
             World world = Bukkit.getWorld(NamespacedKey.minecraft("the_end"));
             world.setDifficulty(org.bukkit.Difficulty.NORMAL);
+            world.setGameRule(org.bukkit.GameRule.DO_MOB_SPAWNING, false);
             for (int x = -9; x <= 9; x++) {
                 for (int z = -9; z <= 9; z++) {
                     world.setChunkForceLoaded(x, z, true);
@@ -210,7 +211,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                             + (active.getX() - initialX) + " chain=" + group.stream().map(Entity::getType).toList()
                             + " attributedHits=" + hits);
                     group.forEach(mob -> mob.setAI(false));
-                    require(active.teleport(new Location(player.getWorld(), 46.5, 151, 8),
+                    require(active.teleport(new Location(player.getWorld(), 40.5, 151, -9 + index * 3),
                             io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
                             "park completed calibration group away from projectile path");
                     group.forEach(mob -> mob.setGravity(false));
@@ -326,6 +327,15 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 && event.getEntityType() != EntityType.ENDERMAN && event.getEntityType() != EntityType.ENDER_DRAGON) {
             require(owned(event.getEntity()), "ownership before NORMAL spawn callback " + event.getEntity().getType());
             spawns++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void died(org.bukkit.event.entity.EntityDeathEvent event) {
+        if (roster != null && roster.contains(event.getEntity()) && !done) {
+            var damage = event.getEntity().getLastDamageCause();
+            finish(false, "unexpected calibration member death " + event.getEntityType() + " cause="
+                    + (damage == null ? "unknown" : damage.getCause()));
         }
     }
 

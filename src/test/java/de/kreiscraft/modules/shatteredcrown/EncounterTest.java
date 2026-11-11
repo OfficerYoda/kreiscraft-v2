@@ -22,6 +22,7 @@ import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -101,6 +102,17 @@ class EncounterTest {
             @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; all warning entity effects remain real.
+            }
+
+            @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
             }
 
             @Override
@@ -394,8 +406,8 @@ class EncounterTest {
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
-    private List<org.bukkit.entity.Mob> defenders() {
-        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(Entity::isValid)
+    private List<Mob> defenders() {
+        return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
                 .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
     }
 
