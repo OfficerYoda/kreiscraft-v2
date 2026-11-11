@@ -219,8 +219,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     command("wave 3");
                     require(status().contains("mode=manual"), "wave debug leaves paused");
                     require(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.RAIN)
-                            && !encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN),
-                            "Rain unlocked but unavailable");
+                            && encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN),
+                            "Rain unlocked and runnable after wave two");
                     clearWave();
                     require(encounter.availableAttacks().contains(EncounterController.AttackFamily.SMASH),
                             "third completion unlocks Smash");

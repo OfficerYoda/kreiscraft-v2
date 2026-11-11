@@ -1052,10 +1052,12 @@ public final class EncounterController implements Listener, AutoCloseable {
     private void fireballRain() {
         startAction(DebugAttack.RAIN, owner -> {
             EnderDragon source = dragon;
-            var grounds = attackTargets().stream().map(target -> arena.groundBelow(target.getLocation()))
-                    .filter(ground -> ground != null && arena.contains(ground) && !arena.protectedArrival(ground)
-                            && ground.getY() + config.rainSpawnHeight() < ground.getWorld().getMaxHeight())
-                    .toList();
+            var grounds = attackTargets().stream().map(target -> {
+                Location feet = target.getLocation();
+                Location ground = AttackSurface.column(feet, 0, feet.getBlockY() - feet.getWorld().getMinHeight());
+                // Void columns still get a locked warning/projectile; no invented floor, bounded cleanup below.
+                return ground == null ? feet : ground;
+            }).toList();
             int[] remaining = {grounds.size()};
             for (Location ground : grounds) {
                 EncounterWork shot = owner.child(() -> {
@@ -1130,6 +1132,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRainCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (rainProjectile(event.getHitEntity())) {
+            event.setCancelled(true); // Native Projectile.onHit redirects fireballs before its damage event.
+            return;
+        }
         if (!rainProjectile(event.getEntity())) {
             return;
         }
@@ -1142,24 +1148,25 @@ public final class EncounterController implements Listener, AutoCloseable {
         Location impact = event.getEntity().getLocation().clone(); // Native collision position, never the old target.
         shot.owner().run(() -> {
             if (!cancelled && dragon == shot.source()) {
-                Location ground = arena.groundBelow(impact);
+                // Native ray hits can sit 0.0005 inside a block's top face; include the footing just above it.
+                Location ground = AttackSurface.column(impact, 1, 4);
                 if (ground != null) {
                     impactTerrain(ground, 2, 1);
-                    impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
-                    impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
-                    for (Player player : attackParticipants()) {
-                        if (shot.owner().isClosed() || dragon != shot.source()) {
-                            break;
-                        }
-                        if (arena.inBombardment(player.getLocation(), impact, 2)) {
-                            battles.referenceDamage(player, shot.source(), config.rainDamage());
-                        }
+                }
+                impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
+                impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
+                for (Player player : attackParticipants()) {
+                    if (shot.owner().isClosed() || dragon != shot.source()) {
+                        break;
                     }
-                    if (!shot.owner().isClosed() && dragon == shot.source()) {
-                        Location crater = arena.groundBelow(impact);
-                        if (crater != null) {
-                            depositBreathPool(crater, 5, 6);
-                        }
+                    if (arena.inBombardment(player.getLocation(), impact, 2)) {
+                        battles.referenceDamage(player, shot.source(), config.rainDamage());
+                    }
+                }
+                if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
+                    Location crater = AttackSurface.column(impact, 1, 4);
+                    if (crater != null) {
+                        depositBreathPool(crater, 5, 6);
                     }
                 }
             }
@@ -1294,8 +1301,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 || !Double.isFinite(lifetimeSeconds) || lifetimeSeconds <= 0 || lifetimeSeconds > 120) {
             throw new IllegalArgumentException("Breath pools require radius (0,32] and lifetime (0,120] seconds");
         }
-        if (closed || dragon == null || attackWork == null || attackWork.isClosed() || !arena.contains(ground)
-                || arena.protectedArrival(ground)) {
+        if (closed || dragon == null || attackWork == null || attackWork.isClosed() || !arena.contains(ground)) {
             return false;
         }
         var pool = new HuntArea(ground, radius);
@@ -1655,8 +1661,10 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFlightContact(EntityDamageByEntityEvent event) {
-        if (flight != null && !flightDamage && (event.getDamager().equals(dragon)
-                || event.getDamager() instanceof ComplexEntityPart part && part.getParent().equals(dragon))) {
+        if (flight != null && !flightDamage
+                && event.getDamageSource().getDamageType() != org.bukkit.damage.DamageType.DRAGON_BREATH
+                && (event.getDamager().equals(dragon)
+                        || event.getDamager() instanceof ComplexEntityPart part && part.getParent().equals(dragon))) {
             event.setCancelled(true);
         }
     }

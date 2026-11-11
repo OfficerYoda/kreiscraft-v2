@@ -73,6 +73,19 @@ public final class RainProbe extends JavaPlugin implements Listener {
     private boolean automatic;
     private int automaticWarning = -1;
     private int automaticImpact = -1;
+    private double pendingPulseHealth = Double.NaN;
+    private double pendingPulseLoss;
+    private final int[] warningFrames = new int[12];
+    private final Map<Location, Material> groundBefore = new HashMap<>();
+    private Location arrivalGround;
+    private int outsideRadiusHits;
+    private int boundaryRadiusHits;
+    private int movementPoolStart = -1;
+    private int movementPoolHits;
+    private Location movementOrigin;
+    private EnderCrystal rainCrystal;
+    private boolean crystalCollision;
+    private final Map<UUID, List<Integer>> sharedPulses = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -119,6 +132,17 @@ public final class RainProbe extends JavaPlugin implements Listener {
             world = Bukkit.getWorld(NamespacedKey.minecraft("the_end"));
             check(world != null, "main native End");
             world.setGameRule(org.bukkit.GameRule.NATURAL_REGENERATION, false);
+            world.setGameRule(org.bukkit.GameRule.DO_MOB_SPAWNING, false);
+            if (!Boolean.getBoolean("kreiscraft.rain-restart")) {
+                World overworld = Bukkit.getWorld(NamespacedKey.minecraft("overworld"));
+                var wither = overworld.spawn(new Location(overworld, 0, 140, 0), org.bukkit.entity.Wither.class);
+                check(wither.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getBaseValue() == 600
+                        && wither.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).getBaseValue() == 40
+                        && wither.getAttribute(org.bukkit.attribute.Attribute.ARMOR).getBaseValue() == 8,
+                        "simultaneously enabled real Wither module retains its configured enhancement");
+                getLogger().info("RAIN_WITHER_DEPENDENCY PASS nativeAttributes=600/40/8");
+                wither.remove(); // Attribute/startup check only, not a second claim of #155's charge/blast matrix.
+            }
             for (int x = -12; x <= 12; x++) {
                 for (int z = -12; z <= 12; z++) {
                     world.setChunkForceLoaded(x, z, true);
@@ -187,29 +211,58 @@ public final class RainProbe extends JavaPlugin implements Listener {
             }
             roof = null;
         }
-        locked.setY(world.getHighestBlockYAt(40, 40) + 1);
+        int targetX = scenario == 13 ? 24 : 40;
+        locked = new Location(world, targetX + 0.5, world.getHighestBlockYAt(targetX, 40) + 1, 40.5);
+        if (scenario == 13) {
+            // Use the real original east Anchor at z=0, not a summoned duplicate crystal.
+            rainCrystal = world.getEntitiesByClass(EnderCrystal.class).stream()
+                    .filter(crystal -> artifact(crystal, "anchor") && crystal.getX() == 24.5).findFirst().orElseThrow();
+            locked = new Location(world, rainCrystal.getX(), world.getHighestBlockYAt(24, rainCrystal.getBlockZ()) + 1,
+                    rainCrystal.getZ());
+        }
+        crystalCollision = false;
         player.teleport(locked);
         player.setVelocity(new Vector());
         player.setHealth(20);
         player.setAbsorptionAmount(0);
         player.setNoDamageTicks(0);
-        other.setGameMode(scenario == 6 ? GameMode.ADVENTURE : GameMode.CREATIVE);
+        other.setGameMode(scenario == 6 || scenario == 12 ? GameMode.ADVENTURE : GameMode.CREATIVE);
         other.teleport(new Location(world, 44.5, world.getHighestBlockYAt(44, 40) + 1, 40.5));
+        if (scenario == 12) {
+            other.teleport(locked);
+        }
         other.setHealth(20);
+        for (int index = 2; index <= 3; index++) {
+            var recipient = fixtures.get(index).getBukkitEntity();
+            recipient.setGameMode(scenario == 6 ? (index == 2 ? GameMode.SURVIVAL : GameMode.ADVENTURE)
+                    : index == 2 ? GameMode.CREATIVE : GameMode.SPECTATOR);
+            if (scenario == 6) {
+                int x = index == 2 ? 40 : 44;
+                recipient.teleport(new Location(world, x + 0.5, world.getHighestBlockYAt(x, 44) + 1, 44.5));
+                recipient.setHealth(20);
+            }
+        }
         world.setDifficulty(
                 new Difficulty[] {Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD}[scenario < 3 ? scenario : 1]);
         positions.clear();
         pulseTicks.clear();
+        sharedPulses.clear();
         collisions = 0;
         launches = 0;
         hitAge = -1;
         impactHits = 0;
         nativeHits = 0;
         deflections = 0;
+        outsideRadiusHits = 0;
+        boundaryRadiusHits = 0;
         sinks.getFirst().particles = 0;
         sinks.getFirst().sounds = 0;
         age = 0;
+        java.util.Arrays.fill(warningFrames, 0);
         measuring = true;
+        if (scenario == 11) {
+            player.teleport(locked.clone().add(0, 40, 0));
+        }
         if (scenario == 4) {
             roof = locked.clone().add(0, 3, 0);
             for (int x = -1; x <= 1; x++) {
@@ -218,11 +271,25 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 }
             }
         }
-        String result = command("trigger fireball-rain" + (scenario == 6 ? "" : " " + player.getName()));
+        groundBefore.clear();
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (dx * dx + dz * dz <= 4) {
+                    int x = locked.getBlockX() + dx;
+                    int z = locked.getBlockZ() + dz;
+                    var block = world.getBlockAt(x, world.getHighestBlockYAt(x, z), z);
+                    groundBefore.put(block.getLocation(), block.getType());
+                }
+            }
+        }
+        arrivalGround = world.getBlockAt(45, world.getHighestBlockYAt(45, 40), 40).getLocation();
+        String result =
+                command("trigger fireball-rain" + (scenario == 6 || scenario == 12 ? "" : " " + player.getName()));
         check(result.contains("Started RAIN"), "production Rain started: " + result);
-        check(warnings().size() == (scenario == 6 ? 2 : 1), "every eligible target, no observers/arrival");
-        if (scenario == 3) {
-            player.teleport(locked.clone().add(10, 0, 0));
+        check(warnings().size() == (scenario == 6 ? 4 : scenario == 12 ? 2 : 1),
+                "every eligible target, no observers/arrival");
+        if (scenario == 3 || scenario == 11) {
+            player.teleport(locked.clone().add(-10, scenario == 11 ? 40 : 0, 0));
         }
         getLogger().info("RAIN_BEGIN scenario=" + scenario + " tick=" + ticks + " locked=" + locked
                 + " difficulty=" + world.getDifficulty() + " combat=" + encounter.combatPopulation()
@@ -251,11 +318,16 @@ public final class RainProbe extends JavaPlugin implements Listener {
                         && fixture.getBukkitEntity().isOnline()), "genuine PlayerList loaded fixtures");
                 check(encounter.scalingPopulation() == 6 && encounter.combatPopulation() == 1,
                         "combat eligibility differs from scaling");
+                long opening =
+                        world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender")).count();
+                check(opening >= 80 && opening <= 96,
+                        "current mounted opening roster, not historical Husk placeholders");
+                getLogger().info("RAIN_ROSTER opening=" + opening + " wavePopulation=" + encounter.wavePopulation());
                 // Defeat the opening defenders through genuine native deaths for the pure damage calibration.
                 // Separate cover cases deliberately exercise early obstruction; dragon AI remains continuously on.
                 world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender"))
                         .forEach(mob -> mob.setHealth(0));
-                scenario = 0;
+                scenario = Integer.getInteger("kreiscraft.rain-start", 0);
                 begin();
                 return;
             }
@@ -268,7 +340,8 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 } else {
                     check(Math.abs(ball.getX() - old.getX()) < 0.001 && Math.abs(ball.getZ() - old.getZ()) < 0.001,
                             "no native homing/deflection");
-                    check(Math.abs(ball.getY() - old.getY() + 0.5) < 0.001, "native half-block descent each tick");
+                    check(Math.abs(ball.getY() - old.getY() + (scenario == 10 && age > 30 ? 0 : 0.5)) < 0.001,
+                            "native descent (or deliberately stopped timeout fixture)");
                 }
             }
             if (scenario == 5 && age == 30) {
@@ -281,44 +354,90 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 getLogger()
                         .info("RAIN_NO_DEFLECTION age=" + age + " before=" + before + " after=" + ball.getVelocity());
             }
+            if (scenario == 0 && (age == 70 || age == 90)) {
+                double x = locked.getX() - (age == 70 ? 5.01 : 5);
+                player.teleport(new Location(world, x, world.getHighestBlockYAt((int) Math.floor(x), 40) + 1, 40.5));
+                player.setVelocity(new Vector());
+                player.setHealth(20);
+                player.setNoDamageTicks(0);
+            }
+            if (scenario == 0 && age == 89) {
+                check(outsideRadiusHits == 0 && player.getHealth() == 20, "actual radius 5.01 excludes pool damage");
+            }
+            if (scenario == 0 && age == 97) {
+                check(boundaryRadiusHits == 1 && Math.abs(player.getHealth() - 19.1) < 0.001,
+                        "inclusive radius five applies the raw Easy pulse's actual 0.9HP loss");
+                getLogger().info("RAIN_RADIUS PASS outside=5.01/0hits boundary=5/1hit health=" + player.getHealth());
+            }
             if (scenario == 7 && age == 10) {
                 command("cancel");
             }
             if (scenario == 8 && age == 30) {
                 balls().forEach(org.bukkit.entity.Entity::remove);
             }
+            if (scenario == 10 && age == 30) {
+                balls().forEach(ball -> ball.setVelocity(new Vector()));
+            }
+            if (scenario == 10 && age == 121) {
+                check(balls().isEmpty() && command("status").contains("main=idle"),
+                        "native stopped-projectile timeout releases main");
+                getLogger().info("RAIN_TIMEOUT PASS age=" + age);
+            }
             if (age < 60 && scenario != 7) {
-                check(warnings().size() == (scenario == 6 ? 2 : 1), "full three-second locked warning");
+                check(warnings().size() == (scenario == 6 ? 4 : scenario == 12 ? 2 : 1),
+                        "full three-second locked warning");
                 if (scenario != 6) {
                     check(warnings().getFirst().getX() == locked.getX()
                             && warnings().getFirst().getZ() == locked.getZ(), "warning-time ground lock");
                 }
             }
             if (scenario == 6 && age == 65) {
-                check(collisions == 2 && pools().size() == 2, "actual Rain pools at both impacts");
+                check(collisions == 4 && pools().size() == 4,
+                        "four combat targets get Rain impacts/pools; Prey requests only three");
+                check(fixtures.get(4).getBukkitEntity().getHealth() == 20 && arrivalGround.getBlock().isEmpty(),
+                        "arrival player protected while its actual ground is permanently destroyed");
                 check(encounter.depositBreathPool(new Location(world, 42.5,
                         world.getHighestBlockYAt(42, 40) + 1, 40.5), 5, 8), "shared Prey-style pool API");
                 player.teleport(new Location(world, 42.5, world.getHighestBlockYAt(42, 40) + 1, 40.5));
                 player.setHealth(20);
                 player.setNoDamageTicks(0);
                 pulseTicks.clear();
-                check(pools().size() == 3, "native three-way pool overlap");
+                check(pools().size() == 5, "native five-way shared pool overlap");
+            }
+            if (scenario == 12 && age == 65) {
+                check(collisions == 2 && pools().size() == 2, "co-located native Rain targets leave two shared pools");
             }
             if (scenario == 6 && age >= 66) {
+                if (Double.isFinite(pendingPulseHealth)) {
+                    check(Math.abs(pendingPulseHealth - player.getHealth() - pendingPulseLoss) < 0.001,
+                            "actual shared pool health loss, not only event arguments");
+                    getLogger().info("RAIN_POOL_HEALTH age=" + age + " before=" + pendingPulseHealth
+                            + " after=" + player.getHealth() + " loss=" + pendingPulseLoss);
+                    pendingPulseHealth = Double.NaN;
+                }
                 player.setNoDamageTicks(0);
                 player.setHealth(20);
             }
             if (scenario == 6 && age == 175) {
                 check(pools().size() == 1, "Rain six-second pools expire independently before eight-second sibling");
                 check(pulseTicks.size() >= 5, "actual damaging overlap pulses");
+                check(sharedPulses.size() == 4, "all four actual combat players receive shared native pulses");
+                for (var entry : sharedPulses.entrySet()) {
+                    check(entry.getValue().size() >= 5, "native shared pulse coverage for " + entry.getKey());
+                    for (int index = 1; index < entry.getValue().size(); index++) {
+                        check(entry.getValue().get(index) - entry.getValue().get(index - 1) >= 20,
+                                "native per-player global pulse ceiling for " + entry.getKey());
+                    }
+                }
                 for (int i = 1; i < pulseTicks.size(); i++) {
                     check(pulseTicks.get(i) - pulseTicks.get(i - 1) >= 20, "global one pulse/player/second");
                 }
-                getLogger().info("RAIN_OVERLAP pulses=" + pulseTicks + " remaining=" + pools().size());
+                getLogger().info("RAIN_OVERLAP pulses=" + pulseTicks + " allPlayers=" + sharedPulses + " remaining="
+                        + pools().size());
             }
             if (age == 225) {
                 verify();
-                if (++scenario <= 9) {
+                if (++scenario <= 13) {
                     begin();
                 } else {
                     lifecycle();
@@ -334,13 +453,20 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 "exclusive expiry and projectile cleanup");
         check(command("status").contains("main=idle"), "main completed without waiting for pools");
         check(nativeHits == 0, "zero native fireball damage/explosion duplicates");
+        long removed = groundBefore.entrySet().stream().filter(entry -> entry.getValue().isSolid()
+                && entry.getKey().getBlock().isEmpty()).count();
+        if (scenario < 7 || scenario == 9 || scenario >= 11) {
+            check(removed == 13, "actual radius-two crater removes thirteen sampled native ground blocks");
+        } else {
+            check(removed == 0, "no crater from cancelled/lost/stopped projectiles");
+        }
         if (scenario < 3 || scenario == 5) {
             check(collisions == 1 && impactHits == 1 && Math.abs(collisionHealth - 16) < 0.001,
                     "calibrated once-only clean impact 20->16HP");
             check(hitAge >= 54 && hitAge <= 60, "approximately two-second native player-collision descent");
             check(locked.getBlock().getRelative(0, -1, 0).isEmpty(), "permanent actual ground crater");
             check(locked.getBlock().getRelative(0, -2, 0).getType().isSolid(), "one-block shallow crater");
-        } else if (scenario == 3) {
+        } else if (scenario == 3 || scenario == 11) {
             check(collisions == 1 && impactHits == 0 && hitAge >= 59 && hitAge <= 61,
                     "dodge hits locked ground not moved player");
         } else if (scenario == 4) {
@@ -348,12 +474,21 @@ public final class RainProbe extends JavaPlugin implements Listener {
                     "actual earlier cover collision protects player");
             check(roof.getBlock().isEmpty() && locked.getBlock().getRelative(0, -1, 0).getType().isSolid(),
                     "cover crater at actual collision not original floor");
-        } else if (scenario == 7 || scenario == 8) {
+        } else if (scenario == 7 || scenario == 8 || scenario == 10) {
             check(collisions == 0 && impactHits == 0, "cancel/lost projectile has no delayed damage/crater");
+        } else if (scenario == 13) {
+            check(crystalCollision && rainCrystal.isValid() && encounter.unlockedAttacks().size() == 2,
+                    "actual native Rain crystal collision preserves the owned objective/shield gate");
+        } else if (scenario == 12) {
+            check(collisions == 2 && hitAge >= 54 && impactHits >= 1,
+                    "co-located targets both reach native player/ground collision, not each other at launch");
         } else if (scenario == 9) {
             check(impactHits == 1 && collisionHealth == 20, "ordinary public damage cancellation preserved");
         }
         check(sinks.getFirst().particles > 0 && sinks.getFirst().sounds > 0, "real Paper particle/sound conversion");
+        for (int frame = 0; frame < (scenario == 7 ? 2 : 12); frame++) {
+            check(warningFrames[frame] > 0, "actual flame warning particles throughout full warning frame=" + frame);
+        }
         getLogger().info("RAIN_CASE PASS scenario=" + scenario + " collisions=" + collisions + " impactHits="
                 + impactHits
                 + " hitAge=" + hitAge + " collisionHP=" + collisionHealth + " particles=" + sinks.getFirst().particles);
@@ -372,22 +507,45 @@ public final class RainProbe extends JavaPlugin implements Listener {
         if (direct != null && artifact(direct, "rain-projectile")) {
             nativeHits++;
         }
-        if (event.getEntity().equals(player) && event.getDamageSource().getCausingEntity() == dragon
+        if (event.getEntity() instanceof Player && event.getDamageSource().getCausingEntity() == dragon
+                && event.getDamageSource().getDirectEntity() == dragon
                 && event.getDamageSource().getDamageType() == org.bukkit.damage.DamageType.DRAGON_BREATH) {
-            if (event.getDamage() > 8) {
+            if (scenario == 6 && age >= 65 && event.getDamage() < 8) {
+                sharedPulses.computeIfAbsent(event.getEntity().getUniqueId(), ignored -> new ArrayList<>()).add(age);
+            }
+            if (movementPoolStart >= 0 && event.getEntity().equals(player) && event.getDamage() < 8) {
+                movementPoolHits++;
+            }
+            if (event.getEntity().equals(player) && event.getDamage() > 8) {
                 impactHits++;
                 if (scenario == 9) {
                     event.setCancelled(true);
                 }
-            } else if (scenario == 6 && age >= 65) {
+            } else if (event.getEntity().equals(player) && scenario == 6 && age >= 65) {
                 pulseTicks.add(age);
+                pendingPulseHealth = player.getHealth();
+                pendingPulseLoss = event.getFinalDamage();
                 check(Math.abs(event.getDamage() - 3) < 0.001, "raw configured pulse damage unchanged");
                 getLogger()
                         .info("RAIN_POOL age=" + age + " base=" + event.getDamage() + " final=" + event.getFinalDamage()
                                 + " hpBefore=" + player.getHealth());
+            } else if (event.getEntity().equals(player) && scenario == 0) {
+                if (age >= 70 && age < 90) {
+                    outsideRadiusHits++;
+                } else if (age >= 90 && age <= 97) {
+                    boundaryRadiusHits++;
+                }
             }
         } else if (event.getEntity() instanceof Player) {
             event.setCancelled(true); // Isolate native attack/pool measurements, never disable dragon or defender AI.
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void prime(org.bukkit.event.entity.ExplosionPrimeEvent event) {
+        if (measuring && artifact(event.getEntity(), "rain-projectile")) {
+            check(event.isCancelled(), "actual native explosion prime cancelled");
+            getLogger().info("RAIN_NATIVE_PRIME age=" + age + " cancelled=" + event.isCancelled());
         }
     }
 
@@ -415,13 +573,22 @@ public final class RainProbe extends JavaPlugin implements Listener {
     public void impact(ProjectileHitEvent event) {
         if (measuring && artifact(event.getEntity(), "rain-projectile")) {
             collisions++;
+            if (scenario == 13) {
+                crystalCollision = event.getHitEntity() == rainCrystal;
+            }
             hitAge = age;
             collisionHealth = player.getHealth();
+            double hitPlayerHealth = event.getHitEntity() instanceof Player target ? target.getHealth() : -1;
+            if (scenario == 6) {
+                check(Math.abs(hitPlayerHealth - 16) < 0.001,
+                        "each of four clean native player impacts loses exactly four HP");
+            }
             getLogger().info(
                     "RAIN_COLLISION scenario=" + scenario + " age=" + age + " at=" + event.getEntity().getLocation()
                             + " block=" + event.getHitBlock() + " entity=" + event.getHitEntity() + " cancelled="
                             + event.isCancelled()
-                            + " hp=" + collisionHealth + " pools=" + pools().size());
+                            + " hp=" + collisionHealth + " hitPlayerHP=" + hitPlayerHealth + " pools="
+                            + pools().size());
             check(command("status").contains(collisions == launches ? "main=idle" : "main=executing"),
                     "main resolves exactly after last actual projectile");
             if (automatic && collisions == launches) {
@@ -435,6 +602,15 @@ public final class RainProbe extends JavaPlugin implements Listener {
         command("trigger fireball-rain " + player.getName());
         command("wave 2");
         check(warnings().isEmpty() && balls().isEmpty() && pools().isEmpty(), "wave replacement drains Rain scope");
+        var second = world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender")).toList();
+        check(second.size() == 48 && second.stream().map(org.bukkit.entity.Entity::getType)
+                .collect(java.util.stream.Collectors.toSet())
+                .equals(java.util.Set.of(org.bukkit.entity.EntityType.RAVAGER, org.bukkit.entity.EntityType.GUARDIAN,
+                        org.bukkit.entity.EntityType.PIGLIN_BRUTE, org.bukkit.entity.EntityType.VINDICATOR,
+                        org.bukkit.entity.EntityType.BLAZE, org.bukkit.entity.EntityType.BREEZE)),
+                "actual latest six-species second-wave roster");
+        getLogger().info("RAIN_ROSTER second=" + second.size() + " species="
+                + second.stream().map(org.bukkit.entity.Entity::getType).distinct().toList());
         check(!encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN),
                 "wave-two shield has not unlocked Rain");
         for (Mob mob : world.getEntitiesByClass(Mob.class)) {
@@ -455,6 +631,13 @@ public final class RainProbe extends JavaPlugin implements Listener {
         other.setGameMode(GameMode.ADVENTURE);
         other.teleport(new Location(world, 44.5, world.getHighestBlockYAt(44, 40) + 1, 40.5));
         player.teleport(new Location(world, 40.5, world.getHighestBlockYAt(40, 40) + 1, 40.5));
+        for (int index = 2; index <= 3; index++) {
+            var recipient = fixtures.get(index).getBukkitEntity();
+            int x = index == 2 ? 40 : 44;
+            recipient.setGameMode(index == 2 ? GameMode.SURVIVAL : GameMode.ADVENTURE);
+            recipient.teleport(new Location(world, x + 0.5, world.getHighestBlockYAt(x, 44) + 1, 44.5));
+            recipient.setHealth(20);
+        }
         age = 0;
         launches = 0;
         collisions = 0;
@@ -466,22 +649,45 @@ public final class RainProbe extends JavaPlugin implements Listener {
     private void automaticTick() throws Exception {
         age++;
         check(dragon.hasAI(), "automatic native dragon AI remains enabled");
+        if (movementPoolStart >= 0) {
+            if (age - movementPoolStart == 5) {
+                check(movementPoolHits == 1 && Math.abs(player.getHealth() - 18.92) < 0.001
+                        && dragon.getLocation().distanceSquared(movementOrigin) > 0.001,
+                        "shared pool damages during actual native Dive movement, not just a reserved main");
+                getLogger().info("RAIN_MOVEMENT_POOL PASS hits=" + movementPoolHits + " HP=20->" + player.getHealth()
+                        + " dragonFrom=" + movementOrigin + " dragonTo=" + dragon.getLocation());
+                finalCleanup();
+            }
+            return;
+        }
         player.setHealth(20);
         other.setHealth(20);
         player.setNoDamageTicks(0);
         other.setNoDamageTicks(0);
+        for (int index = 2; index <= 3; index++) {
+            fixtures.get(index).getBukkitEntity().setHealth(20);
+            fixtures.get(index).getBukkitEntity().setNoDamageTicks(0);
+        }
         String state = command("status");
         if (automaticWarning < 0 && state.contains("attack=RAIN")) {
             automaticWarning = age;
-            check(warnings().size() == 2, "automatic Rain targets EVERY living combat player");
+            check(warnings().size() == 4, "automatic Rain targets EVERY living combat player, not Prey's three");
             getLogger().info("RAIN_AUTOMATIC warningAge=" + age + " status=" + state);
         }
         if (automaticImpact >= 0 && !state.contains("main=idle")) {
-            check(collisions == 2 && launches == 2, "automatic native projectiles both actually resolved");
+            check(collisions == 4 && launches == 4, "automatic native projectiles all actually resolved");
             check(age - automaticImpact >= 100 && age - automaticImpact <= 101, "native post-main five-second gap");
             getLogger().info("RAIN_AUTOMATIC PASS warning=" + automaticWarning + " lastImpact=" + automaticImpact
                     + " nextWarning=" + age + " poolsRemaining=" + pools().size());
-            finalCleanup();
+            player.teleport(new Location(world, 40.5, world.getHighestBlockYAt(40, 40) + 1, 40.5));
+            check(command("trigger dive " + player.getName()).contains("Started DIVE"),
+                    "production native Dive for sibling pool check");
+            player.setHealth(20);
+            player.setNoDamageTicks(0);
+            check(encounter.depositBreathPool(player.getLocation(), 5, 6),
+                    "shared pool deposited during native movement");
+            movementOrigin = dragon.getLocation();
+            movementPoolStart = age;
         }
     }
 
@@ -565,8 +771,19 @@ public final class RainProbe extends JavaPlugin implements Listener {
             } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket chat) {
                 replies.add(chat.content().getString());
             } else if (measuring
-                    && packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket) {
+                    && packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket particle) {
                 particles++;
+                if (particle.getParticle().getType() == net.minecraft.core.particles.ParticleTypes.FLAME && age < 60) {
+                    warningFrames[Math.max(0, age / 5)]++;
+                    if (scenario != 6 && !automatic) {
+                        check(Math.abs(Math.hypot(particle.getX() - locked.getX(), particle.getZ() - locked.getZ())
+                                - 2) < 0.001, "real warning particle positions stay at locked radius two");
+                    }
+                }
+                if (particle.getParticle().getType() == net.minecraft.core.particles.ParticleTypes.DRAGON_BREATH) {
+                    check(particle.getParticle() instanceof net.minecraft.core.particles.PowerParticleOption power
+                            && power.getPower() == 1.0f, "supported native breath particle payload");
+                }
             } else if (measuring && packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket) {
                 sounds++;
             }

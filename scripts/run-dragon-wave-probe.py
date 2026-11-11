@@ -73,6 +73,7 @@ for index, line in enumerate(lines):
 (root / "artifacts.json").write_text(json.dumps({
     "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
     "port": port,
+    "rain_start": int(os.environ.get("RAIN_START", "0")),
     "production_sha256": hashlib.sha256(production.read_bytes()).hexdigest(),
     "probe_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
     "paper_sha256": hashlib.sha256((server / "paper-26.2-132.jar").read_bytes()).hexdigest(),
@@ -81,6 +82,7 @@ with (root / "console.log").open("w") as log:
     process = subprocess.Popen([
         str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
         "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{mode}-probe=true",
+        f"-Dkreiscraft.rain-start={os.environ.get('RAIN_START', '0')}",
         "-jar", "paper-26.2-132.jar", "--nogui",
     ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
     (root / "owned-pid.txt").write_text(str(process.pid))

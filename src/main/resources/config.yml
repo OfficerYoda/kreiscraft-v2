@@ -202,7 +202,6 @@ modules:
     smash-crater-radius: 5.0
     smash-crater-depth: 1
     debris-lifetime-seconds: 4.0
-    # Fireball Rain: next-attempt native descent calibration; fixed 1s launch / full 3s warning.
     rain-spawn-height: 20.0
     rain-descent-seconds: 2.0
     rain-damage: 4.0

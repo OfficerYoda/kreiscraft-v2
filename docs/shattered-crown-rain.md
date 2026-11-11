@@ -4,16 +4,21 @@ title: Shattered Crown Fireball Rain
 
 # Fireball Rain
 
+Enable **both** `modules.shattered-crown.enabled` and `modules.wither.enabled` before startup.
+The existing enhanced Wither module remains authoritative; the native runner stages both together.
+
 After **all four wave-two crystals** are destroyed, Rain joins the shuffled rounds alongside
 Bombardment, Prey and Dive. Later shields do not relock it. Every online, living Survival/Adventure
 player in the radius-192/full-height combat area outside protected arrival gets a projectile.
 Scaling observers and Prey's percentage are irrelevant to Rain.
 
-At **t0**, each supported ground position is locked and warned with a fixed flame ring, growl and
+At **t0**, each ground position below the selected player is locked and warned with a fixed flame ring, growl and
 floating countdown. The warning stays for the **full three seconds**; moving players do not move
 it. At **t1**, a real ghast `LargeFireball` launches twenty blocks above that ground. Native air
 drag is balanced against acceleration for half a block per tick, about two seconds of descent.
-There is no per-tick teleport, steering or homing. Native `Player.attack` deflection is cancelled
+Ground projection searches the full column below airborne players. A void column still gets a
+locked floating warning/projectile at the captured feet position and bounded no-impact cleanup;
+it is not silently excluded from targeting. There is no per-tick teleport, steering or homing. Native `Player.attack` deflection is cancelled
 before velocity/owner changes. Terrain, cover and player collisions use the real native hit position;
 earlier obstruction resolves immediately, not by detonating at the original target later.
 
@@ -33,8 +38,10 @@ After the crater, footing/surface geometry is recomputed. `depositBreathPool` cr
 production Prey-style **radius-five / six-second** pool, without the retired walking-route veto.
 Damage retains raw `pool-damage` semantics, not reference-health-point calibration. Across all
 Prey/Rain pools a player can receive at most one configured pulse per second (or the configured
-cadence when slower), including staggered overlaps. Each pool owns its rendering, damage and
-exclusive expiry independently.
+cadence when slower), including staggered overlaps. Pool centers may lie in arrival terrain;
+arrival **players** remain excluded independently. Each pool owns its rendering, damage and
+exclusive expiry independently. Native flight-contact suppression does not cancel these custom
+breath pulses while a later Dive/Smash movement owns the main slot.
 
 The main action finishes after its **last projectile resolves or is cleaned up**. Removed entities
 are detected on the next tick; a stopped/lost projectile has a bounded timeout (six seconds from t0
