@@ -11,13 +11,15 @@ Complete reference for every key in Kreiscraft's configuration files.
 ### Shattered Crown fixed mechanics
 
 The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
-Population freezes once per wave. Wave one has16 mobs per counted player: three mounted pairs per player,
+Population freezes once per wave; mob/boss scaling caps at20 players without capping actual combat participation.
+Wave one has16 mobs per scaling player: three mounted pairs per player,
 one three-member tower per two players rounded up, and individual undead to fill the total.
-Wave two has9 mobs per player: two Piglin Brutes, two Vexes, and one Ravager, Guardian, Vindicator, Blaze and Breeze.
-These are whole-wave totals, uncapped, not configuration knobs. Opening groups remain intact;
+Wave two has two Piglin Brutes and one Guardian/Vindicator/Blaze per scaling player, plus
+`ceil(0.7*p)` Ravagers/Breezes each and `ceil(1.5*p)` Vexes, where `p=min(snapshot,20)`.
+These are whole-wave totals, rounded per species, not configuration knobs. Opening groups remain intact;
 second-wave totals/species are balanced across Anchors. Wave three interpolates doubled four-player targets,
 rounding up to Warden counts with minimum2; Withers use half as many rounded up, minimum2
-(2+2 at1–4, 3+2 at5–6, 4+2 at7–8, 12+6 at20, 22+11 at32), plus owned minions.
+(2+2 at1–4, 3+2 at5–6, 4+2 at7–8, 12+6 at20 or above), plus owned minions.
 See the [encounter guide](/shattered-crown/) for the formula.
 Bosses and species are evenly distributed across the four Anchors. Zero-population debug waves start exposed.
 Both modules must be enabled
@@ -32,6 +34,8 @@ not guaranteed final HP loss. `ground-search-radius`
 finds nearby surviving defender footing; Anchors use fixed X/Z and current highest/last-known height.
 Legacy `final-health-fraction` and `ground-max-y` remain accepted for configuration compatibility but
 are ignored. Reload still takes effect on the next attempt; debug jumps refresh populations, not config.
+Dive keeps its timings but hides warning and active-lane countdowns. Ground Smash damage is full inside
+half its radius, then falls linearly to50% at the edge; its warning, knockback and crater are unchanged.
 
 | Purpose | Path |
 |---|---|

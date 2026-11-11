@@ -382,6 +382,16 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"0,0,1", "0,4,1", "3,4,0.875", "-3,-4,0.875", "0,8,0.5",
+            "6,8,0"})
+    void smashFalloffUsesRadialHorizontalDistanceRatherThanOneAxis(double x, double z, double scale) {
+        var center = new Location(end, 10.5, 64, 0.5);
+        var area = new HuntArea(center, 8);
+        assertThat(area.smashDamageScale(center.clone().add(x, 0, z))).isEqualTo(scale);
+        assertThat(area.smashDamageScale(center.clone().add(x, 4, z))).isZero();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"cancel,false", "cancel,true", "pause,false", "pause,true",
             "unload,false", "unload,true", "disable,false", "disable,true", "victory,false", "victory,true",
             "reset,false", "reset,true", "wave,false", "wave,true"})
@@ -884,7 +894,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void diveUsesOnlyWorldCountdownAndSoundWithoutParticleRendering() throws Exception {
+    void diveHidesBothCountdownsWithoutChangingWarningPassOrOtherEffects() throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
@@ -894,8 +904,13 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofMillis(250));
             var display = end.getEntitiesByClass(TextDisplay.class).iterator().next();
             assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(display.text())).isEqualTo("1.8s");
-            scheduler.advance(Duration.ofMillis(4250));
+                    .serialize(display.text())).isEmpty();
+            assertThat(player.getHealth()).isEqualTo(20);
+            scheduler.advance(Duration.ofSeconds(2));
+            assertThat(display.isValid()).isTrue();
+            assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(display.text())).isEmpty();
+            scheduler.advance(Duration.ofMillis(2250));
             particles.verifyNoInteractions();
             assertThat(messages(player)).isEmpty();
             assertThat(actionBars(player)).isEmpty();
@@ -1092,12 +1107,12 @@ class HuntEncounterTest {
         var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         assertThat(warning.getLocation().getX()).isEqualTo(10.5);
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(warning.text())).contains("3");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(2999));
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(player.getHealth()).isEqualTo(16);
-        assertThat(plain.serialize(warning.text())).contains("6");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         player.teleport(new Location(end, 10.5, 64, 6.51));
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(warning.isValid()).isFalse();
@@ -1356,8 +1371,10 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"8,true", "8.01,false", "-8,true", "-8.01,false"})
-    void smashDamageUsesTheEightBlockBoundaryNotTheFiveBlockCrater(double offset, boolean included) throws Exception {
+    @org.junit.jupiter.params.provider.CsvSource({"0,8", "2,8", "4,8", "5,9.5", "6,11", "7,12.5", "8,14",
+            "8.01,20", "-4,8", "-6,11", "-8,14", "-8.01,20"})
+    void smashDamageIsFullInsideHalfRadiusThenFallsLinearlyToHalfAtTheEdge(double offset, double health)
+            throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.setOp(true);
@@ -1365,9 +1382,11 @@ class HuntEncounterTest {
         var probe = server.addPlayer();
         probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(probe.getHealth()).isEqualTo(included ? 8 : 20);
-        assertThat(referenceHits).isEqualTo(included ? 2 : 1);
-        assertThat(probe.getLocation().getBlock().getRelative(0, -1, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(probe.getHealth()).isEqualTo(health);
+        assertThat(referenceHits).isEqualTo(health < 20 ? 2 : 1);
+        if (Math.abs(offset) > 5) {
+            assertThat(probe.getLocation().getBlock().getRelative(0, -1, 0).getType()).isEqualTo(Material.END_STONE);
+        }
     }
 
     @org.junit.jupiter.params.ParameterizedTest

@@ -118,7 +118,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
             var player = fixture.getBukkitEntity();
             if (scaledAt > 0) {
                 if (diedAt > 0 && ticks - diedAt >= 21) {
-                    require(defenders().size() == 71, "native accepted death was not replenished");
+                    require(defenders().size() == 63, "native accepted death was not replenished");
                     var unrelated = end.spawn(ground(42, 20), org.bukkit.entity.Guardian.class);
                     getServer().getPluginManager()
                             .disablePlugin(getServer().getPluginManager().getPlugin("Kreiscraft"));
@@ -127,7 +127,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
                             "six native movement+targeting+attributed attacks+policies+population8+recovery ticks="
                                     + ticks);
                 } else if (diedAt == 0 && ticks - scaledAt >= 21) {
-                    require(defenders().size() == 72, "native departures did not resize frozen wave");
+                    require(defenders().size() == 64, "native departures did not resize frozen wave");
                     require(defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN).count() == 8,
                             "native missing Guardian replaced, not defeated or duplicated");
                     require(defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN)
@@ -294,17 +294,22 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
         require(old.stream().noneMatch(Entity::isValid), "native debug replacement removes old seven-species roots");
         require(oldEffects.stream().noneMatch(Entity::isValid),
                 "native debug replacement removes attributed projectiles");
-        require(rootCallbacks == 81 && leakedRoots == 0, "72 scaled roots owned before public callbacks");
-        require(defenders().size() == 72, "native population8 repeats complete seven-species units");
+        require(rootCallbacks == 73 && leakedRoots == 0, "64 scaled roots owned before public callbacks");
+        require(defenders().size() == 64, "native population8 uses rounded seven-species counts");
         for (EntityType type : SPECIES) {
-            require(defenders().stream().filter(mob -> mob.getType() == type)
-                    .count() == (type == EntityType.PIGLIN_BRUTE || type == EntityType.VEX ? 16 : 8),
+            int expected = switch (type) {
+                case PIGLIN_BRUTE -> 16;
+                case VEX -> 12;
+                case RAVAGER, BREEZE -> 6;
+                default -> 8;
+            };
+            require(defenders().stream().filter(mob -> mob.getType() == type).count() == expected,
                     "native species count " + type);
         }
         observers.forEach(observer -> observer.getBukkitEntity().teleport(
                 new Location(getServer().getWorlds().getFirst(), 0, 150, 0)));
         defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN).findFirst().orElseThrow().remove();
-        require(defenders().size() == 71, "native missing entity is not an accepted death");
+        require(defenders().size() == 63, "native missing entity is not an accepted death");
         scaledAt = ticks;
     }
 

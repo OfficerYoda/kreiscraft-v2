@@ -13,8 +13,11 @@ Very distant approaches stage bounded native movement before the warning. Native
 most eight blocks per tick throughout the radius-192 combat area.
 
 At actual physical impact, one hit covers an inclusive eight-block radius. `sweep-damage: 12`
-means **12 HP / six hearts lost by full Protection IV netherite without Resistance or absorption**,
+means **12 HP / six hearts lost by full Protection IV netherite without Resistance or absorption** in the inner half-radius,
 on Easy/Normal/Hard, through the calibrated dragon-attributed, cancellable damage boundary.
+From half-radius to the edge, damage decreases linearly to50%: `min(1, max(0.5, 1.5 - distance/radius))`.
+At the default eight-block radius, distances0–4 deal12 reference HP, six blocks deal9, and eight blocks deal6.
+Outside the impact radius receives no damage. Distance is horizontal; the crater size and knockback do not change.
 Other defenses and arrival PLAYER protection remain effective. Damage cancellation alone does not
 undo the crater. Cancelling the action before impact prevents impact and all later queued work.
 

@@ -58,6 +58,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private static final double RAIN_RADIUS = 5;
+    private static final int MAX_MOB_POPULATION = 20;
     private final Server server;
     private final DragonBattleAccess battles;
     private ShatteredCrownConfig nextConfig;
@@ -66,6 +67,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private final MessageService messages;
     private final List<Mob> defenders = new ArrayList<>();
     private final java.util.Map<UUID, Anchor> combatOwners = new java.util.HashMap<>();
+    private final Set<UUID> groundedArrows = new HashSet<>();
     private final java.util.Map<UUID, java.util.function.Consumer<Mob>> defenderInitializers =
             new java.util.HashMap<>();
     private final Set<UUID> unavailableWorlds = new HashSet<>();
@@ -286,6 +288,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         + ", wave=" + waveNumber + ", shield=" + shielded() + ", objectives=" + (4 - anchors.size())
                         + "/4"
                         + ", defenders=" + defenders.size() + ", wave-population=" + wavePopulation
+                        + ", mob-population=" + Math.min(wavePopulation, MAX_MOB_POPULATION)
                         + ", roster-units=" + rosterUnits + ", unlocked=" + unlockedAttacks());
     }
 
@@ -635,6 +638,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         waveNumber = selected; // Install the shield before any public spawn callback can reenter damage.
         finalEntered = selected == 3;
         wavePopulation = population;
+        population = Math.min(population, MAX_MOB_POPULATION);
         rosterUnits = selected == 3 ? finalRosterUnits(population) : population;
         installingWave = true;
         EnderDragon source = dragon;
@@ -651,6 +655,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             anchors.clear();
             defenderInitializers.clear();
             waveWork = requireWork().child(() -> {
+                groundedArrows.clear();
             });
             var openingRoster = selected == 1 ? openingRoster(population) : List.<List<OpeningGroup>>of();
             openingArmorIndex = 0;
@@ -1606,7 +1611,9 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                                 break;
                             }
                             if (isParticipant(player) && area.contains(player.getLocation(), 0)) {
-                                flightHit(player, source, config.sweepDamage(), ground, true);
+                                flightHit(player, source,
+                                        config.sweepDamage() * area.smashDamageScale(player.getLocation()),
+                                        ground, true);
                             }
                         }
                         if (owner.isClosed() || movement.isClosed()) {
@@ -1814,10 +1821,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private void drawLane(BreathLane lane) {
-        double remaining =
-                Math.max(0, (lane.active ? config.laneLifetimeSeconds() : config.laneWarningSeconds()) - lane.age);
-        lane.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs", remaining),
-                lane.active ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.GOLD));
+        // Keep the display valid for flight/scope watchdogs without showing warning or lifetime countdowns.
+        lane.indicator.text(Component.empty());
     }
 
     private void warnBombardment() {
@@ -2169,6 +2174,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             for (var group : openingGroups) {
                 spawnOpeningGroup(objective, group);
             }
+        } else if (waveNumber == 2) {
+            spawnSecondRoster(objective);
         } else {
             for (int unit = 0; unit < rosterUnits; unit++) {
                 spawnRosterUnit(objective, waveNumber, unit);
@@ -2178,7 +2185,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         objective.crystal.setGlowing(objective.wave.isEmpty());
     }
 
-    /** Second-wave units contain nine mobs; final units count Wardens with fewer Withers. */
+    /** Final units count Wardens with fewer Withers. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
         if (wave == 3) {
             int anchorIndex = anchors.indexOf(objective);
@@ -2196,13 +2203,23 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             }
             return;
         }
-        if (wave == 2) {
-            int speciesIndex = 0;
-            // Adjacent duplicate slots balance Brutes/Vexes as well as the whole-wave member count.
-            for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
-                    EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE,
-                    EntityType.VEX, EntityType.VEX)) {
-                if ((speciesIndex++ * rosterUnits + unit) % openingGround.size() != anchors.indexOf(objective)) {
+        for (int index = 0; index < config.defenderCount(); index++) {
+            spawnDefender(objective);
+        }
+    }
+
+    private void spawnSecondRoster(Anchor objective) {
+        int offset = 0;
+        for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
+                EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX)) {
+            int count = switch (species) {
+                case RAVAGER, BREEZE -> (7 * rosterUnits + 9) / 10;
+                case VEX -> (3 * rosterUnits + 1) / 2;
+                case PIGLIN_BRUTE -> 2 * rosterUnits;
+                default -> rosterUnits;
+            };
+            for (int member = 0; member < count; member++) {
+                if ((offset + member) % openingGround.size() != anchors.indexOf(objective)) {
                     continue;
                 }
                 spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
@@ -2219,10 +2236,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     }
                 });
             }
-            return;
-        }
-        for (int index = 0; index < config.defenderCount(); index++) {
-            spawnDefender(objective);
+            // Each species occupies consecutive ring slots: both species and total counts differ by at most one.
+            offset += count;
         }
     }
 
@@ -2591,6 +2606,24 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         if (event.getEntity().getShooter() instanceof Entity source) {
             inheritOwnership(event.getEntity(), source);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onOpeningArrowHit(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (waveNumber != 1 || event.getHitBlock() == null
+                || !(event.getEntity() instanceof org.bukkit.entity.AbstractArrow arrow) || !ownsCombatant(arrow)) {
+            return;
+        }
+        if (!groundedArrows.add(arrow.getUniqueId())) {
+            return; // Repeated collisions must neither add tasks nor restart the three-second lifetime.
+        }
+        EncounterWork owner = waveWork;
+        owner.later(Duration.ofSeconds(3), () -> {
+            arrow.remove();
+            owner.forget(arrow);
+            combatOwners.remove(arrow.getUniqueId());
+            groundedArrows.remove(arrow.getUniqueId());
+        });
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

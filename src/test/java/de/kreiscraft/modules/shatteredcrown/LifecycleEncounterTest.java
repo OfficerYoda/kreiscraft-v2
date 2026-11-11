@@ -223,7 +223,7 @@ class LifecycleEncounterTest {
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"1,2", "2,2", "3,2", "4,2", "5,3", "6,3", "7,4", "8,4",
             "9,5", "10,5", "11,6", "12,6", "13,7", "14,8", "15,9", "16,10", "17,11", "18,11", "19,12",
-            "20,12", "21,13", "24,16", "25,17", "28,18", "29,19", "32,22", "68,48"})
+            "20,12", "21,12", "24,12", "25,12", "28,12", "29,12", "32,12", "68,12"})
     void finalWaveDistributesUnchangedWardensAndHalfAsManyWithersAcrossAllAnchors(
             int population, int units) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
@@ -503,7 +503,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(2);
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         assertThat(encounter.rosterUnits()).isEqualTo(5);
-        assertThat(defenders()).hasSize(45);
+        assertThat(defenders()).hasSize(41);
         others.getFirst().teleport(new Location(overworld, 0, 64, 0));
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         clearWave();
@@ -846,12 +846,13 @@ class LifecycleEncounterTest {
         encounter.start();
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.wavePopulation()).isEqualTo(population);
-        assertThat(encounter.rosterUnits()).isEqualTo(population);
-        int towers = (population + 1) / 2;
-        assertThat(defenders()).hasSize(16 * population);
+        int capped = Math.min(population, 20);
+        assertThat(encounter.rosterUnits()).isEqualTo(capped);
+        int towers = (capped + 1) / 2;
+        assertThat(defenders()).hasSize(16 * capped);
         var groups = defenders().stream().filter(mob -> mob.getVehicle() == null && !mob.getPassengers().isEmpty())
                 .toList();
-        assertThat(groups).hasSize(3 * population + towers);
+        assertThat(groups).hasSize(3 * capped + towers);
         assertThat(groups.stream().filter(mob -> mob.getType() != org.bukkit.entity.EntityType.ZOMBIE_HORSE
                 && mob.getType() != org.bukkit.entity.EntityType.SPIDER
                 && mob.getType() != org.bukkit.entity.EntityType.CAVE_SPIDER)).hasSize(towers)
@@ -1019,7 +1020,7 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(defenders()).hasSize(wave == 1 ? 81 : wave == 2 ? 46 : 6).contains(unrelated);
+            assertThat(defenders()).hasSize(wave == 1 ? 81 : wave == 2 ? 42 : 6).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5",
                     "roster-units=" + (wave == 3 ? 3 : 5),
@@ -1045,7 +1046,7 @@ class LifecycleEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"1,0,0", "2,0,0", "3,0,0", "1,1,16", "2,1,9", "3,1,4",
-            "1,20,320", "2,20,180", "3,20,18", "3,13,11"})
+            "1,20,320", "2,20,158", "3,20,18", "3,13,11", "1,100,320", "2,100,158", "3,100,18"})
     void debugWavePlayerArgumentOverridesOnlyTheSelectedRoster(int wave, int population, int members) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
@@ -1064,12 +1065,13 @@ class LifecycleEncounterTest {
             assertThat(defenders()).hasSize(members);
             assertThat(crystals()).hasSize(4);
             assertThat(encounter.wavePopulation()).isEqualTo(population);
-            assertThat(status(encounter)).contains("wave-population=" + population, "defenders=" + members);
+            assertThat(status(encounter)).contains("wave-population=" + population, "defenders=" + members,
+                    "mob-population=" + Math.min(population, 20));
             assertThat(encounter.firstEntryPopulation()).isEqualTo(1);
             assertThat(encounter.scalingPopulation()).isEqualTo(1);
             assertThat(encounter.combatPopulation()).isEqualTo(1);
             if (wave == 3) {
-                int wardens = population == 0 ? 0 : population == 20 ? 12 : population == 13 ? 7 : 2;
+                int wardens = population == 0 ? 0 : population >= 20 ? 12 : population == 13 ? 7 : 2;
                 assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WARDEN))
                         .hasSize(wardens);
                 assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WITHER))
@@ -1086,7 +1088,7 @@ class LifecycleEncounterTest {
             assertThat(encounter.scalingPopulation()).isEqualTo(2);
             dispatcher.execute("dragondebug wave 2", source);
             assertThat(encounter.wavePopulation()).isEqualTo(2);
-            assertThat(defenders()).hasSize(18);
+            assertThat(defenders()).hasSize(17);
         } finally {
             encounter.close();
         }
@@ -1114,6 +1116,95 @@ class LifecycleEncounterTest {
             assertThat(encounter.wavePopulation()).isEqualTo(1);
             assertThatThrownBy(() -> encounter.debugWave(1, -1, server.getConsoleSender()))
                     .isInstanceOf(IllegalArgumentException.class);
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {1, 2})
+    void onlyOpeningOwnedArrowsDisappearThreeSecondsAfterTheirFirstAcceptedBlockHit(int wave) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            scheduler.advance(Duration.ZERO);
+            encounter.debugWave(wave, player);
+            var shooter = wave == 1 ? defenders().stream().filter(org.bukkit.entity.AbstractSkeleton.class::isInstance)
+                    .findFirst().orElseThrow() : defenders().getFirst();
+            var arrow = end.spawn(shooter.getLocation(), org.bukkit.entity.Arrow.class);
+            arrow.setShooter(shooter);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(arrow));
+            assertThat(encounter.ownsCombatant(arrow)).isTrue();
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(arrow, player));
+            assertThat(arrow.isValid()).isTrue();
+            var block = end.getBlockAt(10, 63, 0);
+            var cancelled = new org.bukkit.event.entity.ProjectileHitEvent(arrow, block);
+            cancelled.setCancelled(true);
+            server.getPluginManager().callEvent(cancelled);
+            assertThat(arrow.isValid()).isTrue();
+            shooter.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(arrow, block));
+            assertThat(arrow.isValid()).isTrue();
+            scheduler.advance(Duration.ofMillis(2999));
+            assertThat(arrow.isValid()).isTrue();
+            assertThat(encounter.ownsCombatant(arrow)).isTrue();
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(arrow, block));
+            scheduler.advance(Duration.ofMillis(1));
+            assertThat(arrow.isValid()).isEqualTo(wave != 1);
+            assertThat(encounter.ownsCombatant(arrow)).isEqualTo(wave != 1);
+            if (wave == 1) {
+                assertThat(encounter.anchorId(arrow)).isNull();
+            }
+            var ordinary = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+            ordinary.setShooter(player);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(ordinary));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ordinary, block));
+            assertThat(ordinary.isValid()).isTrue();
+            assertThat(encounter.ownsCombatant(ordinary)).isFalse();
+            var ordinaryMob = end.spawn(player.getLocation(), Zombie.class);
+            var mobArrow = end.spawn(ordinaryMob.getLocation(), org.bukkit.entity.Arrow.class);
+            mobArrow.setShooter(ordinaryMob);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileLaunchEvent(mobArrow));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(mobArrow, block));
+            assertThat(mobArrow.isValid()).isTrue();
+            assertThat(encounter.ownsCombatant(mobArrow)).isFalse();
+            scheduler.advance(Duration.ofSeconds(4));
+            assertThat(ordinary.isValid()).isTrue();
+            assertThat(mobArrow.isValid()).isTrue();
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"wave", "close"})
+    void replacingOrClosingTheWaveImmediatelyRemovesArrowsAndCancelsPendingExpiry(String termination) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            scheduler.advance(Duration.ZERO);
+            encounter.debugWave(1, player);
+            var shooter = defenders().getFirst();
+            var arrow = end.spawn(shooter.getLocation(), org.bukkit.entity.Arrow.class,
+                    shot -> assertThat(encounter.inheritOwnership(shot, shooter)).isTrue());
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(arrow,
+                    end.getBlockAt(10, 63, 0)));
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(arrow.isValid()).isTrue();
+            if (termination.equals("wave")) {
+                encounter.debugWave(2, player);
+            } else {
+                encounter.close();
+            }
+            assertThat(arrow.isValid()).isFalse();
+            assertThat(encounter.ownsCombatant(arrow)).isFalse();
+            var replacement = defenders();
+            scheduler.advance(Duration.ofSeconds(4));
+            assertThat(defenders()).containsExactlyInAnyOrderElementsOf(replacement);
         } finally {
             encounter.close();
         }

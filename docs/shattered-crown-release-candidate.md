@@ -32,14 +32,17 @@ Do not install `build/paper-probe/` JARs on production.
 | Wave | Gate | Four-player complete roster | Population5–8 | Population20 |
 | --- | --- | --- | --- | --- |
 | One | 100% | Four Anchors,64 members: three mounted pairs per player, two three-member towers, individual undead | 80–128 members | 320 members |
-| Two | 65% | Four Anchors,36 roots: two Brutes/two Vexes and five other species per player | 45–72 roots | 180 roots |
+| Two | 65% | Four Anchors,32 roots: eight Brutes, six Vexes, three Ravagers/three Breezes, four each of the other three species | 41–64 roots | 158 roots |
 | Three | 30% | Four Anchors,2 Wardens+2 enhanced Withers, plus owned Wither minions | 3+2 at5–6;4+2 at7–8 | 12+6 roots |
 
-Waves one/two have16/9 mobs per counted player across the whole wave, uncapped. Mounted pairs/towers remain intact.
+All mob/boss rosters cap their scaling population at20; raw population snapshots and combat eligibility remain unchanged.
+Wave one has16 mobs per scaling player. Wave two has `5*p + 2*ceil(0.7*p) + ceil(1.5*p)` members, where `p=min(snapshot,20)`.
+Mounted pairs/towers remain intact; opening arrows disappear three seconds after their first accepted block hit.
+Wave replacement/reset removes them immediately and cancels pending expiry tasks.
 Towers have three members, with one tower per two players rounded up. All defenders retain vanilla species health;
 encounter Withers keep other module enhancements and use a proportionally adjusted half-health threshold.
 Wave three interpolates doubled four-player targets for Wardens, minimum2:
-1–4→2, 5–6→3, 7–8→4, 12→6, 13→7, 14→8, 15→9, 16→10, 17–18→11, 19–20→12, 32→22.
+1–4→2, 5–6→3, 7–8→4, 12→6, 13→7, 14→8, 15→9, 16→10, 17–18→11, 19+→12.
 Withers use half the Warden count rounded up, minimum2. Final bosses are spread evenly across Anchors,
 balancing species too; 1–4 players have one boss per crystal, and twenty players have four or five per Anchor.
 Opening freezes everyone online server-wide at first

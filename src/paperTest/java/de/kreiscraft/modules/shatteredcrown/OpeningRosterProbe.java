@@ -368,6 +368,14 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void collided(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (event.getHitBlock() != null && event.getEntity() instanceof org.bukkit.entity.AbstractArrow arrow
+                && owned(arrow)) {
+            getServer().getScheduler().runTaskLater(this, () -> {
+                if (arrow.isValid()) {
+                    finish(false, "native opening arrow remained embedded beyond three seconds");
+                }
+            }, 61);
+        }
         if (active != null && event.getEntity().getShooter() instanceof Mob shooter
                 && chain(active).contains(shooter)) {
             getLogger().info("OPENING native collision " + shooter.getType() + " target=" + event.getHitEntity()

@@ -17,7 +17,8 @@ produce no automatic chat, action bars or replacement title feed. This applies t
 attacks too, including debug-triggered attacks and both moving and legacy profiles; no opt-in
 chat/actionbar setting is provided.
 
-Keep floating labels/countdowns, sounds and applicable Attack Warning visuals. Particle redesign
+Keep floating labels/countdowns, sounds and applicable Attack Warning visuals, except Dive's two countdowns.
+Dive retains its warning/pass timing and sound but shows no numeric timer. Particle redesign
 belongs to individual attacks, not this policy. The vanilla dragon boss bar is untouched; the
 enhanced-Wither boss/countdown presentation remains available and is not suppressed by Crown UI.
 Only **explicitly requested** `/dragondebug` results, errors and status use chat, through the
@@ -40,8 +41,8 @@ Crystal healing is disabled. Defender deaths expose only their assigned crystal;
 must then be destroyed by eligible player attacks, in any order. Mob damage, explosions, unrelated
 crystals and protected-origin attacks cannot complete an objective.
 
-Wave one has **16 mobs per counted player across the entire wave**, and wave two has **9 per player**,
-without a population cap. Mounted pairs/towers stay intact at their assigned Anchor; second-wave
+Mob and boss scaling uses `p = min(frozen population, 20)`, including debug previews.
+Wave one has **16 mobs per scaling player across the entire wave**. Mounted pairs/towers stay intact at their assigned Anchor; second-wave
 species and member counts are balanced across Anchors. An empty debug End still has four exposed crystals to destroy.
 Wave one freezes #150's first-End-entry server-wide population;
 waves two and three freeze everyone connected in the managed End at their starts, including creative,
@@ -50,13 +51,22 @@ spectator and outside-arena players. Later joins/leaves never resize existing de
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
 Ground Smash after wave three. Unlocks survive later shields. The shuffled rotation includes
 [native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
-Wave two has **two Piglin Brutes, two Vexes, and one each of Ravager, Guardian,
-Vindicator, Blaze and Breeze per counted player across the whole wave**: 9 total at population1,
-36 at4, 45 at5, 180 at20; no random pool or cap. Wave three keeps the interpolated Warden counts
+Wave two has **two Piglin Brutes and one each of Guardian, Vindicator and Blaze per scaling player**,
+plus **`ceil(0.7 * p)` Ravagers**, **`ceil(0.7 * p)` Breezes** and **`ceil(1.5 * p)` Vexes**.
+Round each species upward across the whole wave, never separately per Anchor:
+
+| Players | Ravagers | Breezes | Vexes | Wave-two total |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | 1 | 2 | 9 |
+| 4 | 3 | 3 | 6 | 32 |
+| 10 | 7 | 7 | 15 | 79 |
+| 20+ | 14 | 14 | 30 | 158 |
+
+There is no random pool. Wave three keeps the interpolated Warden counts up to the20-player cap
 and uses half as many Withers, rounded up with a minimum of two of each species for positive populations.
 Bosses are distributed evenly across the four Anchors. Opening composition lives in
-`EncounterController.spawnOpeningGroup`; second/final composition in
-`EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`. All units are global, not repeated
+`EncounterController.spawnOpeningGroup`; second-wave composition in `spawnSecondRoster`, final composition in
+`EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`. All allocations are global, not repeated
 at each Anchor. Use
 `spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
@@ -65,14 +75,14 @@ All are owned by `waveWork`; do not scale again or equate defender deaths with c
 
 ### Wave one: mounted undead
 
-Each counted player contributes sixteen members across the wave, including three mounted pairs:
+Each scaling player contributes sixteen members across the wave, including three mounted pairs:
 
 - Adult Zombie with an unenchanted `IRON_SPEAR` riding a Zombie Horse.
 - Skeleton with a bow riding a Spider.
 - Bogged with a bow riding a Cave Spider.
 
-The wave also contains `ceil(population / 2)` three-member undead towers. Unmounted undead fill
-the remaining `10 * population - 3 * towers` members, rotating through Husk, Zombie, Drowned, Skeleton,
+The wave also contains `ceil(p / 2)` three-member undead towers. Unmounted undead fill
+the remaining `10 * p - 3 * towers` members, rotating through Husk, Zombie, Drowned, Skeleton,
 Stray, Bogged and Wither Skeleton. Archers retain bows; Wither Skeletons have swords.
 
 Towers end in a Skeleton, Stray or Bogged archer. Native passengers steer the stack; a melee-only
@@ -81,7 +91,7 @@ movement/combat without custom attack goals or a second damage engine.
 
 One online player produces16 members with one tower; four produce64 with two towers; twelve produce192 with six towers.
 Three-member towers are allocated around the ring first, then intact mounted pairs go to the least-populated Anchor.
-Individual undead fill the remaining roster and balance all four Anchors to exactly `4 * population` members each.
+Individual undead fill the remaining roster and balance all four Anchors to exactly `4 * p` members each.
 Tower species rotate deterministically by tower ordinal. About35% of armor-capable undead
 receive one or two unenchanted leather/chainmail pieces with occasional iron (5/13 for one player).
 No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup
@@ -96,6 +106,10 @@ Every mount and passenger must die before its crystal glows. Dismounting, broken
 do not clear a member; missing/unloaded members get only the existing bounded replacements, and
 accepted deaths are never replenished. Zombie reinforcements are zero and owned transformations
 are cancelled. Reset/debug replacement/disable/unload clean all members and inherited projectiles.
+Owned opening-wave arrows remain for three seconds after their first accepted block collision, then release
+their entity, scope and combat-ownership references. Repeated hits do not restart the expiry clock.
+Wave replacement/reset removes them immediately and cancels pending expiry tasks.
+Entity hits still use native damage; player and ordinary-mob arrows are unchanged.
 The native build132 probe exercises real mount pursuit, spear melee and physical mounted/tower arrows;
 it does not substitute teleports or direct scripted damage for AI combat.
 
@@ -144,11 +158,13 @@ pending gate acceptance and attacks/effects, sets 100/65/30% health, grants earl
 takes fresh scaling snapshots. The optional non-negative player count overrides only the selected wave's
 roster population, not actual players or combat eligibility. Omit it to use real population counts;
 use `0` for empty, exposed crystals. For twenty simulated players, waves one/two/three spawn
-320 mobs, 180 mobs and 12 Wardens plus 6 Withers respectively (before owned minions).
+320 mobs, 158 mobs and 12 Wardens plus 6 Withers respectively (before owned minions).
+Larger simulated populations use the same capped counts; actual player eligibility is never capped.
 The override stays frozen for that wave and does not carry into later waves.
 It pauses automatic attacks; `/dragondebug resume` resumes the
 selected production shield/hunt phase. Opening Grace is not restarted or bypassed by phase jumps.
-Status reports wave, shield, destroyed crystals out of four, defenders, frozen population/units,
+Status reports wave, shield, destroyed crystals out of four, defenders, raw frozen `wave-population`,
+capped `mob-population`, roster units,
 unlocks and manual/automatic mode alongside existing population/grace/attack diagnostics.
 Explicit replies remain recipient-localized; automatic chat/actionbars remain absent.
 
@@ -192,13 +208,12 @@ Warden scaling is unchanged; Withers use `max(2, ceil(wardens / 2))` for positiv
 | 16 | 10 | 5 |
 | 17–18 | 11 | 6 |
 | 19–20 | 12 | 6 |
-| 24 | 16 | 8 |
-| 28 | 18 | 9 |
-| 32 | 22 | 11 |
+| 21+ | 12 | 6 |
 
-For a positive population `p`, the formula is:
+For a positive population, the formula is:
 
 ```text
+p = min(frozen population, 20)
 target(tier) = 2 * (tier + max(0, floor(tier / 2) - 1))
 lower = ceil(p / 4) - 1
 fraction = (p - 4 * lower) / 4
@@ -267,20 +282,22 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   the pass, then skims the ground for the rest, at roughly 26.7 horizontal blocks per second.
   `lane-length`, `lane-width`,
   `lane-warning-seconds`, `dive-pass-seconds` and `dive-climb-seconds` are validated tuning.
-  There are **no Dive particles**: only the floating countdown, growl and real approaching dragon.
+  There are **no Dive particles or visible timers**: the growl and real approaching dragon remain.
   A low passing dragon hits each eligible player at most once; `lane-damage: 8` targets four hearts
   lost against full Protection IV netherite on Easy/Normal/Hard, preserving other defenses and
   public combat cancellation. Existing numeric damage overrides retain their values but physical
   Dive now interprets them as reference-health units. Lane lifetime/damage cadence and raw damage
   semantics apply only to legacy stationary lanes. Knockback uses `sweep-knockback`.
-  Very long approaches stage native movement before the visible warning, keeping every native step
-  below eight blocks without stretching the two-second countdown. Main action completes only after
+  Very long approaches stage native movement before the warning interval, keeping every native step
+  below eight blocks without stretching the two-second warning. Main action completes only after
   the climb restores native flight; the rotation's next gap can begin then.
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
   blocks; the FULL three-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
   Main completion follows the climb. The countdown clears on impact; no green recovery arrow is shown.
-  `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
+  Damage is full through the inner half-radius, then decreases linearly to50% at the edge:
+  `multiplier = min(1, max(0.5, 1.5 - horizontalDistance / radius))`. Outside the radius receives no damage.
+  `sweep-damage: 12` targets six reference hearts in the inner half and three at the edge on Easy/Normal/Hard.
   The impact permanently removes roughly radius-five, one-block-deep ground. Debris cannot hurt, place
   or drop; no arrival/portal/tower/Anchor terrain is preserved. See [terrain impacts](/shattered-crown-terrain/).
   `sweep-angle` applies only to legacy sectors.
@@ -479,7 +496,7 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   policy is changed.
 - Every wave has four independent Anchors with population-scaled complete Roster Units. At four
   online players wave one has64 members including two three-member towers; wave two has seven species
-  across the wave (36 total); wave three has two Wardens and two Withers across the wave (4 roots plus owned minions).
+  across the wave (32 total); wave three has two Wardens and two Withers across the wave (4 roots plus owned minions).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement
@@ -520,8 +537,9 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   discovery too. Opening cadence, warning refresh and pending damage are all cancelled on the last
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
-- Population scaling is uncapped: opening membership is64 at population4,80 at5,128 at8,192 at12,
-  320 at20,1088 at68. Actual task/entity/resource observations belong to pinned native evidence,
+- Mob and boss population scaling caps at20: opening membership is64 at population4,80 at5,128 at8,192 at12,
+  320 at20 or above. Prey/Rain target selection and real-player participation do not use this roster cap.
+  Actual task/entity/resource observations belong to pinned native evidence,
   not obsolete16-Husk bounds. Completed attacks do not accumulate active work. Particle audiences are capped at64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.

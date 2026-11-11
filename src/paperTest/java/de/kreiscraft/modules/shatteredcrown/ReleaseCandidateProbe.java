@@ -466,7 +466,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     if (anchors().size() != 4) {
                         return;
                     }
-                    check(defenders().size() == (attempt == 0 ? 72 : 36), "frozen all-End seven-species wave");
+                    check(defenders().size() == (attempt == 0 ? 64 : 32), "frozen all-End rounded seven-species wave");
                     hitDragon(false);
                     check(dragon.getHealth() == 650, "shield rejects oversized multipart followup");
                     hitRanged();
