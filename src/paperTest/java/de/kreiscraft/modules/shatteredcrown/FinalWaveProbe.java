@@ -402,6 +402,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
             } else if (stage == 8 && ticks - stageTick >= 25) {
                 require(end.getEntitiesByClass(Warden.class).size() == 7, "actual Warden death not replenished");
                 idleWarden = end.getEntitiesByClass(Warden.class).iterator().next();
+                idleWarden.teleport(new Location(end, 0.5, end.getHighestBlockYAt(0, 0) + 1, 0.5));
                 idleWarden.setAI(true);
                 player.teleport(new Location(end, 100, 50, 0));
                 next();

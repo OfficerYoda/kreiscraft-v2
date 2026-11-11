@@ -14,7 +14,7 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/dragondebug status` | — | `shattered-crown` | Show phase, active/queued attacks, hazards and native flight state. | `kreiscraft.shatteredcrown.debug` | op |
 | `/dragondebug pause\|cancel\|resume` | — | `shattered-crown` | Pause/cancel custom attacks or resume the automatic rotation. | `kreiscraft.shatteredcrown.debug` | op |
 | `/dragondebug wave <1\|2\|3>` | — | `shattered-crown` | Replace owned phase work, set 100/65/30% health and earlier unlocks, take fresh population snapshots, spawn four defended Anchors; automatic attacks paused. | `kreiscraft.shatteredcrown.debug` | op |
-| `/dragondebug trigger <dive\|smash\|prey\|bombardment\|landing\|fireball-rain> [player]` | — | `shattered-crown` | Enter manual mode; Rain without a name targets all eligible combat players, other attacks default to yourself. | `kreiscraft.shatteredcrown.debug` | op |
+| `/dragondebug trigger <dive\|smash\|prey\|bombardment\|landing\|fireball-rain> [player]` | — | `shattered-crown` | Replace existing attack/effect work and enter manual mode; Rain without a name targets all eligible combat players, other attacks default to yourself. Does not bypass eligibility/protection. | `kreiscraft.shatteredcrown.debug` | op |
 | `/item <material> [count]` | — | `admin` | Give yourself the specified item (up to 1 024). | `kreiscraft.admin.item` | op |
 | `/skull [player]` | `kopf` | `admin` | Give yourself a player-head skull. | `kreiscraft.admin.skull` | op |
 | `/head` | — | `admin` | Swap the item in your main hand with your helmet slot. | `kreiscraft.admin.head` | op |

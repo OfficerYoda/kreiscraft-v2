@@ -56,6 +56,8 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
     private int checks;
     private boolean measuring;
     private boolean done;
+    private boolean automaticDive;
+    private int lingeringPoolParticles;
 
     @Override
     public void onEnable() {
@@ -65,7 +67,7 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
         }
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTask(this, this::start);
-        Bukkit.getScheduler().runTaskLater(this, () -> finish(false, "timeout"), 1800);
+        Bukkit.getScheduler().runTaskLater(this, () -> finish(false, "timeout"), 4000);
     }
 
     private void start() {
@@ -163,11 +165,15 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
         cancelled = 0;
         teleports = 0;
         sink.particles = 0;
+        lingeringPoolParticles = 0;
         sink.sounds = 0;
         sink.unsolicited = 0;
         measuring = true;
-        if (scenario == 3) {
+        if (scenario == 3 || scenario >= 9) {
+            automaticDive = false;
             command("resume", "mode=automatic");
+        } else if (scenario >= 6) {
+            command("trigger bombardment", "Started BOMBARDMENT");
         } else {
             command("trigger dive", "Started DIVE");
             check(warnings() == 1, "physical warning");
@@ -204,8 +210,15 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
             if (scenario != 3 && age == 39) {
                 check(hits == 0 && player.getHealth() == 20, "no damage during warning");
             }
-            if (scenario == 3 && (hits == 0 || warnings() != 0)) {
-                check(age < 600, "automatic Dive completion timeout");
+            if ((scenario == 3 || scenario >= 9) && (hits == 0 || warnings() != 0)) {
+                String expectedAttack = scenario == 3 ? "DIVE" : "BOMBARDMENT";
+                if (!automaticDive && command("status", "mode=automatic").contains("attack=" + expectedAttack)) {
+                    automaticDive = true;
+                    sink.particles = 0;
+                    sink.sounds = 0;
+                    player.setHealth(20);
+                }
+                check(age < 600, "automatic " + expectedAttack + " completion timeout");
                 return;
             }
             if (scenario != 3 && age < 100) {
@@ -213,24 +226,29 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
             }
             check(teleports == 0 && dragon.hasAI() && dragon.getPhase() != EnderDragon.Phase.HOVER,
                     "no teleport/HOVER/noAI");
-            check(sink.particles == 0 && sink.unsolicited == 0, "particle-free quiet Dive");
+            check((scenario >= 6 || sink.particles == 0) && sink.unsolicited == 0, "particle-free Dive/quiet attacks");
             command("status", "main=idle");
             check(warnings() == 0, "completed warning removed");
-            if (scenario <= 3) {
-                check(hits == 1 && Math.abs(20 - player.getHealth() - 8) < 0.001, "once-only four-heart hit");
+            if (scenario <= 3 || scenario >= 6) {
+                int expectedLoss = scenario >= 6 ? 6 : 8;
+                check(hits == 1 && Math.abs(20 - player.getHealth() - expectedLoss) < 0.001,
+                        "once-only calibrated hit");
                 check(sink.sounds > 0, "warning sound");
             } else {
                 check(hits == 0 && player.getHealth() == 20 && cancelled == (scenario == 5 ? 1 : 0),
                         "invalid target/public cancellation");
             }
-            getLogger().info("DIVE_MATRIX route=" + (scenario == 3 ? "automatic" : "debug")
+            getLogger().info("DIVE_MATRIX route=" + (scenario == 3 || scenario >= 9 ? "automatic" : "debug")
                     + " scenario=" + scenario + " difficulty=" + world.getDifficulty() + " health="
                     + player.getHealth() + " hits=" + hits + " cancelled=" + cancelled
                     + " particles=" + sink.particles + " teleports=" + teleports);
+            getLogger().info(
+                    "DIVE_PARTICLE_TYPES " + sink.particleTypes + " provenLingeringPool=" + lingeringPoolParticles);
             measuring = false;
             command("cancel", "flight=false");
-            if (++scenario == 6) {
-                finish(true, "checks=" + checks + " nativeBattle+productionDive+threeDifficulties+automatic+cleanup");
+            if (++scenario == 12) {
+                finish(true, "checks=" + checks
+                        + " nativeBattle+productionDive+Bombardment+threeDifficulties+automatic+cleanup");
             } else {
                 begin();
             }
@@ -242,7 +260,9 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void isolate(EntityDamageEvent event) {
-        if (event.getEntity() == player && (event.getCause() != EntityDamageEvent.DamageCause.DRAGON_BREATH
+        if (event.getEntity() == player && ((scenario == 3 || scenario >= 9) && !automaticDive
+                || Math.abs(event.getFinalDamage() - (scenario >= 6 ? 6 : 8)) > 0.001
+                || event.getCause() != EntityDamageEvent.DamageCause.DRAGON_BREATH
                 || event.getDamageSource().getCausingEntity() != dragon || scenario == 5)) {
             event.setCancelled(true); // Isolate unrelated ambient damage, not the actual production Dive path.
         }
@@ -250,16 +270,19 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void observe(EntityDamageEvent event) {
-        if (!measuring || event.getEntity() != player
+        if (!measuring || (scenario == 3 || scenario >= 9) && !automaticDive || event.getEntity() != player
+                || Math.abs(event.getFinalDamage() - (scenario >= 6 ? 6 : 8)) > 0.001
                 || event.getCause() != EntityDamageEvent.DamageCause.DRAGON_BREATH) {
             return;
         }
         check(event.getDamageSource().getDirectEntity() == dragon
                 && event.getDamageSource().getCausingEntity() == dragon, "dragon attribution");
-        check(dragon.getY() <= player.getY() + 5, "actual low physical dragon at damage");
-        var body = ((org.bukkit.craftbukkit.entity.CraftEnderDragon) dragon).getHandle().getSubEntities()[2];
-        check(body.getBukkitEntity().getLocation().distanceSquared(dragon.getLocation()) < 64,
-                "real native body follows pass");
+        if (scenario < 6) {
+            check(dragon.getY() <= player.getY() + 5, "actual low physical dragon at damage");
+            var body = ((org.bukkit.craftbukkit.entity.CraftEnderDragon) dragon).getHandle().getSubEntities()[2];
+            check(body.getBukkitEntity().getLocation().distanceSquared(dragon.getLocation()) < 64,
+                    "real native body follows pass");
+        }
         if (event.isCancelled()) {
             cancelled++;
         } else {
@@ -297,6 +320,7 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
         private int sounds;
         private int unsolicited;
         private boolean explicit;
+        private final java.util.Set<String> particleTypes = new java.util.HashSet<>();
 
         private Sink() {
             super(PacketFlow.SERVERBOUND);
@@ -329,8 +353,17 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
                     unsolicited++;
                 }
             } else if (measuring) {
-                if (packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket) {
-                    particles++;
+                if (packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket particle) {
+                    String type = net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE
+                            .getKey(particle.getParticle().getType()).toString();
+                    particleTypes.add(type);
+                    if (scenario == 3 && automaticDive && type.equals("minecraft:dragon_breath")
+                            && world.getEntities().stream().anyMatch(entity -> "pool".equals(
+                                    entity.getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING)))) {
+                        lingeringPoolParticles++;
+                    } else {
+                        particles++;
+                    }
                 } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket) {
                     sounds++;
                 }

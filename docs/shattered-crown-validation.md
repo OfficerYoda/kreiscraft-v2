@@ -4,6 +4,13 @@ title: Shattered Crown live validation
 
 # Required live acceptance: The Shattered Crown
 
+**Current approved #149–#163 acceptance:** follow the
+[four-maxed-player release-candidate guide](/shattered-crown-release-candidate/).
+Full Java25 `check build` includes `testNms`; no historical exemption applies. Both Crown and
+Wither must be enabled on the candidate. Agent-native assertion evidence and the separate human
+presentation/balance session are explicitly distinct. Sections below headed historical preserve
+earlier logs and requirements; their old20-player/final-pair/WIP claims do not govern this redesign.
+
 ## Redesign checkpoint (#149–163)
 
 The historical evidence below predates the approved redesign and is **not** release acceptance
@@ -28,7 +35,7 @@ readability/balance observations. Missing human clients is not a hidden agent im
 actual supported-Paper combat and a representative multiplayer session before PR #133 can leave
 WIP. Completing an agent run is not completing this acceptance. Do not merge while it is pending.
 
-## Current agent verification checkpoint (2026-11-10)
+## Historical agent verification checkpoint (2026-11-10, pre-redesign)
 
 Reviewed runtime: `789e29db5a1084f4088f91b70781efade32619cb`. Java 25 `check -x testNms`
 passed **1,611 tests**, zero failures/errors, with five existing `ServerMetricsCollectorTest` skips.
@@ -145,7 +152,13 @@ At this earlier checkpoint, real supported-Paper validation and final Standards 
 still pending. The current agent verification above supersedes only that review/check status, not
 the live acceptance requirement; this document does not mark #140 complete or authorize merge.
 
-## Prepare a disposable supported-Paper server
+## Historical pre-redesign operator checklist (superseded by #149–#163)
+
+The commands/counts/balance target below reproduce the earlier contract only. For the current
+three waves, both modules, six-second landing, calibrated damage and permanent-terrain sequence,
+use the release-candidate guide above. Do not follow the old `-x testNms` exemption.
+
+### Prepare a disposable supported-Paper server
 
 1. Use Java 25 and the supported Paper 26.2 release. Record Java/Paper versions, integration commit,
    plugin JAR SHA256, world seed, plugin list, and the complete effective
@@ -226,7 +239,7 @@ the final race. Follow the [lifecycle contract](/shattered-crown-lifecycle/).
    late damage, stuck shields and native phases after each termination. Mocked bounded-task checks
    are not actual server performance evidence.
 
-## Representative multiplayer balance session
+## Historical #132 representative multiplayer balance session
 
 Recruit approximately **20 players**, mixed combat experience, with mixed enchanted diamond and
 netherite equipment. Death and normal rejoining are allowed. Explain the visible objectives, not an

@@ -14,8 +14,10 @@ The three waves contain exactly four Anchors at 100%, 65% and 30% effective maxi
 Population freezes once per wave and scales complete Roster Units with `ceil(population/4)`, without
 a cap. These are not configuration knobs. Wave one has three mounted pairs and one 4–6-member undead
 tower per unit. Wave two has one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze per unit
-at each Anchor (24 total at 1–4 End players;48 at 5–8). `defender-count`/`defender-type` affect only the
-wave-three placeholder pending #155. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable
+at each Anchor (24 total at 1–4 End players;48 at 5–8). Wave three has one Warden/enhanced-Wither pair
+per unit at each Anchor (4+4 at population4;8+8 at5–8), plus owned minions. Both modules must be enabled
+before startup. `defender-count`/`defender-type` are retained compatibility fields, ignored by the
+three complete rosters. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable
 opening undead; each selected mob has one or two unenchanted leather/chain/occasional iron pieces.
 Natural opening equipment is cleared and pickup disabled. `defender-health` and available native
 attack attributes use validated health/damage settings; weapons/projectiles retain native damage,
@@ -73,7 +75,7 @@ world, actual arrival platform, and usable objective terrain against its
 [initial Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
 documented in the [hunt guide](/shattered-crown-hunt/); reload/restart behavior is documented in the
 [lifecycle guide](/shattered-crown-lifecycle/). Balance remains unvalidated until representative live
-playtesting; follow the [live acceptance checklist](/shattered-crown-validation/).
+four-human playtesting; follow the [current RC/operator sequence](/shattered-crown-release-candidate/).
 
 ---
 

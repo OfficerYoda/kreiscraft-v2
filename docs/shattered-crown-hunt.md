@@ -117,11 +117,13 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `explosion-window-seconds` | 2 | 0.25–5; shared rolling managed-dragon budget window |
 | `explosion-window-budget` | 40 | 1–200 health points across accepted explosions/parts |
 
-Final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**, pool lifetime **3s**. Ordinary
+Diagnostic stationary-profile final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**,
+Prey pool lifetime **3s**. The native shuffled rotation instead retains its5–10-second post-main gap
+and permanently unlocked families throughout all shields; Rain pools always last6s. Ordinary
 warning durations, lane lifetime and knockback stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
-forced-wipe timer is introduced. During each four-Anchor shield, learned opening bombardments
-run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
+forced-wipe timer is introduced. Only the diagnostic stationary shield uses8s Bombardment cadence.
+The complete profile remains finite, bounded and next-attempt only.
 
 `lane-cadence-seconds >= lane-warning-seconds + 0.5` serializes warnings.
 Prey cadence must be at least countdown + 0.5 seconds; Sweep cadence must exceed warning by 0.5 seconds.
@@ -134,6 +136,9 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
 (50 ms resolution; its zero-delay callbacks execute on the next tick on Paper).
 
 ## Visible geometry and safe placement
+
+This section records the historical stationary geometry. Its walking-route/arrival-footprint vetoes
+are superseded by #161; current placement uses surviving supported ground, not preserved terrain.
 
 - A target is selected in deterministic UUID-sorted round-robin order from eligible living online
   survival/adventure participants. Each lane fixes its ground-level center at warning time and

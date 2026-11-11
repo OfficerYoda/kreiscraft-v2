@@ -211,7 +211,10 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
             command("wave 3", "wave=3");
             world.getEntities().stream()
                     .filter(entity -> entity instanceof LivingEntity && artifact(entity, "defender"))
-                    .forEach(entity -> ((LivingEntity) entity).damage(10000, player));
+                    .forEach(entity -> ((LivingEntity) entity).setHealth(0)); // Real deaths, including charged native Withers.
+            world.getEntities().stream()
+                    .filter(entity -> entity instanceof LivingEntity && artifact(entity, "defender"))
+                    .forEach(entity -> ((LivingEntity) entity).setHealth(0)); // Re-enumerate synchronous descendants.
             world.getEntitiesByClass(EnderCrystal.class).stream().filter(entity -> artifact(entity, "anchor"))
                     .forEach(entity -> {
                         var level = ((CraftWorld) world).getHandle();
@@ -219,6 +222,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
                                 .hurtServer(level, level.damageSources().playerAttack(fixtures.getFirst()), 1);
                     });
             check(command("status", "unlocked=").contains("SMASH"), "automatic final-wave unlock");
+            measuring = false;
             command("resume", "mode=automatic");
         } else {
             command("trigger smash", "Started SMASH");
@@ -233,6 +237,17 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
         try {
             ticks++;
             fixtures.forEach(fixture -> fixture.connection.tick());
+            if (scenario == 3 && !measuring) {
+                check(age < 1200, "full shuffled round reaches automatic Smash");
+                if (!command("status", "mode=automatic").contains("attack=SMASH")) {
+                    return;
+                }
+                target.setY(world.getHighestBlockYAt(40, 40) + 1);
+                floorY = target.getBlockY() - 1;
+                initialSolid = solidPatch();
+                player.setHealth(20);
+                measuring = true;
+            }
             if (scenario > 7) {
                 return;
             }
@@ -323,7 +338,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
                     begin();
                 }
             } else {
-                check(age < 700, "Smash completion timeout");
+                check(age < 1200, "Smash completion timeout");
             }
         } catch (RuntimeException error) {
             getLogger().log(java.util.logging.Level.SEVERE, "Smash probe failed", error);
@@ -424,7 +439,8 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void isolate(EntityDamageEvent event) {
         if (event.getEntity() == player || event.getEntity() == arrival) {
-            if (event.getDamageSource().getCausingEntity() != dragon
+            if (scenario <= 7 && (!measuring || Math.abs(event.getFinalDamage() - 12) > 0.001)
+                    || event.getDamageSource().getCausingEntity() != dragon
                     || event.getCause() != EntityDamageEvent.DamageCause.DRAGON_BREATH || scenario == 6) {
                 event.setCancelled(true); // Ambient damage is not the Smash damage under test.
             }
@@ -439,7 +455,8 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
         if (event.getDamageSource().getDirectEntity() instanceof FallingBlock block && artifact(block, "debris")) {
             debrisDamage++;
         }
-        if (event.getEntity() == player && event.getCause() == EntityDamageEvent.DamageCause.DRAGON_BREATH) {
+        if (event.getEntity() == player && event.getCause() == EntityDamageEvent.DamageCause.DRAGON_BREATH
+                && Math.abs(event.getFinalDamage() - 12) < 0.001) {
             check(event.getDamageSource().getDirectEntity() == dragon
                     && event.getDamageSource().getCausingEntity() == dragon, "real dragon attribution");
             check(Math.abs(dragon.getY() - target.getY() - 2) < 0.1, "damage exactly at physical impact");
