@@ -48,6 +48,7 @@ public final class RotationProbe extends JavaPlugin implements Listener {
     private int stage;
     private int completion = -1;
     private int arrival = -1;
+    private int departure = -1;
     private int landingHits;
     private boolean deposited;
     private boolean finished;
@@ -210,9 +211,9 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     stage = 2;
                 }
             } else if (stage == 2) {
-                if (attack.equals("PREY") && !deposited) {
+                if (!deposited) {
                     // Public shared pool seam: extend a real owned pool for bounded natural-arrival coverage.
-                    require(encounter.depositBreathPool(pad, 5, 60), "public native pool deposit");
+                    require(encounter.depositBreathPool(pad, 5, 120), "public native pool deposit");
                     deposited = true;
                     getLogger().info("ROTATION old pool deposited tick=" + ticks);
                 }
@@ -223,7 +224,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                 }
             } else if (stage == 3) {
                 if (!attack.equals("LANDING")) {
-                    require(getServer().getCurrentTick() - arrival == 120, "six seconds from actual native arrival");
+                    require(departure >= 0 && departure - arrival == 120,
+                            "six seconds from actual native arrival to native departure");
                     require(landingHits >= 2, "old pool damage continues through native landing");
                     command("cancel");
                     require(status().contains("hazards=0") && status.contains("mode=manual"),
@@ -247,6 +249,11 @@ public final class RotationProbe extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void phase(EnderDragonChangePhaseEvent event) {
+        if (event.getEntity() == dragon && arrival >= 0 && event.getNewPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
+            departure = getServer().getCurrentTick();
+            getLogger().info("ROTATION actual native departure serverTick=" + departure + " windowTicks="
+                    + (departure - arrival));
+        }
         if (event.getEntity() == dragon && deposited && arrival < 0
                 && status != null && status.contains("attack=LANDING")
                 && event.getNewPhase() == EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET
