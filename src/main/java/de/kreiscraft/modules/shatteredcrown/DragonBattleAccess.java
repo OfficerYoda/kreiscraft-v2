@@ -21,6 +21,10 @@ public interface DragonBattleAccess {
 
     default void preventDespawn(Mob defender) {
         defender.setRemoveWhenFarAway(false);
+    }
+
+    /** Opening equipment policy; keep later-wave and unrelated native pickup behavior unchanged. */
+    default void disableEquipmentPickup(Mob defender) {
         defender.setCanPickupItems(false);
     }
 

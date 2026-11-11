@@ -1857,9 +1857,13 @@ public final class EncounterController implements Listener, AutoCloseable {
             spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER, EntityType.BOGGED);
             var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
                     EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
+            var crowns = List.of(EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED);
             Mob previous = null;
-            for (int member = 0; member < 4 + variation % 3; member++) {
-                EntityType type = types.get((variation + member) % types.size());
+            int height = 4 + variation % 3;
+            for (int member = 0; member < height; member++) {
+                // Native passengers control the stack; a melee crown cannot reach players several mobs below.
+                EntityType type = member == height - 1 ? crowns.get(variation % crowns.size())
+                        : types.get((variation + member) % types.size());
                 Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
                         openingInitializer(type));
                 if (previous != null && !previous.addPassenger(next)) {
@@ -1910,6 +1914,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private void initializeOpeningMob(Mob mob) {
         battles.preventDespawn(mob);
+        battles.disableEquipmentPickup(mob);
         mob.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
         mob.setHealth(config.defenderHealth());
         var attack = mob.getAttribute(Attribute.ATTACK_DAMAGE);

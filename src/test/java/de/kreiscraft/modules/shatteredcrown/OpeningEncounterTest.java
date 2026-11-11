@@ -99,6 +99,11 @@ class OpeningEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; location, text and lifetime remain real.
             }
@@ -192,6 +197,9 @@ class OpeningEncounterTest {
                             size++;
                         }
                         assertThat(size).isBetween(4, 6);
+                        assertThat(current.getType()).as("native tower crown must be able to hit players below")
+                                .isIn(org.bukkit.entity.EntityType.SKELETON, org.bukkit.entity.EntityType.STRAY,
+                                        org.bukkit.entity.EntityType.BOGGED);
                     }
                 }
             }

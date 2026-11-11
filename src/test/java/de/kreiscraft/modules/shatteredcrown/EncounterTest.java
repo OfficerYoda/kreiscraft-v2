@@ -94,6 +94,11 @@ class EncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(org.bukkit.entity.Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; all warning entity effects remain real.
             }

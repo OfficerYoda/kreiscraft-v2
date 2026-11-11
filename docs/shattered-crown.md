@@ -62,6 +62,10 @@ Each complete unit at **each** Anchor contains four Defender Groups:
 - An actual chain of4–6 undead passengers, rotating through Husk, Zombie, Drowned, Skeleton,
   Stray, Bogged and Wither Skeleton across the wave. Archers retain bows; Wither Skeletons have swords.
 
+Towers end in a Skeleton, Stray or Bogged archer. Native passengers steer the stack; a melee-only
+crown several bodies above the ground cannot reliably hit players below. This retains native
+movement/combat without custom attack goals or a second damage engine.
+
 At12 initial online players each Anchor has three units:12 groups, not12 individual defenders.
 Four online players produce16 groups/43 members across all four Anchors;12 produce48 groups/132 members.
 Tower height/species rotate deterministically by Anchor and unit. About35% of armor-capable undead

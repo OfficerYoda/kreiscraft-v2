@@ -98,6 +98,11 @@ class FinalEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(TextDisplay warning) {
                 // MockBukkit lacks only the billboard setter.
             }

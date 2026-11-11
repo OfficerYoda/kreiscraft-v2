@@ -96,6 +96,11 @@ class LifecycleEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock has no billboard setter; warning text, position and lifetime stay real.
             }
@@ -808,6 +813,11 @@ class LifecycleEncounterTest {
             @Override
             public void preventDespawn(Mob defender) {
                 battles.preventDespawn(defender);
+            }
+
+            @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
             }
         });
         var maximum = dragon.getAttribute(Attribute.MAX_HEALTH);

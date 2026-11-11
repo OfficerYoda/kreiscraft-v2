@@ -191,7 +191,9 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 cases.addAll(roster.stream().filter(mob -> mob.getVehicle() == null
                         && mob.getType() != EntityType.ZOMBIE_HORSE && mob.getType() != EntityType.SPIDER
                         && mob.getType() != EntityType.CAVE_SPIDER)
-                        .sorted(java.util.Comparator.comparingInt(mob -> chain(mob).size())).toList());
+                        .sorted(java.util.Comparator.<Mob>comparingInt(mob -> chain(mob).size())
+                                .thenComparing(mob -> mob.getType().name()))
+                        .toList());
                 begin();
             }
             if (active != null) {
