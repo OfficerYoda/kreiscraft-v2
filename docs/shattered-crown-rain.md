@@ -83,5 +83,5 @@ It uses genuine PlayerList-registered ServerPlayers, natural managed DragonBattl
 events/positions/velocity/health, real ground removal and shared pool expiry/rates, plugin disable
 and a second JVM reopening the saved world. Synthetic packet sinks prove native conversion/emission,
 **not authenticated client rendering/readability**. Full fight endurance, all roster interactions,
-natural rewards and human multiplayer balance/presentation remain #163; #160's separate retained
-full native matrix is not claimed closed by Rain.
+natural rewards and human multiplayer balance/presentation remain #163. #160 was accepted independently
+on its pinned earlier artifact; Rain's paired-module/projectile checks are separate.

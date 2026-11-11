@@ -737,11 +737,13 @@ public final class RainProbe extends JavaPlugin implements Listener {
             check(warnings().size() == 4, "automatic Rain targets EVERY living combat player, not Prey's three");
             getLogger().info("RAIN_AUTOMATIC warningAge=" + age + " status=" + state);
         }
-        if (automaticImpact >= 0 && !state.contains("main=idle")) {
+        String selected = state.split(", last-selection=")[1].split(",")[0];
+        if (automaticImpact >= 0 && !selected.equals("RAIN")) {
             check(collisions == 4 && launches == 4, "automatic native projectiles all actually resolved");
             check(age - automaticImpact >= 100 && age - automaticImpact <= 101, "native post-main five-second gap");
             getLogger().info("RAIN_AUTOMATIC PASS warning=" + automaticWarning + " lastImpact=" + automaticImpact
-                    + " nextWarning=" + age + " poolsRemaining=" + pools().size());
+                    + " nextSelection=" + age + " selected=" + selected + " poolsRemaining=" + pools().size()
+                    + " status=" + state);
             player.teleport(new Location(world, 40.5, world.getHighestBlockYAt(40, 40) + 1, 40.5));
             check(command("trigger dive " + player.getName()).contains("Started DIVE"),
                     "production native Dive for sibling pool check");
