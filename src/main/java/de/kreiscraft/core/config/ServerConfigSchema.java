@@ -366,10 +366,14 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("pool-lifetime-seconds", 1, 15));
         fields.add(crownNumber("sweep-radius", 4, 16));
         fields.add(crownNumber("sweep-angle", 30, 120));
-        fields.add(crownNumber("sweep-warning-seconds", 2, 15));
+        fields.add(crownNumber("sweep-warning-seconds", 4, 15));
         fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
         fields.add(crownNumber("sweep-damage", 0, 100));
         fields.add(crownNumber("sweep-knockback", 0, 2));
+        fields.add(crownNumber("smash-crater-radius", 1, 8));
+        fields.add(field(path("modules", "shattered-crown", "smash-crater-depth"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 3), ConfigLifecycle.HOT_RELOAD));
+        fields.add(crownNumber("debris-lifetime-seconds", 0.5, 10));
         fields.add(crownNumber("final-health-fraction", 0.1, 0.5));
         fields.add(crownNumber("final-cadence-factor", 0.5, 0.9));
         fields.add(crownNumber("final-pool-lifetime-factor", 0.25, 0.9));
