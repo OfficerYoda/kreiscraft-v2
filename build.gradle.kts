@@ -170,6 +170,14 @@ tasks.register<Jar>("defenderRoamingProbeJar") {
     from("src/paperTest/defender-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("finalWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("final-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/FinalWaveProbe*.class") }
+    from("src/paperTest/final-wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.register<Jar>("rotationProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("rotation-probe")

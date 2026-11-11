@@ -164,7 +164,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 require(dragon.getHealth() == 300, "native explosive damage clamped30");
                 stage = 2;
             } else if (stage == 2 && anchors().size() == 4) {
-                require(defenders().size() == 32, "wave3 frozen units2");
+                require(defenders().size() == 16, "wave3 frozen units2 Warden/Wither pairs");
                 verifyRetiredAttribution();
                 clearWave();
                 require(dragon.getHealth() == 300, "crystals cannot damage managed dragon");
@@ -172,7 +172,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                     var old = anchors();
                     command("wave " + wave);
                     require(old.stream().noneMatch(org.bukkit.entity.Entity::isValid), "debug replaces old objectives");
-                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 87 : wave == 2 ? 48 : 32),
+                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 87 : wave == 2 ? 48 : 16),
                             "fresh defended debug wave" + wave);
                     require(dragon.getHealth() == (wave == 1 ? 1000 : wave == 2 ? 650 : 300), "debug health" + wave);
                     command("status");

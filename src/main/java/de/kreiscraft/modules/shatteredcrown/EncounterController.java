@@ -1815,7 +1815,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     /** Combat attribution survives parent death, but never crosses an attempt boundary. */
     public boolean ownsCombatant(Entity entity) {
-        return entity != null && combatOwners.containsKey(entity.getUniqueId());
+        return entity != null && work != null && !work.isClosed() && combatOwners.containsKey(entity.getUniqueId());
     }
 
     /** Original objective identity; roaming, riding and parent death do not reassign it. */
@@ -1878,6 +1878,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                     }
                     registerCombatant(mob, anchor);
                     defenderInitializers.put(mob.getUniqueId(), initialize);
+                    battles.preventDespawn(mob);
                     initialize.accept(mob);
                     setCombatRange(mob);
                 });
@@ -1962,6 +1963,13 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     /** #153–155 replace this unit's content, not wave scaling or objective completion. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
+        if (wave == 3) {
+            spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective, battles::preventDespawn);
+            // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
+            spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
+                    mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
+            return;
+        }
         if (wave == 1) {
             if (anchors.size() == 1 && unit == 0) {
                 openingArmorIndex = 0;
@@ -2010,7 +2018,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             return;
         }
-        // ponytail: wave three keeps the configured placeholder until #155 supplies its content.
         for (int index = 0; index < config.defenderCount(); index++) {
             spawnDefender(objective);
         }
@@ -2116,6 +2123,14 @@ public final class EncounterController implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTarget(org.bukkit.event.entity.EntityTargetLivingEntityEvent event) {
         if (ownsCombatant(event.getEntity()) && event.getTarget() != null
+                && (!(event.getTarget() instanceof Player player) || !isParticipant(player))) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onWardenAnger(io.papermc.paper.event.entity.WardenAngerChangeEvent event) {
+        if (ownsCombatant(event.getEntity())
                 && (!(event.getTarget() instanceof Player player) || !isParticipant(player))) {
             event.setCancelled(true);
         }
@@ -2481,9 +2496,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             if (!mob.isValid()) {
                 continue;
             }
-            if (player.equals(mob.getTarget())) {
-                battles.targetDefender(mob, null);
-            }
+            battles.forgetDefenderTarget(mob, player);
             if (mob instanceof org.bukkit.entity.Wither wither) {
                 for (var head : org.bukkit.entity.Wither.Head.values()) {
                     if (player.equals(wither.getTarget(head))) {
