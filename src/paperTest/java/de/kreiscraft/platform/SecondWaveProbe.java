@@ -149,8 +149,8 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
                 require(player.isOnline() && fixture.connection.hasClientLoaded(), "registered loaded native player");
                 command("wave 2");
                 dragon.setAI(false); // Isolate roster AI, never claim native dragon choreography.
-                require(defenders().size() == 24, "debug baseline exactly24 defenders");
-                require(rootCallbacks == 24 && leakedRoots == 0,
+                require(defenders().size() == 6, "single-player debug baseline exactly6 defenders");
+                require(rootCallbacks == 6 && leakedRoots == 0,
                         "owned roots initialized before NORMAL spawn callbacks");
                 require(end.getEntitiesByClass(org.bukkit.entity.EnderCrystal.class).stream().filter(this::owned)
                         .count() == 4, "four production Anchors");
@@ -294,7 +294,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
         require(old.stream().noneMatch(Entity::isValid), "native debug replacement removes old six-species roots");
         require(oldEffects.stream().noneMatch(Entity::isValid),
                 "native debug replacement removes attributed projectiles");
-        require(rootCallbacks == 72 && leakedRoots == 0, "48 scaled roots owned before public callbacks");
+        require(rootCallbacks == 54 && leakedRoots == 0, "48 scaled roots owned before public callbacks");
         require(defenders().size() == 48, "native population8 repeats complete six-species units");
         for (EntityType type : SPECIES) {
             require(defenders().stream().filter(mob -> mob.getType() == type).count() == 8,

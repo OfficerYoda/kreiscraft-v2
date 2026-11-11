@@ -11,13 +11,13 @@ Complete reference for every key in Kreiscraft's configuration files.
 ### Shattered Crown fixed mechanics
 
 The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
-Population freezes once per wave. Base Roster Units=`ceil(population/4)`, without
-a cap. These are not configuration knobs. Wave one has three mounted pairs and one 4–6-member undead
-tower per unit. Wave two has one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze per unit
-at each Anchor (24 total at 1–4 End players;48 at 5–8). Wave three has one Warden/enhanced-Wither pair
-per unit across the entire wave, using `base + max(0, floor(base/2) - 1)` units
-(1+1 at population1–4;2+2 at5–8;6+6 at20;11+11 at29–32), plus owned minions.
-Bosses and species are evenly distributed across the four Anchors; empty Anchors start exposed.
+Population freezes once per wave. Wave one has12 mobs per counted player: three mounted pairs and a six-member
+undead tower. Wave two has6 mobs per player: one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze.
+These are whole-wave totals, uncapped, not configuration knobs. Opening groups remain intact;
+second-wave totals/species are balanced across Anchors. Wave three interpolates doubled four-player targets,
+rounding up to equal Warden/Wither pairs with minimum2 pairs (2+2 at1–4, 3+3 at5–6, 4+4 at7–8,
+12+12 at20, 22+22 at32), plus owned minions. See the [encounter guide](/shattered-crown/) for the formula.
+Bosses and species are evenly distributed across the four Anchors. Zero-population debug waves start exposed.
 Both modules must be enabled
 before startup. `defender-count`/`defender-type` are retained compatibility fields, ignored by the
 three complete rosters. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable

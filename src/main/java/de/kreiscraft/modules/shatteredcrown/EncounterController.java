@@ -628,11 +628,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         waveNumber = selected; // Install the shield before any public spawn callback can reenter damage.
         finalEntered = selected == 3;
         wavePopulation = population;
-        rosterUnits = (int) Math.ceil(population / 4.0);
-        if (selected == 3) {
-            // One bonus pair at 13 players, then another every eight players; earlier waves keep their base units.
-            rosterUnits += Math.max(0, rosterUnits / 2 - 1);
-        }
+        rosterUnits = selected == 3 ? finalRosterUnits(population) : population;
         installingWave = true;
         EnderDragon source = dragon;
         hunting = false;
@@ -649,10 +645,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             defenderInitializers.clear();
             waveWork = requireWork().child(() -> {
             });
+            var openingRoster = selected == 1 ? openingRoster(population) : List.<List<OpeningGroup>>of();
+            openingArmorIndex = 0;
             for (int index = 0; index < openingGround.size(); index++) {
                 Location ground = arena.anchorSite(openingGround.get(index));
                 openingGround.set(index, ground);
-                installAnchor(ground);
+                installAnchor(ground, selected == 1 ? openingRoster.get(index) : List.of());
             }
             installingWave = false;
         } catch (RuntimeException exception) {
@@ -2104,17 +2102,65 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         return crystal;
     }
 
-    private void installAnchor(Location ground) {
+    private static int finalRosterUnits(int population) {
+        if (population == 0) {
+            return 0;
+        }
+        int upperTier = (int) Math.ceil(population / 4.0);
+        int lowerTier = upperTier - 1;
+        int lowerPairs = 2 * (lowerTier + Math.max(0, lowerTier / 2 - 1));
+        int upperPairs = 2 * (upperTier + Math.max(0, upperTier / 2 - 1));
+        double fraction = (population - lowerTier * 4) / 4.0;
+        return Math.max(2, (int) Math.ceil(lowerPairs + (upperPairs - lowerPairs) * fraction));
+    }
+
+    private record OpeningGroup(int unit, int kind) {
+    }
+
+    /** Place six-member towers first, then balance intact two-member mounted pairs by member count. */
+    private List<List<OpeningGroup>> openingRoster(int population) {
+        var roster = new ArrayList<List<OpeningGroup>>();
+        int[] members = new int[openingGround.size()];
+        for (int index = 0; index < members.length; index++) {
+            roster.add(new ArrayList<>());
+        }
+        for (int unit = 0; unit < population; unit++) {
+            int index = unit % members.length;
+            roster.get(index).add(new OpeningGroup(unit, 3));
+            members[index] += 6;
+        }
+        for (int unit = 0; unit < population; unit++) {
+            for (int kind = 0; kind < 3; kind++) {
+                int index = 0;
+                for (int candidate = 1; candidate < members.length; candidate++) {
+                    if (members[candidate] < members[index]) {
+                        index = candidate;
+                    }
+                }
+                roster.get(index).add(new OpeningGroup(unit, kind));
+                members[index] += 2;
+            }
+        }
+        return roster;
+    }
+
+    private void installAnchor(Location ground, List<OpeningGroup> openingGroups) {
         var objective = new Anchor(spawnAnchor(ground), ground);
         anchors.add(objective);
-        for (int unit = 0; unit < rosterUnits; unit++) {
-            spawnRosterUnit(objective, waveNumber, unit);
+        if (waveNumber == 1) {
+            for (var group : openingGroups) {
+                spawnOpeningGroup(objective, group);
+            }
+        } else {
+            for (int unit = 0; unit < rosterUnits; unit++) {
+                spawnRosterUnit(objective, waveNumber, unit);
+            }
         }
         objective.waveInstalled = true;
         objective.crystal.setGlowing(objective.wave.isEmpty());
     }
 
-    /** Opening/second units repeat per Anchor; final units are distributed across the whole wave. */
+    /** Each global unit contributes six second-wave mobs or one final Warden/Wither pair. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
         if (wave == 3) {
             int anchorIndex = anchors.indexOf(objective);
@@ -2131,36 +2177,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             }
             return;
         }
-        if (wave == 1) {
-            if (anchors.size() == 1 && unit == 0) {
-                openingArmorIndex = 0;
-            }
-            int variation = anchors.indexOf(objective) + unit;
-            Location site = objective.home;
-            spawnOpeningPair(objective, site.clone().add(-2, 0, 0), EntityType.ZOMBIE_HORSE, EntityType.ZOMBIE);
-            spawnOpeningPair(objective, site.clone().add(2, 0, 0), EntityType.SPIDER, EntityType.SKELETON);
-            spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER, EntityType.BOGGED);
-            var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
-                    EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
-            var crowns = List.of(EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED);
-            Mob previous = null;
-            int height = 4 + variation % 3;
-            for (int member = 0; member < height; member++) {
-                // Native passengers control the stack; a melee crown cannot reach players several mobs below.
-                EntityType type = member == height - 1 ? crowns.get(variation % crowns.size())
-                        : types.get((variation + member) % types.size());
-                Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
-                        openingInitializer(type));
-                if (previous != null && !previous.addPassenger(next)) {
-                    throw new IllegalStateException("Opening tower attachment was refused");
-                }
-                previous = next;
-            }
-            return;
-        }
         if (wave == 2) {
+            int speciesIndex = 0;
             for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
                     EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE)) {
+                if ((speciesIndex++ * rosterUnits + unit) % openingGround.size() != anchors.indexOf(objective)) {
+                    continue;
+                }
                 spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
                     battles.preventDespawn(defender);
                     defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
@@ -2181,6 +2204,36 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
         for (int index = 0; index < config.defenderCount(); index++) {
             spawnDefender(objective);
+        }
+    }
+
+    private void spawnOpeningGroup(Anchor objective, OpeningGroup group) {
+        Location site = objective.home;
+        switch (group.kind()) {
+            case 0 -> spawnOpeningPair(objective, site.clone().add(-2, 0, 0), EntityType.ZOMBIE_HORSE,
+                    EntityType.ZOMBIE);
+            case 1 -> spawnOpeningPair(objective, site.clone().add(2, 0, 0), EntityType.SPIDER, EntityType.SKELETON);
+            case 2 -> spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER,
+                    EntityType.BOGGED);
+            case 3 -> {
+                int variation = group.unit();
+                var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
+                        EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
+                var crowns = List.of(EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED);
+                Mob previous = null;
+                for (int member = 0; member < 6; member++) {
+                    // Native passengers control the stack; a melee crown cannot reach players several mobs below.
+                    EntityType type = member == 5 ? crowns.get(variation % crowns.size())
+                            : types.get((variation + member) % types.size());
+                    Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
+                            openingInitializer(type));
+                    if (previous != null && !previous.addPassenger(next)) {
+                        throw new IllegalStateException("Opening tower attachment was refused");
+                    }
+                    previous = next;
+                }
+            }
+            default -> throw new IllegalArgumentException("Unknown opening group " + group.kind());
         }
     }
 

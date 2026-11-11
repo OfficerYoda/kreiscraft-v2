@@ -71,8 +71,8 @@ is destroyed. Completing a wave permanently unlocks additional attacks.
 _Avoid_: Final pair, defender wave
 
 **Roster Unit**:
-One complete set of a wave's defenders. Opening and second-wave units repeat at each Anchor;
-final-wave units each contain a Warden and a Wither distributed across the Anchors.
+One complete set of a wave's defenders distributed across the Anchors. Opening and second-wave
+units are allotted per counted player; final-wave units each contain a Warden and a Wither.
 _Avoid_: Defender count, group count
 
 **Defender Group**:

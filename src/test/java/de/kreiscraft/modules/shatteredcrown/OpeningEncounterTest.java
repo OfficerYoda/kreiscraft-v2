@@ -178,18 +178,17 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void openingRosterRepeatsFourRealPassengerGroupsAtEveryAnchor() throws Exception {
+    void openingRosterDistributesFourRealPassengerGroupsAndTwelveMembersPerPlayer() throws Exception {
         enable();
         var owned = end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
                 .filter(mob -> mob != dragon).toList();
-        assertThat(owned).hasSize(43);
+        assertThat(owned).hasSize(12);
         assertThat(owned.stream().map(Entity::getType)).contains(org.bukkit.entity.EntityType.HUSK,
-                org.bukkit.entity.EntityType.DROWNED, org.bukkit.entity.EntityType.STRAY,
-                org.bukkit.entity.EntityType.WITHER_SKELETON);
+                org.bukkit.entity.EntityType.DROWNED, org.bukkit.entity.EntityType.STRAY);
         for (var anchor : anchors()) {
             var roots = owned.stream().filter(mob -> mob.getVehicle() == null)
                     .filter(mob -> mob.getLocation().distance(anchor.getLocation()) < 5).toList();
-            assertThat(roots).hasSize(4);
+            assertThat(roots).hasSize(1);
             for (var mount : roots) {
                 assertThat(mount.getPassengers()).hasSize(1);
                 Entity rider = mount.getPassengers().getFirst();
@@ -208,7 +207,7 @@ class OpeningEncounterTest {
                             current = current.getPassengers().getFirst();
                             size++;
                         }
-                        assertThat(size).isBetween(4, 6);
+                        assertThat(size).isEqualTo(6);
                         assertThat(current.getType()).as("native tower crown must be able to hit players below")
                                 .isIn(org.bukkit.entity.EntityType.SKELETON, org.bukkit.entity.EntityType.STRAY,
                                         org.bukkit.entity.EntityType.BOGGED);
@@ -223,7 +222,7 @@ class OpeningEncounterTest {
         enable();
         var undead = end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
                 .filter(mob -> mob instanceof Zombie || mob instanceof org.bukkit.entity.AbstractSkeleton).toList();
-        assertThat(undead).hasSize(31);
+        assertThat(undead).hasSize(9);
         int armored = 0;
         for (var mob : undead) {
             var armor = java.util.Arrays.stream(mob.getEquipment().getArmorContents())
@@ -236,7 +235,7 @@ class OpeningEncounterTest {
                                 || item.getType().name().startsWith("IRON_")));
             }
         }
-        assertThat(armored).isEqualTo(11);
+        assertThat(armored).isEqualTo(3);
         var missing = undead.stream().filter(mob -> !mob.getEquipment().getHelmet().getType().isAir())
                 .findFirst().orElseThrow();
         var armor = missing.getEquipment().getArmorContents();
@@ -254,7 +253,10 @@ class OpeningEncounterTest {
     @Test
     void brokenPassengerGroupsRemainFiniteAndEveryMountAndRiderStillGatesItsOriginalAnchor() throws Exception {
         enable();
-        var objective = anchors().getFirst();
+        var horseRoot = defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.ZOMBIE_HORSE)
+                .findFirst().orElseThrow();
+        var objective = anchors().stream().min(java.util.Comparator.comparingDouble(
+                anchor -> anchor.getLocation().distanceSquared(horseRoot.getLocation()))).orElseThrow();
         var group =
                 defenders().stream().filter(mob -> mob.getLocation().distance(objective.getLocation()) < 5).toList();
         var horse = group.stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.ZOMBIE_HORSE)
@@ -413,7 +415,7 @@ class OpeningEncounterTest {
         enable();
         var objectives = anchors();
         assertThat(objectives).hasSize(4);
-        assertThat(defenders()).hasSize(43);
+        assertThat(defenders()).hasSize(12);
         for (var anchor : objectives) {
             assertThat(anchor.getLocation().getY()).isEqualTo(64);
             assertThat(anchor.getLocation().getBlock().getRelative(0, -1, 0).getType()).isEqualTo(Material.END_STONE);
@@ -450,7 +452,7 @@ class OpeningEncounterTest {
         german.teleport(player.getLocation());
         enable();
         assertThat(anchors()).hasSize(4);
-        assertThat(defenders()).hasSize(43);
+        assertThat(defenders()).hasSize(24);
         var objectives = anchors();
         var wave = defenders();
         wave.forEach(this::defeat);
@@ -686,7 +688,7 @@ class OpeningEncounterTest {
         for (int attempt = 0; attempt < 8; attempt++) {
             var objectives = anchors();
             assertThat(objectives).hasSize(4).allMatch(anchor -> !anchor.isGlowing());
-            assertThat(defenders()).hasSize(43);
+            assertThat(defenders()).hasSize(12);
             scheduler.advance(Duration.ofSeconds(1));
             for (int attack = 0; attack < 12; attack++) {
                 scheduler.advance(Duration.ofSeconds(1));
@@ -871,7 +873,7 @@ class OpeningEncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(11));
         assertThat(anchors()).hasSize(4);
-        assertThat(defenders()).hasSize(43);
+        assertThat(defenders()).hasSize(12);
         assertThat(dragon.getHealth()).isEqualTo(1000);
     }
 

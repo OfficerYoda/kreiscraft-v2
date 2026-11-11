@@ -385,7 +385,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     }
                     check(dragon.hasAI(), "AI-enabled natural battle dragon");
                     check(encounter.wavePopulation() == 4, "first-entry server-wide frozen population4");
-                    check(defenders().size() == 43, "complete mounted/tower opening roster");
+                    check(defenders().size() == 48, "twelve-per-player mounted/tower opening roster");
                     firstDragon = dragon.getUniqueId();
                     enter(1);
                 }
@@ -504,7 +504,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     if (anchors().size() != 4) {
                         return;
                     }
-                    check(defenders().size() == (attempt == 0 ? 12 : 2), "uncapped distributed final boss roster");
+                    check(defenders().size() == (attempt == 0 ? 24 : 4), "uncapped interpolated final boss roster");
                     if (ticks - since < 230) {
                         return; // Let all native 220-tick charges and destructive enhanced spawn blasts actually finish.
                     }
@@ -515,7 +515,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.setNoDamageTicks(0);
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == (attempt == 0 ? 16 : 6), "enhanced half-health four owned minions");
+                    check(defenders().size() == (attempt == 0 ? 28 : 8), "enhanced half-health four owned minions");
                     clearWave();
                     check(encounter.availableAttacks().size() == 5, "all five permanent families runnable");
                     command("resume");
@@ -729,7 +729,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                         return;
                     }
                     command("wave 1");
-                    check(command("status").contains("hazards=0") && defenders().size() == 43,
+                    check(command("status").contains("hazards=0") && defenders().size() == 48,
                             "wave replacement cancels real native flight and installs current mounted roster");
                     for (var player : fixtures) {
                         player.getBukkitEntity().teleport(new Location(end, 350, 100, 0));
@@ -792,7 +792,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     }
                     end.loadChunk(11, 2);
                     check(getServer().getEntity(unloadMember) == null, "reloaded stale member cleaned");
-                    check(defenders().size() == 2, "actual unload is recovery not defeat or duplicate gate");
+                    check(defenders().size() == 4, "actual unload is recovery not defeat or duplicate gate");
                     for (var player : fixtures) {
                         player.getBukkitEntity().teleport(new Location(end, 100.5, 50, 0.5));
                     }
@@ -805,7 +805,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == 6, "interrupted active attempt includes actual minions");
+                    check(defenders().size() == 8, "interrupted active attempt includes actual minions");
                     parent.setHealth(0);
                     prepareRain(22);
                     command("trigger fireball-rain");
@@ -932,7 +932,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == 6, "new attempt after actual world load has fresh minions only");
+                    check(defenders().size() == 8, "new attempt after actual world load has fresh minions only");
                     parent.setHealth(0);
                     // Prepare saved later-load controls BEFORE Rain's live checkpoint. Same-tick additions/moves
                     // into a new native chunk are not committed by save-all until entity loading has ticked.
@@ -1006,7 +1006,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     }
                     check(dragon.getUniqueId().equals(firstDragon) && dragon.getPersistentDataContainer().has(ORIGINAL),
                             "same surviving battle starts clean later attempt");
-                    check(encounter.waveNumber() == 1 && defenders().size() == 43 && anchors().size() == 4,
+                    check(encounter.waveNumber() == 1 && defenders().size() == 48 && anchors().size() == 4,
                             "later attempt current roster/gates no stale boss or minion");
                     check(dragonDeaths == 0 && spawnedExperience == 0,
                             "old delayed explosion/reward callbacks inert12s into retry");

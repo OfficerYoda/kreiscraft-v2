@@ -31,15 +31,15 @@ Do not install `build/paper-probe/` JARs on production.
 
 | Wave | Gate | Four-player complete roster | Population5–8 | Population20 |
 | --- | --- | --- | --- | --- |
-| One | 100% | Four Anchors,43 members/16 groups: spear Zombie/Horse, Skeleton/Spider, Bogged/Cave Spider,4–6 undead tower per Anchor | 87 members | 219 members |
-| Two | 65% | Four Anchors,24 roots: Ravager/Guardian/Brute/Vindicator/Blaze/Breeze per Anchor | 48 roots | 120 roots |
-| Three | 30% | Four Anchors,1 Warden+1 enhanced Wither, plus owned Wither minions | 2+2 roots | 6+6 roots |
+| One | 100% | Four Anchors,48 members/16 groups: spear Zombie/Horse, Skeleton/Spider, Bogged/Cave Spider, six-member undead towers | 60–96 members | 240 members |
+| Two | 65% | Four Anchors,24 roots: Ravager/Guardian/Brute/Vindicator/Blaze/Breeze per player | 30–48 roots | 120 roots |
+| Three | 30% | Four Anchors,2 Wardens+2 enhanced Withers, plus owned Wither minions | 3+3 at5–6;4+4 at7–8 | 12+12 roots |
 
-Base units=`ceil(snapshot/4)`, uncapped, repeated per Anchor for waves one/two. Wave three uses
-`base + max(0, floor(base/2) - 1)` units across the whole wave: 1–4→1 pair, 5–8→2, 9–12→3,
-13–16→5, 17–20→6, 21–24→8, 25–28→9, 29–32→11.
-Final bosses are spread evenly across Anchors, balancing species too; 1–4 players have two initially exposed
-crystals, and twenty players have three bosses at each Anchor. Opening freezes everyone online server-wide at first
+Waves one/two have12/6 mobs per counted player across the whole wave, uncapped. Mounted pairs/towers remain intact.
+Wave three interpolates doubled four-player targets, rounding up to equal Warden/Wither pairs, minimum2 pairs:
+1–4→2, 5–6→3, 7–8→4, 12→6, 13→7, 14→8, 15→9, 16→10, 17–18→11, 19–20→12, 32→22.
+Final bosses are spread evenly across Anchors, balancing species too; 1–4 players have one boss per crystal,
+and twenty players have six bosses at each Anchor. Opening freezes everyone online server-wide at first
 End entry; connected dead arrivals retain that snapshot while awaiting respawn. Later waves freeze
 everyone connected in the managed End, including Creative/Spectator,
 outer-island and connected dead players. Those observers/dead players are never combat targets and
