@@ -1173,7 +1173,8 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
+                // Seven retained Prey pools may coexist with the next serialized main-action warning.
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
                 assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertParticipantHealth(20);
                 assertThat(participants).allSatisfy(participant -> assertThat(participant.getVelocity().lengthSquared())
@@ -1194,7 +1195,7 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
                 assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertParticipantHealth(20);
             }
