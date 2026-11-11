@@ -4,7 +4,7 @@ title: Shattered Crown lifecycle and recovery
 
 # Shattered Crown lifecycle and recovery
 
-Ticket #139 extends the playable #134 baseline without requiring unfinished attack tickets.
+Approved #149–#163 lifecycle rules supersede the historical #139 baseline evidence below.
 The [encounter guide](/shattered-crown/) lists the shipped profile and current combat scope.
 
 ## Combat coverage, population and opening grace (#150)
@@ -135,7 +135,7 @@ Use the existing permission-controlled Server Configuration GUI or YAML and `/kr
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains
 YAML-only, and enabling combat still requires a restart. An explicit reload with `enabled: false`
 aborts immediately; a later reload with `enabled: true` does not start the stopped module.
-Removing the entire section also aborts/disables combat, matching the bundled default-off policy.
+Removing the entire section also aborts/disables combat; bundled fresh installs enable both modules.
 Missing sections deserialize default tuning without inserting a section into the live YAML tree.
 Dimension Access and travel/respawn policy are untouched.
 
@@ -220,6 +220,7 @@ membership. Repeated completion/cancellation is harmless; it does not close sibl
 | Ground Smash | After three-second grounded recovery and two-second climb; cancellation/failure also completes | Bounded owned debris child, no damage/placement/drops; the crater is permanent terrain, never temporary work |
 | Prey | All countdown deposition callbacks finish (including skipped targets) | Each pool owns its display/render/expiry independently; all owned pools share the per-player damage-rate rule |
 | Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
+| Fireball Rain | Last real projectile resolves, disappears or times out | Independent radius-five, six-second pools and harmless debris |
 | Landing | Native approach deadline or melee-window end releases the reservation | None |
 | Legacy stationary lane | Warning resolves into an active lane | Lane rendering/damage/expiry remain separately owned; existing two-lane limit is retained |
 
@@ -276,9 +277,9 @@ Bootstrap, module-independence, configuration, GUI and localized-message regress
 Spotless, Checkstyle, `-Werror` production compilation, shadow JAR and InvUI compatibility passed.
 No NMS code changed; version-specific execution remains excluded.
 
-## Supported-Paper verification still required
+## Historical #139 supported-Paper verification request
 
-Target is Java 25 / Paper 26.2. No running Paper/Minecraft process was available on this machine
+At that historical checkpoint, target was Java 25 / Paper 26.2. No running Paper/Minecraft process was available
 during implementation. **No live restart, ritual-respawn, AI/rendering or multiplayer balance
 evidence is claimed.** On the supported deployment, record:
 

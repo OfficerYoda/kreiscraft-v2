@@ -55,7 +55,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `firework`, `positions`, and `shattered-crown` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `firework` and `positions` ship **disabled by default**. Shattered Crown requires the enabled Wither module. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md), [Configuration](docs/reference/configuration.md), [Commands & Permissions](docs/reference/commands-and-permissions.md), and [four-player Crown RC guide](docs/shattered-crown-release-candidate.md).
 
 | Module ID | Summary |
 |---|---|

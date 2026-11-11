@@ -33,8 +33,8 @@ with socket.socket() as sock:
 )
 plugins = server / "plugins"
 plugins.mkdir()
-production = repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
-probe = next((repo / "build/paper-probe").glob("final-wave-probe-*.jar"))
+production = Path(os.environ["PRODUCTION_JAR"]).resolve() if "PRODUCTION_JAR" in os.environ else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
+probe = Path(os.environ["PROBE_JAR"]).resolve() if "PROBE_JAR" in os.environ else repo / "build/paper-probe/final-wave-probe-0.1.0-SNAPSHOT.jar"
 shutil.copy2(production, plugins / "Kreiscraft.jar")
 shutil.copy2(probe, plugins / "FinalWaveProbe.jar")
 with zipfile.ZipFile(production) as jar:

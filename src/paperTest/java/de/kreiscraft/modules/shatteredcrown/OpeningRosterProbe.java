@@ -196,6 +196,16 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                         .sorted(java.util.Comparator.<Mob>comparingInt(mob -> chain(mob).size())
                                 .thenComparing(mob -> mob.getType().name()))
                         .toList());
+                // Frozen calibration groups cannot navigate out of uneven native terrain. Keep their initial
+                // native spawn/health assertions above, then park inactive roots/passengers in clear air.
+                int parked = 0;
+                for (var root : roster.stream().filter(mob -> mob.getVehicle() == null).toList()) {
+                    require(root.teleport(
+                            new Location(player.getWorld(), 20.5 + parked % 4 * 8, 180, -48.5 + parked / 4 * 8),
+                            io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
+                            "park inactive calibration group");
+                    parked++;
+                }
                 begin();
             }
             if (active != null) {

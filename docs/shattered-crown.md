@@ -4,6 +4,11 @@ title: The Shattered Crown
 
 # The Shattered Crown: complete encounter
 
+Approved #149–#163 rules supersede the historical #132–#140 contract below. Use the
+[four-player release-candidate/operator guide](/shattered-crown-release-candidate/) for current
+equipment, counts, timing, commands and the separate human observation session. Historical logs
+are retained as history, not current runtime acceptance.
+
 ## Encounter communication policy (#156)
 
 Automatic Encounter output stays **in the world**, not in chat or above the hotbar. Opening,
@@ -236,8 +241,11 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   relief from the center). Warning geometry and damage use the same surface. Surviving columns and
   hazard/arena bounds remain valid; holes or missing walking escapes no longer veto attacks.
   Changed footing cancels the attack instead of silently moving its warning.
-- The default Hunt rotation retains overdue attacks through other attacks and landings. Oldest due
-  attacks get priority; refused placement retries after one second and does not block other families.
+- The native rotation uses every available family once per shuffled round, avoids immediate
+  cross-round repeats and waits 5–10 seconds after main completion, not after attack start.
+  Failed placements consume their turn. Lingering pools/debris do not keep the main slot busy.
+  Separate vulnerable landings reserve native approach and six seconds from actual arrival.
+  Only the diagnostic `movement-attacks: false` profile uses historical cadence scheduling.
   `INFO` diagnostics identify deferred attack families and busy/placement categories at most once per
   family per 30 seconds. Native driver acquisition/interruption failures are logged with their cause.
 - Prey resolves nearby ground below a jumping player and renders a filled purple breath disk
@@ -318,14 +326,15 @@ with the repository's other module enable flags.
 
 ### Shipped profile
 
-All keys below are under `modules.shattered-crown`. These are fixed settings intended as a starting
-point for about 20 mixed enchanted diamond/netherite players, not dynamically scaled by attendance.
+All keys below are under `modules.shattered-crown`. The reference group is four maxed-out players;
+complete wave Roster Units scale with frozen population as described above. Dragon health and
+single-hit damage do not dynamically resize with attendance.
 
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, wave-three placeholder unit only; waves one/two use complete fixed rosters |
-| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, wave-three placeholder only |
+| `defender-count` | 4 | Retained compatibility key, ignored by all three approved complete rosters |
+| `defender-type` | `HUSK` | Retained compatibility key, ignored by all three approved complete rosters |
 | `opening-armor-percentage` | 35 | integer0–50; balanced armor-capable opening undead with1–2 light pieces |
 | `defender-health` | 40 | 1–1000, root native health including all six wave-two species |
 | `defender-damage` | 6 | 0–100, available native attack attributes; weapons/projectiles/beam magic remain native |
@@ -383,17 +392,15 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
 - If disable, disabling reload, unload or reset happens synchronously inside a later combat listener,
   cleanup cancels still-in-flight managed hits before restoring native health, including multipart
   and explosive hits after the final shield has cleared. Accepted events are never edited at MONITOR.
-- Entering the gate closes only the attack scope: pending Hunt warnings, hazards and landings stop.
+- Entering the gate closes only the attack scope: pending warnings, hazards and landings stop.
   Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
-  remain intact. Familiar 8-second bombardment opportunities with 3-second visible warnings pressure
-  the four objectives, using the same walking-route/native-cloud checks. Clearing the final wave
-  cancels pending bombardments immediately and starts the final Hunt once.
-- Default final cadence opportunities are **7s lanes, 14s Marked Prey, 17.5s sweeps and 21s landings**;
-  default breath pools last **3s**, not 6s. Dive/Prey/sweep warnings are 2s/4s/4s; legacy lanes last 6s, landing approach
-  remains 20s and the melee window remains a full 12s **after actual native arrival**. Cadences are
-  opportunities, not guaranteed simultaneous attacks. The same serial composition, route checks,
-  hazard ceilings and landing reservation apply. Final cadence never falls below warning + 0.5s,
-  prey countdown + shortened pool lifetime + 0.5s, or 10s for landings. No new attack or forced wipe.
+  remain intact. Previously unlocked shuffled families pressure each shielded wave. Clearing the
+  final wave permanently adds Ground Smash and releases the final vulnerable stage.
+- The native rotation keeps its 5–10-second post-main gap throughout. Prey pools use the configured
+  six seconds, shortened by `final-pool-lifetime-factor` in the finale; Rain pools always last six
+  seconds. Landings last six seconds after actual arrival, default approach timeout20 seconds.
+  Historical cadence factors apply to the diagnostic stationary profile and landing opportunities,
+  not a forced fight-duration timer.
 - The budget counts accepted final explosion damage, not each bed independently. A fixed-size tick
   ring aggregates simultaneous block/entity explosions and multipart callbacks; reservations also
   cover nested callbacks and are released on later event cancellation. Unrelated dragons/entities
@@ -419,8 +426,8 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   catches late world/dragon availability and returning players. No teleport, inventory or travel
   policy is changed.
 - Every wave has four independent Anchors with population-scaled complete Roster Units. At four
-  online players wave one has four groups per Anchor (43 members total); later placeholders have
-  four configured defenders per Anchor (16 total).
+  online players wave one has four groups per Anchor (43 members total); wave two has six species
+  per Anchor (24 total); wave three has one Warden/Wither pair per Anchor (8 roots plus owned minions).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement
@@ -461,12 +468,13 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   discovery too. Opening cadence, warning refresh and pending damage are all cancelled on the last
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
-- During the opening, ownership is bounded at four crystals, 16 shipped defenders (128 at maximum configuration),
-  and one warning display. At most six opening module/attempt scheduler tasks coexist, including discovery,
-  absence and the rolling-budget clock; completed attacks do not accumulate active tasks. Particle audiences are capped at 64,
+- Population scaling is uncapped: opening membership is43 at population4,87 at5–8,132 at12,
+  219 at20,747 at68. Actual task/entity/resource observations belong to pinned native evidence,
+  not obsolete16-Husk bounds. Completed attacks do not accumulate active work. Particle audiences are capped at64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.
-- PDC ownership keys are `kreiscraft:crown_artifact` (`anchor`/`defender`/`warning`/`lane`/`prey`/`pool`/`sweep`),
+- PDC ownership keys are `kreiscraft:crown_artifact` (including `anchor`, `defender`, `warning`, `lane`,
+  `prey`, `pool`, `sweep`, `debris`, `rain-warning`, `rain-projectile` and inherited Wither effects),
   `kreiscraft:crown_original_health` (original dragon maximum-health base value), and
   `kreiscraft:crown_original_phase` (restore/recover temporary native landing ownership).
   `kreiscraft:crown_protected_shot` records an indirect attack's protected origin, not entity ownership.
@@ -579,7 +587,7 @@ The repeated-final-Hunt check uses 20 mock participants over three three-minute 
 1000 fractional explosions per attempt: at most four hazard displays, 21 active scheduled tasks and
 discovery alone after reset. These are automated bounds, not measured Paper performance or balance.
 
-## Paper evidence and remaining live checklist
+## Historical #138–140 Paper evidence and live checklist
 
 Target: Java 25 / Paper 26.2. At the #138 checkpoint, no running Paper server or multiplayer
 participants were available in this worktree environment; **no live combat, rendering, AI or balance

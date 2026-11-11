@@ -67,6 +67,7 @@ public final class RotationProbe extends JavaPlugin implements Listener {
         try {
             end = getServer().getWorld(NamespacedKey.minecraft("the_end"));
             require(end != null, "main End");
+            end.setDifficulty(org.bukkit.Difficulty.NORMAL);
             end.setGameRule(org.bukkit.GameRule.NATURAL_REGENERATION, false);
             for (int x = -9; x <= 9; x++) {
                 for (int z = -9; z <= 9; z++) {
@@ -332,6 +333,14 @@ public final class RotationProbe extends JavaPlugin implements Listener {
 
         @Override
         public void send(Packet<?> packet, io.netty.channel.ChannelFutureListener callback, boolean flush) {
+            if (packet instanceof net.minecraft.network.protocol.BundlePacket<?> bundle) {
+                bundle.subPackets().forEach(child -> send(child, null, false));
+            }
+            if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position
+                    && listener instanceof net.minecraft.server.network.ServerGamePacketListenerImpl game) {
+                game.handleAcceptTeleportPacket(
+                        new net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket(position.id()));
+            }
             if (packet instanceof net.minecraft.network.protocol.common.ClientboundKeepAlivePacket keep
                     && listener instanceof net.minecraft.server.network.ServerCommonPacketListenerImpl common) {
                 common.handleKeepAlive(
