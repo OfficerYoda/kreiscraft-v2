@@ -8,7 +8,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 
-/** Cross-module combatant ownership and effects, released when the Encounter or wave is replaced. */
+/** Cross-module ownership and effects, released on Encounter termination or debug wave replacement. */
 public interface EncounterService {
     boolean ownsCombatant(Entity entity);
 
