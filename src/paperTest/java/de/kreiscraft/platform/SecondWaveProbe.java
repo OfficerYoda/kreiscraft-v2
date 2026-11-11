@@ -60,6 +60,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
     private boolean spawningWave;
     private int rootCallbacks;
     private int leakedRoots;
+    private Entity latestShot;
 
     @Override
     public void onEnable() {
@@ -226,14 +227,29 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
         var control = end.spawn(ground(-40, -20), org.bukkit.entity.Enderman.class);
         control.setAI(false);
         var ally = defenders().stream().filter(mob -> mob != active).findFirst().orElseThrow();
-        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MOB_ATTACK)
-                .withDirectEntity(active).withCausingEntity(active).build();
+        var type = switch (active.getType()) {
+            case GUARDIAN -> org.bukkit.damage.DamageType.INDIRECT_MAGIC;
+            case BLAZE -> org.bukkit.damage.DamageType.FIREBALL;
+            case BREEZE -> org.bukkit.damage.DamageType.WIND_CHARGE;
+            default -> org.bukkit.damage.DamageType.MOB_ATTACK;
+        };
+        Entity direct = active instanceof org.bukkit.entity.Blaze || active instanceof org.bukkit.entity.Breeze
+                ? latestShot
+                : active;
+        var source =
+                org.bukkit.damage.DamageSource.builder(type).withDirectEntity(direct).withCausingEntity(active).build();
         for (org.bukkit.entity.LivingEntity target : List.of(control, ally, dragon)) {
             double health = target.getHealth();
             target.setNoDamageTicks(0);
             target.damage(5, source);
             require(target.getHealth() == health, "native allied HP unchanged " + active.getType());
         }
+        var crystal = end.getEntitiesByClass(org.bukkit.entity.EnderCrystal.class).stream().filter(this::owned)
+                .findFirst().orElseThrow();
+        var nativeMob = ((org.bukkit.craftbukkit.entity.CraftMob) active).getHandle();
+        ((org.bukkit.craftbukkit.entity.CraftEnderCrystal) crystal).getHandle().hurtServer(
+                ((CraftWorld) end).getHandle(), nativeMob.damageSources().mobAttack(nativeMob), 100);
+        require(crystal.isValid() && !crystal.isGlowing(), "native owned attacks cannot destroy defended objectives");
         var player = fixture.getBukkitEntity();
         var position = player.getLocation();
         player.teleport(new Location(end, 100, 50, 0));
@@ -312,6 +328,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void launched(org.bukkit.event.entity.ProjectileLaunchEvent event) {
         if (event.getEntity().getShooter() == active) {
+            latestShot = event.getEntity();
             require(event.getEntity().getPersistentDataContainer().has(ARTIFACT),
                     "native projectile ownership before callback");
             getLogger().info(
