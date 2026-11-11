@@ -79,6 +79,8 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
     private boolean allySkullHit;
     private int arrivalVetoes;
     private Warden idleWarden;
+    private int retaliationTick;
+    private double wardenAllyHealth;
 
     @Override
     public void onEnable() {
@@ -292,8 +294,17 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 next();
             } else if (stage == 4 && sonic > 0) {
                 require(player.getHealth() < 20, "genuine native sonic damage against Survival fixture");
-                player.setGameMode(GameMode.CREATIVE);
-                require(warden.getTarget() == null, "native brain target cleared on mode transition");
+                if (retaliationTick == 0) {
+                    player.setGameMode(GameMode.CREATIVE);
+                    require(warden.getTarget() == null, "native brain target cleared on mode transition");
+                    warden.setNoDamageTicks(0);
+                    warden.damage(1, DamageSource.builder(DamageType.MOB_ATTACK).withDirectEntity(enderman)
+                            .withCausingEntity(enderman).build());
+                    wardenAllyHealth = warden.getHealth();
+                    retaliationTick = ticks;
+                    return;
+                }
+                require(warden.getTarget() == null, "native Warden retaliation cannot retain an allied brain target");
                 for (LivingEntity ally : List.of(enderman, dragon, defenders().getLast())) {
                     double health = ally.getHealth();
                     ally.setNoDamageTicks(0);
@@ -329,7 +340,8 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                     activeWither.rangedAttack(warden, 1); // Controlled physical ally collision, not a target-policy claim.
                     return;
                 }
-                require(warden.getHealth() == 500, "physical owned skull collision cannot hurt allied Warden");
+                require(warden.getHealth() == wardenAllyHealth,
+                        "physical owned skull collision cannot hurt allied Warden");
                 player.teleport(new Location(end, 100, 50, 0));
                 var survivor = end.getEntitiesByClass(Wither.class).stream().filter(Entity::isValid).findFirst()
                         .orElseThrow();
