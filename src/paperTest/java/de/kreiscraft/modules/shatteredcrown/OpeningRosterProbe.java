@@ -212,7 +212,8 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                             + (active.getX() - initialX) + " chain=" + group.stream().map(Entity::getType).toList()
                             + " attributedHits=" + hits);
                     group.forEach(mob -> mob.setAI(false));
-                    require(active.teleport(new Location(player.getWorld(), 40.5, 151, -9 + index * 3),
+                    // Park frozen passenger poses in clear air, never against the calibration floor.
+                    require(active.teleport(new Location(player.getWorld(), 40.5, 180, -9 + index * 3),
                             io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
                             "park completed calibration group away from projectile path");
                     group.forEach(mob -> {
@@ -340,7 +341,8 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
         if (roster != null && roster.contains(event.getEntity()) && !done) {
             var damage = event.getEntity().getLastDamageCause();
             finish(false, "unexpected calibration member death " + event.getEntityType() + " cause="
-                    + (damage == null ? "unknown" : damage.getCause()));
+                    + (damage == null ? "unknown" : damage.getCause()) + " location="
+                    + event.getEntity().getLocation());
         }
     }
 
