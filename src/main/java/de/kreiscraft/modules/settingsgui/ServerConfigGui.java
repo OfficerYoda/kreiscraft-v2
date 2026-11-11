@@ -129,7 +129,9 @@ public final class ServerConfigGui {
         for (List<ConfigField> group : fieldGroups(schema, category).values()) {
             int column = group.indexOf(field);
             if (column >= 0) {
-                return row * 9 + column;
+                int slot = row * 9 + column;
+                // Larger categories use InvUI pagination in buildCategory.
+                return slot >= SLOT_MODULE_ENABLED ? slot + 1 : slot;
             }
             row++;
         }
@@ -162,6 +164,24 @@ public final class ServerConfigGui {
             String category) {
         Gui gui = Gui.empty(9, 6);
         List<ConfigField> fields = fieldsIn(editor.schema(), category);
+        if (fields.size() > 52) {
+            var pages = xyz.xenondevs.invui.gui.PagedGui.itemsBuilder()
+                    .setStructure("x x x x x x x x x", "x x x x x x x x x", "x x x x x x x x x",
+                            "x x x x x x x x x", "x x x x x x x x x", ". . . . . . . . .")
+                    .addIngredient('x', xyz.xenondevs.invui.gui.Markers.CONTENT_LIST_SLOT_HORIZONTAL)
+                    .setContent(fields.stream()
+                            .filter(field -> !isModuleEnabled(field)).<xyz.xenondevs.invui.item.Item>map(
+                                    field -> fieldItem(editor, messages, navigator, session,
+                                            field, category))
+                            .toList())
+                    .build();
+            fields.stream().filter(ServerConfigGui::isModuleEnabled).findFirst().ifPresent(field -> pages
+                    .setItem(SLOT_MODULE_ENABLED, fieldItem(editor, messages, navigator, session, field, category)));
+            pages.setItem(51, pageItem(pages, messages, -1));
+            pages.setItem(52, pageItem(pages, messages, 1));
+            pages.setItem(SLOT_BACK, backItem(messages, navigator, true));
+            return pages;
+        }
         for (ConfigField field : fields) {
             gui.setItem(
                     fieldSlot(editor.schema(), category, field),
@@ -169,6 +189,26 @@ public final class ServerConfigGui {
         }
         gui.setItem(SLOT_BACK, backItem(messages, navigator, true));
         return gui;
+    }
+
+    private static AbstractItem pageItem(xyz.xenondevs.invui.gui.PagedGui<?> pages, MessageService messages,
+            int direction) {
+        return new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider(Player viewer) {
+                return new ItemWrapper(named(Material.ARROW,
+                        messages.renderFor(viewer,
+                                direction < 0 ? "server-config.previous-page" : "server-config.next-page")));
+            }
+
+            @Override
+            public void handleClick(ClickType clickType, Player viewer, Click click) {
+                int page = pages.getPage() + direction;
+                if (page >= 0 && page < pages.getPageCount()) {
+                    pages.setPage(page);
+                }
+            }
+        };
     }
 
     // ------------------------------------------------------------------
@@ -373,6 +413,7 @@ public final class ServerConfigGui {
             case "tablist" -> Material.PLAYER_HEAD;
             case "update-mode" -> Material.REDSTONE_LAMP;
             case "wither" -> Material.WITHER_SKELETON_SKULL;
+            case "shattered-crown" -> Material.DRAGON_HEAD;
             case "world-mgmt" -> Material.GRASS_BLOCK;
             default -> Material.PAPER;
         };

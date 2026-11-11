@@ -55,3 +55,47 @@ Whether portal travel into or out of the Nether or End is currently allowed. It 
 Server Configuration, editable through `/dimension` and the Server Configuration GUI, and it blocks
 only portal travel.
 _Avoid_: World access, world enabled
+
+**Encounter**:
+One attempt at The Shattered Crown dragon fight, ending in victory or reset.
+_Avoid_: Raid instance, fight session
+
+**Anchor**:
+A destructible crystal objective whose survival shields the dragon and whose defenders must be
+defeated before it can be destroyed.
+_Avoid_: Shield generator, pylon
+
+**Anchor Wave**:
+A set of four independent Anchors that temporarily shields the dragon until every crystal
+is destroyed. Completing a wave permanently unlocks additional attacks.
+_Avoid_: Final pair, defender wave
+
+**Roster Unit**:
+A population-based allocation of a wave's defenders distributed across the Anchors.
+Species proportions and Defender Group composition vary by wave.
+_Avoid_: Defender count, group count
+
+**Defender Group**:
+A mounted pair or passenger tower within a Roster Unit. Every surviving member remains a defender
+of the same Anchor even when the group separates.
+_Avoid_: Roster Unit, extra life
+
+**Attack Warning**:
+A visible cue identifying an impending Encounter attack before it deals damage.
+_Avoid_: Telegraph, attack notification
+
+**Combat Population**:
+Living Survival and Adventure players participating inside the Encounter's combat area, excluding
+protected arrivals.
+_Avoid_: Online population, wave population
+
+**Scaling Population**:
+Everyone connected in the managed End, including observers and players away from combat. A wave's
+population is frozen when that wave starts; the opening wave instead uses everyone online server-wide
+when the first player arrives in the End.
+_Avoid_: Combat population, eligible targets
+
+**Opening Grace**:
+The preparation period at the start of a fresh Encounter when defenders are active but the dragon
+circles without attacking.
+_Avoid_: Arrival protection, attack cooldown

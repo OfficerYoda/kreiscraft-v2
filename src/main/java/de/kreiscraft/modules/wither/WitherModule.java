@@ -28,7 +28,8 @@ public final class WitherModule implements Module {
         } catch (org.spongepowered.configurate.serialize.SerializationException e) {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
-        this.listener = new WitherListener(() -> config, ctx.messages(), ctx.scheduler());
+        this.listener = new WitherListener(() -> config, ctx.messages(), ctx.scheduler(),
+                () -> ctx.services().find(de.kreiscraft.modules.shatteredcrown.EncounterService.class).orElse(null));
         ctx.events().register(listener);
     }
 

@@ -49,17 +49,30 @@ public final class YamlConfigService implements ConfigService {
     private final YamlConfigurationLoader loader;
     private final ConfigurationOptions options;
     private final ConfigFileReplacer replacer;
+    private final ConfigValidator candidateValidator;
     private final Yaml commentYaml;
     private final List<DataFile<?>> dataFiles = new ArrayList<>();
     private ConfigurationNode root;
     private ServerConfigSchema schema;
 
     public YamlConfigService(Path dataFolder, ClassLoader jarResourceLoader) throws IOException {
-        this(dataFolder, jarResourceLoader, ConfigFileReplacer.ATOMIC_WHEN_SUPPORTED);
+        this(dataFolder, jarResourceLoader, ConfigValidators.alwaysValid());
+    }
+
+    /** Validates the full root on load/reload and the edited candidate node before durable writes. */
+    public YamlConfigService(Path dataFolder, ClassLoader jarResourceLoader, ConfigValidator candidateValidator)
+            throws IOException {
+        this(dataFolder, jarResourceLoader, ConfigFileReplacer.ATOMIC_WHEN_SUPPORTED, candidateValidator);
     }
 
     YamlConfigService(Path dataFolder, ClassLoader jarResourceLoader, ConfigFileReplacer replacer)
             throws IOException {
+        this(dataFolder, jarResourceLoader, replacer, ConfigValidators.alwaysValid());
+    }
+
+    private YamlConfigService(Path dataFolder, ClassLoader jarResourceLoader, ConfigFileReplacer replacer,
+            ConfigValidator candidateValidator) throws IOException {
+        this.candidateValidator = Objects.requireNonNull(candidateValidator, "candidateValidator");
         Files.createDirectories(dataFolder);
         this.configFile = dataFolder.resolve("config.yml");
         if (!Files.exists(configFile)) {
@@ -87,8 +100,14 @@ public final class YamlConfigService implements ConfigService {
 
     @Override
     public void reload() throws IOException {
-        this.root = loader.load();
-        this.schema = ServerConfigSchema.fromRoot(root);
+        ConfigurationNode candidate = loader.load();
+        Optional<String> invalid = candidateValidator.validate(candidate);
+        if (invalid.isPresent()) {
+            throw new IOException(invalid.get());
+        }
+        ServerConfigSchema candidateSchema = ServerConfigSchema.fromRoot(candidate);
+        this.root = candidate;
+        this.schema = candidateSchema;
     }
 
     @Override
@@ -110,6 +129,10 @@ public final class YamlConfigService implements ConfigService {
         Optional<String> invalid = field.validator().validate(target);
         if (invalid.isPresent()) {
             return new ConfigEditResult.Rejected(invalid.get());
+        }
+        Optional<String> invalidSection = candidateValidator.validate(target);
+        if (invalidSection.isPresent()) {
+            return new ConfigEditResult.Rejected(invalidSection.get());
         }
         try {
             persist(candidate);

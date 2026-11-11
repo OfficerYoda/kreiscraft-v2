@@ -14,7 +14,7 @@ Start here if you are setting up the project for the first time or building some
 
 | Document | What you will do |
 |----------|-----------------|
-| [Getting Started](/tutorials/getting-started/) | Clone → build → run a local Paper server and verify all 24 modules load |
+| [Getting Started](/tutorials/getting-started/) | Clone → build → run a local Paper server and verify configured modules load |
 | [Your First Module](/tutorials/your-first-module/) | Build a minimal end-to-end module with config, listener, and lang keys |
 | [Writing a Command](/tutorials/writing-a-command/) | Build a Brigadier command using `CommandRegistrar`, step by step |
 
@@ -42,7 +42,11 @@ Precise, complete descriptions of the system's components.
 
 | Document | What it covers |
 |----------|---------------|
-| [Module Catalog](/reference/module-catalog/) | All 24 modules: purpose, dependencies, services, and events |
+| [Module Catalog](/reference/module-catalog/) | All 25 modules: purpose, dependencies, services, and events |
+| [The Shattered Crown](/shattered-crown/) | Opt-in main-End encounter: setup, fixed mixed-gear profile, mechanics, and validation limits |
+| [Shattered Crown Hunt](/shattered-crown-hunt/) | Attack geometry, warnings, temporary hazards, and supported-Paper melee windows |
+| [Shattered Crown Lifecycle](/shattered-crown-lifecycle/) | Configuration snapshots, abort/retry, and stale-artifact recovery |
+| [Shattered Crown Live Validation](/shattered-crown-validation/) | Exact supported-Paper combat, lifecycle, reward, and representative multiplayer acceptance steps |
 | [Commands and Permissions](/reference/commands-and-permissions/) | Every command, alias, permission node, and default |
 | [Configuration](/reference/configuration/) | Every `config.yml` key — core and per-module — with types and defaults |
 | [HTTP and WebSocket API](/reference/http-api/) | All 9 HTTP endpoints, the `/chat` and `/events` WebSocket protocols, the account-linking flow |

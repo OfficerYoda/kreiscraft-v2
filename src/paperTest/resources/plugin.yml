@@ -1,0 +1,4 @@
+name: DragonFlightProbe
+version: '1'
+main: de.kreiscraft.platform.DragonFlightProbe
+api-version: '26.2'

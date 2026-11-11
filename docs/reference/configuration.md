@@ -8,6 +8,35 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 ## File Locations
 
+### Shattered Crown fixed mechanics
+
+The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
+Population freezes once per wave; mob/boss scaling caps at20 players without capping actual combat participation.
+Wave one has16 mobs per scaling player: three mounted pairs per player,
+one three-member tower per two players rounded up, and individual undead to fill the total.
+Wave two has two Piglin Brutes and one Guardian/Vindicator/Blaze per scaling player, plus
+`ceil(0.7*p)` Ravagers/Breezes each and `ceil(1.5*p)` Vexes, where `p=min(snapshot,20)`.
+These are whole-wave totals, rounded per species, not configuration knobs. Opening groups remain intact;
+second-wave totals/species are balanced across Anchors. Wave three interpolates doubled four-player targets,
+rounding up to Warden counts with minimum2; Withers use half as many rounded up, minimum2
+(2+2 at1–4, 3+2 at5–6, 4+2 at7–8, 12+6 at20 or above), plus owned minions.
+See the [encounter guide](/shattered-crown/) for the formula.
+Bosses and species are evenly distributed across the four Anchors. Zero-population debug waves start exposed.
+Both modules must be enabled
+before startup. `defender-count`/`defender-type` are retained compatibility fields, ignored by the
+three complete rosters. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable
+opening undead; each selected mob has one or two unenchanted leather/chain/occasional iron pieces.
+Natural opening equipment is cleared and pickup disabled. All fixed-roster members use vanilla species health;
+`defender-health` is validated but ignored. Encounter Withers also ignore the Wither module's health override,
+retaining other enhancements and scaling its half-health threshold proportionally to native maximum health.
+Available native attack attributes use validated damage settings; weapons/projectiles retain native damage,
+not guaranteed final HP loss. `ground-search-radius`
+finds nearby surviving defender footing; Anchors use fixed X/Z and current highest/last-known height.
+Legacy `final-health-fraction` and `ground-max-y` remain accepted for configuration compatibility but
+are ignored. Reload still takes effect on the next attempt; debug jumps refresh populations, not config.
+Dive keeps its timings but hides warning and active-lane countdowns. Ground Smash damage is full inside
+half its radius, then falls linearly to50% at the edge; its warning, knockback and crater are unchanged.
+
 | Purpose | Path |
 |---|---|
 | Default/template (in JAR) | `src/main/resources/config.yml` |
@@ -52,7 +81,12 @@ The bundled `config.yml` enables most modules. The following two are **disabled 
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
-Enabling any of these activates its existing implementation; no additional configuration is required.
+Enable and restart to activate these modules. Shattered Crown defaults to enabled. Verify its designated
+world, actual arrival platform, and usable objective terrain against its
+[initial Server Configuration profile](/shattered-crown/). Attack tuning and melee windows are
+documented in the [hunt guide](/shattered-crown-hunt/); reload/restart behavior is documented in the
+[lifecycle guide](/shattered-crown-lifecycle/). Balance remains unvalidated until representative live
+four-human playtesting; follow the [current RC/operator sequence](/shattered-crown-release-candidate/).
 
 ---
 
@@ -67,7 +101,8 @@ nothing changes unless the complete candidate is valid and durably written.
 - A successful edit preserves existing comments and unrelated keys, writes a flushed temporary
   file, and replaces `config.yml` using an atomic move where the filesystem supports it.
 - Every editable field declares its value type, validator, GUI exposure, and reload lifecycle.
-  Module `enabled` flags are **restart-only**: `/kreiscraft reload` does not start or stop modules.
+  Module `enabled` flags are **restart-only** for activation. Shattered Crown additionally aborts
+  immediately when reloaded with `enabled: false`; re-enabling it still requires a restart.
 
 The declared fields live in `ServerConfigSchema`, which the Server Configuration GUI enumerates.
 Fields that are not declared there remain YAML-only.

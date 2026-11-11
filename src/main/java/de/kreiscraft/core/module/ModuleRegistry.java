@@ -72,6 +72,12 @@ public final class ModuleRegistry implements ModuleEnablement {
         List<String> failedIds = new ArrayList<>();
         for (Module m : sorted) {
             try {
+                for (String dep : m.dependsOn()) {
+                    if (!isEnabled(dep)) {
+                        throw new ModuleException("module " + m.id()
+                                + " depends on '" + dep + "' which failed to enable");
+                    }
+                }
                 m.enable(contextFactory.apply(m));
                 enabledInOrder.add(m);
             } catch (Exception e) {
