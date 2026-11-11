@@ -119,7 +119,8 @@ After all 25 module instances are registered with `ModuleRegistry.register()`, a
    does not exist, a `ModuleException` is thrown immediately with a clear message. If the
    dependency graph contains a cycle, the DFS detects the back-edge and also throws
    `ModuleException`.
-3. Call `m.enable(contextFactory.apply(m))` for each module in sorted order. Failures are caught
+3. Call `m.enable(contextFactory.apply(m))` for each module in sorted order. A module whose declared
+   dependency failed to enable is reported failed instead of being enabled. Failures are caught
    per-module, logged at `SEVERE`, and counted; other modules continue enabling.
 4. Return a `StartupSummary` record with counts of enabled, disabled, and failed modules.
 

@@ -114,7 +114,8 @@ root or with `/settings admin`. `ServerConfigSchema.editableFields()` declares t
 GUI-exposed field set. Every configured module has a section with a representative icon; a section
 whose module is currently disabled shows a localized `| disabled` suffix on its entry. Settings
 are arranged one related group per row; the module enable toggle is a glass pane in the far-left
-slot of the bottom row and explains that the change requires a restart. The GUI picks a control from
+slot of the bottom row and explains that the change requires a restart. A category with more than 52
+fields is split across pages with previous/next arrows in the bottom row. The GUI picks a control from
 each field's value type:
 
 - Boolean — a toggle that flips on click.
