@@ -43,13 +43,34 @@ spectator and outside-arena players. Later joins/leaves never resize existing de
 
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
 Ground Smash after wave three. Unlocks survive later shields. Rain choreography and complete
-rotation redesign remain downstream work. The current configured defender roster remains the
-playable placeholder in every wave until #153–155 supply content. The explicit extension point is
+rotation redesign remain downstream work. Wave two has exactly one **Ravager, Guardian, Piglin Brute,
+Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
+72 at 9–12; no random pool, per-species scaling or cap. Waves one/three retain their configured
+placeholder until #153/#155 supply their content. The explicit extension point is
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
 content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
 Use the parent overload for descendants and `inheritOwnership` in projectile/effect pre-spawn consumers.
 All are owned by `waveWork`; do not scale again or equate defender deaths with crystal completion.
+
+Wave-two roots use validated `defender-health` and available native `ATTACK_DAMAGE` attributes.
+Native weapons, beam magic, fireballs and wind charges retain their vanilla damage/physics; the
+damage setting is not a promised final HP loss. Piglin Brutes are immune to End zombification.
+Owned Guardians use native ground paths with steered hops and approach to beam range; owned Blazes
+approach to ranged combat instead of treating arena-wide acquisition as stationary firing range.
+Their native beam/fireball attacks remain intact; ordinary Guardians/Blazes are not modified.
+Owned Brute/Breeze Brain attack/walk/look memories are cleared on target ineligibility so native
+retaliation cannot retain a protected arrival; ordinary Brain-driven mobs are unchanged.
+Replacements retain species, initialization and original Anchor membership. A surviving member of
+any species holds its crystal; Fireball Rain is unlocked only after all four exposed crystals die.
+
+`secondWaveProbeJar` runs beside the production shadow JAR on disposable Paper build 132 with
+`-Dkreiscraft.second-wave-probe=true`. It registers native player fixtures, exercises every species'
+movement, targeting and attributed attacks on unmodified End ground (including physical Blaze/Breeze
+projectile collisions), native combat protection/cancellation, frozen eight-player scaling and cleanup.
+Other roster AI and random mob spawning are isolated for these checks; transport is synthetic, not
+human rendering or full-fight choreography. `DragonWaveProbe` additionally covers natural 65% entry,
+native defender deaths/crystal destruction and the two health gates.
 
 All waves reuse four fixed horizontal sites. Crystals use the current highest block plus one-block
 placement clearance, or their last known height for an empty column (podium height on first use).
@@ -208,10 +229,10 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, per placeholder Roster Unit; complete units scale per Anchor |
-| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
-| `defender-health` | 40 | 1–1000 |
-| `defender-damage` | 6 | 0–100, native attack attribute |
+| `defender-count` | 4 | 1–32, waves one/three placeholder unit only; wave two is fixed at six species |
+| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, waves one/three placeholder only |
+| `defender-health` | 40 | 1–1000, root native health including all six wave-two species |
+| `defender-damage` | 6 | 0–100, available native attack attributes; weapons/projectiles/beam magic remain native |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
 | `bombardment-cadence-seconds` | 8 | 2–120; stationary compatibility profile only, not the native unlocked rotation |
 | `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |

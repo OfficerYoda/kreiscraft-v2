@@ -104,6 +104,17 @@ class OpeningEncounterTest {
             }
 
             @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
+            }
+
+            @Override
             public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
                 referenceHits++;
                 // Encounter policy only; native gear/difficulty mitigation is exercised by DragonDamageProbe.
@@ -144,8 +155,9 @@ class OpeningEncounterTest {
         return end.getEntitiesByClass(EnderCrystal.class).stream().filter(Entity::isValid).toList();
     }
 
-    private List<Zombie> defenders() {
-        return end.getEntitiesByClass(Zombie.class).stream().filter(Entity::isValid).toList();
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(Entity::isValid)
+                .filter(mob -> mob != dragon).toList();
     }
 
     private EntityDamageEvent hit(Entity target) {
@@ -155,7 +167,7 @@ class OpeningEncounterTest {
         return event;
     }
 
-    private void defeat(Zombie defender) {
+    private void defeat(org.bukkit.entity.Mob defender) {
         defender.setHealth(0);
         server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
     }

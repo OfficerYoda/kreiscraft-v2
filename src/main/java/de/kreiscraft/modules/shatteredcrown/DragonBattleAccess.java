@@ -23,6 +23,20 @@ public interface DragonBattleAccess {
         defender.setRemoveWhenFarAway(false);
     }
 
+    /** Owned Guardian/Blaze ground pursuit; ordinary mobs retain their native goals/navigation. */
+    default void prepareRangedDefender(Mob defender) {
+        de.kreiscraft.platform.NmsCrownDefenders.prepare(defender);
+    }
+
+    /** Owned Brain-driven targets must follow the same eligibility boundary as ordinary Mob targets. */
+    default void targetDefender(Mob defender, Player target) {
+        if (defender instanceof org.bukkit.entity.PiglinBrute || defender instanceof org.bukkit.entity.Breeze) {
+            de.kreiscraft.platform.NmsCrownDefenders.target(defender, target);
+        } else {
+            defender.setTarget(target);
+        }
+    }
+
     /** Raw native dragon-breath units; retains the separately configured pool/lane/sweep semantics. */
     default void bombardmentDamage(Player player, EnderDragon dragon, double damage) {
         player.damage(damage, DamageSource.builder(DamageType.DRAGON_BREATH)
