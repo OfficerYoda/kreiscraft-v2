@@ -38,11 +38,12 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 
 ### Default-off modules
 
-Most modules ship with `enabled: true` in the bundled `config.yml`. Two ship **disabled by default**
+Most modules ship with `enabled: true` in the bundled `config.yml`. Three ship **disabled by default**
 and only start when an operator explicitly sets `modules.<id>.enabled: true`:
 
 | Module ID | Why it is off by default |
 |-----------|--------------------------|
+| `effects` | Cosmetic particle trails; opt in explicitly. |
 | `firework` | Registers a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
@@ -196,7 +197,7 @@ Tags players in combat when they deal or receive damage, keeping them tagged for
 
 **Package:** `de.kreiscraft.modules.effects`
 **Depends on:** none
-**Default enabled:** true
+**Default enabled:** false — opt in with `modules.effects.enabled: true`
 
 ### Description
 

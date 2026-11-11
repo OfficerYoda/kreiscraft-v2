@@ -24,7 +24,7 @@ Activation requires a server restart.
 > the module is **disabled**. You must explicitly set `enabled: true`.
 
 > **Shipped defaults:** the bundled `config.yml` enables most modules, but
-> `firework`, `positions`, and `shattered-crown` ship with `enabled: false`.
+> `effects`, `firework`, `positions`, and `shattered-crown` ship with `enabled: false`.
 > Set `enabled: true` and restart to activate them. Before opting into Shattered Crown,
 > read its [operator profile](/shattered-crown/) and [live acceptance checklist](/shattered-crown-validation/).
 

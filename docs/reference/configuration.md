@@ -74,10 +74,11 @@ modules:
 
 The `ModuleRegistry` reads `modules.<id>.enabled` before calling `Module.enable()`. Setting it to `false` skips the module entirely; its commands, listeners, and services are never registered.
 
-The bundled `config.yml` enables most modules. The following two are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
+The bundled `config.yml` enables most modules. The following three are **disabled by default** and must be opted in explicitly by setting `enabled: true`:
 
 | Module ID | Rationale |
 |-----------|-----------|
+| `effects` | Cosmetic particle trails; opt in explicitly. |
 | `firework` | Adds a custom crafting recipe that changes vanilla progression; opt in explicitly. |
 | `positions` | Intentionally disabled by default — the waypoint GUI overlaps with other teleport tooling. |
 
