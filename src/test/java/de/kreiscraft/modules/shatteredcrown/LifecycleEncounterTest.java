@@ -157,6 +157,63 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void registryRejectsCrownWhenWitherIsMissingOrDisabled(boolean registered) throws Exception {
+        var root = BasicConfigurationNode.root();
+        root.node("modules", module.id()).from(config);
+        var registry = new de.kreiscraft.core.module.ModuleRegistry(ignored -> context, root, plugin.getLogger());
+        registry.register(module);
+        if (registered) {
+            registry.register(new de.kreiscraft.modules.wither.WitherModule());
+        }
+        assertThatThrownBy(registry::enableAll)
+                .isInstanceOf(de.kreiscraft.core.module.ModuleException.class)
+                .hasMessageContaining("shattered-crown").hasMessageContaining("wither")
+                .hasMessageContaining("not enabled or does not exist");
+        assertThat(context.services().find(EncounterController.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+    }
+
+    @Test
+    void bothModulesUseRegistryStartupReloadAndReverseShutdownWithoutVanillaFallback() throws Exception {
+        var root = BasicConfigurationNode.root();
+        root.node("modules", module.id()).from(config);
+        root.node("modules", "wither", "enabled").set(true);
+        var registry = new de.kreiscraft.core.module.ModuleRegistry(candidate -> new ModuleContext(plugin,
+                root.node("modules", candidate.id()), context.messages(), context.services(), scheduler,
+                context.commands(), context.events()), root, plugin.getLogger());
+        registry.register(module);
+        registry.register(new de.kreiscraft.modules.wither.WitherModule());
+        assertThat(registry.enableAll().enabled()).isEqualTo(2);
+        var encounter = context.services().get(EncounterController.class);
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
+                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(600));
+
+        root.node("modules", "wither", "max-health").set(800);
+        root.node("modules", "wither", "enabled").set(false);
+        registry.reloadConfigs(root);
+        assertThat(registry.isEnabled("wither")).as("Wither enablement changes require restart").isTrue();
+        encounter.debugWave(3, player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
+                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(800));
+
+        root.node("modules", module.id(), "enabled").set(false);
+        registry.reloadConfigs(root);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).isEmpty();
+        root.node("modules", module.id(), "enabled").set(true);
+        registry.reloadConfigs(root);
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+        registry.disableAll();
+        assertThat(registry.isEnabled("wither")).isFalse();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"1,1,4,8,2", "4,1,4,8,2", "5,2,8,16,4", "8,2,8,16,4",
             "12,3,12,24,6", "20,5,20,40,10", "68,17,68,136,34"})
     void finalWaveRepeatsOneWardenAndEnhancedWitherPairPerFrozenUnitAtEveryAnchor(
