@@ -37,7 +37,9 @@ a family nor clears/waits out existing pools. Failed landing geometry/setup/appr
 that opportunity. The next opportunity is due one configured cadence after landing completion,
 and at least one ranged-family turn must intervene, including when cadence and gap deadlines tie.
 An overdue opportunity cannot replace the first grace-expiry warning. Native approach has its existing
-5–45s timeout. The melee window is **exactly six seconds from actual podium arrival**, not from the
+5–45s timeout (default20s). Long native paths can legitimately exceed20s; tune this existing knob
+within its validated bounds rather than force movement or suppress timeout recovery.
+The melee window is **exactly six seconds from actual podium arrival**, not from the
 approach request. Native phase events start the clock immediately; a one-tick monitor handles
 already-sitting arrivals. Paper's podium Y is normally the fight origin (zero), not portal height:
 landing checks use the current terrain surface and nearby approaches within eight vertical blocks.

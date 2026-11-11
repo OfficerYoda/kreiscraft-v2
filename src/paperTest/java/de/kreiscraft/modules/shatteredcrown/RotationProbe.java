@@ -147,6 +147,15 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                 require(fixture.connection.hasClientLoaded() && fixture.getBukkitEntity().isOnline(),
                         "registered loaded fixture");
                 require(dragon.hasAI() && encounter.waveNumber() == 1, "native battle adoption with AI enabled");
+                command("pause");
+                require(status().contains("hazards=0"), "zero-hazard landing reproduction");
+                command("trigger landing");
+                require(status().contains("attack=LANDING") && dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL,
+                        "Y-zero native fight origin accepts the production landing trigger");
+                command("cancel");
+                require(dragon.getPhase() == EnderDragon.Phase.CIRCLING,
+                        "native landing cancellation restores control");
+                command("resume");
                 if (Boolean.getBoolean("kreiscraft.rotation-landing-only")) {
                     command("wave 3");
                     clearWave();
