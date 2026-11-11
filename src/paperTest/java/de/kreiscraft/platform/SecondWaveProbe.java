@@ -33,11 +33,11 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
-/** Real registered players, native six-species AI/damage on unmodified main-End ground; synthetic transport only. */
+/** Real registered players, native seven-species AI/damage on unmodified main-End ground; synthetic transport only. */
 public final class SecondWaveProbe extends JavaPlugin implements Listener {
     private static final NamespacedKey ARTIFACT = new NamespacedKey("kreiscraft", "crown_artifact");
     private static final List<EntityType> SPECIES = List.of(EntityType.GUARDIAN, EntityType.RAVAGER,
-            EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE);
+            EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
     private ServerPlayer fixture;
     private World end;
     private EnderDragon dragon;
@@ -118,7 +118,7 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
             var player = fixture.getBukkitEntity();
             if (scaledAt > 0) {
                 if (diedAt > 0 && ticks - diedAt >= 21) {
-                    require(defenders().size() == 47, "native accepted death was not replenished");
+                    require(defenders().size() == 71, "native accepted death was not replenished");
                     var unrelated = end.spawn(ground(42, 20), org.bukkit.entity.Guardian.class);
                     getServer().getPluginManager()
                             .disablePlugin(getServer().getPluginManager().getPlugin("Kreiscraft"));
@@ -127,11 +127,11 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
                             "six native movement+targeting+attributed attacks+policies+population8+recovery ticks="
                                     + ticks);
                 } else if (diedAt == 0 && ticks - scaledAt >= 21) {
-                    require(defenders().size() == 48, "native departures did not resize frozen wave");
+                    require(defenders().size() == 72, "native departures did not resize frozen wave");
                     require(defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN).count() == 8,
                             "native missing Guardian replaced, not defeated or duplicated");
                     require(defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN)
-                            .allMatch(mob -> mob.getAttribute(Attribute.MAX_HEALTH).getBaseValue() == 40),
+                            .allMatch(mob -> mob.getAttribute(Attribute.MAX_HEALTH).getBaseValue() == 30),
                             "replacement tuning");
                     defenders().stream().filter(mob -> mob.getType() == EntityType.BREEZE).findFirst().orElseThrow()
                             .setHealth(0);
@@ -149,8 +149,8 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
                 require(player.isOnline() && fixture.connection.hasClientLoaded(), "registered loaded native player");
                 command("wave 2");
                 dragon.setAI(false); // Isolate roster AI, never claim native dragon choreography.
-                require(defenders().size() == 6, "single-player debug baseline exactly6 defenders");
-                require(rootCallbacks == 6 && leakedRoots == 0,
+                require(defenders().size() == 9, "single-player debug baseline exactly9 defenders");
+                require(rootCallbacks == 9 && leakedRoots == 0,
                         "owned roots initialized before NORMAL spawn callbacks");
                 require(end.getEntitiesByClass(org.bukkit.entity.EnderCrystal.class).stream().filter(this::owned)
                         .count() == 4, "four production Anchors");
@@ -291,19 +291,20 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
         var oldEffects = end.getEntitiesByClass(org.bukkit.entity.Projectile.class).stream()
                 .filter(effect -> effect.getPersistentDataContainer().has(ARTIFACT)).toList();
         command("wave 2");
-        require(old.stream().noneMatch(Entity::isValid), "native debug replacement removes old six-species roots");
+        require(old.stream().noneMatch(Entity::isValid), "native debug replacement removes old seven-species roots");
         require(oldEffects.stream().noneMatch(Entity::isValid),
                 "native debug replacement removes attributed projectiles");
-        require(rootCallbacks == 54 && leakedRoots == 0, "48 scaled roots owned before public callbacks");
-        require(defenders().size() == 48, "native population8 repeats complete six-species units");
+        require(rootCallbacks == 81 && leakedRoots == 0, "72 scaled roots owned before public callbacks");
+        require(defenders().size() == 72, "native population8 repeats complete seven-species units");
         for (EntityType type : SPECIES) {
-            require(defenders().stream().filter(mob -> mob.getType() == type).count() == 8,
+            require(defenders().stream().filter(mob -> mob.getType() == type)
+                    .count() == (type == EntityType.PIGLIN_BRUTE || type == EntityType.VEX ? 16 : 8),
                     "native species count " + type);
         }
         observers.forEach(observer -> observer.getBukkitEntity().teleport(
                 new Location(getServer().getWorlds().getFirst(), 0, 150, 0)));
         defenders().stream().filter(mob -> mob.getType() == EntityType.GUARDIAN).findFirst().orElseThrow().remove();
-        require(defenders().size() == 47, "native missing entity is not an accepted death");
+        require(defenders().size() == 71, "native missing entity is not an accepted death");
         scaledAt = ticks;
     }
 
@@ -343,7 +344,8 @@ public final class SecondWaveProbe extends JavaPlugin implements Listener {
         if (spawningWave && SPECIES.contains(event.getEntityType())) {
             rootCallbacks++;
             if (!event.getEntity().getPersistentDataContainer().has(ARTIFACT)
-                    || event.getEntity().getAttribute(Attribute.MAX_HEALTH).getBaseValue() != 40) {
+                    || event.getEntity().getAttribute(Attribute.MAX_HEALTH).getBaseValue() != event.getEntity()
+                            .getAttribute(Attribute.MAX_HEALTH).getDefaultValue()) {
                 leakedRoots++;
             }
         }

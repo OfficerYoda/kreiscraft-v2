@@ -11,19 +11,23 @@ Complete reference for every key in Kreiscraft's configuration files.
 ### Shattered Crown fixed mechanics
 
 The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
-Population freezes once per wave. Wave one has12 mobs per counted player: three mounted pairs and a six-member
-undead tower. Wave two has6 mobs per player: one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze.
+Population freezes once per wave. Wave one has16 mobs per counted player: three mounted pairs per player,
+one three-member tower per two players rounded up, and individual undead to fill the total.
+Wave two has9 mobs per player: two Piglin Brutes, two Vexes, and one Ravager, Guardian, Vindicator, Blaze and Breeze.
 These are whole-wave totals, uncapped, not configuration knobs. Opening groups remain intact;
 second-wave totals/species are balanced across Anchors. Wave three interpolates doubled four-player targets,
-rounding up to equal Warden/Wither pairs with minimum2 pairs (2+2 at1–4, 3+3 at5–6, 4+4 at7–8,
-12+12 at20, 22+22 at32), plus owned minions. See the [encounter guide](/shattered-crown/) for the formula.
+rounding up to Warden counts with minimum2; Withers use half as many rounded up, minimum2
+(2+2 at1–4, 3+2 at5–6, 4+2 at7–8, 12+6 at20, 22+11 at32), plus owned minions.
+See the [encounter guide](/shattered-crown/) for the formula.
 Bosses and species are evenly distributed across the four Anchors. Zero-population debug waves start exposed.
 Both modules must be enabled
 before startup. `defender-count`/`defender-type` are retained compatibility fields, ignored by the
 three complete rosters. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable
 opening undead; each selected mob has one or two unenchanted leather/chain/occasional iron pieces.
-Natural opening equipment is cleared and pickup disabled. `defender-health` and available native
-attack attributes use validated health/damage settings; weapons/projectiles retain native damage,
+Natural opening equipment is cleared and pickup disabled. All fixed-roster members use vanilla species health;
+`defender-health` is validated but ignored. Encounter Withers also ignore the Wither module's health override,
+retaining other enhancements and scaling its half-health threshold proportionally to native maximum health.
+Available native attack attributes use validated damage settings; weapons/projectiles retain native damage,
 not guaranteed final HP loss. `ground-search-radius`
 finds nearby surviving defender footing; Anchors use fixed X/Z and current highest/last-known height.
 Legacy `final-health-fraction` and `ground-max-y` remain accepted for configuration compatibility but

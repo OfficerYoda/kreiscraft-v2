@@ -2124,17 +2124,18 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private record OpeningGroup(int unit, int kind) {
     }
 
-    /** Place six-member towers first, then balance intact two-member mounted pairs by member count. */
+    /** Place three-member towers and intact pairs first, then balance with individual undead. */
     private List<List<OpeningGroup>> openingRoster(int population) {
         var roster = new ArrayList<List<OpeningGroup>>();
         int[] members = new int[openingGround.size()];
         for (int index = 0; index < members.length; index++) {
             roster.add(new ArrayList<>());
         }
-        for (int unit = 0; unit < population; unit++) {
+        int towers = population / 2 + population % 2;
+        for (int unit = 0; unit < towers; unit++) {
             int index = unit % members.length;
             roster.get(index).add(new OpeningGroup(unit, 3));
-            members[index] += 6;
+            members[index] += 3;
         }
         for (int unit = 0; unit < population; unit++) {
             for (int kind = 0; kind < 3; kind++) {
@@ -2147,6 +2148,16 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 roster.get(index).add(new OpeningGroup(unit, kind));
                 members[index] += 2;
             }
+        }
+        for (int member = 0; member < 10 * population - 3 * towers; member++) {
+            int index = 0;
+            for (int candidate = 1; candidate < members.length; candidate++) {
+                if (members[candidate] < members[index]) {
+                    index = candidate;
+                }
+            }
+            roster.get(index).add(new OpeningGroup(member, 4));
+            members[index]++;
         }
         return roster;
     }
@@ -2167,7 +2178,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         objective.crystal.setGlowing(objective.wave.isEmpty());
     }
 
-    /** Each global unit contributes six second-wave mobs or one final Warden/Wither pair. */
+    /** Second-wave units contain nine mobs; final units count Wardens with fewer Withers. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
         if (wave == 3) {
             int anchorIndex = anchors.indexOf(objective);
@@ -2176,8 +2187,9 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective,
                         battles::preventDespawn);
             }
-            // Offset the species by half the ring so both species and total counts stay balanced.
-            if ((unit + anchorCount / 2) % anchorCount == anchorIndex) {
+            int withers = Math.max(2, (rosterUnits + 1) / 2);
+            // Continue around the ring after the Wardens to balance both species and total counts.
+            if (unit < withers && (unit + rosterUnits) % anchorCount == anchorIndex) {
                 // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
                 spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
                         mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
@@ -2186,15 +2198,15 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
         if (wave == 2) {
             int speciesIndex = 0;
+            // Adjacent duplicate slots balance Brutes/Vexes as well as the whole-wave member count.
             for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
-                    EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE)) {
+                    EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE,
+                    EntityType.VEX, EntityType.VEX)) {
                 if ((speciesIndex++ * rosterUnits + unit) % openingGround.size() != anchors.indexOf(objective)) {
                     continue;
                 }
                 spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
                     battles.preventDespawn(defender);
-                    defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
-                    defender.setHealth(config.defenderHealth());
                     var damage = defender.getAttribute(Attribute.ATTACK_DAMAGE);
                     if (damage != null) {
                         damage.setBaseValue(config.defenderDamage());
@@ -2228,9 +2240,9 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
                 var crowns = List.of(EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED);
                 Mob previous = null;
-                for (int member = 0; member < 6; member++) {
+                for (int member = 0; member < 3; member++) {
                     // Native passengers control the stack; a melee crown cannot reach players several mobs below.
-                    EntityType type = member == 5 ? crowns.get(variation % crowns.size())
+                    EntityType type = member == 2 ? crowns.get(variation % crowns.size())
                             : types.get((variation + member) % types.size());
                     Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
                             openingInitializer(type));
@@ -2239,6 +2251,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     }
                     previous = next;
                 }
+            }
+            case 4 -> {
+                var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
+                        EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
+                EntityType type = types.get(group.unit() % types.size());
+                spawnCombatant(arena.defenderSite(site), type, objective, openingInitializer(type));
             }
             default -> throw new IllegalArgumentException("Unknown opening group " + group.kind());
         }
@@ -2280,8 +2298,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private void initializeOpeningMob(Mob mob) {
         battles.preventDespawn(mob);
         battles.disableEquipmentPickup(mob);
-        mob.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
-        mob.setHealth(config.defenderHealth());
         var attack = mob.getAttribute(Attribute.ATTACK_DAMAGE);
         if (attack != null) {
             attack.setBaseValue(config.defenderDamage());

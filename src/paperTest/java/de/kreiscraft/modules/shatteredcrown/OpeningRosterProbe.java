@@ -152,9 +152,9 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                             + spawns);
                     require(current.stream().allMatch(mob -> Math.abs(mob.getX()) < 192),
                             "mounted arena escape recovery");
-                    require(current.size() == 12, "escape/unload recovery is not a defeat or extra life");
+                    require(current.size() == 16, "escape/unload recovery is not a defeat or extra life");
                     if (recoveryStage == 1) {
-                        require(cases.getFirst().isValid() && spawns == 24,
+                        require(cases.getFirst().isValid() && spawns == 32,
                                 "loaded escape retains original lives without replacement");
                         require(escapedRider.getVehicle() == cases.getFirst()
                                 || cases.getFirst().addPassenger(escapedRider),
@@ -166,7 +166,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                         recoveryStage = 2;
                         recoveryTick = ticks;
                     } else {
-                        require(spawns <= 26, "finite replacement budget for two mounted members");
+                        require(spawns <= 34, "finite replacement budget for two mounted members");
                         verifyCleanup();
                     }
                 }
@@ -180,7 +180,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 require(Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "dragondebug wave 1"), "production wave1");
                 dragon.setAI(false); // Isolate defender combat, not dragon-flight evidence.
                 roster = player.getWorld().getEntitiesByClass(Mob.class).stream().filter(this::owned).toList();
-                require(roster.size() == 12 && spawns == 24, "complete fresh roster and pre-callback ownership");
+                require(roster.size() == 16 && spawns == 32, "complete fresh roster and pre-callback ownership");
                 verifyRoster();
                 roster.forEach(mob -> {
                     mob.setAI(false);
@@ -190,7 +190,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 for (EntityType type : List.of(EntityType.ZOMBIE_HORSE, EntityType.SPIDER, EntityType.CAVE_SPIDER)) {
                     cases.add(roster.stream().filter(mob -> mob.getType() == type).findFirst().orElseThrow());
                 }
-                cases.addAll(roster.stream().filter(mob -> mob.getVehicle() == null
+                cases.addAll(roster.stream().filter(mob -> mob.getVehicle() == null && !mob.getPassengers().isEmpty()
                         && mob.getType() != EntityType.ZOMBIE_HORSE && mob.getType() != EntityType.SPIDER
                         && mob.getType() != EntityType.CAVE_SPIDER)
                         .sorted(java.util.Comparator.<Mob>comparingInt(mob -> chain(mob).size())
@@ -270,7 +270,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
 
     private void verifyRoster() {
         var roots = roster.stream().filter(mob -> mob.getVehicle() == null).toList();
-        require(roots.size() == 4, "exactly four groups per player across all Anchors");
+        require(roots.size() == 11, "three mounted pairs, one tower and seven individual undead");
         var represented = roster.stream().map(Entity::getType).collect(java.util.stream.Collectors.toSet());
         require(represented.containsAll(List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED,
                 EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED)),
@@ -278,7 +278,8 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
         int armored = 0;
         for (var mob : roster) {
             require(!mob.getCanPickupItems(), "natural pickup disabled");
-            require(mob.getHealth() == 40, "native snapshotted health");
+            require(mob.getHealth() == mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getDefaultValue(),
+                    "native species health");
             var armor = java.util.Arrays.stream(mob.getEquipment().getArmorContents())
                     .filter(item -> item != null && !item.getType().isAir()).toList();
             require(armor.size() <= 2 && armor.stream().allMatch(item -> item.getEnchantments().isEmpty()
@@ -290,12 +291,12 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 armored++;
             }
         }
-        require(armored == 3, "3/9 armor-capable undead at35 percent tuning");
+        require(armored == 5, "5/13 armor-capable undead at35 percent tuning");
         for (var root : roots) {
             var group = chain(root);
             boolean mounted = root.getType() == EntityType.ZOMBIE_HORSE || root.getType() == EntityType.SPIDER
                     || root.getType() == EntityType.CAVE_SPIDER;
-            require(mounted ? group.size() == 2 : group.size() == 6,
+            require(mounted ? group.size() == 2 : group.size() == 1 || group.size() == 3,
                     "actual finite native passenger chain");
             if (root.getType() == EntityType.ZOMBIE_HORSE) {
                 require(group.get(1).getEquipment().getItemInMainHand().getType() == Material.IRON_SPEAR,

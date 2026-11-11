@@ -194,7 +194,8 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         encounter.debugWave(3, player);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
-                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(600));
+                .allSatisfy(wither -> assertThat(wither.getHealth())
+                        .isEqualTo(wither.getAttribute(Attribute.MAX_HEALTH).getDefaultValue()));
 
         root.node("modules", "wither", "max-health").set(800);
         root.node("modules", "wither", "enabled").set(false);
@@ -202,7 +203,8 @@ class LifecycleEncounterTest {
         assertThat(registry.isEnabled("wither")).as("Wither enablement changes require restart").isTrue();
         encounter.debugWave(3, player);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
-                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(800));
+                .allSatisfy(wither -> assertThat(wither.getHealth())
+                        .isEqualTo(wither.getAttribute(Attribute.MAX_HEALTH).getDefaultValue()));
 
         root.node("modules", module.id(), "enabled").set(false);
         registry.reloadConfigs(root);
@@ -222,7 +224,7 @@ class LifecycleEncounterTest {
     @org.junit.jupiter.params.provider.CsvSource({"1,2", "2,2", "3,2", "4,2", "5,3", "6,3", "7,4", "8,4",
             "9,5", "10,5", "11,6", "12,6", "13,7", "14,8", "15,9", "16,10", "17,11", "18,11", "19,12",
             "20,12", "21,13", "24,16", "25,17", "28,18", "29,19", "32,22", "68,48"})
-    void finalWaveDistributesOneWardenAndEnhancedWitherPerFrozenUnitAcrossAllAnchors(
+    void finalWaveDistributesUnchangedWardensAndHalfAsManyWithersAcrossAllAnchors(
             int population, int units) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
@@ -238,17 +240,19 @@ class LifecycleEncounterTest {
         assertThat(encounter.wavePopulation()).isEqualTo(population);
         assertThat(encounter.rosterUnits()).isEqualTo(units);
         assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).hasSize(units);
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(units);
+        int withers = Math.max(2, (units + 1) / 2);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(withers);
         var bosses = end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant).toList();
-        assertThat(bosses).hasSize(2 * units);
+        assertThat(bosses).hasSize(units + withers);
         assertThat(crystals()).hasSize(4);
         for (var crystal : crystals()) {
             var assigned = bosses.stream().filter(boss -> encounter.anchorId(boss).equals(crystal.getUniqueId()))
                     .toList();
-            assertThat(assigned).hasSizeBetween(2 * units / 4, (2 * units + 3) / 4);
+            assertThat(assigned).hasSizeBetween((units + withers) / 4, (units + withers + 3) / 4);
             for (var species : List.of(org.bukkit.entity.EntityType.WARDEN, org.bukkit.entity.EntityType.WITHER)) {
+                int count = species == org.bukkit.entity.EntityType.WARDEN ? units : withers;
                 assertThat(assigned.stream().filter(boss -> boss.getType() == species).count())
-                        .isBetween((long) units / 4, (long) (units + 3) / 4);
+                        .isBetween((long) count / 4, (long) (count + 3) / 4);
             }
             assertThat(crystal.isGlowing()).isEqualTo(assigned.isEmpty());
             assertThat(assigned)
@@ -258,9 +262,11 @@ class LifecycleEncounterTest {
         assertThat(crystals()).noneMatch(Entity::isGlowing);
         server.addPlayer().teleport(new Location(end, 250, 64, 0));
         assertThat(encounter.rosterUnits()).isEqualTo(units);
-        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(2 * units);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant))
+                .hasSize(units + withers);
         player.teleport(new Location(server.addSimpleWorld("departed-final-observer"), 0, 64, 0));
-        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(2 * units);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant))
+                .hasSize(units + withers);
         encounter.close();
     }
 
@@ -304,7 +310,7 @@ class LifecycleEncounterTest {
         encounter.debugWave(3, player);
         var parent = end.getEntitiesByClass(org.bukkit.entity.Wither.class).iterator().next();
         var anchor = encounter.anchorId(parent);
-        assertThat(parent.getHealth()).isEqualTo(600);
+        assertThat(parent.getHealth()).isEqualTo(parent.getAttribute(Attribute.MAX_HEALTH).getDefaultValue());
         var spawns = new java.util.ArrayList<Entity>();
         context.events().register(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
@@ -321,7 +327,14 @@ class LifecycleEncounterTest {
                 org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
         parent.teleport(new Location(world, 150, 64, 10)); // Roam far from the original logical Anchor.
-        parent.setHealth(300);
+        // WitherMock starts with generic20 HP rather than filling its native maximum like Paper does.
+        parent.setHealth(parent.getAttribute(Attribute.MAX_HEALTH).getValue());
+        var aboveHalf = new org.bukkit.event.entity.EntityDamageEvent(parent,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1);
+        server.getPluginManager().callEvent(aboveHalf);
+        assertThat(spawns).as("native health must not trigger minions on the first small hit").isEmpty();
+        parent.setHealth(parent.getAttribute(Attribute.MAX_HEALTH).getValue() / 2);
         var cancelled = new org.bukkit.event.entity.EntityDamageEvent(parent,
                 org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                 org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
@@ -479,7 +492,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.wavePopulation()).isEqualTo(12);
         assertThat(encounter.rosterUnits()).isEqualTo(12);
-        assertThat(defenders()).hasSize(144);
+        assertThat(defenders()).hasSize(192);
         for (var observer : others.subList(0, 4)) {
             observer.teleport(new Location(end, 250, 64, 0));
         }
@@ -490,7 +503,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(2);
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         assertThat(encounter.rosterUnits()).isEqualTo(5);
-        assertThat(defenders()).hasSize(30);
+        assertThat(defenders()).hasSize(45);
         others.getFirst().teleport(new Location(overworld, 0, 64, 0));
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         clearWave();
@@ -824,7 +837,7 @@ class LifecycleEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 12, 20, 68})
-    void openingUsesExactlyTwelveMembersAndFourIntactGroupsPerPlayer(int population) throws Exception {
+    void openingUsesSixteenMembersPerPlayerWithFewerThreeMemberTowers(int population) throws Exception {
         for (int index = 1; index < population; index++) {
             server.addPlayer();
         }
@@ -834,8 +847,21 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.wavePopulation()).isEqualTo(population);
         assertThat(encounter.rosterUnits()).isEqualTo(population);
-        assertThat(defenders()).hasSize(12 * population);
-        assertThat(defenders().stream().filter(mob -> mob.getVehicle() == null)).hasSize(4 * population);
+        int towers = (population + 1) / 2;
+        assertThat(defenders()).hasSize(16 * population);
+        var groups = defenders().stream().filter(mob -> mob.getVehicle() == null && !mob.getPassengers().isEmpty())
+                .toList();
+        assertThat(groups).hasSize(3 * population + towers);
+        assertThat(groups.stream().filter(mob -> mob.getType() != org.bukkit.entity.EntityType.ZOMBIE_HORSE
+                && mob.getType() != org.bukkit.entity.EntityType.SPIDER
+                && mob.getType() != org.bukkit.entity.EntityType.CAVE_SPIDER)).hasSize(towers)
+                        .allSatisfy(root -> {
+                            var middle = root.getPassengers().getFirst();
+                            assertThat(middle.getPassengers()).hasSize(1);
+                            assertThat(middle.getPassengers().getFirst().getPassengers()).isEmpty();
+                        });
+        assertThat(defenders())
+                .allMatch(mob -> mob.getHealth() == mob.getAttribute(Attribute.MAX_HEALTH).getDefaultValue());
         var counts = new java.util.ArrayList<Integer>();
         for (var anchor : crystals()) {
             var members = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(anchor.getUniqueId()))
@@ -845,7 +871,7 @@ class LifecycleEncounterTest {
                     .isLessThan(25));
         }
         assertThat(java.util.Collections.max(counts) - java.util.Collections.min(counts))
-                .isLessThanOrEqualTo(population == 1 ? 4 : 2);
+                .isZero();
         encounter.close();
     }
 
@@ -993,7 +1019,7 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(defenders()).hasSize(wave == 1 ? 61 : wave == 2 ? 31 : 7).contains(unrelated);
+            assertThat(defenders()).hasSize(wave == 1 ? 81 : wave == 2 ? 46 : 6).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5",
                     "roster-units=" + (wave == 3 ? 3 : 5),
@@ -1018,8 +1044,8 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"1,0,0", "2,0,0", "3,0,0", "1,1,12", "2,1,6", "3,1,4",
-            "1,20,240", "2,20,120", "3,20,24", "3,13,14"})
+    @org.junit.jupiter.params.provider.CsvSource({"1,0,0", "2,0,0", "3,0,0", "1,1,16", "2,1,9", "3,1,4",
+            "1,20,320", "2,20,180", "3,20,18", "3,13,11"})
     void debugWavePlayerArgumentOverridesOnlyTheSelectedRoster(int wave, int population, int members) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
@@ -1043,10 +1069,11 @@ class LifecycleEncounterTest {
             assertThat(encounter.scalingPopulation()).isEqualTo(1);
             assertThat(encounter.combatPopulation()).isEqualTo(1);
             if (wave == 3) {
+                int wardens = population == 0 ? 0 : population == 20 ? 12 : population == 13 ? 7 : 2;
                 assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WARDEN))
-                        .hasSize(members / 2);
+                        .hasSize(wardens);
                 assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WITHER))
-                        .hasSize(members / 2);
+                        .hasSize(members - wardens);
             }
             if (population == 0) {
                 assertThat(crystals()).allMatch(Entity::isGlowing);
@@ -1059,7 +1086,7 @@ class LifecycleEncounterTest {
             assertThat(encounter.scalingPopulation()).isEqualTo(2);
             dispatcher.execute("dragondebug wave 2", source);
             assertThat(encounter.wavePopulation()).isEqualTo(2);
-            assertThat(defenders()).hasSize(12);
+            assertThat(defenders()).hasSize(18);
         } finally {
             encounter.close();
         }
@@ -1260,7 +1287,7 @@ class LifecycleEncounterTest {
             assertThat(encounter.waveNumber()).isEqualTo(1);
             assertThat(encounter.wavePopulation()).isEqualTo(4);
             assertThat(encounter.rosterUnits()).isEqualTo(4);
-            assertThat(defenders()).hasSize(48); // The late fifth player cannot enlarge the frozen opening roster.
+            assertThat(defenders()).hasSize(64); // The late fifth player cannot enlarge the frozen opening roster.
         } finally {
             encounter.close();
         }
@@ -1276,7 +1303,7 @@ class LifecycleEncounterTest {
         assertThat(status(encounter)).contains("grace-seconds=30.0");
         assertThat(encounter.remainingGraceSeconds()).isEqualTo(30);
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         var nativePhase = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
                 EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
@@ -1636,14 +1663,14 @@ class LifecycleEncounterTest {
         var missing = defenders().iterator().next();
         missing.remove();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         player.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofSeconds(60));
         assertThat(dragon.getHealth()).isEqualTo(200);
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getHealth()).isEqualTo(800);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         next.node("enabled").set(false);
         module.onConfigReload(next);
         assertThat(crystals()).isEmpty();

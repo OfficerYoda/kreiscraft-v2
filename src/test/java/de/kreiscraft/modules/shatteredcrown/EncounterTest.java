@@ -142,7 +142,7 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         EnderCrystal anchor = crystals().getFirst();
         assertThat(hit(dragon).isCancelled()).isTrue();
         assertThat(hit(anchor).isCancelled()).isTrue();
@@ -279,7 +279,7 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).allMatch(crystal -> crystal.getY() == 64);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(dragon.getHealth()).isEqualTo(1000);
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
@@ -364,7 +364,7 @@ class EncounterTest {
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).doesNotContain(first);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
@@ -427,7 +427,7 @@ class EncounterTest {
         assertThat(crystals()).hasSize(4);
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
     }
 
     @Test
@@ -495,7 +495,7 @@ class EncounterTest {
         server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isTrue();
         assertThat(hit(dragon).isCancelled()).isTrue();
@@ -511,7 +511,7 @@ class EncounterTest {
             player.teleport(new Location(end, 10, 64, 0));
             scheduler.advance(Duration.ofSeconds(1));
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(12 * (attempt + 2));
+            assertThat(defenders()).hasSize(16 * (attempt + 2));
             player.setHealth(0);
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(crystals()).isEmpty();
@@ -595,7 +595,7 @@ class EncounterTest {
         original.remove();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).doesNotContain(original);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(hit(crystals().getFirst()).isCancelled()).isTrue();
         assertThat(crystals()).hasSize(4);
         assertThat(hit(dragon).isCancelled()).isTrue();
@@ -657,13 +657,13 @@ class EncounterTest {
         next.node("defender-count").set(6);
         module.onConfigReload(next);
         assertThat(dragon.getHealth()).isEqualTo(1000);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         player.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getHealth()).isEqualTo(800);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         next.node("enabled").set(false);
         module.onConfigReload(next);
         assertThat(defenders()).isEmpty();
@@ -679,13 +679,13 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         var owned = defenders().stream().filter(entity -> entity != unrelated).toList();
-        assertThat(owned).hasSize(12);
+        assertThat(owned).hasSize(16);
         var home = owned.getFirst().getLocation();
         owned.getFirst().teleport(new Location(end, 200, 10, 0));
         owned.get(1).remove();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(owned.getFirst().getLocation().distance(home)).isLessThan(5);
-        assertThat(defenders()).hasSize(13);
+        assertThat(defenders()).hasSize(17);
         module.disable();
         module.disable();
         scheduler.advance(Duration.ofSeconds(120));

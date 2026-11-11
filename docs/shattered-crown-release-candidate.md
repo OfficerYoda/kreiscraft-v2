@@ -31,15 +31,18 @@ Do not install `build/paper-probe/` JARs on production.
 
 | Wave | Gate | Four-player complete roster | Population5–8 | Population20 |
 | --- | --- | --- | --- | --- |
-| One | 100% | Four Anchors,48 members/16 groups: spear Zombie/Horse, Skeleton/Spider, Bogged/Cave Spider, six-member undead towers | 60–96 members | 240 members |
-| Two | 65% | Four Anchors,24 roots: Ravager/Guardian/Brute/Vindicator/Blaze/Breeze per player | 30–48 roots | 120 roots |
-| Three | 30% | Four Anchors,2 Wardens+2 enhanced Withers, plus owned Wither minions | 3+3 at5–6;4+4 at7–8 | 12+12 roots |
+| One | 100% | Four Anchors,64 members: three mounted pairs per player, two three-member towers, individual undead | 80–128 members | 320 members |
+| Two | 65% | Four Anchors,36 roots: two Brutes/two Vexes and five other species per player | 45–72 roots | 180 roots |
+| Three | 30% | Four Anchors,2 Wardens+2 enhanced Withers, plus owned Wither minions | 3+2 at5–6;4+2 at7–8 | 12+6 roots |
 
-Waves one/two have12/6 mobs per counted player across the whole wave, uncapped. Mounted pairs/towers remain intact.
-Wave three interpolates doubled four-player targets, rounding up to equal Warden/Wither pairs, minimum2 pairs:
+Waves one/two have16/9 mobs per counted player across the whole wave, uncapped. Mounted pairs/towers remain intact.
+Towers have three members, with one tower per two players rounded up. All defenders retain vanilla species health;
+encounter Withers keep other module enhancements and use a proportionally adjusted half-health threshold.
+Wave three interpolates doubled four-player targets for Wardens, minimum2:
 1–4→2, 5–6→3, 7–8→4, 12→6, 13→7, 14→8, 15→9, 16→10, 17–18→11, 19–20→12, 32→22.
-Final bosses are spread evenly across Anchors, balancing species too; 1–4 players have one boss per crystal,
-and twenty players have six bosses at each Anchor. Opening freezes everyone online server-wide at first
+Withers use half the Warden count rounded up, minimum2. Final bosses are spread evenly across Anchors,
+balancing species too; 1–4 players have one boss per crystal, and twenty players have four or five per Anchor.
+Opening freezes everyone online server-wide at first
 End entry; connected dead arrivals retain that snapshot while awaiting respawn. Later waves freeze
 everyone connected in the managed End, including Creative/Spectator,
 outer-island and connected dead players. Those observers/dead players are never combat targets and

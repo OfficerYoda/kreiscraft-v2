@@ -233,7 +233,7 @@ class FinalEncounterTest {
                     end.getBlockAt(crystal.getLocation().getBlockX(), 63, crystal.getLocation().getBlockZ()).isEmpty())
                             .isTrue();
         }
-        assertThat(defenders()).hasSize(6)
+        assertThat(defenders()).hasSize(9)
                 .allSatisfy(defender -> assertThat(defender.getLocation().getBlock().getRelative(0, -1, 0).getType())
                         .isEqualTo(Material.END_STONE));
         clearAnchors();
@@ -274,7 +274,7 @@ class FinalEncounterTest {
         assertThat(dragon.getHealth()).isEqualTo(650);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).containsExactlyInAnyOrderElementsOf(openingLocations);
-        assertThat(defenders()).hasSize(6);
+        assertThat(defenders()).hasSize(9);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount).isCancelled()).isTrue();
         clearAnchors();
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);
@@ -802,7 +802,7 @@ class FinalEncounterTest {
             scheduler.advance(Duration.ofSeconds(1));
         }
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(16);
         assertThat(dragon.getHealth()).isEqualTo(1000);
         clearAnchors();
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 40).getFinalDamage()).isEqualTo(40);
@@ -1025,7 +1025,7 @@ class FinalEncounterTest {
         }
         opening();
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(240);
+        assertThat(defenders()).hasSize(320);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 10000).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);

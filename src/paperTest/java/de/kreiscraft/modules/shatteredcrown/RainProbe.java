@@ -330,7 +330,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 long opening =
                         world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender")).count();
                 getLogger().info("RAIN_ROSTER opening=" + opening + " wavePopulation=" + encounter.wavePopulation());
-                check(opening == encounter.wavePopulation() * 12,
+                check(opening == encounter.wavePopulation() * 16,
                         "current mounted opening roster for frozen first-entry units, not later End population");
                 // Defeat the opening defenders through genuine native deaths for the pure damage calibration.
                 // Separate cover cases deliberately exercise early obstruction; dragon AI remains continuously on.
@@ -654,12 +654,13 @@ public final class RainProbe extends JavaPlugin implements Listener {
         command("wave 2");
         check(warnings().isEmpty() && balls().isEmpty() && pools().isEmpty(), "wave replacement drains Rain scope");
         var second = world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender")).toList();
-        check(second.size() == 6 * encounter.wavePopulation() && second.stream().map(org.bukkit.entity.Entity::getType)
+        check(second.size() == 9 * encounter.wavePopulation() && second.stream().map(org.bukkit.entity.Entity::getType)
                 .collect(java.util.stream.Collectors.toSet())
                 .equals(java.util.Set.of(org.bukkit.entity.EntityType.RAVAGER, org.bukkit.entity.EntityType.GUARDIAN,
                         org.bukkit.entity.EntityType.PIGLIN_BRUTE, org.bukkit.entity.EntityType.VINDICATOR,
-                        org.bukkit.entity.EntityType.BLAZE, org.bukkit.entity.EntityType.BREEZE)),
-                "actual latest six-species second-wave roster");
+                        org.bukkit.entity.EntityType.BLAZE, org.bukkit.entity.EntityType.BREEZE,
+                        org.bukkit.entity.EntityType.VEX)),
+                "actual latest seven-species second-wave roster");
         getLogger().info("RAIN_ROSTER second=" + second.size() + " species="
                 + second.stream().map(org.bukkit.entity.Entity::getType).distinct().toList());
         check(!encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN),

@@ -46,7 +46,8 @@ class SecondWaveEncounterTest {
         throw error;
     };
     private static final Map<EntityType, Long> UNIT = Map.of(EntityType.RAVAGER, 1L, EntityType.GUARDIAN, 1L,
-            EntityType.PIGLIN_BRUTE, 1L, EntityType.VINDICATOR, 1L, EntityType.BLAZE, 1L, EntityType.BREEZE, 1L);
+            EntityType.PIGLIN_BRUTE, 2L, EntityType.VINDICATOR, 1L, EntityType.BLAZE, 1L, EntityType.BREEZE, 1L,
+            EntityType.VEX, 2L);
     @TempDir
     Path data;
     private ServerMock server;
@@ -125,7 +126,7 @@ class SecondWaveEncounterTest {
     }
 
     @Test
-    void naturalSixtyFivePercentGateInstallsSixMobsPerPlayerAcrossAllAnchors() {
+    void naturalSixtyFivePercentGateInstallsNineMobsPerPlayerAcrossAllAnchors() {
         for (Mob defender : defenders()) {
             defeat(defender);
         }
@@ -136,13 +137,13 @@ class SecondWaveEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.waveNumber()).isEqualTo(2);
         assertThat(dragon.getHealth()).isEqualTo(650);
-        assertThat(defenders()).hasSize(6);
+        assertThat(defenders()).hasSize(9);
         var groups = defenders().stream().collect(Collectors.groupingBy(encounter::anchorId));
         assertThat(groups).hasSize(4);
         assertThat(defenders().stream().collect(Collectors.groupingBy(Entity::getType, Collectors.counting())))
                 .isEqualTo(UNIT);
         for (var group : groups.values()) {
-            assertThat(group).hasSizeBetween(1, 2);
+            assertThat(group).hasSizeBetween(2, 3);
         }
         assertThat(hit(dragon).isCancelled()).isTrue();
         assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
@@ -150,7 +151,7 @@ class SecondWaveEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 68})
-    void debugSnapshotsAllEndPlayersAndSpawnsSixPerPlayerWithoutACapOrLaterRescaling(int population) {
+    void debugSnapshotsAllEndPlayersAndSpawnsNinePerPlayerWithoutACapOrLaterRescaling(int population) {
         for (int index = 1; index < population; index++) {
             var observer = server.addPlayer();
             observer.setGameMode(index % 2 == 0 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
@@ -159,17 +160,17 @@ class SecondWaveEncounterTest {
         encounter.debugWave(2, server.getConsoleSender());
         assertThat(encounter.wavePopulation()).isEqualTo(population);
         assertThat(encounter.rosterUnits()).isEqualTo(population);
-        assertThat(defenders()).hasSize(6 * population);
+        assertThat(defenders()).hasSize(9 * population);
         assertThat(defenders().stream().collect(Collectors.groupingBy(Entity::getType, Collectors.counting())))
                 .containsExactlyInAnyOrderEntriesOf(UNIT.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey, entry -> (long) population)));
+                        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue() * population)));
         for (var crystal : crystals()) {
             var group = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(crystal.getUniqueId()))
                     .toList();
-            assertThat(group).hasSizeBetween(6 * population / 4, (6 * population + 3) / 4);
+            assertThat(group).hasSizeBetween(9 * population / 4, (9 * population + 3) / 4);
             for (var species : UNIT.keySet()) {
                 assertThat(group.stream().filter(mob -> mob.getType() == species).count())
-                        .isBetween((long) population / 4, (long) (population + 3) / 4);
+                        .isBetween(UNIT.get(species) * population / 4, (UNIT.get(species) * population + 3) / 4);
             }
         }
         var roots = defenders();
@@ -181,7 +182,7 @@ class SecondWaveEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.EnumSource(value = EntityType.class,
-            names = {"RAVAGER", "GUARDIAN", "PIGLIN_BRUTE", "VINDICATOR", "BLAZE", "BREEZE"})
+            names = {"RAVAGER", "GUARDIAN", "PIGLIN_BRUTE", "VINDICATOR", "BLAZE", "BREEZE", "VEX"})
     void eachSpeciesSurvivorHoldsItsOwnCrystalAndRainWaitsForAllFourCrystals(EntityType survivorType) {
         for (int index = 1; index < 4; index++) {
             server.addPlayer().teleport(player.getLocation());
@@ -196,9 +197,9 @@ class SecondWaveEncounterTest {
         objectives.forEach(crystal -> assertThat(hit(crystal).isCancelled()).isTrue());
         assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
         for (var crystal : objectives) {
-            var survivor = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(crystal.getUniqueId()))
-                    .findFirst().orElseThrow();
-            defeat(survivor);
+            var survivors = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(crystal.getUniqueId()))
+                    .toList();
+            survivors.forEach(this::defeat);
             assertThat(crystal.isGlowing()).isTrue();
             assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
             assertThat(hit(crystal).isCancelled()).isTrue(); // Owned objective removes itself, suppressing explosion.
@@ -209,30 +210,31 @@ class SecondWaveEncounterTest {
     }
 
     @Test
-    void missingSixSpeciesRootsAreReplacedWithTheirSpeciesTuningAndNotCountedAsDeaths() {
+    void missingSevenSpeciesRootsAreReplacedWithTheirSpeciesTuningAndNotCountedAsDeaths() {
         encounter.debugWave(2, server.getConsoleSender());
         var objective = encounter.anchorId(defenders().getFirst());
         var missing = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(objective)).toList();
         var expectedSpecies = missing.stream().collect(Collectors.groupingBy(Entity::getType, Collectors.counting()));
         missing.forEach(Entity::remove);
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(defenders()).hasSize(6).doesNotContainAnyElementsOf(missing);
+        assertThat(defenders()).hasSize(9).doesNotContainAnyElementsOf(missing);
         var replacements = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(objective)).toList();
         assertThat(replacements.stream().collect(Collectors.groupingBy(Entity::getType, Collectors.counting())))
                 .isEqualTo(expectedSpecies);
-        assertThat(replacements).allMatch(mob -> mob.getHealth() == 40);
+        assertThat(replacements)
+                .allMatch(mob -> mob.getHealth() == mob.getAttribute(Attribute.MAX_HEALTH).getDefaultValue());
         assertThat(hit(crystals().getFirst()).isCancelled()).isTrue();
         for (Mob root : replacements) {
             defeat(root);
             defeat(root); // Duplicate callbacks neither expose other Anchors nor replenish accepted deaths.
         }
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(defenders()).hasSize(6 - missing.size());
+        assertThat(defenders()).hasSize(9 - missing.size());
         assertThat(crystals().stream().filter(EnderCrystal::isGlowing)).hasSize(1);
     }
 
     @Test
-    void allSixSpeciesAndRetiredAttributedEffectsRespectAlliesArrivalAndPublicCancellation() {
+    void allSevenSpeciesAndRetiredAttributedEffectsRespectAlliesArrivalAndPublicCancellation() {
         server.addPlayer().teleport(player.getLocation());
         encounter.debugWave(2, server.getConsoleSender());
         var control = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
@@ -283,7 +285,7 @@ class SecondWaveEncounterTest {
         var effects = end.getEntitiesByClass(org.bukkit.entity.Arrow.class);
         encounter.debugWave(2, server.getConsoleSender());
         assertThat(effects).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
-        assertThat(defenders()).hasSize(12);
+        assertThat(defenders()).hasSize(18);
         assertThat(control.isValid()).isTrue();
         assertThat(end.getEntitiesByClass(org.bukkit.entity.PiglinBrute.class))
                 .allMatch(org.bukkit.entity.PiglinBrute::isImmuneToZombification);

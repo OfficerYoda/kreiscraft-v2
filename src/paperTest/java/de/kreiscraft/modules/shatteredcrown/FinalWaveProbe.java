@@ -188,9 +188,9 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                     observer.getBukkitEntity().teleport(new Location(end, 250, 151, 0.5));
                 }
                 command("wave 3");
-                require(anchors().size() == 4 && defenders().size() == 6, "population5 three pairs across all Anchors");
+                require(anchors().size() == 4 && defenders().size() == 5, "population5 three Wardens and two Withers");
                 require(end.getEntitiesByClass(Warden.class).size() == 3
-                        && end.getEntitiesByClass(Wither.class).size() == 3, "native species counts");
+                        && end.getEntitiesByClass(Wither.class).size() == 2, "native species counts");
                 wither = end.getEntitiesByClass(Wither.class).iterator().next();
                 home = anchors().stream().min(java.util.Comparator.comparingDouble(
                         crystal -> crystal.getLocation().distanceSquared(wither.getLocation()))).orElseThrow();
@@ -200,7 +200,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                         "balanced original bosses at selected Anchor");
                 warden = end.getEntitiesByClass(Warden.class).stream().filter(mob -> !homeBosses.contains(mob))
                         .findFirst().orElseThrow();
-                require(wither.getHealth() == 600 && wither.getAttribute(Attribute.MAX_HEALTH).getValue() == 600
+                require(wither.getHealth() == 300 && wither.getAttribute(Attribute.MAX_HEALTH).getValue() == 300
                         && wither.getAttribute(Attribute.ATTACK_DAMAGE).getValue() == 40
                         && wither.getAttribute(Attribute.ARMOR).getValue() == 8, "NORMAL enhanced attributes");
                 require(wither.getInvulnerableTicks() > 0, "native spawn charge armed");
@@ -218,10 +218,10 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 require(enderman.getHealth() == 40 && warden.getHealth() == 500 && dragon.getHealth() == 300,
                         "real spawn blast protects Enderman/Warden/dragon");
                 require(leaked == 0, "all ownership visible before NORMAL native callbacks");
-                getLogger().info("FINAL_WAVE spawnBlast count=" + blasts + " power20 attrs600/40/8");
+                getLogger().info("FINAL_WAVE spawnBlast count=" + blasts + " power20 attrs300/40/8");
                 wither.setAI(false);
                 wither.setInvulnerableTicks(0);
-                wither.setHealth(301);
+                wither.setHealth(151);
                 wither.setNoDamageTicks(0);
                 wither.damage(10, DamageSource.builder(DamageType.PLAYER_ATTACK).withDirectEntity(player)
                         .withCausingEntity(player).build());

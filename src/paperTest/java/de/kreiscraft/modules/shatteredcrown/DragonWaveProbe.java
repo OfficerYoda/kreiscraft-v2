@@ -141,8 +141,8 @@ public final class DragonWaveProbe extends JavaPlugin {
                     return;
                 }
                 require(getServer().getOnlinePlayers().size() == 4, "registered server population");
-                require(anchors().size() == 4 && defenders().size() == 48,
-                        "first-entry wave1 population4 twelve per player");
+                require(anchors().size() == 4 && defenders().size() == 64,
+                        "first-entry wave1 population4 sixteen per player");
                 command("pause");
                 dragon.setAI(false); // Native battle/adoption established; isolate native damage from flight.
                 retiredDefender = defenders().getFirst();
@@ -155,7 +155,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 require(dragon.getHealth() == 650, "oversized native head melee clamped65");
                 stage = 1;
             } else if (stage == 1 && anchors().size() == 4) {
-                require(defenders().size() == 30, "wave2 allEnd population5 frozen six per player");
+                require(defenders().size() == 45, "wave2 allEnd population5 frozen nine per player");
                 verifyRetiredAttribution();
                 hitDragon(false);
                 require(dragon.getHealth() == 650, "shield protects native followup");
@@ -165,7 +165,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                 require(dragon.getHealth() == 300, "native explosive damage clamped30");
                 stage = 2;
             } else if (stage == 2 && anchors().size() == 4) {
-                require(defenders().size() == 6, "wave3 population5 three Warden/Wither pairs across all Anchors");
+                require(defenders().size() == 5, "wave3 population5 three Wardens and two Withers across all Anchors");
                 verifyRetiredAttribution();
                 clearWave();
                 require(dragon.getHealth() == 300, "crystals cannot damage managed dragon");
@@ -173,7 +173,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                     var old = anchors();
                     command("wave " + wave);
                     require(old.stream().noneMatch(org.bukkit.entity.Entity::isValid), "debug replaces old objectives");
-                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 60 : wave == 2 ? 30 : 6),
+                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 80 : wave == 2 ? 45 : 5),
                             "fresh defended debug wave" + wave);
                     require(dragon.getHealth() == (wave == 1 ? 1000 : wave == 2 ? 650 : 300), "debug health" + wave);
                     command("status");

@@ -87,7 +87,8 @@ public final class WitherListener implements PriorityListener {
         }
         WitherConfig cfg = config.get();
         AttributeInstance maxHealthAttr = wither.getAttribute(Attribute.MAX_HEALTH);
-        if (maxHealthAttr != null) {
+        // Encounter roots keep native health while ordinary Withers retain configurable enhancements.
+        if (maxHealthAttr != null && owner(wither) == null) {
             maxHealthAttr.setBaseValue(cfg.maxHealth());
             wither.setHealth(cfg.maxHealth());
         }
@@ -170,8 +171,13 @@ public final class WitherListener implements PriorityListener {
         }
         EncounterService encounter = owner(wither);
         WitherConfig cfg = config.get();
+        double threshold = cfg.halfHealthThreshold();
+        if (encounter != null) {
+            // Preserve the configured fraction when the encounter uses a smaller, native health pool.
+            threshold *= wither.getAttribute(Attribute.MAX_HEALTH).getValue() / cfg.maxHealth();
+        }
         if (encounter == null || wither.isDead() || !wither.isValid()
-                || wither.getHealth() - event.getFinalDamage() > cfg.halfHealthThreshold()
+                || wither.getHealth() - event.getFinalDamage() > threshold
                 || wither.getScoreboardTags().contains(HALF_TAG)) {
             return;
         }

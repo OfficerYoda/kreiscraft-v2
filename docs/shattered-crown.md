@@ -40,7 +40,7 @@ Crystal healing is disabled. Defender deaths expose only their assigned crystal;
 must then be destroyed by eligible player attacks, in any order. Mob damage, explosions, unrelated
 crystals and protected-origin attacks cannot complete an objective.
 
-Wave one has **12 mobs per counted player across the entire wave**, and wave two has **6 per player**,
+Wave one has **16 mobs per counted player across the entire wave**, and wave two has **9 per player**,
 without a population cap. Mounted pairs/towers stay intact at their assigned Anchor; second-wave
 species and member counts are balanced across Anchors. An empty debug End still has four exposed crystals to destroy.
 Wave one freezes #150's first-End-entry server-wide population;
@@ -50,10 +50,10 @@ spectator and outside-arena players. Later joins/leaves never resize existing de
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
 Ground Smash after wave three. Unlocks survive later shields. The shuffled rotation includes
 [native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
-Wave two has exactly one **Ravager, Guardian, Piglin Brute,
-Vindicator, Blaze and Breeze per counted player across the whole wave**: 6 total at population1,
-24 at4, 30 at5, 120 at20; no random pool or cap. Wave three uses equal Warden/Wither counts,
-interpolating the doubled four-player targets and rounding up to whole pairs, with a minimum of two pairs.
+Wave two has **two Piglin Brutes, two Vexes, and one each of Ravager, Guardian,
+Vindicator, Blaze and Breeze per counted player across the whole wave**: 9 total at population1,
+36 at4, 45 at5, 180 at20; no random pool or cap. Wave three keeps the interpolated Warden counts
+and uses half as many Withers, rounded up with a minimum of two of each species for positive populations.
 Bosses are distributed evenly across the four Anchors. Opening composition lives in
 `EncounterController.spawnOpeningGroup`; second/final composition in
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`. All units are global, not repeated
@@ -65,28 +65,31 @@ All are owned by `waveWork`; do not scale again or equate defender deaths with c
 
 ### Wave one: mounted undead
 
-Each counted player contributes one twelve-member unit with four Defender Groups across the wave:
+Each counted player contributes sixteen members across the wave, including three mounted pairs:
 
 - Adult Zombie with an unenchanted `IRON_SPEAR` riding a Zombie Horse.
 - Skeleton with a bow riding a Spider.
 - Bogged with a bow riding a Cave Spider.
-- An actual chain of6 undead passengers, rotating through Husk, Zombie, Drowned, Skeleton,
-  Stray, Bogged and Wither Skeleton across the wave. Archers retain bows; Wither Skeletons have swords.
+
+The wave also contains `ceil(population / 2)` three-member undead towers. Unmounted undead fill
+the remaining `10 * population - 3 * towers` members, rotating through Husk, Zombie, Drowned, Skeleton,
+Stray, Bogged and Wither Skeleton. Archers retain bows; Wither Skeletons have swords.
 
 Towers end in a Skeleton, Stray or Bogged archer. Native passengers steer the stack; a melee-only
 crown several bodies above the ground cannot reliably hit players below. This retains native
 movement/combat without custom attack goals or a second damage engine.
 
-One online player produces4 groups/12 members; four produce16 groups/48 members; twelve produce48 groups/144 members.
-Six-member towers are allocated around the ring first, then intact mounted pairs go to the least-populated Anchor.
-At one player this gives6/2/2/2 members; at two or four players counts are equal; otherwise counts differ by at most two.
-Tower species rotate deterministically by player unit. About35% of armor-capable undead
-receive one or two unenchanted leather/chainmail pieces with occasional iron (3/9 for one player).
+One online player produces16 members with one tower; four produce64 with two towers; twelve produce192 with six towers.
+Three-member towers are allocated around the ring first, then intact mounted pairs go to the least-populated Anchor.
+Individual undead fill the remaining roster and balance all four Anchors to exactly `4 * population` members each.
+Tower species rotate deterministically by tower ordinal. About35% of armor-capable undead
+receive one or two unenchanted leather/chainmail pieces with occasional iron (5/13 for one player).
 No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup
 disabled. Armor choice is captured for species-preserving recovery, never rerolled into another life.
 The armor percentage is editable in Server Configuration in both English and German; validated
 reloads apply to the next Encounter, not an already spawned roster.
-`defender-health` applies to every mount/passenger; `defender-damage` tunes supported native melee
+All members retain their species' vanilla health; `defender-health` is a retained compatibility field,
+ignored by the fixed rosters. `defender-damage` tunes supported native melee
 attributes, not bow/spear item damage. The roster is active during the30-second Opening Grace.
 
 Every mount and passenger must die before its crystal glows. Dismounting, broken towers and roaming
@@ -108,9 +111,9 @@ Set `JAVA_HOME` to Java25. The probe's native registered player uses synthetic t
 client; its raised calibration path leaves Anchor terrain unchanged and proves server AI/physical
 damage, not rendered readability, multiplayer balance or a complete fight. `/dragondebug wave 1`
 uses the same production roster and pauses automatic dragon attacks, not defenders.
-### Wave two: six species
+### Wave two: seven species
 
-Wave-two roots use validated `defender-health` and available native `ATTACK_DAMAGE` attributes.
+Wave-two roots retain vanilla species health and use validated damage for available native `ATTACK_DAMAGE` attributes.
 Native weapons, beam magic, fireballs and wind charges retain their vanilla damage/physics; the
 damage setting is not a promised final HP loss. Piglin Brutes are immune to End zombification.
 Owned Guardians use native ground paths with steered hops and approach to beam range; owned Blazes
@@ -141,7 +144,7 @@ pending gate acceptance and attacks/effects, sets 100/65/30% health, grants earl
 takes fresh scaling snapshots. The optional non-negative player count overrides only the selected wave's
 roster population, not actual players or combat eligibility. Omit it to use real population counts;
 use `0` for empty, exposed crystals. For twenty simulated players, waves one/two/three spawn
-240 mobs, 120 mobs and 12 Wardens plus 12 Withers respectively (before owned minions).
+320 mobs, 180 mobs and 12 Wardens plus 6 Withers respectively (before owned minions).
 The override stays frozen for that wave and does not carry into later waves.
 It pauses automatic attacks; `/dragondebug resume` resumes the
 selected production shield/hunt phase. Opening Grace is not restarted or bypassed by phase jumps.
@@ -173,22 +176,39 @@ balance, ritual completion or native reward delivery. Those remain integrated #1
 
 ### Final Warden and enhanced-Wither wave (#155)
 
-Each final-wave Roster Unit is **one native Warden plus one enhanced Wither across the entire wave**.
-One through four connected End players face two Wardens/two Withers; five/six face three of each,
-seven/eight four, nine/ten five, eleven/twelve six, thirteen seven, fourteen eight, fifteen nine,
-sixteen ten, seventeen/eighteen eleven, nineteen/twenty twelve, and thirty-two twenty-two.
+The final wave contains native Wardens and enhanced Withers scaled separately across the entire wave.
+Warden scaling is unchanged; Withers use `max(2, ceil(wardens / 2))` for positive populations.
+
+| End players | Wardens | Withers |
+| --- | --- | --- |
+| 1–4 | 2 | 2 |
+| 5–6 | 3 | 2 |
+| 7–8 | 4 | 2 |
+| 9–10 | 5 | 3 |
+| 11–12 | 6 | 3 |
+| 13 | 7 | 4 |
+| 14 | 8 | 4 |
+| 15 | 9 | 5 |
+| 16 | 10 | 5 |
+| 17–18 | 11 | 6 |
+| 19–20 | 12 | 6 |
+| 24 | 16 | 8 |
+| 28 | 18 | 9 |
+| 32 | 22 | 11 |
+
 For a positive population `p`, the formula is:
 
 ```text
 target(tier) = 2 * (tier + max(0, floor(tier / 2) - 1))
 lower = ceil(p / 4) - 1
 fraction = (p - 4 * lower) / 4
-pairs = max(2, ceil(target(lower) + (target(lower + 1) - target(lower)) * fraction))
+wardens = max(2, ceil(target(lower) + (target(lower + 1) - target(lower)) * fraction))
+withers = max(2, ceil(wardens / 2))
 ```
 
 Zero population in debug mode gives zero bosses, not the positive-population minimum.
 Each species cycles around the four Anchors,
-with Withers offset by two Anchors from Wardens. Total boss counts and each species' counts differ
+with Wither assignment continuing around the ring after the last Warden. Total boss counts and each species' counts differ
 by at most one between Anchors. At population 1–4 all four crystals have one boss each;
 all four crystals still must be destroyed. The snapshot includes connected dead players, Creative/Spectator
 observers and players outside combat. Later arrivals/departures do not resize it.
@@ -200,10 +220,13 @@ bosses and minions recover their species and membership; accepted deaths are nev
 
 **Keep `modules.wither.enabled: true`. Crown depends on that module and does not fall back to
 vanilla Withers when it is disabled.** Wither tuning comes from the existing `modules.wither`
-keys, not Crown's placeholder defender health/damage/count. Defaults remain 600 health, 40 attack,
-8 armor, four Wither Skeleton minions at the 300-health threshold, destructive power-20 spawn and
+keys, not Crown's placeholder defender damage/count. Encounter Withers retain vanilla300 health;
+ordinary Withers still use configured health (default600). Other defaults remain40 attack,
+8 armor, four Wither Skeleton minions at half health (150 for encounter Withers), destructive power-20 spawn and
 death blasts, and a power-4 half-health blast. Custom-spawned roots arm the native 220-tick spawn
 charge. The death countdown retains its native boss-bar presentation and configured blast.
+The configured threshold-to-maximum-health ratio is preserved for encounter Withers, rather than
+applying the ordinary Wither's absolute threshold to a smaller health pool.
 
 Minions join their parent's **original** Anchor before spawn callbacks and must also die before
 that crystal is exposed, including a threshold-crossing lethal hit. Skull ownership is installed
@@ -365,7 +388,7 @@ single-hit damage do not dynamically resize with attendance.
 | `defender-count` | 4 | Retained compatibility key, ignored by all three approved complete rosters |
 | `defender-type` | `HUSK` | Retained compatibility key, ignored by all three approved complete rosters |
 | `opening-armor-percentage` | 35 | integer0–50; balanced armor-capable opening undead with1–2 light pieces |
-| `defender-health` | 40 | 1–1000, root native health including all six wave-two species |
+| `defender-health` | 40 | Deprecated compatibility field, validated 1–1000 but ignored by fixed rosters; species retain vanilla health |
 | `defender-damage` | 6 | 0–100, available native attack attributes; weapons/projectiles/beam magic remain native |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
 | `bombardment-cadence-seconds` | 8 | 2–120; stationary compatibility profile only, not the native unlocked rotation |
@@ -455,8 +478,8 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   catches late world/dragon availability and returning players. No teleport, inventory or travel
   policy is changed.
 - Every wave has four independent Anchors with population-scaled complete Roster Units. At four
-  online players wave one has four groups per Anchor (48 members total); wave two has six species
-  per Anchor (24 total); wave three has two Wardens and two Withers across the wave (4 roots plus owned minions).
+  online players wave one has64 members including two three-member towers; wave two has seven species
+  across the wave (36 total); wave three has two Wardens and two Withers across the wave (4 roots plus owned minions).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement
@@ -497,8 +520,8 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   discovery too. Opening cadence, warning refresh and pending damage are all cancelled on the last
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
-- Population scaling is uncapped: opening membership is48 at population4,60 at5,96 at8,144 at12,
-  240 at20,816 at68. Actual task/entity/resource observations belong to pinned native evidence,
+- Population scaling is uncapped: opening membership is64 at population4,80 at5,128 at8,192 at12,
+  320 at20,1088 at68. Actual task/entity/resource observations belong to pinned native evidence,
   not obsolete16-Husk bounds. Completed attacks do not accumulate active work. Particle audiences are capped at64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.

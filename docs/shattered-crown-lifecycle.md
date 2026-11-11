@@ -11,9 +11,11 @@ The [encounter guide](/shattered-crown/) lists the shipped profile and current c
 
 #151 consumes these APIs at three fixed four-Anchor boundaries (100%, 65%, 30%). It freezes
 `firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Waves one/two give the whole wave
-12/6 mobs per counted player. Opening groups remain intact; second-wave species and total counts stay balanced.
-Wave three interpolates doubled four-player targets, rounding up to equal Warden/Wither pairs with minimum2 pairs
-for positive populations (2+2 at1–4, 12+12 at20, 22+22 at32). All rosters are distributed across four Anchors.
+16/9 mobs per counted player. Opening groups remain intact: three mounted pairs per player and one three-member
+tower per two players rounded up, with individual undead filling the total. Second-wave species and counts stay balanced.
+Wave three interpolates doubled four-player targets for Wardens; Withers use half as many rounded up, minimum2
+of each for positive populations (2+2 at1–4, 12+6 at20, 22+11 at32). All rosters are distributed across four Anchors.
+Defenders retain vanilla species health, including enhanced Withers; other Wither enhancements remain active.
 Zero-population debug waves have no defenders and start with exposed Anchors.
 Missing/unloaded members are replaced, not defeated;
 only destruction of all four exposed crystals completes a wave. A wave owns its crystal/defender
