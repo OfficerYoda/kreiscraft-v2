@@ -82,6 +82,13 @@ class FinalEncounterTest {
         scheduler = new MockScheduler();
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public void forgetDefenderTarget(Mob defender, org.bukkit.entity.Player player) {
+                if (player.equals(defender.getTarget())) {
+                    defender.setTarget(null); // MockBukkit omits Warden anger; native mode clearing is in FinalWaveProbe.
+                }
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -178,7 +185,7 @@ class FinalEncounterTest {
         crystals().forEach(target -> damage(target, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10));
     }
 
-    private void defeat(org.bukkit.entity.Mob defender) {
+    private void defeat(Mob defender) {
         defender.setHealth(0);
         server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
     }
@@ -273,7 +280,7 @@ class FinalEncounterTest {
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);
         assertThat(dragon.getHealth()).isEqualTo(300);
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(8);
         clearAnchors();
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 100).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(200);
@@ -290,7 +297,7 @@ class FinalEncounterTest {
         assertThat(hit.getFinalDamage()).isEqualTo(700);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).isSubsetOf(openingLocations);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(8);
         crystals().forEach(anchor -> {
             damage(anchor, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10);
             assertThat(anchor.isValid()).isTrue();
@@ -420,7 +427,7 @@ class FinalEncounterTest {
         var second = pair.get(reverse ? 0 : 1);
         var firstWave = List.copyOf(defenders()).stream()
                 .filter(defender -> defender.getLocation().distanceSquared(first.getLocation()) < 9).toList();
-        assertThat(firstWave).hasSize(4);
+        assertThat(firstWave).hasSize(2);
         firstWave.forEach(defender -> {
             defeat(defender);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -870,7 +877,7 @@ class FinalEncounterTest {
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(300);
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(8);
     }
 
     @Test
@@ -1278,7 +1285,7 @@ class FinalEncounterTest {
             assertThat(crystals()).isEmpty();
         } else {
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(16);
+            assertThat(defenders()).hasSize(8);
             assertThat(dragon.getHealth()).isEqualTo(300);
         }
     }
@@ -1308,14 +1315,14 @@ class FinalEncounterTest {
         server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void spawn(org.bukkit.event.entity.EntitySpawnEvent event) {
-                if (event.getEntity() instanceof Zombie) {
+                if (event.getEntity() instanceof Mob && event.getEntity() != dragon) {
                     crystals().forEach(anchor -> damage(anchor, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10));
                 }
             }
         }, plugin);
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         assertThat(crystals()).hasSize(4).allMatch(anchor -> !anchor.isGlowing());
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(8);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
         clearAnchors();
         assertThat(crystals()).isEmpty();

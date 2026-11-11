@@ -128,6 +128,27 @@ class ModuleRegistryTest {
     }
 
     @Test
+    void failedWitherDependencyNeverStartsCrownButUnrelatedModulesStillStart() {
+        List<String> log = new ArrayList<>();
+        Recording wither = new Recording("wither", List.of(), log);
+        wither.throwOnEnable = true;
+        Recording crown = new Recording("shattered-crown",
+                new de.kreiscraft.modules.shatteredcrown.ShatteredCrownModule().dependsOn(), log);
+        Recording unrelated = new Recording("unrelated", List.of(), log);
+        ModuleRegistry reg = new ModuleRegistry(m -> null,
+                configWithEnabled("wither", "shattered-crown", "unrelated"), Logger.getAnonymousLogger());
+        reg.register(crown);
+        reg.register(wither);
+        reg.register(unrelated);
+
+        StartupSummary summary = reg.enableAll();
+
+        assertThat(summary.failedIds()).containsExactlyInAnyOrder("wither", "shattered-crown");
+        assertThat(log).containsExactly("enable:unrelated");
+        assertThat(reg.isEnabled("shattered-crown")).isFalse();
+    }
+
+    @Test
     void unknownDependency_throws() {
         Recording a = new Recording("a", List.of("ghost"), new ArrayList<>());
 

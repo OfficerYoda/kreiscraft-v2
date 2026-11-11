@@ -49,7 +49,7 @@ for index, line in enumerate(lines):
     if line.startswith("  ") and not line.startswith("   ") and line.endswith(":"):
         module = line.strip()[:-1]
     if line.startswith("    enabled:"):
-        lines[index] = "    enabled: " + ("true" if module == "shattered-crown" else "false")
+        lines[index] = "    enabled: " + ("true" if module in ("shattered-crown", "wither") else "false")
     if mode == "smash" and module == "shattered-crown":
         key = line.strip().split(":", 1)[0]
         overrides = {"opening-grace-seconds": 0, "arrival-x": 45.5, "arrival-z": 40.5,

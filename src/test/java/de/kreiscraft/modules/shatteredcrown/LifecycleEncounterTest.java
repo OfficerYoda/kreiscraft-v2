@@ -80,6 +80,13 @@ class LifecycleEncounterTest {
         // Only unsupported Paper lookup/native attribute metadata is adapted, not encounter behavior.
         battles = new DragonBattleAccess() {
             @Override
+            public void forgetDefenderTarget(Mob defender, org.bukkit.entity.Player player) {
+                if (player.equals(defender.getTarget())) {
+                    defender.setTarget(null); // MockBukkit omits Warden anger; native mode clearing is in FinalWaveProbe.
+                }
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -142,6 +149,204 @@ class LifecycleEncounterTest {
     void tearDown() {
         module.disable();
         MockBukkit.unmock();
+    }
+
+    @Test
+    void finalWaveRequiresEnhancedWitherModuleInsteadOfSilentlyFallingBackToVanilla() {
+        assertThat(module.dependsOn()).contains("wither");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void registryRejectsCrownWhenWitherIsMissingOrDisabled(boolean registered) throws Exception {
+        var root = BasicConfigurationNode.root();
+        root.node("modules", module.id()).from(config);
+        var registry = new de.kreiscraft.core.module.ModuleRegistry(ignored -> context, root, plugin.getLogger());
+        registry.register(module);
+        if (registered) {
+            registry.register(new de.kreiscraft.modules.wither.WitherModule());
+        }
+        assertThatThrownBy(registry::enableAll)
+                .isInstanceOf(de.kreiscraft.core.module.ModuleException.class)
+                .hasMessageContaining("shattered-crown").hasMessageContaining("wither")
+                .hasMessageContaining("not enabled or does not exist");
+        assertThat(context.services().find(EncounterController.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+    }
+
+    @Test
+    void bothModulesUseRegistryStartupReloadAndReverseShutdownWithoutVanillaFallback() throws Exception {
+        var root = BasicConfigurationNode.root();
+        root.node("modules", module.id()).from(config);
+        root.node("modules", "wither", "enabled").set(true);
+        var registry = new de.kreiscraft.core.module.ModuleRegistry(candidate -> new ModuleContext(plugin,
+                root.node("modules", candidate.id()), context.messages(), context.services(), scheduler,
+                context.commands(), context.events()), root, plugin.getLogger());
+        registry.register(module);
+        registry.register(new de.kreiscraft.modules.wither.WitherModule());
+        assertThat(registry.enableAll().enabled()).isEqualTo(2);
+        var encounter = context.services().get(EncounterController.class);
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
+                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(600));
+
+        root.node("modules", "wither", "max-health").set(800);
+        root.node("modules", "wither", "enabled").set(false);
+        registry.reloadConfigs(root);
+        assertThat(registry.isEnabled("wither")).as("Wither enablement changes require restart").isTrue();
+        encounter.debugWave(3, player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class))
+                .allSatisfy(wither -> assertThat(wither.getHealth()).isEqualTo(800));
+
+        root.node("modules", module.id(), "enabled").set(false);
+        registry.reloadConfigs(root);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).isEmpty();
+        root.node("modules", module.id(), "enabled").set(true);
+        registry.reloadConfigs(root);
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+        registry.disableAll();
+        assertThat(registry.isEnabled("wither")).isFalse();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1,1,4,8,2", "4,1,4,8,2", "5,2,8,16,4", "8,2,8,16,4",
+            "12,3,12,24,6", "20,5,20,40,10", "68,17,68,136,34"})
+    void finalWaveRepeatsOneWardenAndEnhancedWitherPairPerFrozenUnitAtEveryAnchor(
+            int population, int units, int speciesCount, int total, long perAnchor) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        for (int index = 0; index < population - 1; index++) {
+            var observer = server.addPlayer();
+            observer.teleport(new Location(end, 250, 64, 0));
+            observer.setGameMode(index % 2 == 0 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
+        }
+        encounter.debugWave(3, player);
+        assertThat(encounter.wavePopulation()).isEqualTo(population);
+        assertThat(encounter.rosterUnits()).isEqualTo(units);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).hasSize(speciesCount);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(speciesCount);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(total);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        encounter::anchorId, java.util.stream.Collectors.counting()))
+                .values()).containsOnly(perAnchor);
+        server.addPlayer().teleport(new Location(end, 250, 64, 0));
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(total);
+        encounter.close();
+    }
+
+    @Test
+    void enhancedWitherMinionsJoinOriginalAnchorBeforeSpawnAndStillGateAfterParentDeath() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        var witherConfig = new de.kreiscraft.modules.wither.WitherConfig(600, 40, 8, 300, 4,
+                20, true, true, 4, true, true, 20, true, true, 50);
+        var listener = new de.kreiscraft.modules.wither.WitherListener(() -> witherConfig,
+                context.messages(), scheduler, () -> encounter);
+        context.events().register(listener);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        var parent = end.getEntitiesByClass(org.bukkit.entity.Wither.class).iterator().next();
+        var anchor = encounter.anchorId(parent);
+        assertThat(parent.getHealth()).isEqualTo(600);
+        var spawns = new java.util.ArrayList<Entity>();
+        context.events().register(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void minion(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof org.bukkit.entity.WitherSkeleton) {
+                    assertThat(encounter.anchorId(event.getEntity())).isEqualTo(anchor);
+                    spawns.add(event.getEntity());
+                }
+            }
+        });
+        // Only the unsupported native explosion operation is adapted; native blasts get the Paper probe.
+        var world = spy(end);
+        doAnswer(call -> true).when(world).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
+        parent.teleport(new Location(world, 150, 64, 10)); // Roam far from the original logical Anchor.
+        parent.setHealth(300);
+        var cancelled = new org.bukkit.event.entity.EntityDamageEvent(parent,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
+        cancelled.setCancelled(true);
+        server.getPluginManager().callEvent(cancelled);
+        assertThat(spawns).isEmpty();
+        var damage = new org.bukkit.event.entity.EntityDamageEvent(parent,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
+        server.getPluginManager().callEvent(damage);
+        assertThat(spawns).hasSize(4);
+        for (Mob boss : end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
+                .filter(mob -> !(mob instanceof org.bukkit.entity.WitherSkeleton)).toList()) {
+            boss.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(boss,
+                    org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), new java.util.ArrayList<>()));
+        }
+        assertThat(end.getEntitiesByClass(EnderCrystal.class).stream().filter(crystal -> !crystal.isGlowing()))
+                .hasSize(1);
+        assertThat(spawns).allMatch(encounter::ownsCombatant);
+        encounter.close();
+    }
+
+    @Test
+    void ownedWitherDeathDropsNoStarsAndSchedulesOneAttributedCountdownEvenWithDuplicateCallbacks()
+            throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        var witherConfig = new de.kreiscraft.modules.wither.WitherConfig(600, 40, 8, 300, 4,
+                20, true, true, 4, true, true, 20, true, true, 50);
+        var listener = new de.kreiscraft.modules.wither.WitherListener(() -> witherConfig,
+                context.messages(), scheduler, () -> encounter);
+        context.events().register(listener);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        var parent = end.getEntitiesByClass(org.bukkit.entity.Wither.class).iterator().next();
+        var world = spy(end);
+        doAnswer(call -> true).when(world).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
+        parent.teleport(new Location(world, parent.getX(), parent.getY(), parent.getZ()));
+        parent.setHealth(0);
+        for (int callback = 0; callback < 2; callback++) {
+            var drops = new java.util.ArrayList<>(List.of(new org.bukkit.inventory.ItemStack(Material.NETHER_STAR)));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(parent,
+                    org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), drops));
+            assertThat(drops).isEmpty();
+        }
+        scheduler.advance(Duration.ofSeconds(11));
+        org.mockito.Mockito.verify(world, org.mockito.Mockito.times(1)).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.eq(20f), org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq(parent));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Item.class)).isEmpty();
+        encounter.onCleanup(() -> assertThat(encounter.ownsCombatant(parent)).isFalse());
+        encounter.close();
+        doAnswer(call -> true).when(world).createExplosion(org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean());
+        var staleDrops = new java.util.ArrayList<>(List.of(new org.bukkit.inventory.ItemStack(Material.NETHER_STAR)));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(parent,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), staleDrops));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Item.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(11));
+        org.mockito.Mockito.verify(world, org.mockito.Mockito.never()).createExplosion(
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyFloat(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean());
+        listener.shutdown();
     }
 
     @Test
@@ -247,7 +452,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(3);
         assertThat(encounter.wavePopulation()).isEqualTo(4);
         assertThat(encounter.rosterUnits()).isEqualTo(1);
-        assertThat(defenders()).hasSize(16);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(8);
         encounter.close();
     }
 
@@ -704,7 +909,7 @@ class LifecycleEncounterTest {
         context.events().register(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void spawning(org.bukkit.event.entity.CreatureSpawnEvent event) {
-                if (event.getEntity() instanceof Zombie) {
+                if (event.getEntity() instanceof Mob && event.getEntity() != dragon) {
                     assertThat(encounter.ownsCombatant(event.getEntity())).isTrue();
                     assertThat(encounter.anchorId(event.getEntity())).isNotNull();
                 }
@@ -734,7 +939,7 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(defenders()).hasSize(wave == 1 ? 88 : wave == 2 ? 49 : 33).contains(unrelated);
+            assertThat(defenders()).hasSize(wave == 1 ? 88 : wave == 2 ? 49 : 17).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5", "roster-units=2",
                     "mode=manual", "shield=true", "objectives=0/4");

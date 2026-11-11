@@ -33,12 +33,31 @@ public interface DragonBattleAccess {
         de.kreiscraft.platform.NmsCrownDefenders.prepare(defender);
     }
 
-    /** Owned Brain-driven targets must follow the same eligibility boundary as ordinary Mob targets. */
+    /** Warden uses brain memory, unlike ordinary Mob's target field. Never reset its sonic cooldown each tick. */
     default void targetDefender(Mob defender, Player target) {
         if (defender instanceof org.bukkit.entity.PiglinBrute || defender instanceof org.bukkit.entity.Breeze) {
             de.kreiscraft.platform.NmsCrownDefenders.target(defender, target);
-        } else {
+            return;
+        }
+        if (!(defender instanceof org.bukkit.entity.Warden warden)) {
             defender.setTarget(target);
+            return;
+        }
+        if (warden.getTarget() == target) {
+            return;
+        }
+        if (warden.getTarget() != null) {
+            warden.clearAnger(warden.getTarget());
+        }
+        de.kreiscraft.platform.NmsWardenCombat.target(warden, target);
+    }
+
+    default void forgetDefenderTarget(Mob defender, Player player) {
+        if (player.equals(defender.getTarget())) {
+            targetDefender(defender, null);
+        }
+        if (defender instanceof org.bukkit.entity.Warden warden) {
+            warden.clearAnger(player);
         }
     }
 

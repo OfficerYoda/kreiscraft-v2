@@ -55,6 +55,28 @@ in the GUI); reload affects only the next fresh attempt. Disable/unload cancels 
 
 ## Server Configuration
 
+### Enhanced Wither dependency (#155)
+
+Set both `modules.shattered-crown.enabled: true` and `modules.wither.enabled: true` before
+starting Paper. The existing module registry enables Wither first, reloads its configuration
+before Crown, and disables Crown before Wither. Missing/disabled Wither rejects startup with
+`module shattered-crown depends on 'wither' which is not enabled or does not exist`.
+If Wither fails initialization, Crown is reported failed too and never starts combat; unrelated
+modules may still start. There is no vanilla-boss fallback or automatic dependency enablement.
+
+Wither tuning reloads live through `/kreiscraft reload`, including subsequent owned spawns and
+delayed death detonations. Existing bosses are not retroactively re-attributed/re-scaled. Like
+other ordinary modules, Wither's `enabled` flag is startup-only: setting it false on reload does
+**not** remove its running listener. Crown's existing explicit false/missing-section reload
+still aborts combat immediately; setting Crown true again requires restart. To turn both off,
+disable Crown on reload first or change both flags and restart. To run Crown after restart,
+both flags must be true. Ordinary Wither rewards and behavior are unchanged.
+
+All disposable native runners must stage both enabled flags, not the historical Crown-only
+profile. Tracked `run-dragon-wave-probe.py` (wave/smash/opening) and `run-final-wave-probe.py`
+do this. External historical runners must receive the same config change when replayed with
+the new production artifact; pinned older artifacts/configurations remain historical evidence.
+
 ### Defender roaming and allegiance (#152)
 
 Owned defenders pursue only living, online Survival/Adventure participants throughout the configured
@@ -89,16 +111,25 @@ Reset/disable/unload cancels owned delayed work and removes descendants/effects,
 The executable build132 native check is `defenderRoamingProbeJar`. Build with Java 25:
 `./gradlew spotlessApply check build defenderRoamingProbeJar --max-workers=2`.
 Stage its JAR **alongside** the production shadow JAR in a fresh disposable, loopback-only Paper
-server with Crown enabled (other modules disabled), then launch with `-Dkreiscraft.defender-probe=true`.
+server with Crown and its Wither dependency enabled (other modules disabled), then launch with
+`-Dkreiscraft.defender-probe=true`.
 It registers a genuine native player with synthetic transport, lets the native main-End battle create
 its dragon, and observes the production controller; it never instantiates a second encounter. The
 probe exits after `DEFENDER_ROAMING_PROBE PASS/FAIL`. Exit zero alone is not success. This fixture
-checks the current 16-Husk root profile; extend the selection/counts when later roster tickets land.
-It proves far-target native pursuit on an isolated elevated pad, actual attributed melee, public
+uses the historical 16-Husk root profile; adapt its selection/counts before replaying against the
+current mounted opening roster. Current production wave counts are checked by `dragonWaveProbeJar`.
+The historical fixture proved far-target native pursuit on an isolated elevated pad, actual attributed melee, public
 native ally/projectile/cloud damage cancellation before/after parent death, mode exclusion, no death
 replenishment, and owned-only cleanup. It does not prove human login/rendering or all-species natural
 terrain navigation; #163 must exercise the integrated mounted/Guardian/Warden/Wither roster and real
 projectile collisions, arrival/retaliation transitions and unload/reload on actual End terrain.
+
+The final-wave integration is `finalWaveProbeJar` / `scripts/run-final-wave-probe.py`; it enables
+both modules and verifies native Warden brain pursuit/sonic, actual enhanced Wither blasts and
+minions, physical skull damage, no owned stars, original minion gates, countdown packets and
+owned cleanup beyond ten seconds. Wither countdowns use the existing attempt-owned scheduler
+and cleanup hooks; normal wave transitions retain dead-parent attribution, while debug replacement
+or termination clears it. Ordinary Wither scheduling and star re-drops remain independent.
 
 Use the existing permission-controlled Server Configuration GUI or YAML and `/kreiscraft reload`.
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains

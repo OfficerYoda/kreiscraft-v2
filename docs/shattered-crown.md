@@ -46,8 +46,8 @@ Ground Smash after wave three. Unlocks survive later shields. The shuffled rotat
 [native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
 Wave two has exactly one **Ravager, Guardian, Piglin Brute,
 Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
-72 at 9–12; no random pool, per-species scaling or cap. Wave three retains its configured
-placeholder until #155 supplies its content. The explicit extension point is
+72 at 9–12; no random pool, per-species scaling or cap. Wave three uses the complete
+Warden/enhanced-Wither pair below. The explicit extension point is
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
 content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
@@ -155,6 +155,52 @@ native main-End battle creation/adoption, population snapshots, native damage/de
 debug replacement and disable cleanup; it does not prove rendered warnings, defender AI, human
 balance, ritual completion or native reward delivery. Those remain integrated #163 evidence.
 
+### Final Warden and enhanced-Wither wave (#155)
+
+Each final-wave Roster Unit is **one native Warden plus one enhanced Wither at EACH Anchor**.
+Four connected End players therefore face four Wardens/four Withers; five through eight face
+eight Wardens/eight Withers. The snapshot includes connected dead players, Creative/Spectator
+observers and players outside combat. Later arrivals/departures do not resize it.
+
+Both bosses roam the full combat cylinder and retain their original Anchor. Warden pursuit uses
+its native brain/anger rather than the ordinary Mob target field; mode/arrival/death transitions
+clear that brain target. Persistent Wardens retain their native dig cooldown. Missing/unloaded
+bosses and minions recover their species and membership; accepted deaths are never replenished.
+
+**Keep `modules.wither.enabled: true`. Crown depends on that module and does not fall back to
+vanilla Withers when it is disabled.** Wither tuning comes from the existing `modules.wither`
+keys, not Crown's placeholder defender health/damage/count. Defaults remain 600 health, 40 attack,
+8 armor, four Wither Skeleton minions at the 300-health threshold, destructive power-20 spawn and
+death blasts, and a power-4 half-health blast. Custom-spawned roots arm the native 220-tick spawn
+charge. The death countdown retains its native boss-bar presentation and configured blast.
+
+Minions join their parent's **original** Anchor before spawn callbacks and must also die before
+that crystal is exposed, including a threshold-crossing lethal hit. Skull ownership is installed
+before normal native launch callbacks. Owned melee, sonic, skull and immediate/delayed explosion
+damage cannot hurt Endermen, other Encounter combatants, the dragon or protected arrivals.
+All three enhanced blasts carry their source even after the parent dies. **Terrain destruction is
+permanent**: neither Anchors nor arrival introduce block-preservation/rebuilding zones.
+
+Encounter Withers drop **no Nether Stars**, including module re-drops and source-bearing item-drop
+events; ordinary Wither rewards and enhancements remain unchanged. Debug replacement, reset,
+victory, world unload and disable remove owned roots/minions/skulls, hide countdown UI and cancel
+queued explosions. Old callbacks cannot damage a later attempt. Only destroying all four final
+crystals unlocks Ground Smash and releases the final vulnerable dragon stage.
+
+Native verification, with **both modules enabled**, is reproducible with:
+
+```sh
+./gradlew check build finalWaveProbeJar dragonWaveProbeJar --max-workers=2
+JAVA_HOME=... python3 scripts/run-final-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR
+```
+
+The final-wave fixture uses registered native players with synthetic teleport/keepalive ACKs,
+actual spawn/threshold/death blasts, native minion gates/deaths, Warden pursuit/sonic, physical
+Wither skull impacts, countdown packets, native chunk unload/recovery and cleanup beyond ten
+seconds. Its disposable elevated pad isolates AI and is rebuilt only between calibration stages,
+not by Encounter gameplay. Packet observation is not human rendering or full-fight balance proof;
+those remain separate #163 observations, not a blocker to this executable integration.
+
 ## Live-playtest follow-up: moving attacks
 
 The bundled module is **enabled by default**, with `movement-attacks: true`
@@ -258,8 +304,8 @@ combat/AI/rendering and native reward generation remain unvalidated.
 ## Enable and tune
 
 New configurations default to `modules.shattered-crown.enabled: true`. Existing configurations retain
-their saved flag; set it to true and restart to activate. The module has no feature-module
-dependencies and does not enable Dimension Access. `world-key` defaults to `minecraft:the_end`;
+their saved flag; set it to true and restart to activate. Keep the enhanced Wither module enabled
+as its feature dependency. Crown does not enable Dimension Access. `world-key` defaults to `minecraft:the_end`;
 use the actual namespaced key for the designated main End, not its legacy Bukkit directory name.
 Only that world's `DragonBattle.getEnderDragon()` is managed, including subsequent vanilla ritual
 respawns. Command-spawned dragons and other End worlds are not selected.
