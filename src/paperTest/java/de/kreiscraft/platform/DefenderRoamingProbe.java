@@ -148,17 +148,19 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
                 dragon = world.getEnderDragonBattle().getEnderDragon();
                 require(dragon != null && dragon.getPersistentDataContainer()
                         .has(new NamespacedKey("kreiscraft", "crown_original_health")), "production native adoption");
-                require(ownedSpawns >= 16 && leakedSpawns == 0, "ownership before spawn callbacks");
+                require(ownedSpawns >= 43 && leakedSpawns == 0, "ownership before spawn callbacks");
                 require(recipient.isOnline() && player.connection.hasClientLoaded(), "native player registration");
                 require(Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "dragondebug pause"), "pause command");
                 dragon.setAI(false); // Isolate defender AI; this probe makes no dragon choreography claim.
                 defender = world.getEntitiesByClass(Husk.class).stream().filter(this::owned).findFirst().orElseThrow();
-                for (Husk other : List.copyOf(world.getEntitiesByClass(Husk.class))) {
+                for (var other : List.copyOf(world.getEntitiesByClass(org.bukkit.entity.Mob.class))) {
                     if (other != defender && owned(other)) {
                         other.setAI(false);
                     }
                 }
-                defender.teleport(new Location(world, 46.5, 151, 0.5));
+                defender.eject(); // Broken tower retains every member; isolate this probe's single native Husk AI.
+                defender.leaveVehicle();
+                require(defender.teleport(new Location(world, 46.5, 151, 0.5)), "isolated defender relocation");
                 teleports = 0;
                 startX = defender.getX();
                 recipient.teleport(new Location(world, 120.5, 151, 0.5));
@@ -183,12 +185,14 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
                 verifyAllies(world); // Dead causing-entity attribution still protects delayed effects.
             }
             if (deathTick > 0 && ticks >= deathTick + 21) {
-                require(world.getEntitiesByClass(Husk.class).stream().filter(Entity::isValid).filter(this::owned)
-                        .count() == 15,
+                require(world.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(Entity::isValid)
+                        .filter(this::owned)
+                        .count() == 42,
                         "accepted native death was not replenished");
                 var control = world.spawn(new Location(world, 40, 151, 2), org.bukkit.entity.Enderman.class);
                 var survivor =
-                        world.getEntitiesByClass(Husk.class).stream().filter(this::owned).findFirst().orElseThrow();
+                        world.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(this::owned).findFirst()
+                                .orElseThrow();
                 var production = getServer().getPluginManager().getPlugin("Kreiscraft");
                 getServer().getPluginManager().disablePlugin(production);
                 require(!defender.isValid() && !survivor.isValid() && !arrow.isValid() && !cloud.isValid()
@@ -219,7 +223,8 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
             require(effectCallbacks >= 2 && leakedEffects == 0, "ownership visible in native launch/spawn callbacks");
         }
         var enderman = world.spawn(defender.getLocation().clone().add(0, 0, 2), org.bukkit.entity.Enderman.class);
-        var ally = world.getEntitiesByClass(Husk.class).stream().filter(mob -> mob != defender && owned(mob))
+        var ally = world.getEntitiesByClass(org.bukkit.entity.Mob.class).stream()
+                .filter(mob -> mob != defender && owned(mob))
                 .findFirst().orElseThrow();
         for (LivingEntity target : List.of(enderman, ally, dragon)) {
             double health = target.getHealth();
@@ -239,7 +244,9 @@ public final class DefenderRoamingProbe extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void spawning(CreatureSpawnEvent event) {
-        if (event.getEntity() instanceof Husk) {
+        if (event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.CUSTOM
+                && event.getEntityType() != org.bukkit.entity.EntityType.ENDERMAN
+                && event.getEntityType() != org.bukkit.entity.EntityType.ENDER_DRAGON) {
             if (owned(event.getEntity())) {
                 ownedSpawns++;
             } else {

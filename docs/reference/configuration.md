@@ -12,11 +12,14 @@ Complete reference for every key in Kreiscraft's configuration files.
 
 The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
 Population freezes once per wave and scales complete Roster Units with `ceil(population/4)`, without
-a cap. These are not configuration knobs. Wave two's unit is fixed: one Ravager, Guardian, Piglin
-Brute, Vindicator, Blaze and Breeze at each Anchor (24 total at 1–4 End players; 48 at 5–8).
-`defender-count`/`defender-type` control only waves one/three placeholders pending #153/#155;
-`defender-health` and available native attack attributes use the validated health/damage settings.
-Weapons/projectiles retain native damage, not guaranteed final HP loss. `ground-search-radius`
+a cap. These are not configuration knobs. Wave one has three mounted pairs and one 4–6-member undead
+tower per unit. Wave two has one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze per unit
+at each Anchor (24 total at 1–4 End players;48 at 5–8). `defender-count`/`defender-type` affect only the
+wave-three placeholder pending #155. `opening-armor-percentage` defaults to35 (integer0–50), evenly distributed over armor-capable
+opening undead; each selected mob has one or two unenchanted leather/chain/occasional iron pieces.
+Natural opening equipment is cleared and pickup disabled. `defender-health` and available native
+attack attributes use validated health/damage settings; weapons/projectiles retain native damage,
+not guaranteed final HP loss. `ground-search-radius`
 finds nearby surviving defender footing; Anchors use fixed X/Z and current highest/last-known height.
 Legacy `final-health-fraction` and `ground-max-y` remain accepted for configuration compatibility but
 are ignored. Reload still takes effect on the next attempt; debug jumps refresh populations, not config.

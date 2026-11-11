@@ -101,6 +101,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     private int clearedWaves;
     private int wavePopulation;
     private int rosterUnits;
+    private int openingArmorIndex;
     private boolean installingWave;
     private EncounterWork waveWork;
 
@@ -1961,6 +1962,33 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     /** #153–155 replace this unit's content, not wave scaling or objective completion. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
+        if (wave == 1) {
+            if (anchors.size() == 1 && unit == 0) {
+                openingArmorIndex = 0;
+            }
+            int variation = anchors.indexOf(objective) + unit;
+            Location site = objective.home;
+            spawnOpeningPair(objective, site.clone().add(-2, 0, 0), EntityType.ZOMBIE_HORSE, EntityType.ZOMBIE);
+            spawnOpeningPair(objective, site.clone().add(2, 0, 0), EntityType.SPIDER, EntityType.SKELETON);
+            spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER, EntityType.BOGGED);
+            var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
+                    EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
+            var crowns = List.of(EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED);
+            Mob previous = null;
+            int height = 4 + variation % 3;
+            for (int member = 0; member < height; member++) {
+                // Native passengers control the stack; a melee crown cannot reach players several mobs below.
+                EntityType type = member == height - 1 ? crowns.get(variation % crowns.size())
+                        : types.get((variation + member) % types.size());
+                Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
+                        openingInitializer(type));
+                if (previous != null && !previous.addPassenger(next)) {
+                    throw new IllegalStateException("Opening tower attachment was refused");
+                }
+                previous = next;
+            }
+            return;
+        }
         if (wave == 2) {
             for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
                     EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE)) {
@@ -1982,9 +2010,66 @@ public final class EncounterController implements Listener, AutoCloseable {
             }
             return;
         }
-        // ponytail: waves one/three keep the configured placeholder until #153/#155 supply their content.
+        // ponytail: wave three keeps the configured placeholder until #155 supplies its content.
         for (int index = 0; index < config.defenderCount(); index++) {
             spawnDefender(objective);
+        }
+    }
+
+    private void spawnOpeningPair(Anchor objective, Location site, EntityType mountType, EntityType riderType) {
+        site = arena.defenderSite(site);
+        Mob mount = spawnCombatant(site, mountType, objective, openingInitializer(mountType));
+        var initialize = openingInitializer(riderType);
+        Mob rider = spawnCombatant(site, riderType, mount, mob -> {
+            initialize.accept(mob);
+            mob.getEquipment().setItemInMainHand(new org.bukkit.inventory.ItemStack(
+                    riderType == EntityType.ZOMBIE ? org.bukkit.Material.IRON_SPEAR : org.bukkit.Material.BOW));
+        });
+        if (!mount.addPassenger(rider)) {
+            throw new IllegalStateException("Opening rider attachment was refused");
+        }
+    }
+
+    private java.util.function.Consumer<Mob> openingInitializer(EntityType type) {
+        boolean armored =
+                type != EntityType.ZOMBIE_HORSE && type != EntityType.SPIDER && type != EntityType.CAVE_SPIDER;
+        int ordinal = armored ? openingArmorIndex++ : -1;
+        return mob -> {
+            initializeOpeningMob(mob);
+            // ponytail: evenly distributed armor, captured once so recovery cannot reroll equipment or add lives.
+            if (ordinal >= 0 && ordinal * config.openingArmorPercentage() % 100 < config.openingArmorPercentage()) {
+                String tier = ordinal % 10 == 0 ? "IRON" : ordinal % 2 == 0 ? "LEATHER" : "CHAINMAIL";
+                mob.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(
+                        org.bukkit.Material.valueOf(tier + "_HELMET")));
+                if (ordinal % 2 == 0) {
+                    mob.getEquipment().setChestplate(new org.bukkit.inventory.ItemStack(
+                            org.bukkit.Material.valueOf(tier + "_CHESTPLATE")));
+                }
+            }
+        };
+    }
+
+    private void initializeOpeningMob(Mob mob) {
+        battles.preventDespawn(mob);
+        battles.disableEquipmentPickup(mob);
+        mob.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
+        mob.setHealth(config.defenderHealth());
+        var attack = mob.getAttribute(Attribute.ATTACK_DAMAGE);
+        if (attack != null) {
+            attack.setBaseValue(config.defenderDamage());
+        }
+        var reinforcements = mob.getAttribute(Attribute.SPAWN_REINFORCEMENTS);
+        if (reinforcements != null) {
+            reinforcements.setBaseValue(0);
+        }
+        mob.getEquipment().clear();
+        if (mob instanceof org.bukkit.entity.Zombie zombie) {
+            zombie.setAdult();
+        }
+        if (mob instanceof org.bukkit.entity.AbstractSkeleton skeleton) {
+            mob.getEquipment().setItemInMainHand(new org.bukkit.inventory.ItemStack(
+                    skeleton instanceof org.bukkit.entity.WitherSkeleton ? org.bukkit.Material.STONE_SWORD
+                            : org.bukkit.Material.BOW));
         }
     }
 

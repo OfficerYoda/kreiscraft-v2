@@ -36,9 +36,10 @@ plugins = server / "plugins"
 plugins.mkdir()
 production = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
 mode = sys.argv[4] if len(sys.argv) > 4 else "wave"
-if mode not in ("wave", "smash"):
-    raise ValueError("probe must be wave or smash")
-probe = next((repo / "build/paper-probe").glob(("smash-encounter" if mode == "smash" else "dragon-wave") + "-probe-*.jar"))
+stems = {"wave": "dragon-wave", "smash": "smash-encounter", "opening": "opening-roster"}
+if mode not in stems:
+    raise ValueError("probe must be wave, smash or opening")
+probe = next((repo / "build/paper-probe").glob(stems[mode] + "-probe-*.jar"))
 shutil.copy2(production, plugins / "Kreiscraft.jar")
 shutil.copy2(probe, plugins / "DragonWaveProbe.jar")
 with zipfile.ZipFile(production) as jar:
@@ -87,7 +88,7 @@ with (root / "console.log").open("w") as log:
     (root / "exit.txt").write_text(str(code))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-marker = "SMASH_ENCOUNTER_PROBE" if mode == "smash" else "DRAGON_WAVE_PROBE"
+marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE"}[mode]
 passed = code == 0 and marker + " PASS" in text and marker + " FAIL" not in text and not re.search(r"\bERROR\]", text)
 if passed and mode == "smash":
     with (root / "console-restart.log").open("w") as log:

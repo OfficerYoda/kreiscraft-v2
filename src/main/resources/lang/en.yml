@@ -110,6 +110,7 @@ server-config:
     shattered-crown-defender-damage: "Defender damage"
     shattered-crown-arena-radius: "Arena radius"
     shattered-crown-opening-grace-seconds: "Opening grace (seconds)"
+    shattered-crown-opening-armor-percentage: "Opening armor (%)"
     shattered-crown-arrival-x: "Arrival X offset"
     shattered-crown-arrival-y: "Arrival Y"
     shattered-crown-arrival-z: "Arrival Z offset"
