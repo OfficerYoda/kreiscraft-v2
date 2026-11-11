@@ -137,6 +137,11 @@ class HuntEncounterTest {
             }
 
             @Override
+            public void prepareRainFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
+                // Only native drag/acceleration balancing is absent from MockBukkit; RainProbe checks actual descent.
+            }
+
+            @Override
             public void prepareRangedDefender(Mob defender) {
                 // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
             }
@@ -151,7 +156,7 @@ class HuntEncounterTest {
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
-                                .withCausingEntity(source).build());
+                                .withDirectEntity(source).withCausingEntity(source).build());
             }
 
             @Override
@@ -228,6 +233,313 @@ class HuntEncounterTest {
         return dispatcher.execute("dragondebug " + command, source);
     }
 
+    @Test
+    void fireballRainLocksTheWarnedGroundBeforeLaunchingAndDoesNotFollowThePlayer() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        Location locked = player.getLocation();
+        assertThat(debug("trigger fireball-rain " + player.getName(), player)).isEqualTo(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class))
+                .anyMatch(display -> display.getLocation().getX() == locked.getX()
+                        && display.getLocation().getZ() == locked.getZ());
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+        player.teleport(locked.clone().add(12, 0, 0));
+        scheduler.advance(Duration.ofMillis(999));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getLocation()).isEqualTo(locked.clone().add(0, 20, 0));
+            assertThat(ball.getVelocity().getX()).isZero();
+            assertThat(ball.getVelocity().getZ()).isZero();
+            assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+            assertThat(ball.getShooter()).isEqualTo(dragon);
+        });
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+    }
+
+    @Test
+    void rainCollisionResolvesOnceMakesPermanentCraterAndReleasesMainBeforeItsPool() throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        ball.teleport(player.getLocation().add(0, 1.5, 0));
+        var collision = new org.bukkit.event.entity.ProjectileHitEvent(ball, player);
+        server.getPluginManager().callEvent(collision);
+        assertThat(collision.isCancelled()).isTrue();
+        assertThat(player.getHealth()).isEqualTo(16);
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(ball.isValid()).isFalse();
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("main=idle") && message.contains("areas=1"));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        var prime = new org.bukkit.event.entity.ExplosionPrimeEvent(ball);
+        server.getPluginManager().callEvent(prime);
+        assertThat(prime.isCancelled()).isTrue();
+        assertThat(referenceHits).isEqualTo(1);
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("cancel", player);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+    }
+
+    @Test
+    void unnamedRainTargetsAllCombatPlayersNotThePreyPercentageAndWaitsForLastResolution() throws Exception {
+        config.node("prey-percentage").set(35);
+        var adventure = server.addPlayer("Adventure");
+        adventure.teleport(player.getLocation().add(8, 0, 0));
+        adventure.setGameMode(org.bukkit.GameMode.ADVENTURE);
+        var third = server.addPlayer("CombatThree");
+        third.teleport(player.getLocation().add(16, 0, 0));
+        var observer = server.addPlayer("Observer");
+        observer.teleport(player.getLocation());
+        observer.setGameMode(org.bukkit.GameMode.SPECTATOR);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger fireball-rain", player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var balls = List.copyOf(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class));
+        assertThat(balls).hasSize(3); // Four connected players request two Prey marks, but three Rain shots.
+        balls.getFirst().remove();
+        scheduler.advance(Duration.ofMillis(50));
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(message -> message.contains("attack=RAIN") && message.contains("main=executing"));
+        balls.getLast().remove();
+        balls.get(1).remove();
+        scheduler.advance(Duration.ofMillis(50));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("main=idle"));
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"rain-spawn-height,15", "rain-spawn-height,25",
+            "rain-spawn-height,NaN", "rain-descent-seconds,1", "rain-descent-seconds,3",
+            "rain-descent-seconds,Infinity", "rain-damage,-1", "rain-damage,101"})
+    void rejectsInvalidRainConfiguration(String key, String value) throws Exception {
+        config.node(key).set(value);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> ShatteredCrownConfig.load(config))
+                .isInstanceOf(Exception.class);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"cancel,false", "cancel,true", "pause,false", "pause,true",
+            "unload,false", "unload,true", "disable,false", "disable,true", "victory,false", "victory,true",
+            "reset,false", "reset,true", "wave,false", "wave,true"})
+    void rainTerminationClosesWarningsProjectilesPoolsAndCallbacksWithoutRestoringGround(String termination,
+            boolean impact) throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        if (termination.equals("victory")) {
+            hunt();
+            clearFinalGate();
+        } else {
+            startEncounter();
+        }
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        if (impact) {
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        }
+        var unrelated = end.spawn(new Location(end, 35, 80, 35), org.bukkit.entity.LargeFireball.class);
+        switch (termination) {
+            case "cancel", "pause" -> debug(termination, player);
+            case "reset" -> {
+                player.teleport(new Location(end, 100, 50, 0));
+                scheduler.advance(Duration.ofSeconds(60));
+            }
+            case "wave" -> debug("wave 2", player);
+            case "unload" -> server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+            case "disable" -> module.disable();
+            case "victory" -> server.getPluginManager().callEvent(
+                    new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
+            default -> throw new AssertionError(termination);
+        }
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).containsExactly(unrelated);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(impact ? Material.AIR : Material.END_STONE);
+        assertThat(referenceHits).isEqualTo(impact ? 1 : 0);
+    }
+
+    @Test
+    void rainReferenceHitCanBeCancelledAndNativeDamageAndDeflectionRemainSuppressed() throws Exception {
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        var attack = new EntityDamageByEntityEvent(player, ball, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                DamageSource.builder(DamageType.PLAYER_ATTACK).withDirectEntity(player).withCausingEntity(player)
+                        .build(),
+                1);
+        server.getPluginManager().callEvent(attack);
+        assertThat(attack.isCancelled()).isTrue();
+        var nativeHit = new EntityDamageByEntityEvent(ball, player, EntityDamageEvent.DamageCause.PROJECTILE,
+                DamageSource.builder(DamageType.FIREBALL).withDirectEntity(ball).withCausingEntity(dragon).build(), 6);
+        server.getPluginManager().callEvent(nativeHit);
+        assertThat(nativeHit.isCancelled()).isTrue();
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
+            public void cancel(EntityDamageEvent event) {
+                if (event.getEntity() == player && event.getDamageSource().getCausingEntity() == dragon) {
+                    event.setCancelled(true);
+                }
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        ball.teleport(player.getLocation().add(0, 1.5, 0));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @Test
+    void rainChangedTuningIsNextAttemptOnlyAndStaleEntitiesLoadRecoveryIsScoped() throws Exception {
+        startEncounter();
+        var next = config.copy();
+        next.node("rain-spawn-height").set(22);
+        next.node("rain-descent-seconds").set(2.2);
+        next.node("rain-damage").set(2);
+        module.onConfigReload(next);
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var original = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        assertThat(original.getY()).isEqualTo(84);
+        debug("cancel", player);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getY()).isEqualTo(86);
+            assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        });
+        assertThat(player.getHealth()).isEqualTo(18);
+        debug("cancel", player);
+        var stale = end.spawn(new Location(end, 10, 80, 0), org.bukkit.entity.LargeFireball.class);
+        stale.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                org.bukkit.persistence.PersistentDataType.STRING, "rain-projectile");
+        var unrelated = end.spawn(new Location(end, 35, 80, 35), org.bukkit.entity.LargeFireball.class);
+        var loaded = new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0), List.of(stale, unrelated));
+        server.getPluginManager().callEvent(loaded);
+        server.getPluginManager().callEvent(loaded);
+        assertThat(stale.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+    }
+
+    @Test
+    void rainTargetsHighCombatPlayersAndDestroysArrivalGroundWithoutHurtingProtectedPlayers() throws Exception {
+        config.node("arrival-x").set(10.5);
+        config.node("arrival-y").set(64);
+        config.node("arrival-radius").set(3);
+        config.node("pool-damage").set(0);
+        end.getBlockAt(10, 62, 0).setType(Material.END_STONE);
+        player.teleport(new Location(end, 10.5, 100, 0.5)); // Eligible above the arrival cylinder's height.
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getY()).isEqualTo(84); // Lock actual ground, not the airborne player's Y.
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        });
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("areas=1") && message.contains("main=idle"));
+    }
+
+    @Test
+    void rainNativeBlockHitJustInsideTheTopFaceStillCraterAndDepositsOnTheNewSurface() throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        ball.teleport(new Location(end, 10.5, 63.9995, 0.5)); // Actual Paper ray collision epsilon observed natively.
+        player.teleport(new Location(end, 30.5, 64, 0.5));
+        server.getPluginManager()
+                .callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, end.getBlockAt(10, 63, 0)));
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("areas=1") && message.contains("main=idle"));
+        assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @Test
+    void aPlayerProjectileCannotDeflectAnOwnedRainFireballBeforeNativeDamage() throws Exception {
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        var arrow = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(player);
+        var collision = new org.bukkit.event.entity.ProjectileHitEvent(arrow, ball);
+        server.getPluginManager().callEvent(collision);
+        assertThat(collision.isCancelled()).isTrue();
+        assertThat(ball.isValid()).isTrue();
+        assertThat(ball.getShooter()).isEqualTo(dragon);
+        assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+    }
+
+    @Test
+    void sharedRainPoolKeepsDamagingDuringAnotherNativeMovementMainAction() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger dive " + player.getName(), player);
+        var encounter = org.bukkit.event.HandlerList.getRegisteredListeners(plugin).stream()
+                .map(org.bukkit.plugin.RegisteredListener::getListener).filter(EncounterController.class::isInstance)
+                .map(EncounterController.class::cast).findFirst().orElseThrow();
+        assertThat(encounter.depositBreathPool(player.getLocation(), 5, 6)).isTrue();
+        scheduler.advance(Duration.ZERO);
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(message -> message.contains("attack=DIVE") && message.contains("areas=1"));
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.EnumSource(EncounterController.DebugAttack.class)
     void debugTriggersActualAttacksDuringOpeningAndCancelKeepsRotationPaused(EncounterController.DebugAttack attack)
@@ -235,7 +547,8 @@ class HuntEncounterTest {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
-        assertThat(debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player)).isEqualTo(1);
+        assertThat(debug("trigger " + (attack == EncounterController.DebugAttack.RAIN ? "fireball-rain"
+                : attack.name().toLowerCase(java.util.Locale.ROOT)) + " " + player.getName(), player)).isEqualTo(1);
         assertThat(messages(player)).singleElement().asString().contains("Started " + attack);
         assertThat(hit(dragon).isCancelled()).isTrue(); // Debugging attacks does not clear the shield.
         switch (attack) {
@@ -332,7 +645,8 @@ class HuntEncounterTest {
         config.node("bombardment-damage").set(0);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
-        debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player);
+        debug("trigger " + (attack == EncounterController.DebugAttack.RAIN ? "fireball-rain"
+                : attack.name().toLowerCase(java.util.Locale.ROOT)), player);
         debug("status", player);
         assertThat(messages(player))
                 .anyMatch(text -> text.contains("main=executing") && text.contains("attack=" + attack));

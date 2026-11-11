@@ -42,8 +42,8 @@ waves two and three freeze everyone connected in the managed End at their starts
 spectator and outside-arena players. Later joins/leaves never resize existing defenders.
 
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
-Ground Smash after wave three. Unlocks survive later shields. Rain choreography and complete
-rotation redesign remain downstream work. Wave one is the mounted-undead roster below.
+Ground Smash after wave three. Unlocks survive later shields. The shuffled rotation includes
+[native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
 Wave two has exactly one **Ravager, Guardian, Piglin Brute,
 Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
 72 at 9–12; no random pool, per-species scaling or cap. Wave three uses the complete
@@ -260,12 +260,14 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 /dragondebug status
 /dragondebug pause
 /dragondebug wave <1|2|3>
-/dragondebug trigger <dive|smash|prey|bombardment|landing> [player]
+/dragondebug trigger <dive|smash|prey|bombardment|landing|fireball-rain> [player]
 /dragondebug cancel
 /dragondebug resume
 ```
 
-The target defaults to the player running the command; console must name an online player.
+Fireball Rain without a name targets **every eligible combat player**, including from console;
+an explicit name selects only that player. Other attacks default to the executing player;
+console must name an online player for those attacks.
 The target must be alive in survival/adventure inside the main-End combat arena. An eligible player
 entering the arena starts the encounter as usual. Triggers bypass cooldown and phase selection, so
 dives and smashes can be tested while the opening Anchors still shield the dragon. Valid geometry,

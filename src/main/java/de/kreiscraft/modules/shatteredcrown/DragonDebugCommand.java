@@ -44,9 +44,14 @@ final class DragonDebugCommand {
         root.then(wave);
         var trigger = Commands.literal("trigger");
         for (var attack : EncounterController.DebugAttack.values()) {
-            trigger.then(Commands.literal(attack.name().toLowerCase(Locale.ROOT))
+            trigger.then(Commands.literal(attack == EncounterController.DebugAttack.RAIN
+                    ? "fireball-rain"
+                    : attack.name().toLowerCase(Locale.ROOT))
                     .executes(ctx -> {
                         var sender = ctx.getSource().getSender();
+                        if (attack == EncounterController.DebugAttack.RAIN) {
+                            return trigger(attack, sender, null, encounter, messages);
+                        }
                         if (!(sender instanceof Player player)) {
                             messages.send(sender, "shattered-crown.debug-target-required");
                             return 0;

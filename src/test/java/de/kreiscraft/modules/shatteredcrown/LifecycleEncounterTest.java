@@ -564,7 +564,7 @@ class LifecycleEncounterTest {
         encounter.debugPause();
         clearWave();
         assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.RAIN);
-        assertThat(encounter.availableAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.availableAttacks()).contains(EncounterController.AttackFamily.RAIN);
         acceptedDragonHit(100000);
         assertThat(encounter.availableAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
         clearWave();

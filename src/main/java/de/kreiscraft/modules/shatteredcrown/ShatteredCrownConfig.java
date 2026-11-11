@@ -28,7 +28,8 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds,
         Double attackGapMinSeconds, Double attackGapMaxSeconds,
         Integer openingArmorPercentage,
-        Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds) {
+        Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds,
+        Double rainSpawnHeight, Double rainDescentSeconds, Double rainDamage) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -81,6 +82,12 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
     }
 
     public ShatteredCrownConfig {
+        rainSpawnHeight = rainSpawnHeight == null ? 20.0 : rainSpawnHeight;
+        rainDescentSeconds = rainDescentSeconds == null ? 2.0 : rainDescentSeconds;
+        rainDamage = rainDamage == null ? 4.0 : rainDamage;
+        bounded("rain-spawn-height", rainSpawnHeight, 16, 24);
+        bounded("rain-descent-seconds", rainDescentSeconds, 1.5, 2.5);
+        bounded("rain-damage", rainDamage, 0, 100);
         openingArmorPercentage = openingArmorPercentage == null ? 35 : openingArmorPercentage;
         bounded("opening-armor-percentage", openingArmorPercentage, 0, 50);
         movementAttacks = movementAttacks == null ? true : movementAttacks;
