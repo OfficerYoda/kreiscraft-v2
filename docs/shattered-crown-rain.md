@@ -12,7 +12,8 @@ Bombardment, Prey and Dive. Later shields do not relock it. Every online, living
 player in the radius-192/full-height combat area outside protected arrival gets a projectile.
 Scaling observers and Prey's percentage are irrelevant to Rain.
 
-At **t0**, each ground position below the selected player is locked and warned with a fixed flame ring, growl and
+At **t0**, each ground position below the selected player is locked and warned with a fixed
+**radius-five** flame ring matching the eventual damage pool, growl and
 floating countdown. The warning stays for the **full three seconds**; moving players do not move
 it. At **t1**, a real ghast `LargeFireball` launches twenty blocks above that ground. Native air
 drag is balanced against acceleration for half a block per tick, about two seconds of descent.
@@ -46,7 +47,7 @@ breath pulses while a later Dive/Smash movement owns the main slot.
 The main action finishes after its **last projectile resolves or is cleaned up**. Removed entities
 are detected on the next tick; a stopped/lost projectile has a bounded timeout (six seconds from t0
 at default tuning). Pools/debris and any remaining three-second warning are sibling owned work,
-not main-completion dependencies. Pools can span the next 5–10-second gap/attack or melee landing.
+not main-completion dependencies. Pools can span the next default 2–4-second gap/attack or melee landing.
 Cancel, pause, wave replacement, reset, victory, disable and world unload close the applicable
 ownership tree; stale tagged projectiles/displays/debris are recovered on startup/entity load.
 Committed craters and unrelated entities are retained.
@@ -65,7 +66,8 @@ English/German Server Configuration GUI. They are snapshotted for the **next att
 projectile: `rain-spawn-height` defaults20 (16–24 blocks), `rain-descent-seconds` defaults2 (1.5–2.5s),
 and `rain-damage` defaults4 (0–100 reference HP). Height/descent are calibration knobs; native speed
 is height/(20×descent). The launch delay and full-three-second warning, crater2/depth1 and pool5/6s
-are fixed mechanics. Existing pool damage/cadence and debris lifetime settings apply.
+are fixed mechanics. Warning radius and pool radius share one value; the radius-two immediate
+impact/crater remains a separate mechanic. Existing pool damage/cadence and debris lifetime settings apply.
 
 ## Executable verification
 

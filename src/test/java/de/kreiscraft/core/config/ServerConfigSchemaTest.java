@@ -153,6 +153,26 @@ class ServerConfigSchemaTest {
     }
 
     @Test
+    void crownAttackGapFieldsAllowFasterTuningAndExistingSlowerOverrides() throws SerializationException {
+        var fields = ServerConfigSchema.editableFields().stream()
+                .filter(field -> field.path().equals(List.of("modules", "shattered-crown", "attack-gap-min-seconds"))
+                        || field.path().equals(List.of("modules", "shattered-crown", "attack-gap-max-seconds")))
+                .toList();
+        assertThat(fields).hasSize(2);
+        for (var field : fields) {
+            var value = CommentedConfigurationNode.root();
+            for (int seconds : new int[] {2, 4, 5, 10}) {
+                value.set(seconds);
+                assertThat(field.validator().validate(value)).isEmpty();
+            }
+            for (int seconds : new int[] {1, 11}) {
+                value.set(seconds);
+                assertThat(field.validator().validate(value)).isPresent();
+            }
+        }
+    }
+
+    @Test
     void worldMgmtAccessFlags_areGuiExposedBooleans() {
         ConfigField nether = ServerConfigSchema.netherAccess();
         ConfigField end = ServerConfigSchema.endAccess();

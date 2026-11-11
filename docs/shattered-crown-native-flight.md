@@ -24,7 +24,8 @@ owned/cancellable; lost targets, changed ground or replaced phases release the m
 ## Selection and terrain
 
 The production native coordinator uses shuffled rounds of permanently unlocked families and a
-5–10-second gap AFTER main completion. Failed placements consume a turn; pools/debris remain
+2–4-second default gap AFTER main completion. Failed initial placements consume a turn and retry
+after one second; pools/debris remain
 independently owned and do not reserve native movement. Landings coordinate one native approach
 and six seconds after actual arrival. `HuntRotation` cadence scheduling is retained only for the
 diagnostic stationary `movement-attacks: false` profile.
@@ -34,7 +35,7 @@ projected center. Dive, smash and Prey visuals/hits share those frozen heights. 
 not veto a footprint; strict walking-route/arrival-rim and native-landing approach vetoes were retired
 by #161. Arena bounds and existing hazard checks remain. Changed captured footing invalidates the attack.
 A generated island need not provide a
-perfectly flat 24×6 rectangle or a flat 16-block-wide disk anymore.
+perfectly flat 40×6 rectangle or a flat 16-block-wide disk anymore.
 
 ## Verification
 

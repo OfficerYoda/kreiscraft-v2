@@ -57,6 +57,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
+    private static final double RAIN_POOL_RADIUS = 5;
     private final Server server;
     private final DragonBattleAccess battles;
     private ShatteredCrownConfig nextConfig;
@@ -1108,14 +1109,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             warningWork.own(warning, "rain-warning");
             battles.faceWarningToViewer(warning);
             warning.text(Component.text("3.0s", NamedTextColor.GOLD));
-            drawAreaRing(new HuntArea(ground, 2), Particle.FLAME);
+            drawAreaRing(new HuntArea(ground, RAIN_POOL_RADIUS), Particle.FLAME);
             attackParticipants()
                     .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
             int[] pulses = {0};
             warningWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
                 warning.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
                         Math.max(0, 3 - ++pulses[0] * 0.25)), NamedTextColor.GOLD));
-                drawAreaRing(new HuntArea(ground, 2), Particle.FLAME);
+                drawAreaRing(new HuntArea(ground, RAIN_POOL_RADIUS), Particle.FLAME);
             });
             warningWork.later(Duration.ofSeconds(3), warningWork::close);
         });
@@ -1166,7 +1167,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
                     Location crater = AttackSurface.column(impact, 1, 4);
                     if (crater != null) {
-                        depositBreathPool(crater, 5, 6);
+                        depositBreathPool(crater, RAIN_POOL_RADIUS, 6);
                     }
                 }
             }
@@ -1188,6 +1189,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
         EncounterWork owner = attackWork.child(() -> {
         });
+        boolean[] setupComplete = {false};
         owner.onCleanup(() -> {
             if (mainWork == owner) {
                 if (mainAttack == DebugAttack.LANDING) {
@@ -1197,8 +1199,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 mainWork = null;
                 mainAttack = null;
                 if (rotation != null) {
-                    rotation.completed(encounterTicks, (int) Math.round(config.attackGapMinSeconds() * 20),
-                            (int) Math.round(config.attackGapMaxSeconds() * 20));
+                    // A rejected/failed setup consumes its turn, but must not cause a full idle combat gap.
+                    int minimum = setupComplete[0] ? (int) Math.round(config.attackGapMinSeconds() * 20) : 20;
+                    int maximum = setupComplete[0] ? (int) Math.round(config.attackGapMaxSeconds() * 20) : 20;
+                    rotation.completed(encounterTicks, minimum, maximum);
                 }
             }
         });
@@ -1206,7 +1210,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         mainAttack = attack;
         owner.run(() -> {
             setup.accept(owner);
-            if (!owner.hasWork()) {
+            setupComplete[0] = owner.hasWork();
+            if (!setupComplete[0]) {
                 owner.close();
             }
         });

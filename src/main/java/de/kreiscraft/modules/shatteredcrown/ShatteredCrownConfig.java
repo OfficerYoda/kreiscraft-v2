@@ -91,9 +91,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         openingArmorPercentage = openingArmorPercentage == null ? 35 : openingArmorPercentage;
         bounded("opening-armor-percentage", openingArmorPercentage, 0, 50);
         movementAttacks = movementAttacks == null ? true : movementAttacks;
-        attackGapMinSeconds = attackGapMinSeconds == null ? 5.0 : attackGapMinSeconds;
-        attackGapMaxSeconds = attackGapMaxSeconds == null ? 10.0 : attackGapMaxSeconds;
-        bounded("attack-gap-min-seconds", attackGapMinSeconds, 5, 10);
+        attackGapMinSeconds = attackGapMinSeconds == null ? 2.0 : attackGapMinSeconds;
+        attackGapMaxSeconds = attackGapMaxSeconds == null ? 4.0 : attackGapMaxSeconds;
+        bounded("attack-gap-min-seconds", attackGapMinSeconds, 2, 10);
         bounded("attack-gap-max-seconds", attackGapMaxSeconds, attackGapMinSeconds, 10);
         openingGraceSeconds = openingGraceSeconds == null ? 30.0 : openingGraceSeconds;
         bounded("opening-grace-seconds", openingGraceSeconds, 0, 120);
@@ -116,13 +116,13 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bombardmentCadenceSeconds = bombardmentCadenceSeconds == null ? 8.0 : bombardmentCadenceSeconds;
         bombardmentDamage = bombardmentDamage == null ? 6.0 : bombardmentDamage;
         bombardmentRadius = bombardmentRadius == null ? 4.0 : bombardmentRadius;
-        laneLength = laneLength == null ? 24.0 : laneLength;
+        laneLength = laneLength == null ? 40.0 : laneLength;
         laneWidth = laneWidth == null ? 6.0 : laneWidth;
         laneWarningSeconds = laneWarningSeconds == null ? 2.0 : laneWarningSeconds;
         laneLifetimeSeconds = laneLifetimeSeconds == null ? 6.0 : laneLifetimeSeconds;
         laneCadenceSeconds = laneCadenceSeconds == null ? 10.0 : laneCadenceSeconds;
         laneDamage = laneDamage == null ? 8.0 : laneDamage;
-        divePassSeconds = divePassSeconds == null ? 1.5 : divePassSeconds;
+        divePassSeconds = divePassSeconds == null ? 2.5 : divePassSeconds;
         diveClimbSeconds = diveClimbSeconds == null ? 1.0 : diveClimbSeconds;
         bounded("dive-pass-seconds", divePassSeconds, 1, 10);
         bounded("dive-climb-seconds", diveClimbSeconds, 0.5, 10);

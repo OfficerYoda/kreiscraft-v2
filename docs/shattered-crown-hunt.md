@@ -24,11 +24,12 @@ cannot starve the others. A new attempt/manual resume starts a fresh round; ordi
 retain the unfinished round. The first warning starts **at Opening Grace expiry** (normally 30s),
 not an additional cadence later. Manual triggers bypass grace; pause/resume never refill it.
 
-After main completion, a uniformly selected **inclusive 100–200 server-tick (5–10s) delay** precedes
+After main completion, a uniformly selected **inclusive 40–80 server-tick (2–4s) delay** precedes
 the next warning. Dive/Smash include recovery, Prey includes all deposition, Bombardment includes
 impact; Rain includes resolution or cleanup of its last native projectile. Sibling pools do not hold
-the main-action slot. Cancellation, setup/native-flight/render failures and lost targets release
-that slot and receive the same bounded delay. Pausing cancels all automatic work and hazards.
+the main-action slot. Cancellation, native-flight/render failures and lost targets release
+that slot and receive the same bounded delay. Rejected or failed initial setups consume their turn
+but retry the next family after one second, avoiding a full idle combat gap. Pausing cancels all automatic work and hazards.
 No per-family cadence or final cadence factor controls this native rotation.
 
 Vulnerable landing opportunities use `landing-cadence-seconds` (default 30s, 10–120s). A due
@@ -47,9 +48,11 @@ No new ranged/main attack starts until release; old owned pools keep their
 rendering, damage and independent expiry. Release restores native flight and starts the next
 post-completion delay. Normal wave-gate replacement cancels applicable work without stuck reservations.
 
-`attack-gap-min-seconds` and `attack-gap-max-seconds` default to 5 and 10; each must be finite within
-5–10 and minimum must not exceed maximum. They are rounded to server ticks and snapshotted per
+`attack-gap-min-seconds` and `attack-gap-max-seconds` default to 2 and 4; each must be finite within
+2–10 and minimum must not exceed maximum. Existing 5–10-second overrides remain valid. They are rounded to server ticks and snapshotted per
 attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
+Existing YAML retains explicit tuning: set `lane-length: 40.0`, `dive-pass-seconds: 2.5`,
+`attack-gap-min-seconds: 2.0` and `attack-gap-max-seconds: 4.0` to adopt the new defaults next attempt.
 Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
 `hazards`, remaining round `queued`, `last-selection` (including rejected setups), and
 `next-warning-seconds` (`paused` without a coordinator).
@@ -87,7 +90,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 
 | Key | Default | Bounds / meaning |
 | --- | --- | --- |
-| `lane-length` | 24 | 8–40 blocks along the rectangle |
+| `lane-length` | 40 | 8–40 blocks along the rectangle |
 | `lane-width` | 6 | 2–12 blocks across the rectangle |
 | `lane-warning-seconds` | 2 | 1–15 seconds before activation |
 | `lane-lifetime-seconds` | 6 | 1–20 seconds of temporary active danger |
@@ -118,7 +121,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `explosion-window-budget` | 40 | 1–200 health points across accepted explosions/parts |
 
 Diagnostic stationary-profile final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**,
-Prey pool lifetime **3s**. The native shuffled rotation instead retains its5–10-second post-main gap
+Prey pool lifetime **3s**. The native shuffled rotation instead retains its2–4-second default post-main gap
 and permanently unlocked families throughout all shields; Rain pools always last6s. Ordinary
 warning durations, lane lifetime and knockback stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or

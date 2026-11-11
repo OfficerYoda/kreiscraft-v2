@@ -218,8 +218,8 @@ The bundled module is **enabled by default**, with `movement-attacks: true`
 This replaces stationary Hunt lanes with a **marked-strip dive** and stationary wing sectors
 with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
 
-- **Dive:** a **two-second Attack Warning**, **1.5-second physical pass** and **one-second climb**.
-  Defaults are a six-block-wide, 24-block-long lane. `lane-length`, `lane-width`,
+- **Dive:** a **two-second Attack Warning**, **2.5-second physical pass** and **one-second climb**.
+  Defaults are a six-block-wide, 40-block-long lane, retaining the previous horizontal speed. `lane-length`, `lane-width`,
   `lane-warning-seconds`, `dive-pass-seconds` and `dive-climb-seconds` are validated tuning.
   There are **no Dive particles**: only the floating countdown, growl and real approaching dragon.
   A low passing dragon hits each eligible player at most once; `lane-damage: 8` targets four hearts
@@ -247,8 +247,8 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   hazard/arena bounds remain valid; holes or missing walking escapes no longer veto attacks.
   Changed footing cancels the attack instead of silently moving its warning.
 - The native rotation uses every available family once per shuffled round, avoids immediate
-  cross-round repeats and waits 5–10 seconds after main completion, not after attack start.
-  Failed placements consume their turn. Lingering pools/debris do not keep the main slot busy.
+  cross-round repeats and waits 2–4 seconds by default after main completion, not after attack start.
+  Failed initial placements consume their turn but retry after one second. Lingering pools/debris do not keep the main slot busy.
   Separate vulnerable landings reserve native approach and six seconds from actual arrival.
   Only the diagnostic `movement-attacks: false` profile uses historical cadence scheduling.
   `INFO` diagnostics identify deferred attack families and busy/placement categories at most once per
@@ -401,7 +401,7 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   Attempt ownership, native phase restoration, the continuous absence timeout and explosion budget
   remain intact. Previously unlocked shuffled families pressure each shielded wave. Clearing the
   final wave permanently adds Ground Smash and releases the final vulnerable stage.
-- The native rotation keeps its 5–10-second post-main gap throughout. Prey pools use the configured
+- The native rotation keeps its default 2–4-second post-main gap throughout. Prey pools use the configured
   six seconds, shortened by `final-pool-lifetime-factor` in the finale; Rain pools always last six
   seconds. Landings last six seconds after actual arrival, default approach timeout20 seconds.
   Historical cadence factors apply to the diagnostic stationary profile and landing opportunities,

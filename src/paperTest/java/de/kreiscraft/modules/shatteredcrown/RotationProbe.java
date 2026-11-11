@@ -49,6 +49,7 @@ public final class RotationProbe extends JavaPlugin implements Listener {
     private int ticks;
     private int stage;
     private int completion = -1;
+    private boolean selectionRejected;
     private int arrival = -1;
     private int departure = -1;
     private int landingHits;
@@ -201,13 +202,15 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     require(selected.equals("BOMBARDMENT") || selected.equals("PREY"), "only opening unlocks");
                     if (!selections.isEmpty()) {
                         require(!selected.equals(selections.getLast()), "no immediate shuffled selection repeat");
-                        require(ticks - completion == 100,
-                                "exact 5-second POST-completion gap " + (ticks - completion));
+                        require(ticks - completion == (selectionRejected ? 20 : 100),
+                                "one-second rejected-setup retry or configured 5-second POST-completion gap "
+                                        + (ticks - completion));
                     }
                     selections.add(selected);
+                    selectionRejected = attack.equals("none");
                     getLogger().info("ROTATION selection=" + selected + " executing=" + attack + " tick=" + ticks);
                     if (attack.equals("none")) {
-                        completion = ticks; // A rejected setup completed synchronously and still receives the full gap.
+                        completion = ticks; // A rejected setup completed synchronously; retry after one second.
                     }
                 }
                 if (!attack.equals("none") && !attack.equals(previous)) {

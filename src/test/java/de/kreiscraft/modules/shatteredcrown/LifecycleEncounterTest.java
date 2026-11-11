@@ -541,7 +541,7 @@ class LifecycleEncounterTest {
             if (!attack.equals("none") && !attack.equals(previous)) {
                 starts.add(attack);
                 if (completedAt >= 0) {
-                    assertThat(tick - completedAt).isBetween(100, 200);
+                    assertThat(tick - completedAt).isBetween(40, 80);
                 }
             }
             if (attack.equals("none") && !previous.equals("none")) {
@@ -570,7 +570,7 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(ints = {5, 10})
+    @org.junit.jupiter.params.provider.ValueSource(ints = {2, 4, 5, 10})
     void configuredGapEndpointsWaitAfterImpactNotAfterTheWarningStarts(int seconds) throws Exception {
         config.node("opening-grace-seconds").set(0);
         config.node("attack-gap-min-seconds").set(seconds);
@@ -667,7 +667,10 @@ class LifecycleEncounterTest {
         config.node("pool-damage").set(0);
         player.teleport(new Location(end, 70, 64, 0)); // No walkable warning footprint or pool deposition.
         var encounter = rotationEncounter(new java.util.Random(7));
-        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=1.0");
+        scheduler.advance(Duration.ofMillis(950));
+        assertThat(status(encounter)).contains("main=idle");
+        scheduler.advance(Duration.ofMillis(50));
         assertThat(status(encounter)).contains("attack=PREY");
         scheduler.advance(Duration.ofSeconds(4)); // Prey validates current terrain at deposition, not marking.
         assertThat(status(encounter)).contains("main=idle");
@@ -706,8 +709,8 @@ class LifecycleEncounterTest {
         org.mockito.Mockito.doThrow(new IllegalStateException("native warning metadata failure"))
                 .doCallRealMethod().when(battles).faceWarningToViewer(any());
         var encounter = rotationEncounter(new java.util.Random(7));
-        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=5.0", "last-selection=BOMBARDMENT");
-        scheduler.advance(Duration.ofMillis(4950));
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=1.0", "last-selection=BOMBARDMENT");
+        scheduler.advance(Duration.ofMillis(950));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(50));
         assertThat(status(encounter)).contains("attack=PREY");
@@ -768,7 +771,8 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"attack-gap-min-seconds,4", "attack-gap-max-seconds,11",
+    @org.junit.jupiter.params.provider.CsvSource({"attack-gap-min-seconds,1", "attack-gap-max-seconds,1",
+            "attack-gap-max-seconds,11",
             "attack-gap-min-seconds,NaN", "attack-gap-max-seconds,Infinity", "landing-window-seconds,12"})
     void rotationTimingRejectsOutOfContractValues(String key, double value) throws Exception {
         config.node(key).set(value);

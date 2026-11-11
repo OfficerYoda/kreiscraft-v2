@@ -353,8 +353,8 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("lane-damage-cadence-seconds", 0.5, 5));
         fields.add(crownNumber("landing-cadence-seconds", 10, 120));
         fields.add(crownNumber("landing-window-seconds", 6, 6));
-        fields.add(crownNumber("attack-gap-min-seconds", 5, 10));
-        fields.add(crownNumber("attack-gap-max-seconds", 5, 10));
+        fields.add(crownNumber("attack-gap-min-seconds", 2, 10));
+        fields.add(crownNumber("attack-gap-max-seconds", 2, 10));
         fields.add(crownNumber("landing-approach-seconds", 5, 45));
         fields.add(crownNumber("landing-radius", 8, 24));
         fields.add(crownNumber("prey-percentage", 1, 100));

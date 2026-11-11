@@ -221,7 +221,7 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
                 check(age < 600, "automatic " + expectedAttack + " completion timeout");
                 return;
             }
-            if (scenario != 3 && age < 100) {
+            if (scenario != 3 && age < 120) {
                 return;
             }
             check(teleports == 0 && dragon.hasAI() && dragon.getPhase() != EnderDragon.Phase.HOVER,

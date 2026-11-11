@@ -844,7 +844,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
                     warningFrames[Math.max(0, age / 5)]++;
                     if (scenario != 6 && !automatic) {
                         check(Math.abs(Math.hypot(particle.getX() - locked.getX(), particle.getZ() - locked.getZ())
-                                - 2) < 0.001, "real warning particle positions stay at locked radius two");
+                                - 5) < 0.001, "real warning particle positions match the locked radius-five pool");
                     }
                 }
                 if (particle.getParticle().getType() == net.minecraft.core.particles.ParticleTypes.DRAGON_BREATH) {

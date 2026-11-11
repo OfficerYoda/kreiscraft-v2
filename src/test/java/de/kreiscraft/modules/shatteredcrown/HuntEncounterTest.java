@@ -264,6 +264,42 @@ class HuntEncounterTest {
     }
 
     @Test
+    void rainWarningMarksTheInclusiveDamagePoolBoundaryRatherThanTheSmallerImpact() throws Exception {
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        Location locked = player.getLocation();
+        var boundary = server.addPlayer("PoolBoundary");
+        boundary.teleport(locked.clone().add(0, 0, 5));
+        var outside = server.addPlayer("OutsidePool");
+        outside.teleport(locked.clone().add(0, 0, 5.01));
+        var warningPoints = new java.util.ArrayList<Location>();
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class, call -> {
+            if (call.getArgument(1) == org.bukkit.Particle.FLAME) {
+                warningPoints.add(((Location) call.getArgument(2)).clone());
+            }
+            return null;
+        })) {
+            debug("trigger fireball-rain " + player.getName(), player);
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(warningPoints).isNotEmpty().allSatisfy(
+                    point -> assertThat(Math.hypot(point.getX() - locked.getX(), point.getZ() - locked.getZ()))
+                            .isCloseTo(5, org.assertj.core.data.Offset.offset(0.000001)));
+            var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+            ball.teleport(locked.clone());
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball,
+                    end.getBlockAt(locked.getBlockX(), 63, locked.getBlockZ())));
+            scheduler.advance(Duration.ZERO);
+            assertThat(boundary.getHealth()).isEqualTo(17);
+            assertThat(outside.getHealth()).isEqualTo(20);
+        }
+    }
+
+    @Test
     void rainCollisionResolvesOnceMakesPermanentCraterAndReleasesMainBeforeItsPool() throws Exception {
         config.node("pool-damage").set(0);
         for (int x = 4; x <= 17; x++) {
@@ -833,7 +869,7 @@ class HuntEncounterTest {
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
         debug("trigger dive", player);
-        scheduler.advance(Duration.ofSeconds(7));
+        scheduler.advance(Duration.ofSeconds(8));
         assertThat(referenceHits).isEqualTo(1);
         assertThat(player.getHealth()).isEqualTo(12);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
@@ -862,7 +898,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void fasterDiveHasTwoSecondWarningThirtyTickPassAndTwentyTickClimb() throws Exception {
+    void longerDiveTravelsFortyBlocksWithTwoSecondWarningFiftyTickPassAndTwentyTickClimb() throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
@@ -872,8 +908,18 @@ class HuntEncounterTest {
         assertThat(dragon.getY()).isGreaterThan(77);
         scheduler.advance(Duration.ofMillis(50));
         assertThat(dragon.getY()).isEqualTo(78);
-        scheduler.advance(Duration.ofMillis(1500));
+        Location passStart = dragon.getLocation();
+        assertThat(Math.hypot(passStart.getX() - player.getX(), passStart.getZ() - player.getZ()))
+                .isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(500));
+        Location groundPassStart = dragon.getLocation();
+        assertThat(groundPassStart.getY()).isLessThanOrEqualTo(69);
+        scheduler.advance(Duration.ofMillis(2000));
         assertThat(dragon.getY()).isEqualTo(66);
+        assertThat(Math.hypot(dragon.getX() - passStart.getX(), dragon.getZ() - passStart.getZ()))
+                .isEqualTo(40);
+        assertThat(Math.hypot(dragon.getX() - groundPassStart.getX(), dragon.getZ() - groundPassStart.getZ()))
+                .isEqualTo(32);
         assertThat(player.getHealth()).isEqualTo(12);
         assertThat(referenceHits).isEqualTo(1);
         scheduler.advance(Duration.ofMillis(950));
@@ -1051,7 +1097,7 @@ class HuntEncounterTest {
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofMillis(1500));
+        scheduler.advance(Duration.ofMillis(2500));
         assertThat(player.getHealth()).isEqualTo(12);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         scheduler.advance(Duration.ofSeconds(1));
@@ -1611,9 +1657,9 @@ class HuntEncounterTest {
         hunt();
         scheduler.advance(Duration.ofSeconds(10));
         var edge = server.addPlayer();
-        edge.teleport(new Location(end, 22.5, 64, 3.5));
+        edge.teleport(new Location(end, 30.5, 64, 3.5));
         var beyondEnd = server.addPlayer();
-        beyondEnd.teleport(new Location(end, 22.51, 64, 0.5));
+        beyondEnd.teleport(new Location(end, 30.51, 64, 0.5));
         var beyondSide = server.addPlayer();
         beyondSide.teleport(new Location(end, 10.5, 64, 3.51));
         var above = server.addPlayer();

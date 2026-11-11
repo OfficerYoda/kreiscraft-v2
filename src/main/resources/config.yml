@@ -171,10 +171,10 @@ modules:
     bombardment-cadence-seconds: 8.0
     bombardment-damage: 6.0
     bombardment-radius: 4.0
-    lane-length: 24.0
+    lane-length: 40.0
     lane-width: 6.0
     lane-warning-seconds: 2.0
-    dive-pass-seconds: 1.5
+    dive-pass-seconds: 2.5
     dive-climb-seconds: 1.0
     lane-lifetime-seconds: 6.0
     lane-cadence-seconds: 10.0
@@ -182,8 +182,8 @@ modules:
     lane-damage-cadence-seconds: 1.0
     landing-cadence-seconds: 30.0
     landing-window-seconds: 6.0
-    attack-gap-min-seconds: 5.0
-    attack-gap-max-seconds: 10.0
+    attack-gap-min-seconds: 2.0
+    attack-gap-max-seconds: 4.0
     landing-approach-seconds: 20.0
     landing-radius: 12.0
     prey-percentage: 35.0

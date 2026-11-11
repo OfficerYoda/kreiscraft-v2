@@ -81,6 +81,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
     private int completion = -1;
     private String previousAttack = "none";
     private String previousSelection = "none";
+    private boolean selectionRejected;
     private boolean requested;
     private boolean finished;
     private long packets;
@@ -1096,10 +1097,12 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
             check(families.contains(selected), "only permanently unlocked families selected " + selected);
             if (!selections.isEmpty()) {
                 check(!selected.equals(selections.getLast()), "no immediate cross-round repeat");
-                check(completion >= 0 && ticks - completion >= 100 && ticks - completion <= 200,
-                        "5-10 seconds AFTER actual main completion");
+                check(completion >= 0 && (selectionRejected ? ticks - completion == 20
+                        : ticks - completion >= 100 && ticks - completion <= 200),
+                        "one-second rejected-setup retry or configured 5-10 seconds AFTER actual main completion");
             }
             selections.add(selected);
+            selectionRejected = attack.equals("none");
             if (attack.equals("none")) {
                 completion = ticks;
             }
