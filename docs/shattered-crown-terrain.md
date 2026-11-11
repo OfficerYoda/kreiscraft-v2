@@ -77,11 +77,11 @@ Older #136–138 historical reports describe their original contract, not this d
 ## Shared terrain seam for Fireball Rain (#162)
 
 `EncounterController.impactTerrain(center, radius, depth)` is the smallest production entry point:
-call it with **2, 1** for Rain. It registers a sibling hazard with configured debris lifetime, so
+call it with **5, 1** for Rain. It registers a sibling hazard with configured debris lifetime, so
 main completion cannot remove longer-lived debris. Attack cancellation still closes every sibling.
 
 `TerrainImpact.apply(center, radius, depth, lifetimeSeconds, owner)` is package-local and server-thread
-only. Rain can pass radius **2**, depth **1**, configured debris lifetime and an existing owned effect
+only. Rain can pass radius **5**, depth **1**, configured debris lifetime and an existing owned effect
 scope at each actual impact. It removes ground and creates a debris child; it does **not** deal damage,
 create explosions/pools, close the supplied owner, signal main completion or restore ground.
 The caller owns exactly-once impact timing and its separate calibrated 4 HP hit. If debris must

@@ -264,7 +264,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void rainWarningMarksTheInclusiveDamagePoolBoundaryRatherThanTheSmallerImpact() throws Exception {
+    void rainWarningMatchesInclusiveExplosionAndDamagePoolBoundary() throws Exception {
         for (int x = 4; x <= 17; x++) {
             for (int z = -6; z <= 6; z++) {
                 end.getBlockAt(x, 62, z).setType(Material.END_STONE);
@@ -293,8 +293,10 @@ class HuntEncounterTest {
             ball.teleport(locked.clone());
             server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball,
                     end.getBlockAt(locked.getBlockX(), 63, locked.getBlockZ())));
+            assertThat(boundary.getHealth()).isEqualTo(16);
+            assertThat(outside.getHealth()).isEqualTo(20);
             scheduler.advance(Duration.ZERO);
-            assertThat(boundary.getHealth()).isEqualTo(17);
+            assertThat(boundary.getHealth()).isEqualTo(13);
             assertThat(outside.getHealth()).isEqualTo(20);
         }
     }
@@ -321,6 +323,10 @@ class HuntEncounterTest {
         assertThat(ball.isValid()).isFalse();
         assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
         assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getBlockAt(15, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(15, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getBlockAt(16, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
         debug("status", player);
         assertThat(messages(player)).anyMatch(message -> message.contains("main=idle") && message.contains("areas=1"));
         server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
@@ -1092,7 +1098,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofMillis(1));
         assertThat(player.getHealth()).isEqualTo(16);
         assertThat(plain.serialize(warning.text())).contains("6");
-        player.teleport(new Location(end, 10.5, 64, 4.51));
+        player.teleport(new Location(end, 10.5, 64, 6.51));
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(warning.isValid()).isFalse();
         assertThat(player.getHealth()).isEqualTo(16);
@@ -1231,12 +1237,34 @@ class HuntEncounterTest {
     }
 
     @Test
+    void widerPhysicalDiveHitsTheInclusiveFiveBlockSideBoundaryButNotBeyondIt() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(2));
+        var direction = player.getLocation().toVector().subtract(dragon.getLocation().toVector()).setY(0).normalize();
+        var sideways = new org.bukkit.util.Vector(-direction.getZ(), 0, direction.getX());
+        var edge = server.addPlayer("DiveSideBoundary");
+        edge.teleport(player.getLocation().add(sideways.clone().multiply(5)));
+        var outside = server.addPlayer("OutsideDiveSide");
+        outside.teleport(player.getLocation().add(sideways.clone().multiply(5.01)));
+        scheduler.advance(Duration.ofMillis(1500));
+        assertThat(edge.getHealth()).isEqualTo(12);
+        assertThat(outside.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isEqualTo(2);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(edge.getHealth()).isEqualTo(12);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
     void diveCanBeDodgedSidewaysAndDisableStopsMovement() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
         trigger("dive");
         scheduler.advance(Duration.ofSeconds(2));
-        player.teleport(player.getLocation().add(0, 0, 5));
+        player.teleport(player.getLocation().add(0, 0, 6));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(20);
         module.disable();
@@ -1486,6 +1514,8 @@ class HuntEncounterTest {
         hunt();
         clearFinalGate();
         trigger("smash");
+        var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(warning.text()).isNotEqualTo(net.kyori.adventure.text.Component.empty());
         scheduler.advance(Duration.ofMillis(2950));
         assertThat(player.getHealth()).isEqualTo(20);
         assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
@@ -1495,11 +1525,14 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(player.getHealth()).isEqualTo(8);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
+        assertThat(warning.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(warning.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(warning.isValid()).isFalse();
     }
 
     @Test
@@ -1585,7 +1618,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         assertThat(player.getHealth()).isEqualTo(12);
-        player.teleport(new Location(end, 10.5, 64, 4.51));
+        player.teleport(new Location(end, 10.5, 64, 6.51));
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(player.getHealth()).isEqualTo(12);
@@ -1671,11 +1704,11 @@ class HuntEncounterTest {
         hunt();
         scheduler.advance(Duration.ofSeconds(10));
         var edge = server.addPlayer();
-        edge.teleport(new Location(end, 30.5, 64, 3.5));
+        edge.teleport(new Location(end, 30.5, 64, 5.5));
         var beyondEnd = server.addPlayer();
         beyondEnd.teleport(new Location(end, 30.51, 64, 0.5));
         var beyondSide = server.addPlayer();
-        beyondSide.teleport(new Location(end, 10.5, 64, 3.51));
+        beyondSide.teleport(new Location(end, 10.5, 64, 5.51));
         var above = server.addPlayer();
         above.teleport(new Location(end, 10.5, 68, 0.5));
         scheduler.advance(Duration.ofSeconds(3));

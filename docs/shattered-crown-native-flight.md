@@ -20,7 +20,7 @@ Dive retains the native eight-block step ceiling across the expanded arena. If t
 dragon-to-lane distance cannot fit within the configured warning ticks, it first approaches at
 at most 7.5 blocks per native tick, then begins the full visible warning. Both stages remain
 owned/cancellable; lost targets, changed ground or replaced phases release the main action.
-The default 40-block pass takes 1.5 seconds. Its sharper descent reaches two blocks above the
+The default 40-block-long, ten-block-wide pass takes 1.5 seconds. Its sharper descent reaches two blocks above the
 surface after the first sixth of the pass (five ticks by default), then stays low until the climb.
 The full two-second warning and once-per-player damage are unchanged.
 
@@ -38,7 +38,7 @@ projected center. Dive, smash and Prey visuals/hits share those frozen heights. 
 not veto a footprint; strict walking-route/arrival-rim and native-landing approach vetoes were retired
 by #161. Arena bounds and existing hazard checks remain. Changed captured footing invalidates the attack.
 A generated island need not provide a
-perfectly flat 40×6 rectangle or a flat 16-block-wide disk anymore.
+perfectly flat 40×10 rectangle or a flat 16-block-wide disk anymore.
 
 ## Verification
 

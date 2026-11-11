@@ -51,7 +51,7 @@ post-completion delay. Normal wave-gate replacement cancels applicable work with
 `attack-gap-min-seconds` and `attack-gap-max-seconds` default to 2 and 4; each must be finite within
 2–10 and minimum must not exceed maximum. Existing 5–10-second overrides remain valid. They are rounded to server ticks and snapshotted per
 attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
-Existing YAML retains explicit tuning: set `lane-length: 40.0`, `dive-pass-seconds: 1.5`,
+Existing YAML retains explicit tuning: set `lane-length: 40.0`, `lane-width: 10.0`, `dive-pass-seconds: 1.5`,
 `attack-gap-min-seconds: 2.0` and `attack-gap-max-seconds: 4.0` to adopt the new defaults next attempt.
 Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
 `hazards`, remaining round `queued`, `last-selection` (including rejected setups), and
@@ -91,7 +91,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | Key | Default | Bounds / meaning |
 | --- | --- | --- |
 | `lane-length` | 40 | 8–40 blocks along the rectangle |
-| `lane-width` | 6 | 2–12 blocks across the rectangle |
+| `lane-width` | 10 | 2–12 blocks across the rectangle |
 | `lane-warning-seconds` | 2 | 1–15 seconds before activation |
 | `lane-lifetime-seconds` | 6 | 1–20 seconds of temporary active danger |
 | `lane-cadence-seconds` | 10 | 2–120 seconds between warning opportunities; first after this interval |

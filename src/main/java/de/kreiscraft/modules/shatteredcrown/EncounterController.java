@@ -57,7 +57,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
-    private static final double RAIN_POOL_RADIUS = 5;
+    private static final double RAIN_RADIUS = 5;
     private final Server server;
     private final DragonBattleAccess battles;
     private ShatteredCrownConfig nextConfig;
@@ -1113,14 +1113,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             warningWork.own(warning, "rain-warning");
             battles.faceWarningToViewer(warning);
             warning.text(Component.text("3.0s", NamedTextColor.GOLD));
-            drawAreaRing(new HuntArea(ground, RAIN_POOL_RADIUS), Particle.FLAME);
+            drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
             attackParticipants()
                     .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
             int[] pulses = {0};
             warningWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
                 warning.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
                         Math.max(0, 3 - ++pulses[0] * 0.25)), NamedTextColor.GOLD));
-                drawAreaRing(new HuntArea(ground, RAIN_POOL_RADIUS), Particle.FLAME);
+                drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
             });
             warningWork.later(Duration.ofSeconds(3), warningWork::close);
         });
@@ -1156,7 +1156,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 // Native ray hits can sit 0.0005 inside a block's top face; include the footing just above it.
                 Location ground = AttackSurface.column(impact, 1, 4);
                 if (ground != null) {
-                    impactTerrain(ground, 2, 1);
+                    impactTerrain(ground, RAIN_RADIUS, 1);
                 }
                 impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
                 impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
@@ -1164,14 +1164,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     if (shot.owner().isClosed() || dragon != shot.source()) {
                         break;
                     }
-                    if (arena.inBombardment(player.getLocation(), impact, 2)) {
+                    if (arena.inBombardment(player.getLocation(), impact, RAIN_RADIUS)) {
                         battles.referenceDamage(player, shot.source(), config.rainDamage());
                     }
                 }
                 if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
                     Location crater = AttackSurface.column(impact, 1, 4);
                     if (crater != null) {
-                        depositBreathPool(crater, RAIN_POOL_RADIUS, 6);
+                        depositBreathPool(crater, RAIN_RADIUS, 6);
                     }
                 }
             }
@@ -1607,7 +1607,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         if (owner.isClosed() || movement.isClosed()) {
                             return;
                         }
-                        area.indicator.text(Component.text("↓", NamedTextColor.GREEN));
+                        // Keep the owned display valid for the flight watchdog, but hide the completed warning.
+                        area.indicator.text(Component.empty());
                         movement.start(t -> impact.clone(), 3, position -> {
                         }, () -> climb(movement, source));
                     });

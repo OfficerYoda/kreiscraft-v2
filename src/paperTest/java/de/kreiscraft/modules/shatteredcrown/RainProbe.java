@@ -209,8 +209,8 @@ public final class RainProbe extends JavaPlugin implements Listener {
         command("cancel");
         check(balls().isEmpty() && pools().isEmpty() && warnings().isEmpty(), "scoped cleanup");
         if (roof != null) {
-            for (int x = -1; x <= 1; x++) {
-                for (int z = -1; z <= 1; z++) {
+            for (int x = -5; x <= 5; x++) {
+                for (int z = -5; z <= 5; z++) {
                     roof.clone().add(x, 0, z).getBlock().setType(Material.AIR);
                 }
             }
@@ -274,16 +274,16 @@ public final class RainProbe extends JavaPlugin implements Listener {
         }
         if (scenario == 4) {
             roof = locked.clone().add(0, 3, 0);
-            for (int x = -1; x <= 1; x++) {
-                for (int z = -1; z <= 1; z++) {
+            for (int x = -5; x <= 5; x++) {
+                for (int z = -5; z <= 5; z++) {
                     roof.clone().add(x, 0, z).getBlock().setType(Material.END_STONE);
                 }
             }
         }
         groundBefore.clear();
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                if (dx * dx + dz * dz <= 4) {
+        for (int dx = -5; dx <= 5; dx++) {
+            for (int dz = -5; dz <= 5; dz++) {
+                if (dx * dx + dz * dz <= 25) {
                     int x = locked.getBlockX() + dx;
                     int z = locked.getBlockZ() + dz;
                     var block = world.getBlockAt(x, world.getHighestBlockYAt(x, z), z);
@@ -484,7 +484,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
         long removed = groundBefore.entrySet().stream().filter(entry -> entry.getValue().isSolid()
                 && entry.getKey().getBlock().isEmpty()).count();
         if (scenario < 7 || scenario == 9 || scenario >= 11 && scenario <= 13) {
-            check(removed == 13, "actual radius-two crater removes thirteen sampled native ground blocks");
+            check(removed == 81, "actual radius-five crater removes eighty-one sampled native ground blocks");
         } else {
             check(removed == 0, "no crater from cancelled/lost/stopped projectiles");
         }

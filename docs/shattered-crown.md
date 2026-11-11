@@ -222,7 +222,7 @@ This replaces stationary Hunt lanes with a **marked-strip dive** and stationary 
 with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
 
 - **Dive:** a **two-second Attack Warning**, **1.5-second physical pass** and **one-second climb**.
-  Defaults are a six-block-wide, 40-block-long lane. The dragon plunges during the first sixth of
+  Defaults are a ten-block-wide, 40-block-long lane. The dragon plunges during the first sixth of
   the pass, then skims the ground for the rest, at roughly 26.7 horizontal blocks per second.
   `lane-length`, `lane-width`,
   `lane-warning-seconds`, `dive-pass-seconds` and `dive-climb-seconds` are validated tuning.
@@ -238,7 +238,8 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
   blocks; the FULL three-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
-  Main completion follows the climb. `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
+  Main completion follows the climb. The countdown clears on impact; no green recovery arrow is shown.
+  `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
   The impact permanently removes roughly radius-five, one-block-deep ground. Debris cannot hurt, place
   or drop; no arrival/portal/tower/Anchor terrain is preserved. See [terrain impacts](/shattered-crown-terrain/).
   `sweep-angle` applies only to legacy sectors.

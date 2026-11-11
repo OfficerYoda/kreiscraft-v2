@@ -26,10 +26,10 @@ earlier obstruction resolves immediately, not by detonating at the original targ
 Each actual collision resolves once. Native entity damage and explosion priming are suppressed;
 the only impact hit is the existing cancellable, dragon-attributed reference-damage path:
 **4 HP / two hearts** against full Protection IV netherite, no Resistance/absorption, across
-Easy/Normal/Hard. The inclusive radius-two impact uses a three-block vertical tolerance. Players
+Easy/Normal/Hard. The inclusive radius-five impact uses a three-block vertical tolerance. Players
 can dodge or use overhead cover. Arrival player protection and defended Anchor gates remain intact.
 
-The actual impact projects onto nearby footing and calls `impactTerrain(center, 2, 1)` for a
+The actual impact projects onto nearby footing and calls `impactTerrain(center, 5, 1)` for a
 permanent shallow crater and harmless, bounded owned debris. There is one small explosion particle
 and sound cue, **no native explosion, fire, block restoration or terrain-preservation zones**.
 Back up the End before enabling destructive encounters. Unsupported/void impact geometry may
@@ -65,9 +65,9 @@ Under `modules.shattered-crown`, finite values are validated atomically in YAML/
 English/German Server Configuration GUI. They are snapshotted for the **next attempt**, not a live
 projectile: `rain-spawn-height` defaults20 (16–24 blocks), `rain-descent-seconds` defaults2 (1.5–2.5s),
 and `rain-damage` defaults4 (0–100 reference HP). Height/descent are calibration knobs; native speed
-is height/(20×descent). The launch delay and full-three-second warning, crater2/depth1 and pool5/6s
-are fixed mechanics. Warning radius and pool radius share one value; the radius-two immediate
-impact/crater remains a separate mechanic. Existing pool damage/cadence and debris lifetime settings apply.
+is height/(20×descent). The launch delay and full-three-second warning, crater5/depth1 and pool5/6s
+are fixed mechanics. Warning, immediate damage, crater and pool radii share one five-block value.
+Existing pool damage/cadence and debris lifetime settings apply.
 
 ## Executable verification
 

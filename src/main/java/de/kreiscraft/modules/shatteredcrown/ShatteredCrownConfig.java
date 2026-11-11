@@ -117,7 +117,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bombardmentDamage = bombardmentDamage == null ? 6.0 : bombardmentDamage;
         bombardmentRadius = bombardmentRadius == null ? 4.0 : bombardmentRadius;
         laneLength = laneLength == null ? 40.0 : laneLength;
-        laneWidth = laneWidth == null ? 6.0 : laneWidth;
+        laneWidth = laneWidth == null ? 10.0 : laneWidth;
         laneWarningSeconds = laneWarningSeconds == null ? 2.0 : laneWarningSeconds;
         laneLifetimeSeconds = laneLifetimeSeconds == null ? 6.0 : laneLifetimeSeconds;
         laneCadenceSeconds = laneCadenceSeconds == null ? 10.0 : laneCadenceSeconds;
