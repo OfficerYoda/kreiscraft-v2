@@ -93,6 +93,11 @@ class SecondWaveEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void prepareRangedDefender(Mob defender) {
                 // MockBukkit has no native navigation/goals; SecondWaveProbe checks dry pursuit and native beam.
             }

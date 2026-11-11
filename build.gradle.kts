@@ -170,6 +170,14 @@ tasks.register<Jar>("defenderRoamingProbeJar") {
     from("src/paperTest/defender-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("openingRosterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("opening-roster-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/OpeningRosterProbe*.class") }
+    from("src/paperTest/opening-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.register<Jar>("secondWaveProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("second-wave-probe")

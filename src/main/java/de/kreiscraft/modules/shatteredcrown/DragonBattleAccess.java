@@ -23,6 +23,11 @@ public interface DragonBattleAccess {
         defender.setRemoveWhenFarAway(false);
     }
 
+    /** Opening equipment policy; keep later-wave and unrelated native pickup behavior unchanged. */
+    default void disableEquipmentPickup(Mob defender) {
+        defender.setCanPickupItems(false);
+    }
+
     /** Owned Guardian/Blaze ground pursuit; ordinary mobs retain their native goals/navigation. */
     default void prepareRangedDefender(Mob defender) {
         de.kreiscraft.platform.NmsCrownDefenders.prepare(defender);
