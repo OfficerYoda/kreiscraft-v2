@@ -29,9 +29,10 @@ candidate cannot monopolize the coordinator. Queue state belongs to one Hunt att
 is discarded at the finale gate, victory or reset. Legacy stationary mode retains its old scheduler.
 
 `AttackSurface` captures nearby supported ground per column, within six vertical blocks of the
-projected center. Dive, smash and Prey visuals/hits share those frozen heights. Body-sized escape
-checks allow one-block steps and account for uphill time, excluding void, protected arrival and
-existing danger. Changed footing invalidates the attack. A generated island need not provide a
+projected center. Dive, smash and Prey visuals/hits share those frozen heights. Missing columns do
+not veto a footprint; strict walking-route/arrival-rim and native-landing approach vetoes were retired
+by #161. Arena bounds and existing hazard checks remain. Changed captured footing invalidates the attack.
+A generated island need not provide a
 perfectly flat 24×6 rectangle or a flat 16-block-wide disk anymore.
 
 ## Verification
@@ -45,6 +46,8 @@ The movement-only disposable probe below did not cover player-facing particle em
 
 - Encounter tests cover stepped terrain, jumping targets, void and cloud rejection, owed smash
   after Prey, and repeated dive/Prey/smash/landing participation with the full default timings.
+  #161 supersedes footprint-wide void/escape rejection with surviving-ground geometry and adds
+  [permanent crater, debris collision and process-restart evidence](/shattered-crown-terrain/).
 - `NmsDragonFlightTest` uses Paper's real manager/phase implementations, with mocked world/entity
   transport. It verifies installation, airborne identity, native movement invocation, cache
   restoration, same-ID acquisition, cancelled acquisition/release and native DYING retention.

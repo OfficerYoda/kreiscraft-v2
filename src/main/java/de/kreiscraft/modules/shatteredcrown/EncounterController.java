@@ -1063,7 +1063,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 if (arena.poolsSafe(combined, lanes, participants, config.preyCountdownSeconds())) {
                     activatePool(pool, source, poolLifetime());
                 } else {
-                    server.getLogger().fine("[Shattered Crown] Prey pool skipped: terrain, overlap or escape route");
+                    server.getLogger().fine("[Shattered Crown] Prey pool skipped: geometry or hazard overlap");
                 }
             });
         }
@@ -1283,7 +1283,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
         Location ground = arena.groundBelow(target.getLocation());
         double radius = Math.min(config.sweepRadius(), 8);
-        double warning = Math.max(config.sweepWarningSeconds(), (radius + 2) / 3);
+        double warning = config.sweepWarningSeconds();
         if (ground == null) {
             return;
         }
@@ -1317,6 +1317,22 @@ public final class EncounterController implements Listener, AutoCloseable {
                 });
         DragonFlight movement = flight;
         Location origin = source.getLocation();
+        if (origin.distance(above) > warning * 20 * 8) {
+            double approachSeconds = Math.ceil(origin.distance(above) / 7.5) / 20;
+            movement.start(t -> DragonFlight.between(origin, above, t), approachSeconds, position -> {
+            }, () -> beginSmashWarning(owner, area, ground, above, source, movement, warning));
+        } else {
+            beginSmashWarning(owner, area, ground, above, source, movement, warning);
+        }
+    }
+
+    private void beginSmashWarning(EncounterWork owner, HuntArea area, Location ground, Location above,
+            EnderDragon source, DragonFlight movement, double warning) {
+        area.indicator
+                .text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs", warning), NamedTextColor.GOLD));
+        drawAreaRing(area, Particle.FLAME);
+        attackTargets().forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 0.6f));
+        Location origin = source.getLocation();
         movement.start(t -> DragonFlight.between(origin, above, t), warning, position -> {
             area.age += 0.05;
             if (Math.round(area.age * 20) % 5 != 0) {
@@ -1343,17 +1359,21 @@ public final class EncounterController implements Listener, AutoCloseable {
                         source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
                             player.spawnParticle(Particle.EXPLOSION_EMITTER, ground, 1, 0, 0, 0, 0);
                             player.spawnParticle(Particle.BLOCK, ground.clone().add(0, 0.5, 0), 80,
-                                    radius / 3, 0.5, radius / 3, 0.1,
+                                    area.radius / 3, 0.5, area.radius / 3, 0.1,
                                     ground.getBlock().getRelative(0, -1, 0).getBlockData());
                         });
                         source.getWorld().playSound(ground, Sound.ENTITY_GENERIC_EXPLODE, 2, 0.6f);
+                        impactTerrain(ground, config.smashCraterRadius(), config.smashCraterDepth());
                         for (Player player : source.getWorld().getPlayers()) {
                             if (dragon != source || flight != movement || !attacking()) {
                                 break;
                             }
                             if (isParticipant(player) && area.contains(player.getLocation(), 0)) {
-                                flightHit(player, source, config.sweepDamage(), ground);
+                                flightHit(player, source, config.sweepDamage(), ground, true);
                             }
+                        }
+                        if (owner.isClosed() || movement.isClosed()) {
+                            return;
                         }
                         area.indicator.text(Component.text("↓", NamedTextColor.GREEN));
                         movement.start(t -> impact.clone(), 3, position -> {
@@ -1364,6 +1384,21 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private void climb(DragonFlight movement, EnderDragon source) {
         climb(movement, source, 2);
+    }
+
+    /** Shared Smash/Rain terrain work is a sibling hazard, never a main-completion dependency. */
+    void impactTerrain(Location center, double radius, int depth) {
+        if (attackWork == null || attackWork.isClosed()) {
+            return;
+        }
+        EncounterWork terrain = attackWork.child(() -> {
+        });
+        hazards.add(terrain);
+        terrain.onCleanup(() -> hazards.remove(terrain));
+        terrain.run(() -> {
+            TerrainImpact.apply(center, radius, depth, config.debrisLifetimeSeconds(), terrain);
+            terrain.later(seconds(config.debrisLifetimeSeconds()), terrain::close);
+        });
     }
 
     private void climb(DragonFlight movement, EnderDragon source, double duration) {

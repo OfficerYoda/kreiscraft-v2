@@ -25,7 +25,8 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double sweepDamage, Double sweepKnockback, Double finalHealthFraction,
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
         Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks,
-        Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds) {
+        Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds,
+        Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -122,11 +123,17 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         poolDamage = poolDamage == null ? 3.0 : poolDamage;
         poolDamageCadenceSeconds = poolDamageCadenceSeconds == null ? 1.0 : poolDamageCadenceSeconds;
         poolLifetimeSeconds = poolLifetimeSeconds == null ? 6.0 : poolLifetimeSeconds;
-        sweepRadius = sweepRadius == null ? 12.0 : sweepRadius;
+        sweepRadius = sweepRadius == null ? 8.0 : sweepRadius;
         sweepAngle = sweepAngle == null ? 90.0 : sweepAngle;
         sweepWarningSeconds = sweepWarningSeconds == null ? 4.0 : sweepWarningSeconds;
         sweepCadenceSeconds = sweepCadenceSeconds == null ? 25.0 : sweepCadenceSeconds;
-        sweepDamage = sweepDamage == null ? 6.0 : sweepDamage;
+        sweepDamage = sweepDamage == null ? 12.0 : sweepDamage;
+        smashCraterRadius = smashCraterRadius == null ? 5.0 : smashCraterRadius;
+        smashCraterDepth = smashCraterDepth == null ? 1 : smashCraterDepth;
+        debrisLifetimeSeconds = debrisLifetimeSeconds == null ? 4.0 : debrisLifetimeSeconds;
+        bounded("smash-crater-radius", smashCraterRadius, 1, 8);
+        bounded("smash-crater-depth", smashCraterDepth, 1, 3);
+        bounded("debris-lifetime-seconds", debrisLifetimeSeconds, 0.5, 10);
         sweepKnockback = sweepKnockback == null ? 1.2 : sweepKnockback;
         finalHealthFraction = finalHealthFraction == null ? 0.3 : finalHealthFraction;
         finalCadenceFactor = finalCadenceFactor == null ? 0.7 : finalCadenceFactor;
@@ -140,14 +147,13 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("explosion-window-budget", explosionWindowBudget, 1, 200);
         bounded("sweep-radius", sweepRadius, 4, 16);
         bounded("sweep-angle", sweepAngle, 30, 120);
-        bounded("sweep-warning-seconds", sweepWarningSeconds, 2, 15);
+        bounded("sweep-warning-seconds", sweepWarningSeconds, 4, 15);
         bounded("sweep-cadence-seconds", sweepCadenceSeconds, 5, 120);
         bounded("sweep-damage", sweepDamage, 0, 100);
         bounded("sweep-knockback", sweepKnockback, 0, 2);
-        if (sweepCadenceSeconds < sweepWarningSeconds + 0.5
-                || sweepRadius * Math.sin(Math.toRadians(sweepAngle / 2)) + 2 > sweepWarningSeconds * 3) {
+        if (sweepCadenceSeconds < sweepWarningSeconds + 0.5) {
             throw new IllegalArgumentException(
-                    "shattered-crown sweeps require serialized warnings and walking escape time");
+                    "shattered-crown sweeps require serialized warnings");
         }
         bounded("prey-percentage", preyPercentage, 1, 100);
         bounded("prey-cadence-seconds", preyCadenceSeconds, 5, 120);
@@ -156,10 +162,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("pool-damage", poolDamage, 0, 100);
         bounded("pool-damage-cadence-seconds", poolDamageCadenceSeconds, 0.5, 5);
         bounded("pool-lifetime-seconds", poolLifetimeSeconds, 1, 15);
-        if (preyCadenceSeconds < preyCountdownSeconds + 0.5
-                || poolRadius + 2 > preyCountdownSeconds * 3) {
+        if (preyCadenceSeconds < preyCountdownSeconds + 0.5) {
             throw new IllegalArgumentException(
-                    "shattered-crown prey requires serialized marks and walking escape time");
+                    "shattered-crown prey requires serialized marks");
         }
         bounded("landing-cadence-seconds", landingCadenceSeconds, 10, 120);
         bounded("landing-window-seconds", landingWindowSeconds, 8, 30);
@@ -172,9 +177,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("lane-cadence-seconds", laneCadenceSeconds, 2, 120);
         bounded("lane-damage", laneDamage, 0, 100);
         bounded("lane-damage-cadence-seconds", laneDamageCadenceSeconds, 0.5, 5);
-        if (laneCadenceSeconds < laneWarningSeconds + 0.5 || laneWidth / 2 + 2 > laneWarningSeconds * 3) {
+        if (laneCadenceSeconds < laneWarningSeconds + 0.5) {
             throw new IllegalArgumentException(
-                    "shattered-crown lanes require time to walk clear and serialized warnings");
+                    "shattered-crown lanes require serialized warnings");
         }
         if (NamespacedKey.fromString(worldKey) == null) {
             throw new IllegalArgumentException("shattered-crown.world-key must be a namespaced world key");
@@ -196,10 +201,9 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("bombardment-cadence-seconds", bombardmentCadenceSeconds, 2, 120);
         bounded("bombardment-damage", bombardmentDamage, 0, 100);
         bounded("bombardment-radius", bombardmentRadius, 1, 12);
-        if (bombardmentCadenceSeconds < bombardmentWarningSeconds + 0.5
-                || bombardmentRadius + 2 > bombardmentWarningSeconds * 3) {
+        if (bombardmentCadenceSeconds < bombardmentWarningSeconds + 0.5) {
             throw new IllegalArgumentException(
-                    "shattered-crown bombardments must leave warning time to walk clear and cannot overlap");
+                    "shattered-crown bombardments require serialized warnings");
         }
         if (anchorDistance + groundSearchRadius + 3 >= arenaRadius) {
             throw new IllegalArgumentException(
