@@ -241,6 +241,69 @@ class LifecycleEncounterTest {
     }
 
     @Test
+    void connectedDeadEndPlayersStillScaleAutomaticPreyAndLaterWaveSnapshots() throws Exception {
+        // Paper removes connected dead players from the world's entity roster, unlike MockBukkit's default view.
+        end = new WorldMock(new org.bukkit.WorldCreator("native-roster-end").environment(World.Environment.THE_END)) {
+            @Override
+            public List<org.bukkit.entity.Player> getPlayers() {
+                return super.getPlayers().stream().filter(participant -> !participant.isDead()).toList();
+            }
+        };
+        server.addWorld(end);
+        for (int x = -40; x <= 40; x++) {
+            for (int z = -40; z <= 40; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        dragon = end.spawn(new Location(end, 0, 80, 0), EnderDragon.class);
+        dragon.setPodium(new Location(end, 0, 64, 0));
+        player.teleport(new Location(end, 10, 64, 0));
+        var teammate = server.addPlayer();
+        teammate.setGameMode(org.bukkit.GameMode.ADVENTURE);
+        teammate.teleport(new Location(end, -10, 64, 0));
+        var deadPlayers = List.of(server.addPlayer(), server.addPlayer());
+        deadPlayers.forEach(connected -> connected.teleport(new Location(end, 15, 64, 0)));
+        var elsewhere = server.addPlayer();
+        elsewhere.teleport(new Location(server.addSimpleWorld("other-roster-world"), 0, 64, 0));
+        config.node("world-key").set(end.getKey().toString());
+        config.node("opening-grace-seconds").set(0);
+        config.node("prey-cadence-seconds").set(5);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("sweep-cadence-seconds").set(120);
+        var encounter = new EncounterController(server, battles, ShatteredCrownConfig.load(config),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            scheduler.advance(Duration.ZERO);
+            assertThat(encounter.firstEntryPopulation()).isEqualTo(5); // Server-wide snapshot stays unchanged.
+            deadPlayers.forEach(connected -> connected.setHealth(0));
+            assertThat(deadPlayers).allSatisfy(connected -> {
+                assertThat(connected.isOnline()).isTrue();
+                assertThat(connected.isDead()).isTrue();
+                assertThat(connected.getWorld()).isSameAs(end);
+            });
+            assertThat(server.getOnlinePlayers()).hasSize(5);
+            assertThat(end.getPlayers()).containsExactlyInAnyOrder(player, teammate);
+            assertThat(encounter.combatPopulation()).isEqualTo(2);
+            clearWave();
+            scheduler.advance(Duration.ofSeconds(5));
+            assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(2); // Four connected → two marks.
+            assertThat(encounter.scalingPopulation()).isEqualTo(4);
+            acceptedDragonHit(100000);
+            assertThat(encounter.waveNumber()).isEqualTo(2);
+            assertThat(encounter.wavePopulation()).isEqualTo(4);
+            clearWave();
+            acceptedDragonHit(100000);
+            assertThat(encounter.waveNumber()).isEqualTo(3);
+            assertThat(encounter.wavePopulation()).isEqualTo(4);
+            assertThat(encounter.firstEntryPopulation()).isEqualTo(5);
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @Test
     void lateArrivalsCannotResizeOpeningRosterAndLaterWavesSnapshotEveryoneInEnd() throws Exception {
         var overworld = server.addSimpleWorld("population-overworld");
         player.teleport(new Location(overworld, 0, 64, 0));
