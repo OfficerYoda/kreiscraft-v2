@@ -20,6 +20,9 @@ Dive retains the native eight-block step ceiling across the expanded arena. If t
 dragon-to-lane distance cannot fit within the configured warning ticks, it first approaches at
 at most 7.5 blocks per native tick, then begins the full visible warning. Both stages remain
 owned/cancellable; lost targets, changed ground or replaced phases release the main action.
+The default 40-block pass takes 1.5 seconds. Its sharper descent reaches two blocks above the
+surface after the first sixth of the pass (five ticks by default), then stays low until the climb.
+The full two-second warning and once-per-player damage are unchanged.
 
 ## Selection and terrain
 

@@ -122,7 +122,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         laneLifetimeSeconds = laneLifetimeSeconds == null ? 6.0 : laneLifetimeSeconds;
         laneCadenceSeconds = laneCadenceSeconds == null ? 10.0 : laneCadenceSeconds;
         laneDamage = laneDamage == null ? 8.0 : laneDamage;
-        divePassSeconds = divePassSeconds == null ? 2.5 : divePassSeconds;
+        divePassSeconds = divePassSeconds == null ? 1.5 : divePassSeconds;
         diveClimbSeconds = diveClimbSeconds == null ? 1.0 : diveClimbSeconds;
         bounded("dive-pass-seconds", divePassSeconds, 1, 10);
         bounded("dive-climb-seconds", diveClimbSeconds, 0.5, 10);

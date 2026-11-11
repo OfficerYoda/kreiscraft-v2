@@ -221,8 +221,10 @@ The bundled module is **enabled by default**, with `movement-attacks: true`
 This replaces stationary Hunt lanes with a **marked-strip dive** and stationary wing sectors
 with a **ground smash**. Set it to `false` to use the earlier stationary attacks described below.
 
-- **Dive:** a **two-second Attack Warning**, **2.5-second physical pass** and **one-second climb**.
-  Defaults are a six-block-wide, 40-block-long lane, retaining the previous horizontal speed. `lane-length`, `lane-width`,
+- **Dive:** a **two-second Attack Warning**, **1.5-second physical pass** and **one-second climb**.
+  Defaults are a six-block-wide, 40-block-long lane. The dragon plunges during the first sixth of
+  the pass, then skims the ground for the rest, at roughly 26.7 horizontal blocks per second.
+  `lane-length`, `lane-width`,
   `lane-warning-seconds`, `dive-pass-seconds` and `dive-climb-seconds` are validated tuning.
   There are **no Dive particles**: only the floating countdown, growl and real approaching dragon.
   A low passing dragon hits each eligible player at most once; `lane-damage: 8` targets four hearts

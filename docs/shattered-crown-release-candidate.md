@@ -56,7 +56,7 @@ completion (one second after rejected initial setup). Landings reserve six secon
 | Action | Default warning/motion | Clean reference HP loss on Easy/Normal/Hard |
 | --- | --- | --- |
 | Bombardment | Fixed radius4,3-second warning; no crater | 6HP/3 hearts |
-| Dive | 2-second warning,2.5-second pass,1-second climb;40×6 lane; NO particles | 8HP/4 hearts, once at actual low pass |
+| Dive | 2-second warning,1.5-second pass with early plunge,1-second climb;40×6 lane; NO particles | 8HP/4 hearts, once at actual low pass |
 | Smash | FULL3-second visible warning,1-second plunge,3-second grounded recovery,2-second climb | 12HP/6 hearts, radius8 |
 | Rain | Fixed radius5 pool warning,launch at1 second from20 blocks above,roughly2-second descent | 4HP/2 hearts, once at real radius2 impact |
 | Prey pool | 4-second mark;radius5;6-second ordinary lifetime,3 seconds in finale | Configured raw3HP/pulse, NOT calibrated3HP loss |

@@ -1473,7 +1473,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 for (double across = -lane.width / 2; across <= lane.width / 2; across += 1) {
                     groundY = Math.max(groundY, lane.point(along, across).getY());
                 }
-                position.setY(groundY + 2 + 12 * Math.pow(Math.max(0, 1 - t * 3), 2));
+                // Finish the plunge in the first sixth of the pass, then skim the remaining ground.
+                position.setY(groundY + 2 + 12 * Math.pow(Math.max(0, 1 - t * 6), 2));
                 return position;
             }, config.divePassSeconds(), position -> {
                 lane.age += 0.05;

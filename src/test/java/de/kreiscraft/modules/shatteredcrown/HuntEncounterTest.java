@@ -898,7 +898,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void longerDiveTravelsFortyBlocksWithTwoSecondWarningFiftyTickPassAndTwentyTickClimb() throws Exception {
+    void aggressiveDiveTravelsFortyBlocksWithEarlyGroundHitThirtyTickPassAndFullWarning() throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
@@ -911,17 +911,31 @@ class HuntEncounterTest {
         Location passStart = dragon.getLocation();
         assertThat(Math.hypot(passStart.getX() - player.getX(), passStart.getZ() - player.getZ()))
                 .isEqualTo(20);
-        scheduler.advance(Duration.ofMillis(500));
+        var earlyTarget = server.addPlayer("EarlyDiveTarget");
+        var direction = player.getLocation().toVector().subtract(passStart.toVector()).setY(0).normalize();
+        Location earlyPosition = passStart.clone().add(direction.multiply(4));
+        earlyPosition.setY(player.getY());
+        earlyTarget.teleport(earlyPosition);
+        scheduler.advance(Duration.ofMillis(100));
+        assertThat(earlyTarget.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(50));
         Location groundPassStart = dragon.getLocation();
         assertThat(groundPassStart.getY()).isLessThanOrEqualTo(69);
-        scheduler.advance(Duration.ofMillis(2000));
+        assertThat(earlyTarget.getHealth()).isEqualTo(12);
+        assertThat(referenceHits).isEqualTo(1);
+        scheduler.advance(Duration.ofMillis(100));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofMillis(500));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofMillis(750));
         assertThat(dragon.getY()).isEqualTo(66);
         assertThat(Math.hypot(dragon.getX() - passStart.getX(), dragon.getZ() - passStart.getZ()))
                 .isEqualTo(40);
         assertThat(Math.hypot(dragon.getX() - groundPassStart.getX(), dragon.getZ() - groundPassStart.getZ()))
-                .isEqualTo(32);
+                .isEqualTo(36);
         assertThat(player.getHealth()).isEqualTo(12);
-        assertThat(referenceHits).isEqualTo(1);
+        assertThat(earlyTarget.getHealth()).isEqualTo(12);
+        assertThat(referenceHits).isEqualTo(2);
         scheduler.advance(Duration.ofMillis(950));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         scheduler.advance(Duration.ofMillis(50));
@@ -1097,7 +1111,7 @@ class HuntEncounterTest {
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofMillis(2500));
+        scheduler.advance(Duration.ofMillis(1500));
         assertThat(player.getHealth()).isEqualTo(12);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         scheduler.advance(Duration.ofSeconds(1));

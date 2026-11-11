@@ -51,7 +51,7 @@ post-completion delay. Normal wave-gate replacement cancels applicable work with
 `attack-gap-min-seconds` and `attack-gap-max-seconds` default to 2 and 4; each must be finite within
 2–10 and minimum must not exceed maximum. Existing 5–10-second overrides remain valid. They are rounded to server ticks and snapshotted per
 attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
-Existing YAML retains explicit tuning: set `lane-length: 40.0`, `dive-pass-seconds: 2.5`,
+Existing YAML retains explicit tuning: set `lane-length: 40.0`, `dive-pass-seconds: 1.5`,
 `attack-gap-min-seconds: 2.0` and `attack-gap-max-seconds: 4.0` to adopt the new defaults next attempt.
 Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
 `hazards`, remaining round `queued`, `last-selection` (including rejected setups), and

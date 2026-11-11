@@ -174,7 +174,7 @@ modules:
     lane-length: 40.0
     lane-width: 6.0
     lane-warning-seconds: 2.0
-    dive-pass-seconds: 2.5
+    dive-pass-seconds: 1.5
     dive-climb-seconds: 1.0
     lane-lifetime-seconds: 6.0
     lane-cadence-seconds: 10.0
