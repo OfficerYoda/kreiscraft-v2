@@ -107,7 +107,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `pool-lifetime-seconds` | 6 | 1–15 seconds, `[activation, expiry)` |
 | `sweep-radius` | 8 | 4–16 blocks; physical Smash caps at eight |
 | `sweep-angle` | 90 | 30–120 degrees, centered on the dragon's warning-time facing |
-| `sweep-warning-seconds` | 4 | 4–15 seconds before the single hit |
+| `sweep-warning-seconds` | 3 | 3–15 seconds before the single hit |
 | `sweep-cadence-seconds` | 25 | 5–120 seconds between opportunities; first after this interval |
 | `sweep-damage` | 12 | 0–100 reference HP for physical Smash; raw units for legacy sectors |
 | `sweep-knockback` | 1.2 | 0–2 horizontal velocity, vertical component one-third of this value |

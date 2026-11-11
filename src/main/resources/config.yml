@@ -195,7 +195,7 @@ modules:
     pool-lifetime-seconds: 6.0
     sweep-radius: 8.0
     sweep-angle: 90.0
-    sweep-warning-seconds: 4.0
+    sweep-warning-seconds: 3.0
     sweep-cadence-seconds: 25.0
     sweep-damage: 12.0
     sweep-knockback: 1.2

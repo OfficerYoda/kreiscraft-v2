@@ -6,7 +6,7 @@ title: Shattered Crown terrain impacts
 
 Ground Smash unlocks after all four wave-three crystals are destroyed. `/dragondebug trigger smash`
 uses the same production action; manual triggers bypass the unlock, not player eligibility.
-The FULL four-second warning has particles every quarter-second, a floating countdown and a growl.
+The FULL three-second warning has particles every quarter-second, a floating countdown and a growl.
 The native, AI-enabled dragon rises during that warning, plunges for one second, remains grounded
 for three seconds, then climbs for two. Main completion follows the climb, never the impact.
 Very distant approaches stage bounded native movement before the warning. Native moves remain at
@@ -44,11 +44,13 @@ Closed callbacks cannot restart work. There is no terrain restoration journal.
 Values are validated on atomic reload/editor publication and snapshotted for the next attempt.
 English/German controls include crater tuning. Crown uses installed InvUI pagination so all controls
 remain reachable without overwriting the module toggle or back button.
+Existing configuration keeps explicit overrides; set `sweep-warning-seconds: 3.0` to adopt the shorter
+warning on the next attempt. Plunge, grounded recovery and climb durations remain unchanged.
 
 | Key | Default | Bounds / units |
 | --- | --- | --- |
 | `sweep-radius` | 8 | 4–16; physical Smash caps at 8, legacy sectors use the full value |
-| `sweep-warning-seconds` | 4 | 4–15 seconds; cadence must exceed warning by 0.5 seconds |
+| `sweep-warning-seconds` | 3 | 3–15 seconds; cadence must exceed warning by 0.5 seconds |
 | `sweep-damage` | 12 | 0–100 reference HP for physical Smash; raw units for legacy sectors |
 | `smash-crater-radius` | 5 | 1–8 blocks |
 | `smash-crater-depth` | 1 | Integer 1–3 removed layers |

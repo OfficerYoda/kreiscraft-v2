@@ -366,7 +366,7 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("pool-lifetime-seconds", 1, 15));
         fields.add(crownNumber("sweep-radius", 4, 16));
         fields.add(crownNumber("sweep-angle", 30, 120));
-        fields.add(crownNumber("sweep-warning-seconds", 4, 15));
+        fields.add(crownNumber("sweep-warning-seconds", 3, 15));
         fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
         fields.add(crownNumber("sweep-damage", 0, 100));
         fields.add(crownNumber("sweep-knockback", 0, 2));

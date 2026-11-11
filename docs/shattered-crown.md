@@ -231,7 +231,7 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   below eight blocks without stretching the two-second countdown. Main action completes only after
   the climb restores native flight; the rotation's next gap can begin then.
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
-  blocks; the FULL four-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
+  blocks; the FULL three-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
   Main completion follows the climb. `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
   The impact permanently removes roughly radius-five, one-block-deep ground. Debris cannot hurt, place

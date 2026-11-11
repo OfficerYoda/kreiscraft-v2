@@ -272,12 +272,12 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
                 lastParticles = sinks.getFirst().particles;
             }
             int warningTick = age - warningAge;
-            if (warningAge > 0 && warningTick >= 5 && warningTick < 80 && warningTick % 5 == 0 && scenario != 4) {
-                check(sinks.getFirst().particles > lastParticles, "particles throughout FULL four-second warning");
+            if (warningAge > 0 && warningTick >= 5 && warningTick < 60 && warningTick % 5 == 0 && scenario != 4) {
+                check(sinks.getFirst().particles > lastParticles, "particles throughout FULL three-second warning");
                 lastParticles = sinks.getFirst().particles;
                 check(solidPatch() == initialSolid && hits == 0, "no early crater/damage");
             }
-            if (warningAge > 0 && warningTick == 79 && scenario != 4) {
+            if (warningAge > 0 && warningTick == 59 && scenario != 4) {
                 check(Math.abs(dragon.getY() - target.getY() - 18) < 1, "physical rise completes warning");
                 check(sinks.getFirst().sounds > 0, "warning sound");
                 check(!warnings().getFirst().text().equals(net.kyori.adventure.text.Component.empty()),
@@ -288,7 +288,7 @@ public final class SmashEncounterProbe extends JavaPlugin implements Listener {
             }
             if (impactAge == 0 && !debris().isEmpty()) {
                 impactAge = age;
-                check(warningTick >= 98 && warningTick <= 102, "one-second physical plunge");
+                check(warningTick >= 78 && warningTick <= 82, "one-second physical plunge");
                 check(solidPatch() < initialSolid && world.getBlockAt(40, floorY, 40).isEmpty(),
                         "actual ground removal");
                 check(world.getBlockAt(40, floorY - 1, 40).getType().isSolid(), "one-block-deep crater");

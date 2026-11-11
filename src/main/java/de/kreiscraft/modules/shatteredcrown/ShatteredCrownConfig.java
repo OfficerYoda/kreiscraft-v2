@@ -140,7 +140,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         poolLifetimeSeconds = poolLifetimeSeconds == null ? 6.0 : poolLifetimeSeconds;
         sweepRadius = sweepRadius == null ? 8.0 : sweepRadius;
         sweepAngle = sweepAngle == null ? 90.0 : sweepAngle;
-        sweepWarningSeconds = sweepWarningSeconds == null ? 4.0 : sweepWarningSeconds;
+        sweepWarningSeconds = sweepWarningSeconds == null ? 3.0 : sweepWarningSeconds;
         sweepCadenceSeconds = sweepCadenceSeconds == null ? 25.0 : sweepCadenceSeconds;
         sweepDamage = sweepDamage == null ? 12.0 : sweepDamage;
         smashCraterRadius = smashCraterRadius == null ? 5.0 : smashCraterRadius;
@@ -162,7 +162,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("explosion-window-budget", explosionWindowBudget, 1, 200);
         bounded("sweep-radius", sweepRadius, 4, 16);
         bounded("sweep-angle", sweepAngle, 30, 120);
-        bounded("sweep-warning-seconds", sweepWarningSeconds, 4, 15);
+        bounded("sweep-warning-seconds", sweepWarningSeconds, 3, 15);
         bounded("sweep-cadence-seconds", sweepCadenceSeconds, 5, 120);
         bounded("sweep-damage", sweepDamage, 0, 100);
         bounded("sweep-knockback", sweepKnockback, 0, 2);

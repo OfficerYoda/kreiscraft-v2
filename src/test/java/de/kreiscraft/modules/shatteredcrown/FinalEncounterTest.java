@@ -918,6 +918,7 @@ class FinalEncounterTest {
 
     @Test
     void finalSweepUsesTheSameFourSecondWarningButStartsAtSeventeenAndAHalfSeconds() throws Exception {
+        config.node("sweep-warning-seconds").set(4);
         config.node("prey-cadence-seconds").set(120);
         config.node("lane-cadence-seconds").set(120);
         player.teleport(new Location(end, 0.5, 64, 10.5));

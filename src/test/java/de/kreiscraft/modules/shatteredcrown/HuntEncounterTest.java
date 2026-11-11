@@ -201,6 +201,9 @@ class HuntEncounterTest {
     private void startEncounter() throws Exception {
         if (!config.node("movement-attacks").getBoolean(true)) {
             // Explicit historical sector tuning; native Smash uses the redesigned defaults.
+            if (config.node("sweep-warning-seconds").virtual()) {
+                config.node("sweep-warning-seconds").set(4);
+            }
             if (config.node("sweep-radius").virtual()) {
                 config.node("sweep-radius").set(12);
             }
@@ -1201,7 +1204,7 @@ class HuntEncounterTest {
         module.onConfigReload(next);
         player.setOp(true);
         debug("trigger smash", player);
-        scheduler.advance(Duration.ofSeconds(5));
+        scheduler.advance(Duration.ofSeconds(4));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
         assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
         debug("cancel", player);
@@ -1211,7 +1214,7 @@ class HuntEncounterTest {
         player.setHealth(20);
         scheduler.advance(Duration.ofSeconds(1));
         debug("trigger smash", player);
-        scheduler.advance(Duration.ofSeconds(5));
+        scheduler.advance(Duration.ofSeconds(4));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(26);
         assertThat(end.getBlockAt(10, 62, 0).isEmpty()).isTrue();
         assertThat(end.getBlockAt(10, 61, 0).isEmpty()).isTrue();
@@ -1294,7 +1297,7 @@ class HuntEncounterTest {
         }
         player.setOp(true);
         debug("trigger smash", player);
-        scheduler.advance(Duration.ofMillis(impact ? 5000 : 4950));
+        scheduler.advance(Duration.ofMillis(impact ? 4000 : 3950));
         var unrelated = end.spawn(new Location(end, 35, 65, 35), org.bukkit.entity.FallingBlock.class);
         switch (termination) {
             case "cancel", "pause" -> debug(termination, player);
@@ -1386,7 +1389,7 @@ class HuntEncounterTest {
         startEncounter();
         player.setOp(true);
         debug("trigger smash", player);
-        scheduler.advance(Duration.ofMillis(4950));
+        scheduler.advance(Duration.ofMillis(3950));
         assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofMillis(50));
@@ -1423,7 +1426,10 @@ class HuntEncounterTest {
         hunt();
         clearFinalGate();
         trigger("smash");
-        scheduler.advance(Duration.ofSeconds(4));
+        scheduler.advance(Duration.ofMillis(2950));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        scheduler.advance(Duration.ofMillis(50));
         assertThat(dragon.getLocation().getY()).isEqualTo(82);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
@@ -2400,7 +2406,8 @@ class HuntEncounterTest {
     @org.junit.jupiter.params.provider.CsvSource({"prey-percentage,101", "prey-cadence-seconds,4",
             "prey-countdown-seconds,1",
             "pool-radius,7", "pool-damage,NaN", "pool-damage-cadence-seconds,0", "pool-lifetime-seconds,16",
-            "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-cadence-seconds,4",
+            "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-warning-seconds,2.99",
+            "sweep-cadence-seconds,4",
             "sweep-damage,Infinity", "sweep-knockback,3"})
     void invalidNewTuningCannotPartiallyChangeAnAttempt(String key, double value) throws Exception {
         prey();
