@@ -66,13 +66,13 @@ defeated before it can be destroyed.
 _Avoid_: Shield generator, pylon
 
 **Anchor Wave**:
-A set of four independently defended Anchors that temporarily shields the dragon until every crystal
+A set of four independent Anchors that temporarily shields the dragon until every crystal
 is destroyed. Completing a wave permanently unlocks additional attacks.
 _Avoid_: Final pair, defender wave
 
 **Roster Unit**:
-One complete set of a wave's defenders assigned to an Anchor. Population scaling repeats whole units,
-not individual defenders or groups within a unit.
+One complete set of a wave's defenders. Opening and second-wave units repeat at each Anchor;
+final-wave units each contain a Warden and a Wither distributed across the Anchors.
 _Avoid_: Defender count, group count
 
 **Defender Group**:

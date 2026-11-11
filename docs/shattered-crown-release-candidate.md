@@ -33,9 +33,11 @@ Do not install `build/paper-probe/` JARs on production.
 | --- | --- | --- | --- | --- |
 | One | 100% | Four Anchors,43 members/16 groups: spear Zombie/Horse, Skeleton/Spider, Bogged/Cave Spider,4–6 undead tower per Anchor | 87 members | 219 members |
 | Two | 65% | Four Anchors,24 roots: Ravager/Guardian/Brute/Vindicator/Blaze/Breeze per Anchor | 48 roots | 120 roots |
-| Three | 30% | Four Anchors,4 Wardens+4 enhanced Withers, plus owned Wither minions | 8+8 roots | 20+20 roots |
+| Three | 30% | Four Anchors,1 Warden+1 enhanced Wither, plus owned Wither minions | 2+2 roots | 5+5 roots |
 
-Units per Anchor=`ceil(snapshot/4)`, uncapped. Opening freezes everyone online server-wide at first
+Units per Anchor for waves one/two, or across the whole wave for wave three,=`ceil(snapshot/4)`, uncapped.
+Final bosses are spread evenly across Anchors, balancing species too; 1–4 players have two initially exposed
+crystals, and twenty players have 3/2/3/2 bosses around the ring. Opening freezes everyone online server-wide at first
 End entry; connected dead arrivals retain that snapshot while awaiting respawn. Later waves freeze
 everyone connected in the managed End, including Creative/Spectator,
 outer-island and connected dead players. Those observers/dead players are never combat targets and

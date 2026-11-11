@@ -188,15 +188,15 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                     observer.getBukkitEntity().teleport(new Location(end, 250, 151, 0.5));
                 }
                 command("wave 3");
-                require(anchors().size() == 4 && defenders().size() == 16, "population5 two pairs EACH Anchor");
-                require(end.getEntitiesByClass(Warden.class).size() == 8
-                        && end.getEntitiesByClass(Wither.class).size() == 8, "native species counts");
+                require(anchors().size() == 4 && defenders().size() == 4, "population5 two pairs across all Anchors");
+                require(end.getEntitiesByClass(Warden.class).size() == 2
+                        && end.getEntitiesByClass(Wither.class).size() == 2, "native species counts");
                 wither = end.getEntitiesByClass(Wither.class).iterator().next();
                 home = anchors().stream().min(java.util.Comparator.comparingDouble(
                         crystal -> crystal.getLocation().distanceSquared(wither.getLocation()))).orElseThrow();
                 homeBosses = defenders().stream()
                         .filter(mob -> mob.getLocation().distanceSquared(home.getLocation()) < 25).toList();
-                require(homeBosses.size() == 4, "two original pairs registered at selected Anchor");
+                require(homeBosses.size() == 1, "one original boss registered at selected Anchor");
                 warden = end.getEntitiesByClass(Warden.class).stream().filter(mob -> !homeBosses.contains(mob))
                         .findFirst().orElseThrow();
                 require(wither.getHealth() == 600 && wither.getAttribute(Attribute.MAX_HEALTH).getValue() == 600
@@ -392,7 +392,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 next();
             } else if (stage == 7 && nativeUnloaded && ticks - unloadTick >= 25) {
                 require(nativeUnloaded, "actual native EntitiesUnloadEvent observed for Warden");
-                require(end.getEntitiesByClass(Warden.class).size() == 8,
+                require(end.getEntitiesByClass(Warden.class).size() == 2,
                         "invalid Warden recovered, not permanent gate");
                 player.teleport(new Location(end, 40.5, 151, 0.5));
                 end.loadChunk(11, 2);
@@ -400,7 +400,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 dead.setHealth(0);
                 next();
             } else if (stage == 8 && ticks - stageTick >= 25) {
-                require(end.getEntitiesByClass(Warden.class).size() == 7, "actual Warden death not replenished");
+                require(end.getEntitiesByClass(Warden.class).size() == 1, "actual Warden death not replenished");
                 idleWarden = end.getEntitiesByClass(Warden.class).iterator().next();
                 idleWarden.teleport(new Location(end, 0.5, end.getHighestBlockYAt(0, 0) + 1, 0.5));
                 idleWarden.setAI(true);

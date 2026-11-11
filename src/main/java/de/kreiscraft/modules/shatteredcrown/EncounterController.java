@@ -2103,13 +2103,21 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         objective.crystal.setGlowing(objective.wave.isEmpty());
     }
 
-    /** #153–155 replace this unit's content, not wave scaling or objective completion. */
+    /** Opening/second units repeat per Anchor; final units are distributed across the whole wave. */
     private void spawnRosterUnit(Anchor objective, int wave, int unit) {
         if (wave == 3) {
-            spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective, battles::preventDespawn);
-            // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
-            spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
-                    mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
+            int anchorIndex = anchors.indexOf(objective);
+            int anchorCount = openingGround.size();
+            if (unit % anchorCount == anchorIndex) {
+                spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective,
+                        battles::preventDespawn);
+            }
+            // Offset the species by half the ring so both species and total counts stay balanced.
+            if ((unit + anchorCount / 2) % anchorCount == anchorIndex) {
+                // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
+                spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
+                        mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
+            }
             return;
         }
         if (wave == 1) {

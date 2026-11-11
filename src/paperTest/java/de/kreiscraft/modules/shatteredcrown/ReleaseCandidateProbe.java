@@ -281,23 +281,26 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
             var crystal = objectives.get(index);
             var members = defenders().stream().filter(mob -> crystal.getUniqueId().equals(encounter.anchorId(mob)))
                     .toList();
-            check(!members.isEmpty(), "real full membership at original Anchor");
-            crystalHit(crystal);
-            check(crystal.isValid(), "defenders block player crystal hit");
-            var survivor = members.stream().filter(org.bukkit.entity.WitherSkeleton.class::isInstance).findFirst()
-                    .orElse(members.getLast());
-            for (var member : members) {
-                if (member != survivor) {
-                    member.setHealth(0); // Real native deaths; never fabricated reward or death events.
+            if (members.isEmpty()) {
+                check(encounter.waveNumber() == 3 && crystal.isGlowing(), "empty final Anchor starts exposed");
+            } else {
+                crystalHit(crystal);
+                check(crystal.isValid(), "defenders block player crystal hit");
+                var survivor = members.stream().filter(org.bukkit.entity.WitherSkeleton.class::isInstance).findFirst()
+                        .orElse(members.getLast());
+                for (var member : members) {
+                    if (member != survivor) {
+                        member.setHealth(0); // Real native deaths; never fabricated reward or death events.
+                    }
                 }
-            }
-            crystalHit(crystal);
-            check(crystal.isValid(), "last member independently gates crystal");
-            survivor.setHealth(0);
-            // Enhanced Wither deaths/half-health callbacks can have synchronously added descendants.
-            for (var member : defenders().stream()
-                    .filter(mob -> crystal.getUniqueId().equals(encounter.anchorId(mob))).toList()) {
-                member.setHealth(0);
+                crystalHit(crystal);
+                check(crystal.isValid(), "last member independently gates crystal");
+                survivor.setHealth(0);
+                // Enhanced Wither deaths/half-health callbacks can have synchronously added descendants.
+                for (var member : defenders().stream()
+                        .filter(mob -> crystal.getUniqueId().equals(encounter.anchorId(mob))).toList()) {
+                    member.setHealth(0);
+                }
             }
             crystalHit(crystal);
             check(!crystal.isValid(), "legal crystal attack after every root and descendant death");
@@ -500,7 +503,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     if (anchors().size() != 4) {
                         return;
                     }
-                    check(defenders().size() == (attempt == 0 ? 40 : 8), "uncapped complete final boss roster");
+                    check(defenders().size() == (attempt == 0 ? 10 : 2), "uncapped distributed final boss roster");
                     if (ticks - since < 230) {
                         return; // Let all native 220-tick charges and destructive enhanced spawn blasts actually finish.
                     }
@@ -511,7 +514,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.setNoDamageTicks(0);
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == (attempt == 0 ? 44 : 12), "enhanced half-health four owned minions");
+                    check(defenders().size() == (attempt == 0 ? 14 : 6), "enhanced half-health four owned minions");
                     clearWave();
                     check(encounter.availableAttacks().size() == 5, "all five permanent families runnable");
                     command("resume");
@@ -788,7 +791,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     }
                     end.loadChunk(11, 2);
                     check(getServer().getEntity(unloadMember) == null, "reloaded stale member cleaned");
-                    check(defenders().size() == 8, "actual unload is recovery not defeat or duplicate gate");
+                    check(defenders().size() == 2, "actual unload is recovery not defeat or duplicate gate");
                     for (var player : fixtures) {
                         player.getBukkitEntity().teleport(new Location(end, 100.5, 50, 0.5));
                     }
@@ -801,7 +804,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == 12, "interrupted active attempt includes actual minions");
+                    check(defenders().size() == 6, "interrupted active attempt includes actual minions");
                     parent.setHealth(0);
                     prepareRain(22);
                     command("trigger fireball-rain");
@@ -928,7 +931,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == 12, "new attempt after actual world load has fresh minions only");
+                    check(defenders().size() == 6, "new attempt after actual world load has fresh minions only");
                     parent.setHealth(0);
                     // Prepare saved later-load controls BEFORE Rain's live checkpoint. Same-tick additions/moves
                     // into a new native chunk are not committed by save-all until entity loading has ticked.

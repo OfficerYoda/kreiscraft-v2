@@ -10,8 +10,10 @@ The [encounter guide](/shattered-crown/) lists the shipped profile and current c
 ## Combat coverage, population and opening grace (#150)
 
 #151 consumes these APIs at three fixed four-Anchor boundaries (100%, 65%, 30%). It freezes
-`firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Each Anchor receives
-`ceil(population/4)` complete Roster Units. Missing/unloaded members are replaced, not defeated;
+`firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Waves one/two give each Anchor
+`ceil(population/4)` complete Roster Units; wave three distributes that many Warden/Wither units across
+all four Anchors, balancing total bosses and each species. Empty Anchors start exposed.
+Missing/unloaded members are replaced, not defeated;
 only destruction of all four exposed crystals completes a wave. A wave owns its crystal/defender
 scope inside the attempt scope. Phase replacement closes attack, objective and extension-owned
 work, cancels accepted-but-pending damage and resets explosion reservations. Debug snapshots are fresh,

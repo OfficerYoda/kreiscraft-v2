@@ -280,7 +280,7 @@ class FinalEncounterTest {
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);
         assertThat(dragon.getHealth()).isEqualTo(300);
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(8);
+        assertThat(defenders()).hasSize(2);
         clearAnchors();
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 100).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(200);
@@ -297,11 +297,14 @@ class FinalEncounterTest {
         assertThat(hit.getFinalDamage()).isEqualTo(700);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).isSubsetOf(openingLocations);
-        assertThat(defenders()).hasSize(8);
+        assertThat(defenders()).hasSize(2);
+        assertThat(crystals().stream().filter(Entity::isGlowing)).hasSize(2);
         crystals().forEach(anchor -> {
+            boolean exposed = anchor.isGlowing();
             damage(anchor, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10);
-            assertThat(anchor.isValid()).isTrue();
+            assertThat(anchor.isValid()).isEqualTo(!exposed);
         });
+        assertThat(crystals()).hasSize(2);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, 100000).isCancelled()).isTrue();
         assertThat(dragon.getHealth()).isEqualTo(300);
     }
@@ -422,12 +425,13 @@ class FinalEncounterTest {
             throws Exception {
         hunt();
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 700);
-        var pair = crystals();
+        var pair = crystals().stream().filter(anchor -> !anchor.isGlowing()).toList();
+        assertThat(pair).hasSize(2);
         var first = pair.get(reverse ? 1 : 0);
         var second = pair.get(reverse ? 0 : 1);
         var firstWave = List.copyOf(defenders()).stream()
                 .filter(defender -> defender.getLocation().distanceSquared(first.getLocation()) < 9).toList();
-        assertThat(firstWave).hasSize(2);
+        assertThat(firstWave).hasSize(1);
         firstWave.forEach(defender -> {
             defeat(defender);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -877,7 +881,7 @@ class FinalEncounterTest {
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isFalse();
         assertThat(dragon.getHealth()).isEqualTo(300);
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(8);
+        assertThat(defenders()).hasSize(2);
     }
 
     @Test
@@ -1285,7 +1289,7 @@ class FinalEncounterTest {
             assertThat(crystals()).isEmpty();
         } else {
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(8);
+            assertThat(defenders()).hasSize(2);
             assertThat(dragon.getHealth()).isEqualTo(300);
         }
     }
@@ -1321,8 +1325,9 @@ class FinalEncounterTest {
             }
         }, plugin);
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
-        assertThat(crystals()).hasSize(4).allMatch(anchor -> !anchor.isGlowing());
-        assertThat(defenders()).hasSize(8);
+        assertThat(crystals()).hasSize(4);
+        assertThat(crystals().stream().filter(Entity::isGlowing)).hasSize(2);
+        assertThat(defenders()).hasSize(2);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
         clearAnchors();
         assertThat(crystals()).isEmpty();

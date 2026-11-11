@@ -40,7 +40,7 @@ Crystal healing is disabled. Defender deaths expose only their assigned crystal;
 must then be destroyed by eligible player attacks, in any order. Mob damage, explosions, unrelated
 crystals and protected-origin attacks cannot complete an objective.
 
-Each Anchor receives **ceil(wave population / 4) complete Roster Units**, without a population cap:
+Waves one and two give each Anchor **ceil(wave population / 4) complete Roster Units**, without a population cap:
 0→0, 4→1, 5/8→2, 12→3, 20→5, 68→17. An empty debug End still has four exposed crystals to destroy.
 Wave one freezes #150's first-End-entry server-wide population;
 waves two and three freeze everyone connected in the managed End at their starts, including creative,
@@ -51,10 +51,12 @@ Ground Smash after wave three. Unlocks survive later shields. The shuffled rotat
 [native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
 Wave two has exactly one **Ravager, Guardian, Piglin Brute,
 Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
-72 at 9–12; no random pool, per-species scaling or cap. Wave three uses the complete
-Warden/enhanced-Wither pair below. The explicit extension point is
-`EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
-content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
+72 at 9–12; no random pool, per-species scaling or cap. Wave three instead has
+**ceil(wave population / 4) Wardens and the same number of enhanced Withers across the entire wave**,
+distributed evenly across the four Anchors. The explicit extension point is
+`EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: opening/second units repeat
+per Anchor; final units distribute their two bosses across Anchors. Use
+`spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
 Use the parent overload for descendants and `inheritOwnership` in projectile/effect pre-spawn consumers.
 All are owned by `waveWork`; do not scale again or equate defender deaths with crystal completion.
@@ -162,9 +164,12 @@ balance, ritual completion or native reward delivery. Those remain integrated #1
 
 ### Final Warden and enhanced-Wither wave (#155)
 
-Each final-wave Roster Unit is **one native Warden plus one enhanced Wither at EACH Anchor**.
-Four connected End players therefore face four Wardens/four Withers; five through eight face
-eight Wardens/eight Withers. The snapshot includes connected dead players, Creative/Spectator
+Each final-wave Roster Unit is **one native Warden plus one enhanced Wither across the entire wave**.
+One through four connected End players face one Warden/one Wither; five through eight face
+two Wardens/two Withers; twenty face five of each. Each species cycles around the four Anchors,
+with Withers offset by two Anchors from Wardens. Total boss counts and each species' counts differ
+by at most one between Anchors. At population 1–4 the bosses defend opposite Anchors and the other
+two crystals start exposed; all four crystals still must be destroyed. The snapshot includes connected dead players, Creative/Spectator
 observers and players outside combat. Later arrivals/departures do not resize it.
 
 Both bosses roam the full combat cylinder and retain their original Anchor. Warden pursuit uses
@@ -427,7 +432,7 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   policy is changed.
 - Every wave has four independent Anchors with population-scaled complete Roster Units. At four
   online players wave one has four groups per Anchor (43 members total); wave two has six species
-  per Anchor (24 total); wave three has one Warden/Wither pair per Anchor (8 roots plus owned minions).
+  per Anchor (24 total); wave three has one Warden and one Wither across the wave (2 roots plus owned minions).
   Teams can clear them in any order or concurrently. Only an Anchor's own remaining wave gates its
   crystal; only encounter-owned crystals advance progress. Duplicate deaths/hits cannot count twice.
   Defenders use native AI. Their own deaths expose the crystal; an exposed crystal glows. Reinforcement
