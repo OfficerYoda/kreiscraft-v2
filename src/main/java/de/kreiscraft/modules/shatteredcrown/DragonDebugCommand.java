@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.shatteredcrown;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionProviders;
@@ -30,16 +31,11 @@ final class DragonDebugCommand {
         var wave = Commands.literal("wave");
         for (int number = 1; number <= 3; number++) {
             final int selected = number;
-            wave.then(Commands.literal(Integer.toString(number)).executes(ctx -> {
-                var controller = encounter.get();
-                var sender = ctx.getSource().getSender();
-                if (controller == null) {
-                    messages.send(sender, "shattered-crown.debug-disabled");
-                    return 0;
-                }
-                controller.debugWave(selected, sender);
-                return Command.SINGLE_SUCCESS;
-            }));
+            wave.then(Commands.literal(Integer.toString(number))
+                    .executes(ctx -> wave(selected, null, ctx.getSource().getSender(), encounter, messages))
+                    .then(Commands.argument("players", IntegerArgumentType.integer(0))
+                            .executes(ctx -> wave(selected, IntegerArgumentType.getInteger(ctx, "players"),
+                                    ctx.getSource().getSender(), encounter, messages))));
         }
         root.then(wave);
         var trigger = Commands.literal("trigger");
@@ -72,6 +68,17 @@ final class DragonDebugCommand {
                             })));
         }
         return root.then(trigger).build();
+    }
+
+    private static int wave(int selected, Integer population, CommandSender sender,
+            Supplier<EncounterController> supplier, MessageService messages) {
+        var encounter = supplier.get();
+        if (encounter == null) {
+            messages.send(sender, "shattered-crown.debug-disabled");
+            return 0;
+        }
+        encounter.debugWave(selected, population, sender);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int control(String action, CommandSender sender, Supplier<EncounterController> supplier,

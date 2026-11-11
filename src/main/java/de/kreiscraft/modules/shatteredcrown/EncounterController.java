@@ -290,6 +290,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     void debugWave(int selected, CommandSender sender) {
+        debugWave(selected, null, sender);
+    }
+
+    void debugWave(int selected, Integer population, CommandSender sender) {
+        if (population != null && population < 0) {
+            throw new IllegalArgumentException("Population must not be negative");
+        }
         if (closed) {
             messages.send(sender, "shattered-crown.debug-disabled");
             return;
@@ -327,7 +334,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         clearedWaves = selected - 1;
         entryPopulation = server.getOnlinePlayers().size();
         dragon.setHealth(attemptMaxHealth * (selected == 1 ? 1 : selected == 2 ? 0.65 : 0.30));
-        enterWave(selected, selected == 1 ? entryPopulation : scalingPopulation());
+        enterWave(selected, population != null ? population : selected == 1 ? entryPopulation : scalingPopulation());
         if (dragon != null) {
             messages.send(sender, "shattered-crown.debug-wave", "wave", selected);
             debugStatus(sender);

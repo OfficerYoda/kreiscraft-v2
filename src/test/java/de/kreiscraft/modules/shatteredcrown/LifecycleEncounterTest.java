@@ -1017,6 +1017,81 @@ class LifecycleEncounterTest {
         assertThat(encounter.wavePopulation()).isZero();
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1,0,0", "2,0,0", "3,0,0", "1,1,12", "2,1,6", "3,1,4",
+            "1,20,240", "2,20,120", "3,20,24", "3,13,14"})
+    void debugWavePlayerArgumentOverridesOnlyTheSelectedRoster(int wave, int population, int members) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            scheduler.advance(Duration.ZERO);
+            var dispatcher =
+                    new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
+            dispatcher.getRoot().addChild(DragonDebugCommand.build(() -> encounter, context.messages(), server));
+            var source = mock(io.papermc.paper.command.brigadier.CommandSourceStack.class);
+            org.mockito.Mockito.when(source.getSender()).thenReturn(server.getConsoleSender());
+            var old = defenders();
+            assertThat(dispatcher.execute("dragondebug wave " + wave + " " + population, source)).isEqualTo(1);
+            assertThat(old).noneMatch(Entity::isValid);
+            assertThat(defenders()).hasSize(members);
+            assertThat(crystals()).hasSize(4);
+            assertThat(encounter.wavePopulation()).isEqualTo(population);
+            assertThat(status(encounter)).contains("wave-population=" + population, "defenders=" + members);
+            assertThat(encounter.firstEntryPopulation()).isEqualTo(1);
+            assertThat(encounter.scalingPopulation()).isEqualTo(1);
+            assertThat(encounter.combatPopulation()).isEqualTo(1);
+            if (wave == 3) {
+                assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WARDEN))
+                        .hasSize(members / 2);
+                assertThat(defenders().stream().filter(mob -> mob.getType() == org.bukkit.entity.EntityType.WITHER))
+                        .hasSize(members / 2);
+            }
+            if (population == 0) {
+                assertThat(crystals()).allMatch(Entity::isGlowing);
+            }
+            var arrival = server.addPlayer();
+            arrival.teleport(player.getLocation());
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(encounter.wavePopulation()).isEqualTo(population);
+            assertThat(defenders()).hasSize(members);
+            assertThat(encounter.scalingPopulation()).isEqualTo(2);
+            dispatcher.execute("dragondebug wave 2", source);
+            assertThat(encounter.wavePopulation()).isEqualTo(2);
+            assertThat(defenders()).hasSize(12);
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"-1", "twenty", "1.5", "2147483648"})
+    void debugWaveRejectsInvalidPlayerArgumentsWithoutReplacingTheWave(String population) throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        try {
+            encounter.start();
+            scheduler.advance(Duration.ZERO);
+            var dispatcher =
+                    new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
+            dispatcher.getRoot().addChild(DragonDebugCommand.build(() -> encounter, context.messages(), server));
+            var source = mock(io.papermc.paper.command.brigadier.CommandSourceStack.class);
+            org.mockito.Mockito.when(source.getSender()).thenReturn(server.getConsoleSender());
+            var old = defenders();
+            assertThatThrownBy(() -> dispatcher.execute("dragondebug wave 1 " + population, source))
+                    .isInstanceOf(com.mojang.brigadier.exceptions.CommandSyntaxException.class);
+            assertThat(defenders()).containsExactlyInAnyOrderElementsOf(old);
+            assertThat(old).allMatch(Entity::isValid);
+            assertThat(encounter.wavePopulation()).isEqualTo(1);
+            assertThatThrownBy(() -> encounter.debugWave(1, -1, server.getConsoleSender()))
+                    .isInstanceOf(IllegalArgumentException.class);
+        } finally {
+            encounter.close();
+        }
+    }
+
     @Test
     void ownershipExistsBeforeSpawnAndDescendantsKeepTheOriginalGateAfterParentDeath() throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),

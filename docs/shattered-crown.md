@@ -136,9 +136,14 @@ missing/unloaded members are replaced, never counted as defeated. Refused spawns
 retryable native battle rather than leaving partial objectives. Reset, victory, unload, disable and
 restart recovery remove only Encounter-owned artifacts. Native dragon completion/rewards are retained.
 
-`/dragondebug wave <1|2|3>` uses the existing OP-default permission, replaces owned enemies,
+`/dragondebug wave <1|2|3> [players]` uses the existing OP-default permission, replaces owned enemies,
 pending gate acceptance and attacks/effects, sets 100/65/30% health, grants earlier-wave unlocks and
-takes fresh scaling snapshots. It pauses automatic attacks; `/dragondebug resume` resumes the
+takes fresh scaling snapshots. The optional non-negative player count overrides only the selected wave's
+roster population, not actual players or combat eligibility. Omit it to use real population counts;
+use `0` for empty, exposed crystals. For twenty simulated players, waves one/two/three spawn
+240 mobs, 120 mobs and 12 Wardens plus 12 Withers respectively (before owned minions).
+The override stays frozen for that wave and does not carry into later waves.
+It pauses automatic attacks; `/dragondebug resume` resumes the
 selected production shield/hunt phase. Opening Grace is not restarted or bypassed by phase jumps.
 Status reports wave, shield, destroyed crystals out of four, defenders, frozen population/units,
 unlocks and manual/automatic mode alongside existing population/grace/attack diagnostics.
@@ -150,6 +155,7 @@ Explicit replies remain recipient-localized; automatic chat/actionbars remain ab
 /dragondebug wave 1
 /dragondebug wave 2
 /dragondebug wave 3
+/dragondebug wave 1 20
 /dragondebug trigger dive <player>
 /dragondebug cancel
 /dragondebug resume
@@ -290,7 +296,7 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 ```text
 /dragondebug status
 /dragondebug pause
-/dragondebug wave <1|2|3>
+/dragondebug wave <1|2|3> [players]
 /dragondebug trigger <dive|smash|prey|bombardment|landing|fireball-rain> [player]
 /dragondebug cancel
 /dragondebug resume
