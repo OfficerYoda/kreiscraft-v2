@@ -95,6 +95,11 @@ class EncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(org.bukkit.entity.Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; all warning entity effects remain real.
             }
@@ -137,13 +142,13 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         EnderCrystal anchor = crystals().getFirst();
         assertThat(hit(dragon).isCancelled()).isTrue();
         assertThat(hit(anchor).isCancelled()).isTrue();
         assertThat(anchor.isValid()).isTrue();
 
-        for (Mob defender : defenders()) {
+        for (var defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -225,7 +230,7 @@ class EncounterTest {
 
     private void clearFinalGate() {
         for (int stage = 0; stage < 3; stage++) {
-            for (Mob defender : defenders()) {
+            for (var defender : defenders()) {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -274,7 +279,7 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).allMatch(crystal -> crystal.getY() == 64);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         assertThat(dragon.getHealth()).isEqualTo(1000);
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
@@ -287,7 +292,7 @@ class EncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
         var bossBar = dragon.getDragonBattle().getBossBar();
-        for (Mob defender : defenders()) {
+        for (var defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -359,7 +364,7 @@ class EncounterTest {
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).doesNotContain(first);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
@@ -402,7 +407,8 @@ class EncounterTest {
     }
 
     private List<Mob> defenders() {
-        return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid).filter(mob -> mob != dragon).toList();
+        return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
+                .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
     }
 
     @Test
@@ -421,7 +427,7 @@ class EncounterTest {
         assertThat(crystals()).hasSize(4);
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
     }
 
     @Test
@@ -489,7 +495,7 @@ class EncounterTest {
         server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(crystals()).hasSize(4);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isTrue();
         assertThat(hit(dragon).isCancelled()).isTrue();
@@ -505,7 +511,7 @@ class EncounterTest {
             player.teleport(new Location(end, 10, 64, 0));
             scheduler.advance(Duration.ofSeconds(1));
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(new int[] {16, 16, 16, 32, 32, 32, 32, 48}[attempt]);
+            assertThat(defenders()).hasSize(new int[] {43, 43, 43, 87, 87, 87, 87, 132}[attempt]);
             player.setHealth(0);
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(crystals()).isEmpty();
@@ -556,13 +562,13 @@ class EncounterTest {
     void cancelledDeathAndDamageDoNotAdvanceTheObjectiveAndVanillaRewardsAreUnmodified() throws Exception {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        for (Mob defender : defenders()) {
+        for (var defender : defenders()) {
             var cancelled = new EntityDeathEvent(defender, mock(DamageSource.class), List.of());
             cancelled.setCancelled(true);
             server.getPluginManager().callEvent(cancelled);
         }
         assertThat(crystals().getFirst().isGlowing()).isFalse();
-        for (Mob defender : defenders()) {
+        for (var defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -589,7 +595,7 @@ class EncounterTest {
         original.remove();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4).doesNotContain(original);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         assertThat(hit(crystals().getFirst()).isCancelled()).isTrue();
         assertThat(crystals()).hasSize(4);
         assertThat(hit(dragon).isCancelled()).isTrue();
@@ -651,13 +657,13 @@ class EncounterTest {
         next.node("defender-count").set(6);
         module.onConfigReload(next);
         assertThat(dragon.getHealth()).isEqualTo(1000);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         player.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getHealth()).isEqualTo(800);
-        assertThat(defenders()).hasSize(24);
+        assertThat(defenders()).hasSize(43);
         next.node("enabled").set(false);
         module.onConfigReload(next);
         assertThat(defenders()).isEmpty();
@@ -673,13 +679,13 @@ class EncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
         var owned = defenders().stream().filter(entity -> entity != unrelated).toList();
-        assertThat(owned).hasSize(16);
+        assertThat(owned).hasSize(43);
         var home = owned.getFirst().getLocation();
         owned.getFirst().teleport(new Location(end, 200, 10, 0));
         owned.get(1).remove();
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(owned.getFirst().getLocation().distance(home)).isLessThan(5);
-        assertThat(defenders()).hasSize(17);
+        assertThat(defenders()).hasSize(44);
         module.disable();
         module.disable();
         scheduler.advance(Duration.ofSeconds(120));

@@ -103,6 +103,11 @@ class LifecycleEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock has no billboard setter; warning text, position and lifetime stay real.
             }
@@ -125,6 +130,11 @@ class LifecycleEncounterTest {
         context = new ModuleContext(plugin, config,
                 new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server),
                 new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin));
+    }
+
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(Entity::isValid)
+                .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
     }
 
     @AfterEach
@@ -358,7 +368,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.wavePopulation()).isEqualTo(12);
         assertThat(encounter.rosterUnits()).isEqualTo(3);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(48);
+        assertThat(defenders()).hasSize(132);
         for (var observer : others.subList(0, 4)) {
             observer.teleport(new Location(end, 250, 64, 0));
         }
@@ -369,7 +379,7 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(2);
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         assertThat(encounter.rosterUnits()).isEqualTo(2);
-        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(48);
+        assertThat(defenders()).hasSize(48);
         others.getFirst().teleport(new Location(overworld, 0, 64, 0));
         assertThat(encounter.wavePopulation()).isEqualTo(5);
         clearWave();
@@ -413,7 +423,7 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var parent = defenders().iterator().next();
         var originalAnchor = encounter.anchorId(parent);
         var unrelated = end.spawn(player.getLocation(), org.bukkit.entity.Enderman.class);
         var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.EXPLOSION)
@@ -434,7 +444,7 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"4,1,16", "5,2,32", "8,2,32", "12,3,48", "20,5,80", "68,17,272"})
+    @org.junit.jupiter.params.provider.CsvSource({"4,1,43", "5,2,87", "8,2,87", "12,3,132", "20,5,219", "68,17,747"})
     void populationUsesFullUncappedRosterUnitsAtEveryAnchor(int population, int units, int total) throws Exception {
         for (int index = 1; index < population; index++) {
             server.addPlayer();
@@ -445,11 +455,13 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ZERO);
         assertThat(encounter.wavePopulation()).isEqualTo(population);
         assertThat(encounter.rosterUnits()).isEqualTo(units);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(total);
+        assertThat(defenders()).hasSize(total);
         for (var anchor : crystals()) {
-            assertThat(end.getEntitiesByClass(Zombie.class).stream()
+            assertThat(defenders().stream()
                     .filter(defender -> defender.getLocation().distanceSquared(anchor.getLocation()) < 25))
-                            .hasSize(total / 4);
+                            .hasSizeBetween(10 * units, 12 * units);
+            assertThat(defenders().stream().filter(mob -> mob.getVehicle() == null)
+                    .filter(mob -> mob.getLocation().distanceSquared(anchor.getLocation()) < 25)).hasSize(4 * units);
         }
         encounter.close();
     }
@@ -465,7 +477,7 @@ class LifecycleEncounterTest {
         encounter.debugWave(3, server.getConsoleSender());
         assertThat(encounter.wavePopulation()).isZero();
         assertThat(encounter.rosterUnits()).isZero();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(crystals()).hasSize(4).allMatch(Entity::isGlowing);
         assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
         encounter.close();
@@ -498,7 +510,7 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var parent = defenders().iterator().next();
         var wither = (org.bukkit.entity.Wither) encounter.spawnCombatant(parent.getLocation(),
                 org.bukkit.entity.EntityType.WITHER, parent, battles::preventDespawn);
         for (var head : org.bukkit.entity.Wither.Head.values()) {
@@ -519,7 +531,7 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var parent = defenders().iterator().next();
         var anchorId = encounter.anchorId(parent);
         var originals = end.getEntitiesByClass(Mob.class).stream().map(Entity::getUniqueId).toList();
         Mob missing = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent, mob -> {
@@ -581,7 +593,7 @@ class LifecycleEncounterTest {
         }
         for (int wave : new int[] {3, 1, 2, 3}) {
             var old = crystals();
-            var parent = end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
+            var parent = defenders().stream().filter(encounter::ownsCombatant)
                     .findFirst().orElseThrow();
             var child = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
                     battles::preventDespawn);
@@ -598,8 +610,7 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon))
-                    .hasSize(wave == 3 ? 17 : wave == 2 ? 49 : 33).contains(unrelated);
+            assertThat(defenders()).hasSize(wave == 1 ? 88 : wave == 2 ? 49 : 17).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5", "roster-units=2",
                     "mode=manual", "shield=true", "objectives=0/4");
@@ -618,7 +629,7 @@ class LifecycleEncounterTest {
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
         encounter.close();
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).containsExactly(unrelated);
+        assertThat(defenders()).containsExactly(unrelated);
         assertThat(encounter.unlockedAttacks()).isEmpty();
         assertThat(encounter.wavePopulation()).isZero();
     }
@@ -642,7 +653,7 @@ class LifecycleEncounterTest {
         }, plugin);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        var parent = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var parent = defenders().iterator().next();
         var anchorId = encounter.anchorId(parent);
         var anchor =
                 crystals().stream().filter(crystal -> crystal.getUniqueId().equals(anchorId)).findFirst().orElseThrow();
@@ -662,7 +673,7 @@ class LifecycleEncounterTest {
                 new java.util.ArrayList<>(List.of(arrival, player, dragon, child)));
         server.getPluginManager().callEvent(apply);
         assertThat(apply.getAffectedEntities()).containsExactly(player);
-        for (var mob : List.copyOf(end.getEntitiesByClass(Zombie.class))) {
+        for (var mob : List.copyOf(defenders())) {
             if (mob != child && anchorId.equals(encounter.anchorId(mob))) {
                 mob.setHealth(0);
                 server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(mob,
@@ -760,7 +771,7 @@ class LifecycleEncounterTest {
         assertThat(status(encounter)).contains("grace-seconds=30.0");
         assertThat(encounter.remainingGraceSeconds()).isEqualTo(30);
         assertThat(crystals()).hasSize(4);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        assertThat(defenders()).hasSize(43);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         var nativePhase = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon,
                 EnderDragon.Phase.CIRCLING, EnderDragon.Phase.STRAFING);
@@ -831,7 +842,7 @@ class LifecycleEncounterTest {
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ofSeconds(5));
-        end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon).toList().forEach(defender -> {
+        defenders().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
                     mock(org.bukkit.damage.DamageSource.class), List.of()));
@@ -928,7 +939,7 @@ class LifecycleEncounterTest {
         assertThat(ShatteredCrownConfig.load(yaml.module("shattered-crown")).maxHealth()).isEqualTo(1000);
         module.onConfigReload(yaml.module("shattered-crown"));
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(dragon.getHealth()).isEqualTo(200);
         player.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofSeconds(60));
@@ -963,6 +974,11 @@ class LifecycleEncounterTest {
             @Override
             public void preventDespawn(Mob defender) {
                 battles.preventDespawn(defender);
+            }
+
+            @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
             }
         });
         var maximum = dragon.getAttribute(Attribute.MAX_HEALTH);
@@ -1002,7 +1018,7 @@ class LifecycleEncounterTest {
         server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(dragon.getHealth()).isEqualTo(1);
         assertThat(dragon.getAttribute(Attribute.MAX_HEALTH).getBaseValue()).isEqualTo(200);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.DYING);
@@ -1083,17 +1099,17 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         var first = crystals();
         assertThat(first).isNotEmpty();
-        var firstDefenders = List.copyOf(end.getEntitiesByClass(Zombie.class));
+        var firstDefenders = List.copyOf(defenders());
         module.enable(context);
         server.getPluginManager().callEvent(new org.bukkit.event.entity.EntitySpawnEvent(dragon));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(crystals()).containsExactlyInAnyOrderElementsOf(first);
-        assertThat(end.getEntitiesByClass(Zombie.class)).containsExactlyInAnyOrderElementsOf(firstDefenders);
+        assertThat(defenders()).containsExactlyInAnyOrderElementsOf(firstDefenders);
         module.disable();
         module.disable();
         scheduler.advance(Duration.ofSeconds(120));
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(dragon.getHealth()).isEqualTo(200);
     }
 
@@ -1112,21 +1128,21 @@ class LifecycleEncounterTest {
         invalid.node("enabled").set("not-a-boolean");
         assertThatThrownBy(() -> module.onConfigReload(invalid)).isInstanceOf(RuntimeException.class);
         assertThat(dragon.getHealth()).isEqualTo(1000);
-        var missing = end.getEntitiesByClass(Zombie.class).iterator().next();
+        var missing = defenders().iterator().next();
         missing.remove();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(anchorCount * 4);
+        assertThat(defenders()).hasSize(43);
         player.teleport(new Location(end, 100, 50, 0));
         scheduler.advance(Duration.ofSeconds(60));
         assertThat(dragon.getHealth()).isEqualTo(200);
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getHealth()).isEqualTo(800);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(anchorCount * 6);
+        assertThat(defenders()).hasSize(43);
         next.node("enabled").set(false);
         module.onConfigReload(next);
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(dragon.getHealth()).isEqualTo(200);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
         next.node("enabled").set(true);
@@ -1286,7 +1302,7 @@ class LifecycleEncounterTest {
             player.teleport(new Location(end, 100, 50, 0));
         } else {
             for (int stage = 0; stage < 3; stage++) {
-                end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon).toList().forEach(defender -> {
+                defenders().forEach(defender -> {
                     defender.setHealth(0);
                     server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
                             mock(org.bukkit.damage.DamageSource.class), List.of()));
@@ -1311,7 +1327,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ofSeconds(70));
         assertThat(player.getHealth()).isEqualTo(20);
         assertThat(crystals()).isEmpty();
-        assertThat(end.getEntitiesByClass(Zombie.class)).isEmpty();
+        assertThat(defenders()).isEmpty();
         assertThat(end.getEntitiesByClass(EnderDragon.class)).containsExactly(dragon);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isFalse();
         if (!reset) {

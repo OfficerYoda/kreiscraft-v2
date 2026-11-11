@@ -141,7 +141,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                     return;
                 }
                 require(getServer().getOnlinePlayers().size() == 4, "registered server population");
-                require(anchors().size() == 4 && defenders().size() == 16, "first-entry wave1 population4");
+                require(anchors().size() == 4 && defenders().size() == 43, "first-entry wave1 population4 full roster");
                 command("pause");
                 dragon.setAI(false); // Native battle/adoption established; isolate native damage from flight.
                 retiredDefender = defenders().getFirst();
@@ -172,7 +172,7 @@ public final class DragonWaveProbe extends JavaPlugin {
                     var old = anchors();
                     command("wave " + wave);
                     require(old.stream().noneMatch(org.bukkit.entity.Entity::isValid), "debug replaces old objectives");
-                    require(anchors().size() == 4 && defenders().size() == (wave == 3 ? 16 : wave == 2 ? 48 : 32),
+                    require(anchors().size() == 4 && defenders().size() == (wave == 1 ? 87 : wave == 2 ? 48 : 16),
                             "fresh defended debug wave" + wave);
                     require(dragon.getHealth() == (wave == 1 ? 1000 : wave == 2 ? 650 : 300), "debug health" + wave);
                     command("status");

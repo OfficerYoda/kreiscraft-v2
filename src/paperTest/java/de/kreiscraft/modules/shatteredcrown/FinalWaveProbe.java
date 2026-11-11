@@ -455,7 +455,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
             if (!owned(event.getEntity()) && !controlSpawn) {
                 leaked++;
             }
-            if (event.getEntity() instanceof WitherSkeleton) {
+            if (event.getEntity() instanceof WitherSkeleton && stage == 1) {
                 minions++;
             }
         }

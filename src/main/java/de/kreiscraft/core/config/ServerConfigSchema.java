@@ -379,6 +379,8 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("explosion-window-budget", 1, 200));
         fields.add(crownNumber("arena-radius", 16, 256));
         fields.add(crownNumber("opening-grace-seconds", 0, 120));
+        fields.add(field(path("modules", "shattered-crown", "opening-armor-percentage"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(0, 50), ConfigLifecycle.HOT_RELOAD));
         for (String key : List.of("ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));
         }

@@ -26,6 +26,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
         Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks,
         Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds,
+        Integer openingArmorPercentage,
         Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
@@ -79,6 +80,8 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
     }
 
     public ShatteredCrownConfig {
+        openingArmorPercentage = openingArmorPercentage == null ? 35 : openingArmorPercentage;
+        bounded("opening-armor-percentage", openingArmorPercentage, 0, 50);
         movementAttacks = movementAttacks == null ? true : movementAttacks;
         openingGraceSeconds = openingGraceSeconds == null ? 30.0 : openingGraceSeconds;
         bounded("opening-grace-seconds", openingGraceSeconds, 0, 120);
