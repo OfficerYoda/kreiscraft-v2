@@ -86,6 +86,11 @@ public final class RainProbe extends JavaPlugin implements Listener {
     private EnderCrystal rainCrystal;
     private boolean crystalCollision;
     private final Map<UUID, List<Integer>> sharedPulses = new HashMap<>();
+    private int disableStart = -1;
+    private double cancelledHealth;
+    private final Map<UUID, Integer> poolBirths = new HashMap<>();
+    private int sixSecondExpiries;
+    private int eightSecondExpiries;
 
     @Override
     public void onEnable() {
@@ -248,6 +253,9 @@ public final class RainProbe extends JavaPlugin implements Listener {
         positions.clear();
         pulseTicks.clear();
         sharedPulses.clear();
+        poolBirths.clear();
+        sixSecondExpiries = 0;
+        eightSecondExpiries = 0;
         collisions = 0;
         launches = 0;
         hitAge = -1;
@@ -376,6 +384,18 @@ public final class RainProbe extends JavaPlugin implements Listener {
             if (scenario == 8 && age == 30) {
                 balls().forEach(org.bukkit.entity.Entity::remove);
             }
+            if (scenario == 14 && age == 21) {
+                check(encounter.depositBreathPool(player.getLocation(), 5, 6),
+                        "sibling pool beside live native Rain projectile");
+            }
+            if (scenario == 14 && age == 30) {
+                check(balls().size() == 1 && pools().size() == 1, "actual projectile and pool both live before cancel");
+                command("cancel");
+                check(balls().isEmpty() && warnings().isEmpty() && pools().isEmpty(),
+                        "actual cancellation drains projectile and siblings");
+                cancelledHealth = player.getHealth();
+                getLogger().info("RAIN_ACTIVE_CANCEL PASS age=" + age + " health=" + cancelledHealth);
+            }
             if (scenario == 10 && age == 30) {
                 balls().forEach(ball -> ball.setVelocity(new Vector()));
             }
@@ -384,7 +404,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
                         "native stopped-projectile timeout releases main");
                 getLogger().info("RAIN_TIMEOUT PASS age=" + age);
             }
-            if (age < 60 && scenario != 7) {
+            if (age < 60 && scenario != 7 && !(scenario == 14 && age >= 30)) {
                 check(warnings().size() == (scenario == 6 ? 4 : scenario == 12 ? 2 : 1),
                         "full three-second locked warning");
                 if (scenario != 6) {
@@ -404,6 +424,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 player.setNoDamageTicks(0);
                 pulseTicks.clear();
                 check(pools().size() == 5, "native five-way shared pool overlap");
+                pools().forEach(pool -> poolBirths.putIfAbsent(pool.getUniqueId(), age));
             }
             if (scenario == 12 && age == 65) {
                 check(collisions == 2 && pools().size() == 2, "co-located native Rain targets leave two shared pools");
@@ -419,8 +440,10 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 player.setNoDamageTicks(0);
                 player.setHealth(20);
             }
-            if (scenario == 6 && age == 175) {
+            if (scenario == 6 && age == 176) {
                 check(pools().size() == 1, "Rain six-second pools expire independently before eight-second sibling");
+                check(sixSecondExpiries == 4,
+                        "actual exclusive six-second removal callbacks, not a pre-callback scheduler sample");
                 check(pulseTicks.size() >= 5, "actual damaging overlap pulses");
                 check(sharedPulses.size() == 4, "all four actual combat players receive shared native pulses");
                 for (var entry : sharedPulses.entrySet()) {
@@ -436,9 +459,13 @@ public final class RainProbe extends JavaPlugin implements Listener {
                 getLogger().info("RAIN_OVERLAP pulses=" + pulseTicks + " allPlayers=" + sharedPulses + " remaining="
                         + pools().size());
             }
-            if (age == 225) {
+            if (age == 226) {
+                if (scenario == 6) {
+                    check(eightSecondExpiries == 1,
+                            "shared eight-second pool independently expires at its exact deadline");
+                }
                 verify();
-                if (++scenario <= 13) {
+                if (++scenario <= 14) {
                     begin();
                 } else {
                     lifecycle();
@@ -456,7 +483,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
         check(nativeHits == 0, "zero native fireball damage/explosion duplicates");
         long removed = groundBefore.entrySet().stream().filter(entry -> entry.getValue().isSolid()
                 && entry.getKey().getBlock().isEmpty()).count();
-        if (scenario < 7 || scenario == 9 || scenario >= 11) {
+        if (scenario < 7 || scenario == 9 || scenario >= 11 && scenario <= 13) {
             check(removed == 13, "actual radius-two crater removes thirteen sampled native ground blocks");
         } else {
             check(removed == 0, "no crater from cancelled/lost/stopped projectiles");
@@ -475,8 +502,11 @@ public final class RainProbe extends JavaPlugin implements Listener {
                     "actual earlier cover collision protects player");
             check(roof.getBlock().isEmpty() && locked.getBlock().getRelative(0, -1, 0).getType().isSolid(),
                     "cover crater at actual collision not original floor");
-        } else if (scenario == 7 || scenario == 8 || scenario == 10) {
+        } else if (scenario == 7 || scenario == 8 || scenario == 10 || scenario == 14) {
             check(collisions == 0 && impactHits == 0, "cancel/lost projectile has no delayed damage/crater");
+            if (scenario == 14) {
+                check(player.getHealth() == cancelledHealth, "no delayed damage after native active cancellation");
+            }
         } else if (scenario == 13) {
             check(crystalCollision && rainCrystal.isValid() && encounter.unlockedAttacks().size() == 2,
                     "actual native Rain crystal collision preserves the owned objective/shield gate");
@@ -487,7 +517,7 @@ public final class RainProbe extends JavaPlugin implements Listener {
             check(impactHits == 1 && collisionHealth == 20, "ordinary public damage cancellation preserved");
         }
         check(sinks.getFirst().particles > 0 && sinks.getFirst().sounds > 0, "real Paper particle/sound conversion");
-        for (int frame = 0; frame < (scenario == 7 ? 2 : 12); frame++) {
+        for (int frame = 0; frame < (scenario == 7 ? 2 : scenario == 14 ? 6 : 12); frame++) {
             check(warningFrames[frame] > 0, "actual flame warning particles throughout full warning frame=" + frame);
         }
         getLogger().info("RAIN_CASE PASS scenario=" + scenario + " collisions=" + collisions + " impactHits="
@@ -543,6 +573,23 @@ public final class RainProbe extends JavaPlugin implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void removed(org.bukkit.event.entity.EntityRemoveEvent event) {
+        if (scenario == 6 && artifact(event.getEntity(), "pool")) {
+            Integer birth = poolBirths.remove(event.getEntity().getUniqueId());
+            if (birth != null) {
+                int lifetime = age - birth;
+                check(lifetime == 120 || lifetime == 160, "actual native pool lifetime deadline=" + lifetime);
+                if (lifetime == 120) {
+                    sixSecondExpiries++;
+                } else {
+                    eightSecondExpiries++;
+                }
+                getLogger().info("RAIN_POOL_EXPIRE born=" + birth + " removed=" + age + " lifetimeTicks=" + lifetime);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void prime(org.bukkit.event.entity.ExplosionPrimeEvent event) {
         if (measuring && artifact(event.getEntity(), "rain-projectile")) {
             check(event.isCancelled(), "actual native explosion prime cancelled");
@@ -574,6 +621,9 @@ public final class RainProbe extends JavaPlugin implements Listener {
     public void impact(ProjectileHitEvent event) {
         if (measuring && artifact(event.getEntity(), "rain-projectile")) {
             collisions++;
+            if (scenario == 6) {
+                pools().forEach(pool -> poolBirths.putIfAbsent(pool.getUniqueId(), age));
+            }
             if (scenario == 13) {
                 crystalCollision = event.getHitEntity() == rainCrystal;
             }
@@ -650,6 +700,18 @@ public final class RainProbe extends JavaPlugin implements Listener {
     private void automaticTick() throws Exception {
         age++;
         check(dragon.hasAI(), "automatic native dragon AI remains enabled");
+        if (disableStart >= 0) {
+            if (age - disableStart == 21) {
+                check(balls().size() == 1 && pools().size() == 1 && warnings().size() == 1,
+                        "native projectile, warning and sibling pool active at plugin disable");
+                Bukkit.getPluginManager().disablePlugin(Bukkit.getPluginManager().getPlugin("Kreiscraft"));
+                check(balls().isEmpty() && warnings().isEmpty() && pools().isEmpty(),
+                        "actual plugin disable drains native projectile and all sibling entities");
+                getLogger().info("RAIN_ACTIVE_DISABLE PASS age=" + age);
+                persist();
+            }
+            return;
+        }
         if (movementPoolStart >= 0) {
             if (age - movementPoolStart == 5) {
                 check(movementPoolHits == 1 && Math.abs(player.getHealth() - 18.92) < 0.001
@@ -695,9 +757,11 @@ public final class RainProbe extends JavaPlugin implements Listener {
     private void finalCleanup() throws Exception {
         measuring = false;
         command("trigger fireball-rain " + player.getName());
-        Bukkit.getPluginManager().disablePlugin(Bukkit.getPluginManager().getPlugin("Kreiscraft"));
-        check(balls().isEmpty() && warnings().isEmpty() && pools().isEmpty(),
-                "actual plugin disable drains callbacks/entities");
+        check(encounter.depositBreathPool(player.getLocation(), 5, 6), "native disable sibling pool setup");
+        disableStart = age;
+    }
+
+    private void persist() {
         var orphan = world.spawn(new Location(world, 150.5, 130, 150.5), LargeFireball.class);
         orphan.getPersistentDataContainer().set(ARTIFACT, PersistentDataType.STRING, "rain-projectile");
         orphan.setVelocity(new Vector());
