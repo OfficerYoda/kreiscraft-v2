@@ -55,7 +55,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `firework`, `positions`, and `shattered-crown` ship **disabled by default**. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md) for module behavior and dependencies, [Configuration](docs/reference/configuration.md) for config keys, and [Commands & Permissions](docs/reference/commands-and-permissions.md) for access control.
+25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `firework` and `positions` ship **disabled by default**. Shattered Crown requires the enabled Wither module. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md), [Configuration](docs/reference/configuration.md), [Commands & Permissions](docs/reference/commands-and-permissions.md), and [four-player Crown RC guide](docs/shattered-crown-release-candidate.md).
 
 | Module ID | Summary |
 |---|---|
@@ -74,7 +74,7 @@ src/main/java/de/kreiscraft/
 | `positions` | Named waypoint system with InvUI GUI; `/positions` (`/pos`) with persistent per-player storage |
 | `reboot` | `/reboot` and `/restart` — countdown with title + chat broadcasts and configurable intervals |
 | `settings-gui` | Per-player settings GUI opened with `/settings`; edits always-available player preferences |
-| `shattered-crown` | Default-on cooperative main-End dragon encounter; [operator profile and validation limits](docs/shattered-crown.md), [required live acceptance](docs/shattered-crown-validation.md) |
+| `shattered-crown` | Default-on main-End dragon encounter with three population-scaled four-Anchor waves and debug phase jumps; [operator profile and validation limits](docs/shattered-crown.md), [required live acceptance](docs/shattered-crown-validation.md) |
 | `sign-color` | Legacy colours, placeholders and safe MiniMessage in sign text and anvil renames |
 | `sit` | `/sit` — toggle sitting; also available via the cushion in `/settings` |
 | `spawn` | `/setspawn`, `/spawn`, spawn glide zone, swap-hand boost, sneak glide boost |

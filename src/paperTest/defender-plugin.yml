@@ -1,0 +1,5 @@
+name: DefenderRoamingProbe
+version: '1'
+main: de.kreiscraft.platform.DefenderRoamingProbe
+api-version: '26.2'
+depend: [Kreiscraft]

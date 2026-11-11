@@ -27,14 +27,24 @@ final class AttackSurface {
                     continue;
                 }
                 Location ground = column(spot, 6, 6);
-                if (ground == null || !arena.contains(ground) || arena.protectedArrival(ground)) {
-                    arena.reject("surface rejected at " + x + "," + center.getBlockY() + "," + z
-                            + (ground == null ? ": no clear supported ground within six blocks"
-                                    : ": outside combat area or inside protected arrival"));
+                if (!arena.contains(spot)) {
+                    arena.reject("shattered-crown.reject-surface-outside");
+                    return null;
+                }
+                // ponytail: holes have no surface to project; surviving footing still defines valid attack geometry.
+                if (ground == null) {
+                    continue;
+                }
+                if (!arena.contains(ground)) {
+                    arena.reject("shattered-crown.reject-surface-position", "x", x, "y", center.getBlockY(), "z", z);
                     return null;
                 }
                 surface.heights.put(key(x, z), ground.getBlockY());
             }
+        }
+        if (surface.heights.isEmpty()) {
+            arena.reject("shattered-crown.reject-no-ground");
+            return null;
         }
         return surface;
     }
@@ -83,36 +93,6 @@ final class AttackSurface {
             }
         }
         return true;
-    }
-
-    /** A body-sized step over at most one block, rejecting void and diagonal wall cracks. */
-    static Location step(Location reference) {
-        double low = Double.POSITIVE_INFINITY;
-        double high = Double.NEGATIVE_INFINITY;
-        for (double x : new double[] {-0.35, 0, 0.35}) {
-            for (double z : new double[] {-0.35, 0, 0.35}) {
-                Location ground = column(reference.clone().add(x, 0, z), 1, 1);
-                if (ground == null) {
-                    return null;
-                }
-                low = Math.min(low, ground.getY());
-                high = Math.max(high, ground.getY());
-            }
-        }
-        if (high - low > 1) {
-            return null;
-        }
-        Location result = reference.clone();
-        result.setY(high);
-        for (double x : new double[] {-0.35, 0, 0.35}) {
-            for (double z : new double[] {-0.35, 0, 0.35}) {
-                var block = result.clone().add(x, 0, z).getBlock();
-                if (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty()) {
-                    return null;
-                }
-            }
-        }
-        return result;
     }
 
     private static long key(int x, int z) {

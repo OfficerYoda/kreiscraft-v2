@@ -42,4 +42,13 @@ final class HuntArea {
         Location ground = surface == null ? null : surface.project(point);
         return ground == null ? point : ground;
     }
+
+    /** Full Smash damage through half the radius, then linear falloff to half damage at the edge. */
+    double smashDamageScale(Location location) {
+        if (!contains(location, 0)) {
+            return 0;
+        }
+        double distance = Math.hypot(location.getX() - center.getX(), location.getZ() - center.getZ());
+        return Math.min(1, Math.max(0.5, 1.5 - distance / radius));
+    }
 }

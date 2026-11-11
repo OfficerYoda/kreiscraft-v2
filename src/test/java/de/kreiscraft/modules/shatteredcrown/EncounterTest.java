@@ -22,6 +22,7 @@ import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -94,8 +95,24 @@ class EncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(org.bukkit.entity.Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; all warning entity effects remain real.
+            }
+
+            @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
             }
 
             @Override
@@ -104,6 +121,12 @@ class EncounterTest {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(org.bukkit.damage.DamageType.DRAGON_BREATH)
                                 .withCausingEntity(source).build());
+            }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                // Encounter policy only; DragonDamageProbe verifies native reference-gear mitigation.
+                bombardmentDamage(recipient, source, healthPoints);
             }
         });
     }
@@ -125,7 +148,7 @@ class EncounterTest {
         assertThat(hit(anchor).isCancelled()).isTrue();
         assertThat(anchor.isValid()).isTrue();
 
-        for (Zombie defender : defenders()) {
+        for (var defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -140,6 +163,33 @@ class EncounterTest {
         assertThat(crystals()).isEmpty();
         assertThat(defenders()).isEmpty();
         assertThat(dragon.isValid()).isTrue(); // Completion remains owned by vanilla, never remove/kill it.
+    }
+
+    @Test
+    void ownedPotionEffectsCannotReachArrivalsAndCombatProtectionDoesNotProtectTerrain() throws Exception {
+        enable();
+        scheduler.advance(Duration.ZERO);
+        var defender = defenders().getFirst();
+        player.teleport(new Location(end, 100, 50, 0));
+        var potion = end.spawn(defender.getLocation(), org.bukkit.entity.ThrownPotion.class);
+        potion.setShooter(defender);
+        var splash = new org.bukkit.event.entity.PotionSplashEvent(potion,
+                new java.util.HashMap<>(java.util.Map.of(player, 1.0)));
+        server.getPluginManager().callEvent(splash);
+        assertThat(splash.getIntensity(player)).isZero();
+        var cloud = end.spawn(defender.getLocation(), org.bukkit.entity.AreaEffectCloud.class);
+        cloud.setSource(defender);
+        var affected = new java.util.ArrayList<org.bukkit.entity.LivingEntity>(List.of(player));
+        var applied = new org.bukkit.event.entity.AreaEffectCloudApplyEvent(cloud, affected);
+        server.getPluginManager().callEvent(applied);
+        assertThat(applied.getAffectedEntities()).isEmpty();
+        var block = player.getLocation().getBlock();
+        block.setType(Material.OBSIDIAN);
+        var explosion = new org.bukkit.event.entity.EntityExplodeEvent(defender, player.getLocation(),
+                new java.util.ArrayList<>(List.of(block)), 1, org.bukkit.ExplosionResult.DESTROY);
+        server.getPluginManager().callEvent(explosion);
+        assertThat(explosion.isCancelled()).isFalse();
+        assertThat(explosion.blockList()).containsExactly(block);
     }
 
     @Test
@@ -179,15 +229,15 @@ class EncounterTest {
     }
 
     private void clearFinalGate() {
-        for (int stage = 0; stage < 2; stage++) {
-            for (Zombie defender : defenders()) {
+        for (int stage = 0; stage < 3; stage++) {
+            for (var defender : defenders()) {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
             }
             crystals().forEach(this::hit);
-            if (stage == 0) {
-                dragon.setHealth(310);
+            if (stage < 2) {
+                dragon.setHealth(stage == 0 ? 660 : 310);
                 var crossing = hit(dragon);
                 assertThat(crossing.isCancelled()).isFalse();
                 dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
@@ -218,31 +268,43 @@ class EncounterTest {
     }
 
     @Test
-    void noUsableGroundRefusesAnAttemptWithoutBuildingAnObjectiveInTheVoid() throws Exception {
+    void emptyColumnsUseFloatingObjectivesWithoutRebuildingTerrain() throws Exception {
         for (int x = -40; x <= 40; x++) {
             for (int z = -40; z <= 40; z++) {
-                end.getBlockAt(x, 63, z).setType(Material.AIR);
+                for (int y = end.getMinHeight(); y <= 63; y++) {
+                    end.getBlockAt(x, y, z).setType(Material.AIR);
+                }
             }
         }
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(crystals()).isEmpty();
-        assertThat(defenders()).isEmpty();
-        assertThat(dragon.getHealth()).isEqualTo(200);
-        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(crystals()).hasSize(4).allMatch(crystal -> crystal.getY() == 64);
+        assertThat(defenders()).hasSize(16);
+        assertThat(dragon.getHealth()).isEqualTo(1000);
+        assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
     @Test
-    void objectiveInstructionsAndOngoingShieldStatusUseEachRecipientsLanguage() throws Exception {
+    void openingExposureAndShieldReleaseStayQuietForBothLanguages() throws Exception {
         PlayerMock german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(player.nextMessage()).contains("defenders", "Anchors");
-        assertThat(german.nextMessage()).contains("Verteidiger", "Anker");
-        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(player.nextActionBar())).contains("4", "shielded");
-        assertThat(plain.serialize(german.nextActionBar())).contains("4", "geschützt");
+        assertThat(crystals()).hasSize(4);
+        var bossBar = dragon.getDragonBattle().getBossBar();
+        for (var defender : defenders()) {
+            defender.setHealth(0);
+            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+        }
+        assertThat(crystals()).allMatch(EnderCrystal::isGlowing);
+        crystals().forEach(this::hit);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(dragon.getDragonBattle().getBossBar()).isSameAs(bossBar);
+        for (PlayerMock recipient : List.of(player, german)) {
+            assertThat(recipient.nextMessage()).isNull();
+            assertThat(recipient.nextActionBar()).isNull();
+        }
     }
 
     @Test
@@ -344,8 +406,9 @@ class EncounterTest {
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
-    private List<Zombie> defenders() {
-        return end.getEntitiesByClass(Zombie.class).stream().filter(Entity::isValid).toList();
+    private List<Mob> defenders() {
+        return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid)
+                .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
     }
 
     @Test
@@ -448,7 +511,7 @@ class EncounterTest {
             player.teleport(new Location(end, 10, 64, 0));
             scheduler.advance(Duration.ofSeconds(1));
             assertThat(crystals()).hasSize(4);
-            assertThat(defenders()).hasSize(16);
+            assertThat(defenders()).hasSize(16 * (attempt + 2));
             player.setHealth(0);
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(crystals()).isEmpty();
@@ -499,13 +562,13 @@ class EncounterTest {
     void cancelledDeathAndDamageDoNotAdvanceTheObjectiveAndVanillaRewardsAreUnmodified() throws Exception {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        for (Zombie defender : defenders()) {
+        for (var defender : defenders()) {
             var cancelled = new EntityDeathEvent(defender, mock(DamageSource.class), List.of());
             cancelled.setCancelled(true);
             server.getPluginManager().callEvent(cancelled);
         }
         assertThat(crystals().getFirst().isGlowing()).isFalse();
-        for (Zombie defender : defenders()) {
+        for (var defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -600,7 +663,7 @@ class EncounterTest {
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getHealth()).isEqualTo(800);
-        assertThat(defenders()).hasSize(24);
+        assertThat(defenders()).hasSize(16);
         next.node("enabled").set(false);
         module.onConfigReload(next);
         assertThat(defenders()).isEmpty();

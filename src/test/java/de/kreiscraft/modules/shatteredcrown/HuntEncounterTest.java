@@ -57,8 +57,10 @@ class HuntEncounterTest {
     private MockScheduler scheduler;
     private ShatteredCrownModule module;
     private ConfigurationNode config;
+    private Runnable beforeNativeRelease;
     private CommandRegistrar commands;
     private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
+    private int referenceHits;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -85,7 +87,32 @@ class HuntEncounterTest {
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
-                return new SimulatedDragonFlight(source, scheduler, tick);
+                var nativeControl = new SimulatedDragonFlight(source, scheduler, tick);
+                return new de.kreiscraft.platform.DragonFlightControl() {
+                    @Override
+                    public boolean active() {
+                        return nativeControl.active();
+                    }
+
+                    @Override
+                    public void move(Location destination) {
+                        if (source.getLocation().distanceSquared(destination) > 64) {
+                            throw new IllegalArgumentException("Scripted dragon step exceeds eight blocks");
+                        }
+                        nativeControl.move(destination);
+                    }
+
+                    @Override
+                    public void close() {
+                        try {
+                            if (beforeNativeRelease != null) {
+                                beforeNativeRelease.run();
+                            }
+                        } finally {
+                            nativeControl.close();
+                        }
+                    }
+                };
             }
 
             @Override
@@ -100,22 +127,58 @@ class HuntEncounterTest {
             }
 
             @Override
+            public void disableEquipmentPickup(Mob defender) {
+                // Unsupported MockBukkit setter; OpeningRosterProbe asserts the real Paper equipment policy.
+            }
+
+            @Override
             public void faceWarningToViewer(TextDisplay warning) {
                 // Only the unsupported billboard setter is omitted.
+            }
+
+            @Override
+            public void prepareRainFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
+                // Only native drag/acceleration balancing is absent from MockBukkit; RainProbe checks actual descent.
+            }
+
+            @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
             }
 
             @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
-                                .withCausingEntity(source).build());
+                                .withDirectEntity(source).withCausingEntity(source).build());
+            }
+
+            @Override
+            public void referenceDamage(org.bukkit.entity.Player recipient, EnderDragon source, double healthPoints) {
+                referenceHits++;
+                // Encounter policy only; DragonDamageProbe verifies native reference-gear mitigation.
+                bombardmentDamage(recipient, source, healthPoints);
             }
         });
         config = BasicConfigurationNode.root();
+        config.node("opening-grace-seconds").set(0); // Isolate attack timing from the separately tested opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
+        config.node("prey-percentage").set(100); // Legacy multi-target geometry cases mark every participant.
+        config.node("pool-radius").set(3); // Those fixtures retain their original escape/boundary dimensions.
         // Lane-focused scenarios defer the newly coordinated attacks; dedicated cases set their cadences.
         config.node("prey-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
+    }
+
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(org.bukkit.entity.Entity::isValid)
+                .filter(mob -> mob != dragon && !(mob instanceof org.bukkit.entity.Enderman)).toList();
     }
 
     @AfterEach
@@ -128,7 +191,7 @@ class HuntEncounterTest {
 
     private void hunt() throws Exception {
         startEncounter();
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        defenders().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -136,6 +199,24 @@ class HuntEncounterTest {
     }
 
     private void startEncounter() throws Exception {
+        if (!config.node("movement-attacks").getBoolean(true)) {
+            // Explicit historical sector tuning; native Smash uses the redesigned defaults.
+            if (config.node("sweep-warning-seconds").virtual()) {
+                config.node("sweep-warning-seconds").set(4);
+            }
+            if (config.node("sweep-radius").virtual()) {
+                config.node("sweep-radius").set(12);
+            }
+            if (config.node("sweep-damage").virtual()) {
+                config.node("sweep-damage").set(6);
+            }
+            if (config.node("lane-warning-seconds").virtual()) {
+                config.node("lane-warning-seconds").set(3);
+            }
+            if (config.node("lane-damage").virtual()) {
+                config.node("lane-damage").set(4);
+            }
+        }
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
         module.enable(new ModuleContext(plugin, config,
@@ -155,6 +236,365 @@ class HuntEncounterTest {
         return dispatcher.execute("dragondebug " + command, source);
     }
 
+    @Test
+    void fireballRainLocksTheWarnedGroundBeforeLaunchingAndDoesNotFollowThePlayer() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        Location locked = player.getLocation();
+        assertThat(debug("trigger fireball-rain " + player.getName(), player)).isEqualTo(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class))
+                .anyMatch(display -> display.getLocation().getX() == locked.getX()
+                        && display.getLocation().getZ() == locked.getZ());
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+        player.teleport(locked.clone().add(12, 0, 0));
+        scheduler.advance(Duration.ofMillis(999));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getLocation()).isEqualTo(locked.clone().add(0, 20, 0));
+            assertThat(ball.getVelocity().getX()).isZero();
+            assertThat(ball.getVelocity().getZ()).isZero();
+            assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+            assertThat(ball.getShooter()).isEqualTo(dragon);
+        });
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
+    }
+
+    @Test
+    void rainWarningMatchesInclusiveExplosionAndDamagePoolBoundary() throws Exception {
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        Location locked = player.getLocation();
+        var boundary = server.addPlayer("PoolBoundary");
+        boundary.teleport(locked.clone().add(0, 0, 5));
+        var outside = server.addPlayer("OutsidePool");
+        outside.teleport(locked.clone().add(0, 0, 5.01));
+        var warningPoints = new java.util.ArrayList<Location>();
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class, call -> {
+            if (call.getArgument(1) == org.bukkit.Particle.FLAME) {
+                warningPoints.add(((Location) call.getArgument(2)).clone());
+            }
+            return null;
+        })) {
+            debug("trigger fireball-rain " + player.getName(), player);
+            scheduler.advance(Duration.ofSeconds(1));
+            assertThat(warningPoints).isNotEmpty().allSatisfy(
+                    point -> assertThat(Math.hypot(point.getX() - locked.getX(), point.getZ() - locked.getZ()))
+                            .isCloseTo(5, org.assertj.core.data.Offset.offset(0.000001)));
+            var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+            ball.teleport(locked.clone());
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball,
+                    end.getBlockAt(locked.getBlockX(), 63, locked.getBlockZ())));
+            assertThat(boundary.getHealth()).isEqualTo(16);
+            assertThat(outside.getHealth()).isEqualTo(20);
+            scheduler.advance(Duration.ZERO);
+            assertThat(boundary.getHealth()).isEqualTo(13);
+            assertThat(outside.getHealth()).isEqualTo(20);
+        }
+    }
+
+    @Test
+    void rainCollisionResolvesOnceMakesPermanentCraterAndReleasesMainBeforeItsPool() throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        ball.teleport(player.getLocation().add(0, 1.5, 0));
+        var collision = new org.bukkit.event.entity.ProjectileHitEvent(ball, player);
+        server.getPluginManager().callEvent(collision);
+        assertThat(collision.isCancelled()).isTrue();
+        assertThat(player.getHealth()).isEqualTo(16);
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(ball.isValid()).isFalse();
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getBlockAt(15, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(15, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getBlockAt(16, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("main=idle") && message.contains("areas=1"));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        var prime = new org.bukkit.event.entity.ExplosionPrimeEvent(ball);
+        server.getPluginManager().callEvent(prime);
+        assertThat(prime.isCancelled()).isTrue();
+        assertThat(referenceHits).isEqualTo(1);
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("cancel", player);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+    }
+
+    @Test
+    void unnamedRainTargetsAllCombatPlayersNotThePreyPercentageAndWaitsForLastResolution() throws Exception {
+        config.node("prey-percentage").set(35);
+        var adventure = server.addPlayer("Adventure");
+        adventure.teleport(player.getLocation().add(8, 0, 0));
+        adventure.setGameMode(org.bukkit.GameMode.ADVENTURE);
+        var third = server.addPlayer("CombatThree");
+        third.teleport(player.getLocation().add(16, 0, 0));
+        var observer = server.addPlayer("Observer");
+        observer.teleport(player.getLocation());
+        observer.setGameMode(org.bukkit.GameMode.SPECTATOR);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger fireball-rain", player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var balls = List.copyOf(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class));
+        assertThat(balls).hasSize(3); // Four connected players request two Prey marks, but three Rain shots.
+        balls.getFirst().remove();
+        scheduler.advance(Duration.ofMillis(50));
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(message -> message.contains("attack=RAIN") && message.contains("main=executing"));
+        balls.getLast().remove();
+        balls.get(1).remove();
+        scheduler.advance(Duration.ofMillis(50));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("main=idle"));
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"rain-spawn-height,15", "rain-spawn-height,25",
+            "rain-spawn-height,NaN", "rain-descent-seconds,1", "rain-descent-seconds,3",
+            "rain-descent-seconds,Infinity", "rain-damage,-1", "rain-damage,101"})
+    void rejectsInvalidRainConfiguration(String key, String value) throws Exception {
+        config.node(key).set(value);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> ShatteredCrownConfig.load(config))
+                .isInstanceOf(Exception.class);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"0,0,1", "0,4,1", "3,4,0.875", "-3,-4,0.875", "0,8,0.5",
+            "6,8,0"})
+    void smashFalloffUsesRadialHorizontalDistanceRatherThanOneAxis(double x, double z, double scale) {
+        var center = new Location(end, 10.5, 64, 0.5);
+        var area = new HuntArea(center, 8);
+        assertThat(area.smashDamageScale(center.clone().add(x, 0, z))).isEqualTo(scale);
+        assertThat(area.smashDamageScale(center.clone().add(x, 4, z))).isZero();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"cancel,false", "cancel,true", "pause,false", "pause,true",
+            "unload,false", "unload,true", "disable,false", "disable,true", "victory,false", "victory,true",
+            "reset,false", "reset,true", "wave,false", "wave,true"})
+    void rainTerminationClosesWarningsProjectilesPoolsAndCallbacksWithoutRestoringGround(String termination,
+            boolean impact) throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        if (termination.equals("victory")) {
+            hunt();
+            clearFinalGate();
+        } else {
+            startEncounter();
+        }
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        if (impact) {
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        }
+        var unrelated = end.spawn(new Location(end, 35, 80, 35), org.bukkit.entity.LargeFireball.class);
+        switch (termination) {
+            case "cancel", "pause" -> debug(termination, player);
+            case "reset" -> {
+                player.teleport(new Location(end, 100, 50, 0));
+                scheduler.advance(Duration.ofSeconds(60));
+            }
+            case "wave" -> debug("wave 2", player);
+            case "unload" -> server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+            case "disable" -> module.disable();
+            case "victory" -> server.getPluginManager().callEvent(
+                    new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
+            default -> throw new AssertionError(termination);
+        }
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).containsExactly(unrelated);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(impact ? Material.AIR : Material.END_STONE);
+        assertThat(referenceHits).isEqualTo(impact ? 1 : 0);
+    }
+
+    @Test
+    void rainReferenceHitCanBeCancelledAndNativeDamageAndDeflectionRemainSuppressed() throws Exception {
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        var attack = new EntityDamageByEntityEvent(player, ball, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                DamageSource.builder(DamageType.PLAYER_ATTACK).withDirectEntity(player).withCausingEntity(player)
+                        .build(),
+                1);
+        server.getPluginManager().callEvent(attack);
+        assertThat(attack.isCancelled()).isTrue();
+        var nativeHit = new EntityDamageByEntityEvent(ball, player, EntityDamageEvent.DamageCause.PROJECTILE,
+                DamageSource.builder(DamageType.FIREBALL).withDirectEntity(ball).withCausingEntity(dragon).build(), 6);
+        server.getPluginManager().callEvent(nativeHit);
+        assertThat(nativeHit.isCancelled()).isTrue();
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
+            public void cancel(EntityDamageEvent event) {
+                if (event.getEntity() == player && event.getDamageSource().getCausingEntity() == dragon) {
+                    event.setCancelled(true);
+                }
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        ball.teleport(player.getLocation().add(0, 1.5, 0));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @Test
+    void rainChangedTuningIsNextAttemptOnlyAndStaleEntitiesLoadRecoveryIsScoped() throws Exception {
+        startEncounter();
+        var next = config.copy();
+        next.node("rain-spawn-height").set(22);
+        next.node("rain-descent-seconds").set(2.2);
+        next.node("rain-damage").set(2);
+        module.onConfigReload(next);
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var original = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        assertThat(original.getY()).isEqualTo(84);
+        debug("cancel", player);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getY()).isEqualTo(86);
+            assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        });
+        assertThat(player.getHealth()).isEqualTo(18);
+        debug("cancel", player);
+        var stale = end.spawn(new Location(end, 10, 80, 0), org.bukkit.entity.LargeFireball.class);
+        stale.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                org.bukkit.persistence.PersistentDataType.STRING, "rain-projectile");
+        var unrelated = end.spawn(new Location(end, 35, 80, 35), org.bukkit.entity.LargeFireball.class);
+        var loaded = new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0), List.of(stale, unrelated));
+        server.getPluginManager().callEvent(loaded);
+        server.getPluginManager().callEvent(loaded);
+        assertThat(stale.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+    }
+
+    @Test
+    void rainTargetsHighCombatPlayersAndDestroysArrivalGroundWithoutHurtingProtectedPlayers() throws Exception {
+        config.node("arrival-x").set(10.5);
+        config.node("arrival-y").set(64);
+        config.node("arrival-radius").set(3);
+        config.node("pool-damage").set(0);
+        end.getBlockAt(10, 62, 0).setType(Material.END_STONE);
+        player.teleport(new Location(end, 10.5, 100, 0.5)); // Eligible above the arrival cylinder's height.
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).singleElement().satisfies(ball -> {
+            assertThat(ball.getY()).isEqualTo(84); // Lock actual ground, not the airborne player's Y.
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        });
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("areas=1") && message.contains("main=idle"));
+    }
+
+    @Test
+    void rainNativeBlockHitJustInsideTheTopFaceStillCraterAndDepositsOnTheNewSurface() throws Exception {
+        config.node("pool-damage").set(0);
+        for (int x = 4; x <= 17; x++) {
+            for (int z = -6; z <= 6; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        ball.teleport(new Location(end, 10.5, 63.9995, 0.5)); // Actual Paper ray collision epsilon observed natively.
+        player.teleport(new Location(end, 30.5, 64, 0.5));
+        server.getPluginManager()
+                .callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, end.getBlockAt(10, 63, 0)));
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(message -> message.contains("areas=1") && message.contains("main=idle"));
+        assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @Test
+    void aPlayerProjectileCannotDeflectAnOwnedRainFireballBeforeNativeDamage() throws Exception {
+        startEncounter();
+        player.setOp(true);
+        debug("trigger fireball-rain " + player.getName(), player);
+        scheduler.advance(Duration.ofSeconds(1));
+        var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+        var arrow = end.spawn(player.getLocation(), org.bukkit.entity.Arrow.class);
+        arrow.setShooter(player);
+        var collision = new org.bukkit.event.entity.ProjectileHitEvent(arrow, ball);
+        server.getPluginManager().callEvent(collision);
+        assertThat(collision.isCancelled()).isTrue();
+        assertThat(ball.isValid()).isTrue();
+        assertThat(ball.getShooter()).isEqualTo(dragon);
+        assertThat(ball.getVelocity().getY()).isEqualTo(-0.5);
+    }
+
+    @Test
+    void sharedRainPoolKeepsDamagingDuringAnotherNativeMovementMainAction() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger dive " + player.getName(), player);
+        var encounter = org.bukkit.event.HandlerList.getRegisteredListeners(plugin).stream()
+                .map(org.bukkit.plugin.RegisteredListener::getListener).filter(EncounterController.class::isInstance)
+                .map(EncounterController.class::cast).findFirst().orElseThrow();
+        assertThat(encounter.depositBreathPool(player.getLocation(), 5, 6)).isTrue();
+        scheduler.advance(Duration.ZERO);
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(message -> message.contains("attack=DIVE") && message.contains("areas=1"));
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.EnumSource(EncounterController.DebugAttack.class)
     void debugTriggersActualAttacksDuringOpeningAndCancelKeepsRotationPaused(EncounterController.DebugAttack attack)
@@ -162,17 +602,19 @@ class HuntEncounterTest {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
-        assertThat(debug("trigger " + attack.name().toLowerCase(java.util.Locale.ROOT), player)).isEqualTo(1);
-        assertThat(messages(player)).anyMatch(text -> text.contains("Started " + attack));
+        assertThat(debug("trigger " + (attack == EncounterController.DebugAttack.RAIN ? "fireball-rain"
+                : attack.name().toLowerCase(java.util.Locale.ROOT)) + " " + player.getName(), player)).isEqualTo(1);
+        assertThat(messages(player)).singleElement().asString().contains("Started " + attack);
         assertThat(hit(dragon).isCancelled()).isTrue(); // Debugging attacks does not clear the shield.
         switch (attack) {
             case DIVE -> {
                 scheduler.advance(Duration.ofSeconds(6));
-                assertThat(player.getHealth()).isEqualTo(16);
+                assertThat(player.getHealth()).isEqualTo(12);
             }
             case SMASH -> {
+                end.getBlockAt(10, 62, 0).setType(Material.END_STONE); // Surviving ground below the new crater.
                 scheduler.advance(Duration.ofSeconds(5));
-                assertThat(player.getHealth()).isEqualTo(14);
+                assertThat(player.getHealth()).isEqualTo(8);
             }
             case PREY -> {
                 scheduler.advance(Duration.ofSeconds(4));
@@ -181,19 +623,375 @@ class HuntEncounterTest {
             case BOMBARDMENT -> {
                 scheduler.advance(Duration.ofSeconds(3));
                 assertThat(player.getHealth()).isEqualTo(14);
+                assertThat(referenceHits).isEqualTo(1);
             }
             case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         }
+        assertThat(messages(player)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
         debug("cancel", player);
+        assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         scheduler.advance(Duration.ofSeconds(12));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         debug("status", player);
-        assertThat(messages(player)).anyMatch(text -> text.contains("mode=manual") && text.contains("attack=none"));
+        assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         debug("resume", player);
-        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isNotEmpty();
+    }
+
+    @Test
+    void completedPreyKeepsAnOwnedDamagingPoolUntilOperatorCancellation() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=PREY") && text.contains("hazards=0"));
+        scheduler.advance(Duration.ofSeconds(4));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=1"));
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(12));
+        assertThat(player.getHealth()).isEqualTo(17);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=0"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"cancel", "wave 2"})
+    void bombardmentStopsBetweenRecipientsWhenDamageListenerClosesItsOwner(String action) throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        var teammate = server.addPlayer();
+        teammate.teleport(player.getLocation());
+        int[] hits = {0};
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void replace(EntityDamageEvent event) throws Exception {
+                if (event.getEntity() instanceof org.bukkit.entity.Player
+                        && event.getDamageSource().getCausingEntity() == dragon && ++hits[0] == 1) {
+                    debug(action, player);
+                }
+            }
+        }, plugin);
+        debug("trigger bombardment", player);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(hits[0]).isEqualTo(1);
+        assertThat(List.of(player.getHealth(), teammate.getHealth())).containsExactlyInAnyOrder(14.0, 20.0);
+        assertThat(dragon.isValid()).isTrue();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("hazards=0"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(hits[0]).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"English,surface outside combat area",
+            "Deutsch,Oberfläche außerhalb des Kampfbereichs"})
+    void geometryRejectionUsesTheRequestersLanguage(String name, String reason) throws Exception {
+        startEncounter();
+        var requester = server.addPlayer(name);
+        requester.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        for (int x = 180; x <= 200; x++) {
+            for (int z = -10; z <= 10; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        player.teleport(new Location(end, 190, 64, 0));
+        debug("trigger smash " + player.getName(), requester);
+        assertThat(messages(requester)).singleElement().asString().contains(reason);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void failedPreyRefreshClearsMainOwnershipAndAllowsAnotherProductionTrigger() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class)) {
+            particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble())).thenThrow(new IllegalStateException("render fault"));
+            scheduler.advance(Duration.ofMillis(250));
+        }
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("hazards=0"));
+        debug("trigger bombardment", player);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle"));
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(referenceHits).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(EncounterController.DebugAttack.class)
+    void everyCurrentAttackCompletesItsMainActionWithoutRequiringOperatorReset(EncounterController.DebugAttack attack)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-damage").set(0);
+        config.node("sweep-damage").set(0);
+        config.node("pool-damage").set(0);
+        config.node("bombardment-damage").set(0);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger " + (attack == EncounterController.DebugAttack.RAIN ? "fireball-rain"
+                : attack.name().toLowerCase(java.util.Locale.ROOT)), player);
+        debug("status", player);
+        assertThat(messages(player))
+                .anyMatch(text -> text.contains("main=executing") && text.contains("attack=" + attack));
+        scheduler.advance(Duration.ofSeconds(21));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void cancellationInsidePublicWarningSpawnCannotOrphanTheNewEntity() throws Exception {
+        hunt();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void spawned(org.bukkit.event.entity.EntitySpawnEvent event) throws Exception {
+                if (event.getEntity() instanceof TextDisplay) {
+                    debug("cancel", player);
+                }
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        debug("trigger prey", player);
+        org.bukkit.event.HandlerList.unregisterAll(listener);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(player.getHealth()).isEqualTo(20);
+        debug("trigger prey", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(17);
+    }
+
+    @Test
+    void aSchedulerCancellationFailureDoesNotLeaveAnAttackOrPreventTheNextTrigger() throws Exception {
+        scheduler = org.mockito.Mockito.spy(scheduler);
+        org.mockito.Mockito.doAnswer(call -> {
+            var task = (de.kreiscraft.core.scheduler.Scheduler.Task) call.callRealMethod();
+            if (!Duration.ofMillis(250).equals(call.getArgument(1))) {
+                return task;
+            }
+            return new de.kreiscraft.core.scheduler.Scheduler.Task() {
+                @Override
+                public void cancel() {
+                    task.cancel();
+                    throw new IllegalStateException("scheduler cancellation fault");
+                }
+
+                @Override
+                public boolean isCancelled() {
+                    return task.isCancelled();
+                }
+            };
+        }).when(scheduler).runRepeating(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger bombardment", player);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("attack=none") && text.contains("main=idle"));
+        debug("trigger prey", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveTimingOverridesAreSnapshottedAndValidatedAtModuleBoundary() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-warning-seconds").set(4);
+        config.node("dive-pass-seconds").set(3);
+        config.node("dive-climb-seconds").set(2);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        config.node("dive-pass-seconds").set(1);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(dragon.getY()).isEqualTo(78);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        module.disable();
+        config.node("dive-climb-seconds").set(0.1);
+        org.assertj.core.api.Assertions.assertThatThrownBy(this::startEncounter)
+                .hasMessageContaining("dive-climb-seconds");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"world", "mode", "terrain", "phase", "cancel", "disable"})
+    void diveInvalidityReleasesMainAndNativeControlWithQueuedCallbacksInert(String change) throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(1));
+        switch (change) {
+            case "world" -> player.teleport(new Location(server.addSimpleWorld("elsewhere"), 0, 64, 0));
+            case "mode" -> player.setGameMode(org.bukkit.GameMode.CREATIVE);
+            case "terrain" -> end.getBlockAt(11, 63, 0).setType(Material.AIR);
+            case "phase" -> dragon.setPhase(EnderDragon.Phase.CIRCLING);
+            case "cancel" -> debug("cancel", player);
+            case "disable" -> module.disable();
+            default -> throw new AssertionError(change);
+        }
+        scheduler.advance(Duration.ofMillis(250));
+        Location stopped = dragon.getLocation();
+        scheduler.advance(Duration.ofSeconds(10));
+        assertThat(dragon.getLocation()).isEqualTo(stopped);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isZero();
+        if (!change.equals("disable")) {
+            debug("status", player);
+            assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("flight=false"));
+        }
+    }
+
+    @Test
+    void diveAcrossExpandedArenaStagesLongApproachWithinNativeStepBounds() throws Exception {
+        config.node("movement-attacks").set(true);
+        for (int x = 155; x <= 191; x++) {
+            for (int z = -18; z <= 18; z++) {
+                end.getBlockAt(x, 63, z).setType(Material.END_STONE);
+            }
+        }
+        player.teleport(new Location(end, 178.5, 64, 0.5));
+        dragon.teleport(new Location(end, -180, 80, 0));
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(8));
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(player.getHealth()).isEqualTo(12);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(dragon.getX()).isGreaterThan(178);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void diveHidesBothCountdownsWithoutChangingWarningPassOrOtherEffects() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class)) {
+            debug("trigger dive", player);
+            messages(player); // The explicit operator reply is not an automatic attack announcement.
+            scheduler.advance(Duration.ofMillis(250));
+            var display = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+            assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(display.text())).isEmpty();
+            assertThat(player.getHealth()).isEqualTo(20);
+            scheduler.advance(Duration.ofSeconds(2));
+            assertThat(display.isValid()).isTrue();
+            assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(display.text())).isEmpty();
+            scheduler.advance(Duration.ofMillis(2250));
+            particles.verifyNoInteractions();
+            assertThat(messages(player)).isEmpty();
+            assertThat(actionBars(player)).isEmpty();
+            assertThat(referenceHits).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void aggressiveDiveTravelsFortyBlocksWithEarlyGroundHitThirtyTickPassAndFullWarning() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofMillis(1950));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(dragon.getY()).isGreaterThan(77);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(dragon.getY()).isEqualTo(78);
+        Location passStart = dragon.getLocation();
+        assertThat(Math.hypot(passStart.getX() - player.getX(), passStart.getZ() - player.getZ()))
+                .isEqualTo(20);
+        var earlyTarget = server.addPlayer("EarlyDiveTarget");
+        var direction = player.getLocation().toVector().subtract(passStart.toVector()).setY(0).normalize();
+        Location earlyPosition = passStart.clone().add(direction.multiply(4));
+        earlyPosition.setY(player.getY());
+        earlyTarget.teleport(earlyPosition);
+        scheduler.advance(Duration.ofMillis(100));
+        assertThat(earlyTarget.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(50));
+        Location groundPassStart = dragon.getLocation();
+        assertThat(groundPassStart.getY()).isLessThanOrEqualTo(69);
+        assertThat(earlyTarget.getHealth()).isEqualTo(12);
+        assertThat(referenceHits).isEqualTo(1);
+        scheduler.advance(Duration.ofMillis(100));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofMillis(500));
+        assertThat(dragon.getY()).isEqualTo(66);
+        scheduler.advance(Duration.ofMillis(750));
+        assertThat(dragon.getY()).isEqualTo(66);
+        assertThat(Math.hypot(dragon.getX() - passStart.getX(), dragon.getZ() - passStart.getZ()))
+                .isEqualTo(40);
+        assertThat(Math.hypot(dragon.getX() - groundPassStart.getX(), dragon.getZ() - groundPassStart.getZ()))
+                .isEqualTo(36);
+        assertThat(player.getHealth()).isEqualTo(12);
+        assertThat(earlyTarget.getHealth()).isEqualTo(12);
+        assertThat(referenceHits).isEqualTo(2);
+        scheduler.advance(Duration.ofMillis(950));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(dragon.getY()).isEqualTo(82);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+    }
+
+    @Test
+    void diveSignalsCompletionOnlyAfterReleasingNativeControl() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("lane-damage").set(0);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        int[] releases = {0};
+        beforeNativeRelease = () -> {
+            releases[0]++;
+            try {
+                debug("status", player);
+            } catch (Exception error) {
+                throw new AssertionError(error);
+            }
+            assertThat(messages(player))
+                    .anyMatch(text -> text.contains("main=executing") && text.contains("attack=DIVE"));
+        };
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(9));
+        assertThat(releases[0]).isEqualTo(1);
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("attack=none"));
+        debug("cancel", player);
+        assertThat(releases[0]).isEqualTo(1);
     }
 
     @Test
@@ -228,9 +1026,11 @@ class HuntEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         debug("pause", console);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        while (console.nextMessage() != null) {
+            // Drain earlier explicit replies before checking resume.
+        }
         debug("resume", console);
-        scheduler.advance(Duration.ofSeconds(10));
-        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
+        assertThat(console.nextMessage()).contains("mode=automatic", "main=executing");
         module.disable();
         assertThat(debug("status", console)).isZero();
     }
@@ -242,17 +1042,59 @@ class HuntEncounterTest {
         return event;
     }
 
+    private void trigger(String attack) throws Exception {
+        player.setOp(true);
+        debug("trigger " + attack, player);
+        messages(player); // Geometry checks deliberately isolate an action from randomized scheduling.
+    }
+
+    @Test
+    void explicitDebugRepliesAreLocalizedAndOnlyReachTheRequestingOperator() throws Exception {
+        var german = server.addPlayer("Deutsch");
+        german.teleport(player.getLocation());
+        german.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        startEncounter();
+        assertThat(debug("pause", german)).isEqualTo(1);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "mode=manual");
+        assertThat(debug("trigger prey " + player.getName(), german)).isEqualTo(1);
+        assertThat(messages(german)).singleElement().asString().contains("Gestartet", "PREY", player.getName());
+        scheduler.advance(Duration.ofSeconds(1));
+        var mark = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(mark.text())).contains(player.getName(), "3.0s");
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
+        debug("cancel", german);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "attack=none");
+        debug("trigger dive MissingPlayer", german);
+        assertThat(messages(german)).singleElement().asString().contains("MissingPlayer", "nicht online");
+        player.teleport(new Location(end, 100, 50, 0));
+        debug("trigger smash " + player.getName(), german);
+        assertThat(messages(german)).singleElement().asString().contains("Ziel", "Ankunft");
+        debug("resume", german);
+        assertThat(messages(german)).singleElement().asString().contains("Status", "mode=automatic");
+        module.disable();
+        debug("status", german);
+        assertThat(messages(german)).singleElement().asString().contains("deaktiviert");
+        assertThat(messages(player)).isEmpty();
+    }
+
     private void clearFinalGate() {
-        dragon.setHealth(310);
-        var crossing = hit(dragon);
-        assertThat(crossing.isCancelled()).isFalse();
-        dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
-        scheduler.advance(Duration.ZERO);
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
-            defender.setHealth(0);
-            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
-        });
-        end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+        for (int wave = 2; wave <= 3; wave++) {
+            dragon.setHealth(wave == 2 ? 660 : 310);
+            var crossing = hit(dragon);
+            assertThat(crossing.isCancelled()).isFalse();
+            dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
+            scheduler.advance(Duration.ZERO);
+            defenders().forEach(defender -> {
+                defender.setHealth(0);
+                server.getPluginManager()
+                        .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+            });
+            end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
+        }
     }
 
     @Test
@@ -265,13 +1107,13 @@ class HuntEncounterTest {
         var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         assertThat(warning.getLocation().getX()).isEqualTo(10.5);
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(warning.text())).contains("3");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(2999));
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(player.getHealth()).isEqualTo(16);
-        assertThat(plain.serialize(warning.text())).contains("6");
-        player.teleport(new Location(end, 10.5, 64, 4.51));
+        assertThat(plain.serialize(warning.text())).isEmpty();
+        player.teleport(new Location(end, 10.5, 64, 6.51));
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(warning.isValid()).isFalse();
         assertThat(player.getHealth()).isEqualTo(16);
@@ -283,16 +1125,17 @@ class HuntEncounterTest {
         config.node("movement-attacks").set(true);
         hunt();
         Location origin = dragon.getLocation();
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         assertThat(dragon.getLocation()).isNotEqualTo(origin);
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(player.getHealth()).isEqualTo(20);
-        scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(16);
+        scheduler.advance(Duration.ofMillis(1500));
+        assertThat(player.getHealth()).isEqualTo(12);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
-        scheduler.advance(Duration.ofSeconds(2));
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
@@ -313,13 +1156,14 @@ class HuntEncounterTest {
             }
         }
         player.teleport(player.getLocation().add(0, 1.2, 0));
-        scheduler.advance(Duration.ofSeconds(11));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        assertThat(messages(player)).anyMatch(text -> text.contains("Dive incoming"));
+        assertThat(messages(player)).isEmpty();
     }
 
     @Test
-    void owedSmashRunsAsSoonAsPreyClearsInsteadOfWaitingForAnotherCadence() throws Exception {
+    void unlockedSmashRemainsTriggerableAfterPreyCompletes() throws Exception {
         config.node("movement-attacks").set(true);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -327,12 +1171,22 @@ class HuntEncounterTest {
         config.node("landing-cadence-seconds").set(120);
         config.node("pool-damage").set(0);
         hunt();
-        scheduler.advance(Duration.ofSeconds(31));
-        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
+        clearFinalGate();
+        trigger("prey");
+        scheduler.advance(Duration.ofSeconds(4));
+        trigger("smash");
+        assertWarningKind("sweep");
     }
 
     @Test
     void completeDefaultRotationIncludesEveryAttackAcrossTerrainAndLandings() throws Exception {
+        for (int y = 56; y < 63; y++) {
+            for (int x = -40; x <= 40; x++) {
+                for (int z = -40; z <= 40; z++) {
+                    end.getBlockAt(x, y, z).setType(Material.END_STONE);
+                }
+            }
+        }
         config.node("movement-attacks").set(true);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -340,39 +1194,82 @@ class HuntEncounterTest {
         config.node("lane-damage").set(0);
         config.node("sweep-damage").set(0);
         hunt();
+        clearFinalGate();
         for (int x = 5; x < 18; x++) {
             for (int z = 4; z < 9; z++) {
                 end.getBlockAt(x, 64, z).setType(Material.END_STONE);
             }
         }
+        var dives = new java.util.HashSet<java.util.UUID>();
+        var smashes = new java.util.HashSet<java.util.UUID>();
+        var prey = new java.util.HashSet<java.util.UUID>();
+        int landings = 0;
         for (int second = 0; second < 180; second++) {
             scheduler.advance(Duration.ofSeconds(1));
+            for (TextDisplay display : end.getEntitiesByClass(TextDisplay.class)) {
+                String kind = display.getPersistentDataContainer().get(EncounterRecovery.ARTIFACT,
+                        org.bukkit.persistence.PersistentDataType.STRING);
+                switch (kind) {
+                    case "lane" -> dives.add(display.getUniqueId());
+                    case "sweep" -> smashes.add(display.getUniqueId());
+                    case "prey" -> prey.add(display.getUniqueId());
+                    default -> {
+                    }
+                }
+            }
             if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
+                landings++;
                 dragon.teleport(new Location(end, 0, 67, 0));
                 nativePhase(EnderDragon.Phase.LAND_ON_PORTAL);
                 nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
             }
         }
-        var chat = messages(player);
-        assertThat(chat).filteredOn(text -> text.contains("Dive incoming")).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(chat).filteredOn(text -> text.contains("Ground smash")).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(chat).anyMatch(text -> text.contains("has landed"));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+        assertThat(dives).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(smashes).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(prey).isNotEmpty();
+        assertThat(landings).isPositive();
+        assertThat(messages(player)).isEmpty();
+        assertThat(actionBars(player)).isEmpty();
     }
 
     @Test
-    void terrainAwareDiveStillRejectsVoidAndDistantCloudOverlap() throws Exception {
+    void terrainAwareDiveCrossesHolesButStillRejectsDistantCloudOverlap() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
         // A void trench cuts through both candidate orientations, not a climbable one-block rise.
         end.getBlockAt(11, 63, 0).setType(Material.AIR);
-        scheduler.advance(Duration.ofSeconds(11));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        debug("cancel", player);
         end.getBlockAt(11, 63, 0).setType(Material.END_STONE);
         var cloud = end.spawn(new Location(end, 15, 64, 5), org.bukkit.entity.AreaEffectCloud.class);
         cloud.setParticle(org.bukkit.Particle.DRAGON_BREATH);
         cloud.setRadius(8);
+        trigger("dive");
         scheduler.advance(Duration.ofSeconds(2));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void widerPhysicalDiveHitsTheInclusiveFiveBlockSideBoundaryButNotBeyondIt() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger dive", player);
+        scheduler.advance(Duration.ofSeconds(2));
+        var direction = player.getLocation().toVector().subtract(dragon.getLocation().toVector()).setY(0).normalize();
+        var sideways = new org.bukkit.util.Vector(-direction.getZ(), 0, direction.getX());
+        var edge = server.addPlayer("DiveSideBoundary");
+        edge.teleport(player.getLocation().add(sideways.clone().multiply(5)));
+        var outside = server.addPlayer("OutsideDiveSide");
+        outside.teleport(player.getLocation().add(sideways.clone().multiply(5.01)));
+        scheduler.advance(Duration.ofMillis(1500));
+        assertThat(edge.getHealth()).isEqualTo(12);
+        assertThat(outside.getHealth()).isEqualTo(20);
+        assertThat(referenceHits).isEqualTo(2);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(edge.getHealth()).isEqualTo(12);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
 
@@ -380,8 +1277,9 @@ class HuntEncounterTest {
     void diveCanBeDodgedSidewaysAndDisableStopsMovement() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
-        player.teleport(player.getLocation().add(0, 0, 5));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
+        player.teleport(player.getLocation().add(0, 0, 6));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHealth()).isEqualTo(20);
         module.disable();
@@ -393,22 +1291,267 @@ class HuntEncounterTest {
     }
 
     @Test
+    void validCraterReloadAppliesRadiusDepthAndLifetimeOnlyToTheNextAttempt() throws Exception {
+        config.node("movement-attacks").set(true);
+        for (int x = 5; x <= 15; x++) {
+            for (int z = -5; z <= 5; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+                end.getBlockAt(x, 61, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        var next = config.copy();
+        next.node("smash-crater-radius").set(2);
+        next.node("smash-crater-depth").set(2);
+        next.node("debris-lifetime-seconds").set(1);
+        module.onConfigReload(next);
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        debug("cancel", player);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10.5, 63, 0.5));
+        player.setHealth(20);
+        scheduler.advance(Duration.ofSeconds(1));
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(26);
+        assertThat(end.getBlockAt(10, 62, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(10, 61, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(13, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=executing") && text.contains("hazards=0"));
+    }
+
+    @Test
+    void smashMainCompletionDoesNotPrematurelyClearLongerLivedOwnedDebris() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("debris-lifetime-seconds").set(10);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(10));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("hazards=1"));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @Test
+    void smashDestroysArrivalGroundAndAnAnchorFoundationWithoutBypassingPlayerOrCrystalGates() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("arrival-x").set(29.5);
+        config.node("arrival-y").set(64);
+        config.node("arrival-radius").set(3);
+        player.teleport(new Location(end, 24.5, 64, 0.5));
+        var protectedPlayer = server.addPlayer();
+        protectedPlayer.teleport(new Location(end, 29.5, 64, 0.5));
+        startEncounter();
+        player.setOp(true);
+        var objective = end.getEntitiesByClass(EnderCrystal.class).stream()
+                .filter(crystal -> crystal.getX() == 24.5).findFirst().orElseThrow();
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getBlockAt(24, 63, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(29, 63, 0).isEmpty()).isTrue();
+        assertThat(protectedPlayer.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(8);
+        assertThat(objective.isValid()).isTrue();
+        assertThat(hit(objective).isCancelled()).isTrue();
+        debug("cancel", player);
+        assertThat(end.getBlockAt(24, 63, 0).isEmpty()).isTrue();
+        assertThat(objective.isValid()).isTrue();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"0,8", "2,8", "4,8", "5,9.5", "6,11", "7,12.5", "8,14",
+            "8.01,20", "-4,8", "-6,11", "-8,14", "-8.01,20"})
+    void smashDamageIsFullInsideHalfRadiusThenFallsLinearlyToHalfAtTheEdge(double offset, double health)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(probe.getHealth()).isEqualTo(health);
+        assertThat(referenceHits).isEqualTo(health < 20 ? 2 : 1);
+        if (Math.abs(offset) > 5) {
+            assertThat(probe.getLocation().getBlock().getRelative(0, -1, 0).getType()).isEqualTo(Material.END_STONE);
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"cancel,false", "cancel,true", "pause,false", "pause,true",
+            "unload,false", "unload,true", "disable,false", "disable,true", "victory,false", "victory,true",
+            "reset,false", "reset,true", "wave,false", "wave,true"})
+    void everySmashTerminationCancelsTemporaryWorkButNeverRestoresCommittedGround(String termination, boolean impact)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        if (termination.equals("victory")) {
+            hunt();
+            clearFinalGate();
+        } else {
+            startEncounter();
+        }
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofMillis(impact ? 4000 : 3950));
+        var unrelated = end.spawn(new Location(end, 35, 65, 35), org.bukkit.entity.FallingBlock.class);
+        switch (termination) {
+            case "cancel", "pause" -> debug(termination, player);
+            case "reset" -> {
+                player.teleport(new Location(end, 100, 50, 0));
+                scheduler.advance(Duration.ofSeconds(60));
+            }
+            case "wave" -> debug("wave 2", player);
+            case "unload" -> server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+            case "disable" -> module.disable();
+            case "victory" -> {
+                server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
+            }
+            default -> throw new AssertionError(termination);
+        }
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).containsExactly(unrelated);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(impact ? Material.AIR : Material.END_STONE);
+        assertThat(referenceHits).isEqualTo(impact ? 1 : 0);
+    }
+
+    @Test
+    void staleDebrisRecoveryRemovesOnlyMarkedEntitiesAndDoesNotRebuildTerrain() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        debug("cancel", player);
+        var stale = end.spawn(new Location(end, 10, 70, 0), org.bukkit.entity.FallingBlock.class);
+        stale.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                org.bukkit.persistence.PersistentDataType.STRING, "debris");
+        var unrelated = end.spawn(new Location(end, 35, 70, 35), org.bukkit.entity.FallingBlock.class);
+        var loaded = new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0), List.of(stale, unrelated));
+        server.getPluginManager().callEvent(loaded);
+        server.getPluginManager().callEvent(loaded);
+        assertThat(stale.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"smash-crater-radius,0", "smash-crater-radius,9",
+            "smash-crater-radius,NaN", "smash-crater-depth,0", "smash-crater-depth,4", "smash-crater-depth,1.5",
+            "debris-lifetime-seconds,0", "debris-lifetime-seconds,11", "debris-lifetime-seconds,Infinity"})
+    void invalidDestructionTuningIsRejectedAtomicallyAtTheConfigurationBoundary(String key, double value)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        var invalid = config.copy();
+        invalid.node(key).set(value);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> module.onConfigReload(invalid))
+                .isInstanceOf(RuntimeException.class);
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        assertThat(player.getHealth()).isEqualTo(8);
+    }
+
+    @Test
+    void damagedGroundWithoutWalkingEscapeStillAllowsEveryWarnedAttack() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        // Keep target footing, but a two-block-deep trench defeats the retired straight walking-route veto.
+        for (int x = -5; x <= 26; x++) {
+            for (int z = -16; z <= 16; z++) {
+                double distance = Math.hypot(x - 10, z);
+                if (distance >= 4 && distance <= 6) {
+                    end.getBlockAt(x, 63, z).setType(Material.AIR);
+                    end.getBlockAt(x, 61, z).setType(Material.END_STONE);
+                }
+            }
+        }
+        for (String attack : List.of("bombardment", "dive", "prey", "smash")) {
+            debug("trigger " + attack, player);
+            scheduler.advance(Duration.ofSeconds(6));
+            assertThat(player.getHealth()).as(attack).isLessThan(20);
+            debug("cancel", player);
+            player.setHealth(20);
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+        }
+    }
+
+    @Test
+    void destructiveSmashCommitsOnceAtImpactAndCancellationKeepsTheCrater() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofMillis(3950));
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(player.getHealth()).isEqualTo(8);
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(15, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(16, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        var debris = end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class);
+        assertThat(debris).hasSize(81);
+        assertThat(debris).allSatisfy(block -> {
+            assertThat(block.getBlockData().getMaterial()).isEqualTo(Material.END_STONE);
+            assertThat(block.canHurtEntities()).isFalse();
+            assertThat(block.getDropItem()).isFalse();
+            assertThat(block.getCancelDrop()).isTrue();
+            assertThat(block.getVelocity().getY()).isPositive();
+        });
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=executing"));
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(referenceHits).isEqualTo(1);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(referenceHits).isEqualTo(1);
+    }
+
+    @Test
     void smashWarnsRisesImpactsAndLeavesAGroundedRecovery() throws Exception {
         config.node("movement-attacks").set(true);
         config.node("lane-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(10);
         hunt();
-        scheduler.advance(Duration.ofSeconds(14));
+        clearFinalGate();
+        trigger("smash");
+        var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(warning.text()).isNotEqualTo(net.kyori.adventure.text.Component.empty());
+        scheduler.advance(Duration.ofMillis(2950));
+        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        scheduler.advance(Duration.ofMillis(50));
         assertThat(dragon.getLocation().getY()).isEqualTo(82);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(player.getHealth()).isEqualTo(8);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
+        assertThat(warning.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         assertThat(hit(dragon).isCancelled()).isFalse();
+        assertThat(warning.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
+        assertThat(warning.isValid()).isFalse();
     }
 
     @Test
@@ -432,7 +1575,8 @@ class HuntEncounterTest {
         config.node("prey-cadence-seconds").set(12);
         config.node("sweep-cadence-seconds").set(20);
         hunt();
-        scheduler.advance(Duration.ofSeconds(duringRefresh ? 16 : 15));
+        trigger("prey");
+        scheduler.advance(Duration.ofSeconds(duringRefresh ? 4 : 3));
         try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class,
                 org.mockito.Mockito.CALLS_REAL_METHODS)) {
             particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
@@ -444,32 +1588,37 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofSeconds(1));
         }
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        scheduler.advance(Duration.ofSeconds(5));
-        assertThat(messages(player)).anyMatch(text -> text.contains("Ground smash"));
+        clearFinalGate();
+        player.setOp(true);
+        debug("trigger smash", player); // Manual probe of recovery after the failed pool, not a locked attack.
+        assertWarningKind("sweep");
     }
 
     @Test
     void finalGateCancelsInFlightDiveAndFinalHuntCanStartANewOne() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         clearFinalGate();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(player.getHealth()).isEqualTo(20);
+        trigger("dive");
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CHARGE_PLAYER);
         scheduler.advance(Duration.ofSeconds(6));
-        assertThat(player.getHealth()).isEqualTo(16);
+        assertThat(player.getHealth()).isEqualTo(12);
     }
 
     @Test
     void removedFlightWarningCancelsMovementWithoutInvisibleImpact() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
-        scheduler.advance(Duration.ofSeconds(12));
+        trigger("dive");
+        scheduler.advance(Duration.ofSeconds(2));
         end.getEntitiesByClass(TextDisplay.class).forEach(TextDisplay::remove);
         Location stopped = dragon.getLocation();
         scheduler.advance(Duration.ofSeconds(5));
@@ -488,7 +1637,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         assertThat(player.getHealth()).isEqualTo(12);
-        player.teleport(new Location(end, 10.5, 64, 4.51));
+        player.teleport(new Location(end, 10.5, 64, 6.51));
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(player.getHealth()).isEqualTo(12);
@@ -504,7 +1653,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void landingWaitsForNativeArrivalThenReservesTwelveSecondsOfMeleeTimeBeforeTakingOff() throws Exception {
+    void landingWaitsForNativeArrivalThenReservesSixSecondsOfMeleeTimeBeforeTakingOff() throws Exception {
         config.node("lane-damage").set(0);
         hunt();
         scheduler.advance(Duration.ofMillis(29999));
@@ -520,7 +1669,7 @@ class HuntEncounterTest {
         nativePhase(EnderDragon.Phase.LEAVE_PORTAL);
         nativePhase(EnderDragon.Phase.BREATH_ATTACK);
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5749));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
@@ -541,7 +1690,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void clearGroundInsideTheLaneStillNeedsAReachablePlayerSizedEscapeOutsideIt() throws Exception {
+    void clearGroundInsideTheLaneDoesNotRequireAWalkingEscapeOutsideIt() throws Exception {
         hunt();
         // Keep the complete warned rectangle but remove every route beyond its short sides.
         for (int x = -3; x <= 23; x++) {
@@ -552,19 +1701,21 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(13));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(20);
-        // A real northward walking corridor makes the same attack fair on the next cadence.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(16);
+        player.setOp(true);
+        debug("cancel", player);
+        // Restoring a corridor is optional; the next production trigger still uses the same warning.
         for (int x = 9; x <= 11; x++) {
             for (int z = -8; z <= 0; z++) {
                 end.getBlockAt(x, 63, z).setType(Material.END_STONE);
             }
         }
-        scheduler.advance(Duration.ofSeconds(7));
+        debug("trigger dive", player);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         player.teleport(new Location(end, 10.5, 64, -5.5));
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(16);
     }
 
     @Test
@@ -572,11 +1723,11 @@ class HuntEncounterTest {
         hunt();
         scheduler.advance(Duration.ofSeconds(10));
         var edge = server.addPlayer();
-        edge.teleport(new Location(end, 22.5, 64, 3.5));
+        edge.teleport(new Location(end, 30.5, 64, 5.5));
         var beyondEnd = server.addPlayer();
-        beyondEnd.teleport(new Location(end, 22.51, 64, 0.5));
+        beyondEnd.teleport(new Location(end, 30.51, 64, 0.5));
         var beyondSide = server.addPlayer();
-        beyondSide.teleport(new Location(end, 10.5, 64, 3.51));
+        beyondSide.teleport(new Location(end, 10.5, 64, 5.51));
         var above = server.addPlayer();
         above.teleport(new Location(end, 10.5, 68, 0.5));
         scheduler.advance(Duration.ofSeconds(3));
@@ -756,22 +1907,25 @@ class HuntEncounterTest {
     }
 
     @Test
-    void huntWarningsAndLandingInstructionsRespectEachPlayersLanguage() throws Exception {
+    void legacyLaneAndLandingSequenceStaysQuietForBothLanguages() throws Exception {
         config.node("lane-damage").set(0);
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         hunt();
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Breath lane in 3.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Atembahn in 3.0s"));
+        assertWarningKind("lane");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
         scheduler.advance(Duration.ofSeconds(20));
-        assertThat(messages(player)).anyMatch(text -> text.contains("approaching the podium"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("nähert sich dem Podium"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
         dragon.teleport(new Location(end, 0, 67, 0));
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
-        assertThat(messages(player)).anyMatch(text -> text.contains("has landed"));
-        assertThat(messages(german)).anyMatch(text -> text.contains("ist gelandet"));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
     }
 
     private List<String> messages(PlayerMock recipient) {
@@ -781,6 +1935,12 @@ class HuntEncounterTest {
             result.add(message);
         }
         return result;
+    }
+
+    private void assertWarningKind(String kind) {
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).anyMatch(display -> kind.equals(
+                display.getPersistentDataContainer().get(EncounterRecovery.ARTIFACT,
+                        org.bukkit.persistence.PersistentDataType.STRING)));
     }
 
     private List<String> actionBars(PlayerMock recipient) {
@@ -794,7 +1954,7 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"lane-width,0", "lane-length,41", "lane-warning-seconds,1",
+    @org.junit.jupiter.params.provider.CsvSource({"lane-width,0", "lane-length,41", "lane-warning-seconds,0",
             "lane-lifetime-seconds,21", "lane-damage,NaN", "lane-cadence-seconds,3",
             "lane-damage-cadence-seconds,0", "landing-window-seconds,7", "landing-cadence-seconds,0",
             "landing-approach-seconds,Infinity", "landing-radius,25"})
@@ -824,7 +1984,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        defenders().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -841,7 +2001,7 @@ class HuntEncounterTest {
         config.node("lane-damage").set(0);
         config.node("pool-damage").set(0);
         config.node("sweep-damage").set(0);
-        config.node("prey-count").set(4);
+        config.node("prey-percentage").set(35);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
         scheduler = org.mockito.Mockito.spy(scheduler);
@@ -871,8 +2031,8 @@ class HuntEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     nativePhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(4);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(20);
+                assertThat(end.getEntitiesByClass(TextDisplay.class).size()).isLessThanOrEqualTo(7);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
                 assertThat(end.getPlayers())
                         .allSatisfy(participant -> assertThat(participant.getHealth()).isEqualTo(20));
             }
@@ -880,13 +2040,13 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofSeconds(60));
             assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
             assertThat(end.getEntitiesByClass(EnderCrystal.class)).isEmpty();
-            assertThat(end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid))
+            assertThat(defenders().stream().filter(org.bukkit.entity.Entity::isValid))
                     .isEmpty();
             assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.CIRCLING);
             assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isEqualTo(1); // Discovery only.
             end.getPlayers().forEach(participant -> participant.teleport(new Location(end, 10.5, 64, 0.5)));
             scheduler.advance(Duration.ofSeconds(1));
-            end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid)
+            defenders().stream().filter(org.bukkit.entity.Entity::isValid)
                     .forEach(defender -> {
                         defender.setHealth(0);
                         server.getPluginManager()
@@ -946,15 +2106,15 @@ class HuntEncounterTest {
     }
 
     @Test
-    void theLaneDamageHeightCannotOverlapArrivalProtectionAboveOtherwiseUsableGround() throws Exception {
+    void theLaneMayOverlapArrivalGeometryWhilePlayerProtectionRemainsIndependent() throws Exception {
         config.node("arrival-x").set(10.5);
         config.node("arrival-y").set(69);
         config.node("arrival-height").set(4);
         config.node("arrival-radius").set(3);
         hunt();
         scheduler.advance(Duration.ofSeconds(13));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(16);
     }
 
     @Test
@@ -1039,9 +2199,109 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"4,4,2", "8,8,3", "20,20,7", "20,2,2"})
+    void automaticPreyRoundsAllEndPopulationUpAndCapsOnlyByEligibleTargets(int population, int eligible,
+            int expected) throws Exception {
+        config.node("prey-percentage").set(null); // Exercise the production 35% default.
+        config.node("prey-count").set(1); // Retired input cannot silently truncate population scaling.
+        config.node("lane-cadence-seconds").set(120);
+        for (int index = 1; index < population; index++) {
+            var other = server.addPlayer();
+            other.teleport(new Location(end, index < eligible ? -15.5 : 1000, 64, 0.5));
+            if (index >= eligible && index % 3 != 0) {
+                other.teleport(new Location(end, 0.5, 64, 0.5));
+                other.setGameMode(index % 3 == 1 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
+            }
+            if (index == 1) {
+                other.setGameMode(org.bukkit.GameMode.ADVENTURE);
+                other.teleport(new Location(end, -15.5, end.getMaxHeight() - 1, 0.5));
+            }
+            if (index == population - 1 && eligible < population) {
+                other.setGameMode(org.bukkit.GameMode.SURVIVAL);
+                other.teleport(new Location(end, 100, 50, 0));
+            }
+        }
+        var unrelated = server.addPlayer();
+        var unrelatedEnd = server.addSimpleWorld("other-end");
+        unrelatedEnd.setEnvironment(World.Environment.THE_END);
+        unrelated.teleport(new Location(unrelatedEnd, 0, 64, 0));
+        prey();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(expected);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).extracting(display -> display.text())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
+    void defaultPreyPoolsMayOverlapWithoutMultiplyingDamage() throws Exception {
+        config.node("pool-radius").set(null);
+        var teammate = server.addPlayer();
+        teammate.teleport(player.getLocation().add(2, 0, 0));
+        prey();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        assertThat(player.getHealth()).isEqualTo(17);
+        assertThat(teammate.getHealth()).isEqualTo(17);
+        player.teleport(new Location(end, 17.5, 64, 0.5)); // Inclusive edge of teammate's radius-five pool only.
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(teammate.getHealth()).isEqualTo(14);
+    }
+
+    @Test
+    void depositionCompletesBeforeLingeringPoolsAndAllowsTheNextMeleeLanding() throws Exception {
+        config.node("pool-lifetime-seconds").set(15);
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(20);
+        // Historical stationary seam; exact new rotation/arrival bounds live in LifecycleEncounterTest.
+        hunt();
+        scheduler.advance(Duration.ofSeconds(24));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        player.teleport(new Location(end, -10.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(6));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        dragon.teleport(new Location(end, 0, 64, 0));
+        dragon.setPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+    }
+
+    @Test
+    void theNextAutomaticPreyStartsWhileThePreviousPoolIsStillOwned() throws Exception {
+        config.node("prey-cadence-seconds").set(5);
+        config.node("pool-lifetime-seconds").set(15);
+        config.node("lane-cadence-seconds").set(120);
+        hunt();
+        scheduler.advance(Duration.ofSeconds(9));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        player.teleport(new Location(end, -15.5, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2); // Old pool plus the next mark.
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2); // Both independent pools.
+        assertThat(player.getHealth()).isEqualTo(14);
+    }
+
+    @Test
+    void invalidatingTheLastMarkCompletesTheMainActionWithoutWaitingForItsOldCountdown() throws Exception {
+        startEncounter();
+        player.addAttachment(plugin, DragonDebugCommand.PERMISSION, true);
+        debug("trigger prey", player);
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerGameModeChangeEvent(player,
+                org.bukkit.GameMode.SPECTATOR,
+                org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.UNKNOWN, null));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("marks=0"));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(player.getHealth()).isEqualTo(20);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"arrival", "world", "death", "quit", "arena",
             "creative", "spectator", "arrival-return"})
     void preyInvalidationPermanentlyCancelsOnlyThatPlayersPendingPool(String departure) throws Exception {
+        config.node("pool-radius").set(null);
         var teammate = server.addPlayer();
         teammate.teleport(new Location(end, -15.5, 64, 0.5));
         prey();
@@ -1050,7 +2310,7 @@ class HuntEncounterTest {
             case "world" -> player.teleport(new Location(server.addSimpleWorld("other"), 0, 64, 0));
             case "death" -> player.setHealth(0);
             case "quit" -> player.kick();
-            case "arena" -> player.teleport(new Location(end, 81, 64, 0));
+            case "arena" -> player.teleport(new Location(end, 193, 64, 0));
             case "creative" -> player.setGameMode(org.bukkit.GameMode.CREATIVE);
             case "spectator" -> player.setGameMode(org.bukkit.GameMode.SPECTATOR);
             default -> throw new AssertionError(departure);
@@ -1071,6 +2331,7 @@ class HuntEncounterTest {
             strings = {"arrival", "arrival-teleport", "world", "arena", "creative", "spectator", "death", "quit"})
     void publicDepartureEventsCancelTheSameMarkEvenIfEligibilityReturnsBeforeTheNextTick(String departure)
             throws Exception {
+        config.node("pool-radius").set(null);
         var teammate = server.addPlayer();
         teammate.teleport(new Location(end, -15.5, 64, 0.5));
         prey();
@@ -1079,7 +2340,7 @@ class HuntEncounterTest {
         switch (departure) {
             case "arrival", "arrival-teleport", "world", "arena" -> {
                 var destination = departure.startsWith("arrival") ? new Location(end, 100, 50, 0)
-                        : departure.equals("arena") ? new Location(end, 81, 64, 0)
+                        : departure.equals("arena") ? new Location(end, 193, 64, 0)
                                 : new Location(server.addSimpleWorld("other"), 0, 64, 0);
                 // Paper dispatches before committing destination: the participant is still at origin.
                 server.getPluginManager().callEvent(departure.equals("arrival") || departure.equals("arena")
@@ -1149,14 +2410,14 @@ class HuntEncounterTest {
     }
 
     @Test
-    void stackedMarksCreateOnlyOneFinitePoolAndItsRadiusCadenceAndExpiryMatchTheWarning() throws Exception {
+    void stackedMarksKeepIndependentFinitePoolsWithoutAnExtraDamagePulseAtExpiry() throws Exception {
         config.node("pool-lifetime-seconds").set(1);
         var teammate = server.addPlayer();
         teammate.teleport(player.getLocation());
         prey();
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         assertThat(player.getHealth()).isEqualTo(17);
         assertThat(teammate.getHealth()).isEqualTo(17);
         var edge = server.addPlayer();
@@ -1254,9 +2515,11 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"prey-count,5", "prey-cadence-seconds,10", "prey-countdown-seconds,1",
+    @org.junit.jupiter.params.provider.CsvSource({"prey-percentage,101", "prey-cadence-seconds,4",
+            "prey-countdown-seconds,1",
             "pool-radius,7", "pool-damage,NaN", "pool-damage-cadence-seconds,0", "pool-lifetime-seconds,16",
-            "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-cadence-seconds,4",
+            "sweep-radius,17", "sweep-angle,121", "sweep-warning-seconds,2", "sweep-warning-seconds,2.99",
+            "sweep-cadence-seconds,4",
             "sweep-damage,Infinity", "sweep-knockback,3"})
     void invalidNewTuningCannotPartiallyChangeAnAttempt(String key, double value) throws Exception {
         prey();
@@ -1278,7 +2541,7 @@ class HuntEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane.
         player.teleport(new Location(end, 10.5, 64, 6.5)); // Real usable short-side escape.
         scheduler.advance(Duration.ofSeconds(10));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey"));
+        assertWarningKind("prey");
         player.teleport(new Location(end, 20.5, 64, 10.5));
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(player.getHealth()).isEqualTo(17); // Pool at the moved location, never at the lane.
@@ -1290,14 +2553,17 @@ class HuntEncounterTest {
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
         assertThat(hit(dragon).isCancelled()).isFalse();
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5749));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         player.teleport(new Location(end, 0.5, 64, 10.5));
-        scheduler.advance(Duration.ofMillis(7500)); // Hunt time 50 seconds.
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep"));
+        player.teleport(new Location(end, 100, 50, 0)); // Omit the now-earlier next Prey before the sector geometry check.
+        scheduler.advance(Duration.ofMillis(12750));
+        player.teleport(new Location(end, 0.5, 64, 10.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertWarningKind("sweep");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Lane postponed, not combined unsafely.
         player.teleport(new Location(end, 10.5, 64, 0.5)); // Reachable sector-side escape.
         scheduler.advance(Duration.ofSeconds(4));
@@ -1317,7 +2583,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
+        defenders().stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -1328,7 +2594,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void marksAndSweepWarningsRespectRecipientLanguagesWithoutChatFlooding() throws Exception {
+    void marksRefreshAndSweepWarningsStayInWorldForBothLanguages() throws Exception {
         config.node("lane-cadence-seconds").set(120);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -1336,27 +2602,33 @@ class HuntEncounterTest {
         var german = server.addPlayer("Deutsch");
         german.teleport(new Location(end, -15.5, 64, 0.5));
         hunt();
-        messages(player);
-        messages(german);
         scheduler.advance(Duration.ofSeconds(20));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Marked Prey: 4.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Markierte Beute: 4.0s"));
+        assertWarningKind("prey");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
         assertThat(messages(player)).isEmpty();
         assertThat(messages(german)).isEmpty();
         scheduler.advance(Duration.ofMillis(10250));
         dragon.teleport(new Location(end, 0, 67, 0));
         nativePhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         scheduler.advance(Duration.ofMillis(250));
+        player.teleport(new Location(end, 100, 50, 0));
+        german.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofMillis(18500));
         player.teleport(new Location(end, 0.5, 64, 10.5));
         german.teleport(new Location(end, 0.5, 64, 10.5));
-        scheduler.advance(Duration.ofMillis(19500));
-        assertThat(actionBars(player)).anyMatch(text -> text.contains("Wing sweep in 4.0s"));
-        assertThat(actionBars(german)).anyMatch(text -> text.contains("Flügelschlag in 4.0s"));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertWarningKind("sweep");
+        assertThat(actionBars(player)).isEmpty();
+        assertThat(actionBars(german)).isEmpty();
+        assertThat(messages(player)).isEmpty();
+        assertThat(messages(german)).isEmpty();
     }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"void", "arrival-footprint", "native-pool", "no-route"})
-    void unsafeCurrentPreyFootprintsAreOmittedRatherThanRemovingEscapeRoutes(String obstruction) throws Exception {
+    void preyRejectsMissingTargetFootingAndNativeCloudsButNotArrivalRimsOrMissingWalkingRoutes(String obstruction)
+            throws Exception {
         if (obstruction.equals("arrival-footprint")) {
             config.node("arrival-x").set(15);
             config.node("arrival-y").set(64);
@@ -1380,8 +2652,9 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(player.getHealth()).isEqualTo(20);
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        boolean rejected = List.of("void", "native-pool").contains(obstruction);
+        assertThat(player.getHealth()).isEqualTo(rejected ? 20 : 17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(rejected ? 0 : 1);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -1441,7 +2714,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void aSecondWarnedPoolCannotCutOffTheFirstPoolsOnlyReachableEscape() throws Exception {
+    void playersMayWalkAcrossOverlappingOwnedDangerToReachTheCombinedEscape() throws Exception {
         config.node("pool-radius").set(1);
         var teammate = server.addPlayer();
         var ordered = List.of(player, teammate).stream()
@@ -1460,11 +2733,11 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
-        assertThat(ordered.getLast().getHealth()).isEqualTo(20);
+        assertThat(ordered.getLast().getHealth()).isEqualTo(17);
         ordered.getFirst().teleport(new Location(end, 13, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(ordered.getFirst().getHealth()).isEqualTo(17);
+        assertThat(ordered.getFirst().getHealth()).isEqualTo(14);
     }
 }

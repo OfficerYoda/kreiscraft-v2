@@ -4,11 +4,38 @@ title: Shattered Crown live validation
 
 # Required live acceptance: The Shattered Crown
 
+**Current approved #149–#163 acceptance:** follow the
+[four-maxed-player release-candidate guide](/shattered-crown-release-candidate/).
+Full Java25 `check build` includes `testNms`; no historical exemption applies. Both Crown and
+Wither must be enabled on the candidate. Agent-native assertion evidence and the separate human
+presentation/balance session are explicitly distinct. Sections below headed historical preserve
+earlier logs and requirements; their old20-player/final-pair/WIP claims do not govern this redesign.
+
+## Redesign checkpoint (#149–163)
+
+The historical evidence below predates the approved redesign and is **not** release acceptance
+for three four-Anchor waves. Current phase/population/debug rules and the executable native fixture
+are documented in [the Encounter guide](/shattered-crown/#three-anchor-waves-151).
+Run Java25 `check build dragonWaveProbeJar --max-workers=2` (including `testNms`) and the disposable
+`scripts/run-dragon-wave-probe.py` runner. It requires the actual production plugin and explicit PASS;
+it exercises native main-End battle adoption, real native damage/death/crystal events, frozen
+4→1 / 5→2 Roster Units, both gates, all debug waves and cleanup without human clients.
+This narrower fixture is not defender AI, full ritual/reward delivery, client rendering or balance proof.
+The final-wave fixture additionally runs **both production modules** via `finalWaveProbeJar` and
+`scripts/run-final-wave-probe.py`: actual native Warden pursuit/sonic, enhanced Wither spawn/half/death
+blasts, pre-owned minions and original gates, physical skull impact, countdown UI packets, star
+suppression/ordinary rewards, chunk unload/recovery and delayed-effect cleanup. See the
+[final-wave operator contract](/shattered-crown/#final-warden-and-enhanced-wither-wave-155).
+#163 separates agent-executable integrated runtime evidence from remaining four-maxed-player human
+readability/balance observations. Missing human clients is not a hidden agent implementation blocker.
+
+## Historical pre-redesign acceptance and evidence
+
 **Not validated by automated tests or zero-player startup.** Spec #132 and ticket #140 require
 actual supported-Paper combat and a representative multiplayer session before PR #133 can leave
 WIP. Completing an agent run is not completing this acceptance. Do not merge while it is pending.
 
-## Current agent verification checkpoint (2026-11-10)
+## Historical agent verification checkpoint (2026-11-10, pre-redesign)
 
 Reviewed runtime: `789e29db5a1084f4088f91b70781efade32619cb`. Java 25 `check -x testNms`
 passed **1,611 tests**, zero failures/errors, with five existing `ServerMetricsCollectorTest` skips.
@@ -125,7 +152,13 @@ At this earlier checkpoint, real supported-Paper validation and final Standards 
 still pending. The current agent verification above supersedes only that review/check status, not
 the live acceptance requirement; this document does not mark #140 complete or authorize merge.
 
-## Prepare a disposable supported-Paper server
+## Historical pre-redesign operator checklist (superseded by #149–#163)
+
+The commands/counts/balance target below reproduce the earlier contract only. For the current
+three waves, both modules, six-second landing, calibrated damage and permanent-terrain sequence,
+use the release-candidate guide above. Do not follow the old `-x testNms` exemption.
+
+### Prepare a disposable supported-Paper server
 
 1. Use Java 25 and the supported Paper 26.2 release. Record Java/Paper versions, integration commit,
    plugin JAR SHA256, world seed, plugin list, and the complete effective
@@ -147,6 +180,18 @@ the live acceptance requirement; this document does not mark #140 complete or au
 
 ## Functional combat session
 
+### Quiet UI regression (#156)
+
+Run opening → exposed Anchors → shield release → Hunt → final pair → final Hunt, and native landing
+approach/arrival/takeoff with English and German clients. There must be no unsolicited Encounter chat,
+text above the hotbar or replacement title feed, including repeatedly refreshed Prey countdowns.
+Floating world labels/countdowns, appropriate attack visuals and sounds must remain; verify the
+vanilla dragon boss bar and enhanced-Wither boss/countdown presentation when that encounter is active.
+Request `/dragondebug status`, `pause`, each supported `trigger`, `cancel` and `resume`; replies must
+reach only the caller, with localized results/errors (also test an offline or ineligible target).
+Record client observations separately: automated encounter sequences verify public output queues,
+world displays, sounds and phases, not native client rendering or subjective readability.
+
 Capture console logs and timestamped observer notes/video where possible. Record pass/fail and
 evidence for each step; fix failures and repeat affected steps rather than merely ticking boxes.
 
@@ -154,14 +199,14 @@ evidence for each step; fix failures and repeat affected steps rather than merel
 | --- | --- |
 | Activation | Enter with one eligible player, then others. Only the designated main-End normal battle starts; initial and ritual-respawned dragons each start one attempt. Other dragons/worlds remain unchanged. |
 | Opening | Split four teams. All four Anchors are reachable in ordinary melee, independently defender-gated, visibly exposed after their own defenders die, and clearable in arbitrary/concurrent order. Unrelated crystals do not advance objectives. Opening bombardment warnings precede matching impact damage. Shield ends immediately only after the last Anchor. |
-| Native defenders | Observe targeting, leash/escape recovery, finite waves, despawn/chunk discovery and crystal recovery. No missing entity may leave an impossible gate. |
+| Native defenders | Observe radius-192/full-height pursuit without an Anchor leash, original Anchor membership, retaliation/mode/arrival retargeting, allied melee/projectile/cloud/delayed-effect protection, and scoped descendant cleanup. Missing/unloaded lives recover their species/tuning for three passes; continued loss aborts/retries, accepted deaths never replenish. No missing entity may leave an impossible gate. |
 | Damage routes | Try swords, arrows, multipart hits and simultaneous bed/explosion bursts while shielded and damageable. Cancellation/protection must be respected, ordinary combat applied once, and explosion restrictions scoped to the managed dragon. |
 | Crystal interactions | Confirm ordinary crystal healing cannot reverse active progression; outside an attempt, vanilla ritual crystals remain usable. |
-| Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify both English and German recipient instructions and native visuals without mandatory audio/resource packs. |
-| Safe placement | React at normal walking speed on representative island terrain. Check existing native/custom danger, overlapping authored attacks, protected arrival exclusion and route deferrals; unsafe combinations must be omitted rather than fill remaining routes. |
+| Hunting attacks | Observe lane warning → matching damage area → expiry, recognizable multi-player Marked Prey countdowns → pools at current valid positions → expiry, and fixed-direction warned wing sectors → matching damage/knockback. Verify world cues without automatic chat/action bars and localized explicit debug replies, without mandatory audio/resource packs. |
+| Safe placement | Check actual arena/build-height bounds, supported target footing, frozen warning geometry and native/custom hazard overlaps. Missing walking routes and arrival footprint rims are not vetoes after #161; arrival PLAYER exclusion remains. |
 | Landings | Observe repeated native flight, approach, actual podium arrival, meaningful approach/melee duration, sitting hit/phase callbacks, takeoff and ranged flight contribution. A window must not expire before arrival or be cancelled immediately by competing phases. |
-| Final gate | Cross 30% and also try an oversized lethal hit, multipart callbacks and simultaneous explosions. Exactly two Anchors reactivate once before death; both independently gate shielding. After both clear, healing/duplicate events cannot replay the interlude. |
-| Final race | Verify familiar attacks accelerate and pools expire sooner. No new vocabulary, forced-duration wipe or permanent terrain changes from custom effects; objective routes and landing opportunities stay usable. |
+| Wave gates (current #151) | Cross 65% and 30% with oversized melee/ranged/explosive/multipart hits. Exactly four independently defended Anchors spawn once at each gate. All four crystals must be destroyed; prior attack unlocks survive shields, and healing/duplicate events cannot replay a wave. |
+| Final race | Verify final-wave Ground Smash warning/impact/recovery and permanent shallow craters with harmless bounded flying blocks. Floating Anchors and later attacks must work without terrain preservation or route vetoes. No forced-duration wipe. |
 | Arrival/provenance | Attack from protection with melee/arrows/primed TNT and any supported attributable indirect source. Fire from protection, then step into the arena before impact. Dragon, Anchors and defenders must reject safe-origin damage; custom danger cannot strike arrivals. |
 | Mark invalidation | During a countdown separately die, disconnect, change world/mode, leave the arena and enter arrival protection. No stale pool may resolve. Rejoining through normal server travel resumes participation without teleport/inventory assistance. |
 | Late arrivals/departures | Join and leave during each phase. Dragon maximum health and attack counts must not dynamically rescale; new eligible arrivals can participate without restarting the attempt. |
@@ -194,7 +239,7 @@ the final race. Follow the [lifecycle contract](/shattered-crown-lifecycle/).
    late damage, stuck shields and native phases after each termination. Mocked bounded-task checks
    are not actual server performance evidence.
 
-## Representative multiplayer balance session
+## Historical #132 representative multiplayer balance session
 
 Recruit approximately **20 players**, mixed combat experience, with mixed enchanted diamond and
 netherite equipment. Death and normal rejoining are allowed. Explain the visible objectives, not an

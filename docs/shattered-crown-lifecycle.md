@@ -4,16 +4,148 @@ title: Shattered Crown lifecycle and recovery
 
 # Shattered Crown lifecycle and recovery
 
-Ticket #139 extends the playable #134 baseline without requiring unfinished attack tickets.
+Approved #149–#163 lifecycle rules supersede the historical #139 baseline evidence below.
 The [encounter guide](/shattered-crown/) lists the shipped profile and current combat scope.
 
+## Combat coverage, population and opening grace (#150)
+
+#151 consumes these APIs at three fixed four-Anchor boundaries (100%, 65%, 30%). It freezes
+`firstEntryPopulation()` for wave one and `scalingPopulation()` for later waves. Waves one/two give the whole wave
+16 mobs per scaling player for wave one; wave two has `5*p + 2*ceil(0.7*p) + ceil(1.5*p)` members.
+All mob/boss counts use `p=min(frozen population,20)` without altering the raw snapshot or real-player eligibility.
+Opening groups remain intact: three mounted pairs per scaling player and one three-member
+tower per two players rounded up, with individual undead filling the total. Second-wave species and counts stay balanced.
+Wave three interpolates doubled four-player targets for Wardens; Withers use half as many rounded up, minimum2
+of each for positive populations (2+2 at1–4, 12+6 at20 or above). All rosters are distributed across four Anchors.
+Defenders retain vanilla species health, including enhanced Withers; other Wither enhancements remain active.
+Owned opening arrows release entity and ownership references three seconds after their first accepted block collision,
+not entity hits. Duplicate hits do not extend expiry; closing/replacing the wave cancels tasks and removes arrows immediately.
+Zero-population debug waves have no defenders and start with exposed Anchors.
+Missing/unloaded members are replaced, not defeated;
+only destruction of all four exposed crystals completes a wave. A wave owns its crystal/defender
+scope inside the attempt scope. Phase replacement closes attack, objective and extension-owned
+work, cancels accepted-but-pending damage and resets explosion reservations. Debug snapshots are fresh,
+but the remaining Opening Grace clock is preserved, not restarted. Native phase restoration,
+unrelated entities and reward payloads remain intact. See [wave rules and probe](/shattered-crown/).
+
+The combat area is a horizontal cylinder of radius 192 by default, centered on the actual managed
+main-End battle podium, across that world's entire build height. Protected arrival is excluded;
+other End worlds and outer islands beyond the configured radius are not combat areas. The retired
+`arena-min-y` / `arena-max-y` keys no longer restrict combat.
+
+Only online, living Survival/Adventure players inside that area can be attack targets or keep an
+attempt alive. Creative/spectator occupancy and waiting in protected arrival do not prevent the
+existing 60-second absence reset.
+
+Population for difficulty is different: the first entry into the managed End freezes **everyone
+online server-wide**, including creative/spectator players, before combat starts. Waiting on arrival
+does not delay or replace this snapshot. If enable/restart discovers an already-occupied End, recovery
+uses everyone online at that discovery; it cannot reconstruct a historical entry. An empty End before
+an attempt, reset, victory, disable, world unload or a changed next-attempt world clears stale entry
+state. Later wave snapshots and Prey use the live **all-End connected population**, including dead
+players awaiting respawn, observers and players outside combat, without target or defender count caps.
+This counts the server's connected roster by managed-world identity, not the world's living entity roster;
+dead players still cannot be combat targets. `/dragondebug status` reports
+`combat-population`, `scaling-population`, `entry-snapshot` and `grace-seconds` even before combat.
+
+The first eligible arena entry starts a fresh Encounter's 30-second Opening Grace. Anchors and
+defenders are active immediately. The dragon circles: native attack phase changes, dragon projectile
+launches, contact/indirect damage and breath effects are suppressed, as are automatic custom attacks.
+The first automatic Attack Warning begins at expiry, not one cadence later. Later arrivals, waves and
+pause/resume do not restart grace. A manual `/dragondebug trigger` explicitly bypasses scheduling/grace
+but still requires an eligible target and safe geometry; cancel/resume does not replenish time.
+
+Arrival combat protection works in both directions, including marked protected-origin projectiles,
+TNT and lingering effects after the shooter leaves arrival. Enemy potions/clouds and direct/attributed
+damage cannot hit protected arrivals. This is **not terrain protection**: normal destructive
+explosions may still destroy the platform and its surroundings.
+
+`arena-radius` and `opening-grace-seconds` are validated Server Configuration fields (also available
+in the GUI); reload affects only the next fresh attempt. Disable/unload cancels pending grace work.
+
 ## Server Configuration
+
+### Enhanced Wither dependency (#155)
+
+Set both `modules.shattered-crown.enabled: true` and `modules.wither.enabled: true` before
+starting Paper. The existing module registry enables Wither first, reloads its configuration
+before Crown, and disables Crown before Wither. Missing/disabled Wither rejects startup with
+`module shattered-crown depends on 'wither' which is not enabled or does not exist`.
+If Wither fails initialization, Crown is reported failed too and never starts combat; unrelated
+modules may still start. There is no vanilla-boss fallback or automatic dependency enablement.
+
+Wither tuning reloads live through `/kreiscraft reload`, including subsequent owned spawns and
+delayed death detonations. Existing bosses are not retroactively re-attributed/re-scaled. Like
+other ordinary modules, Wither's `enabled` flag is startup-only: setting it false on reload does
+**not** remove its running listener. Crown's existing explicit false/missing-section reload
+still aborts combat immediately; setting Crown true again requires restart. To turn both off,
+disable Crown on reload first or change both flags and restart. To run Crown after restart,
+both flags must be true. Ordinary Wither rewards and behavior are unchanged.
+
+All disposable native runners must stage both enabled flags, not the historical Crown-only
+profile. Tracked `run-dragon-wave-probe.py` (wave/smash/opening) and `run-final-wave-probe.py`
+do this. External historical runners must receive the same config change when replayed with
+the new production artifact; pinned older artifacts/configurations remain historical evidence.
+
+### Defender roaming and allegiance (#152)
+
+Owned defenders pursue only living, online Survival/Adventure participants throughout the configured
+radius-192, full-build-height combat cylinder. Moving away from an Anchor inside that cylinder never
+teleports a defender home. Leaving the cylinder/world or entering protected arrival does recover it
+to its original objective. Mode, arrival, world, death and quit transitions clear stale targets;
+native retaliation/retargeting cannot choose nonparticipants. The retired `defender-leash` setting
+is ignored and no longer exposed in Server Configuration.
+
+Anchor membership is independent of position and passengers. Owned descendants also gate the original
+Anchor after their parent dies; projectiles/effects carry allegiance but are not extra defender lives.
+Direct, projectile, attributed delayed damage, potion splash and cloud effects cannot harm Endermen,
+other owned combatants or the managed dragon. Ordinary mobs and separate Wither gameplay are unchanged.
+
+Later rosters must use the controller's existing attempt ownership:
+
+- `spawnCombatant(location, type, parent, initializer)` creates a recoverable descendant with ownership
+  and tuning installed **before** public Paper spawn callbacks. The initializer is replayed on recovery.
+- `inheritOwnership(child, parent)` belongs in Paper's pre-spawn consumer for owned projectiles/effects
+  or externally spawned descendants. It returns false for unrelated or expired parents. It never
+  transfers an entity to another Anchor. `ownsCombatant` and `anchorId` expose scoped attribution.
+- Native projectile launch/source-bearing spawn callbacks inherit ownership at LOWEST as a backstop;
+  custom spawning must still use the pre-spawn consumer. Keep a real causing/direct owned entity on
+  delayed `DamageSource` events, even after parent death, and schedule through `runLater/runRepeating`.
+  Unattributed source-less explosions cannot be distinguished safely from unrelated gameplay.
+
+Missing/unloaded defenders are replaced with their original species/tuning, not credited as defeats.
+Actual accepted death events remove lives permanently. Each Anchor allows three recovery passes;
+continued disappearance aborts cleanly and retries after 30 seconds instead of leaving a locked gate.
+Reset/disable/unload cancels owned delayed work and removes descendants/effects, preserving unowned mobs.
+
+The executable build132 native check is `defenderRoamingProbeJar`. Build with Java 25:
+`./gradlew spotlessApply check build defenderRoamingProbeJar --max-workers=2`.
+Stage its JAR **alongside** the production shadow JAR in a fresh disposable, loopback-only Paper
+server with Crown and its Wither dependency enabled (other modules disabled), then launch with
+`-Dkreiscraft.defender-probe=true`.
+It registers a genuine native player with synthetic transport, lets the native main-End battle create
+its dragon, and observes the production controller; it never instantiates a second encounter. The
+probe exits after `DEFENDER_ROAMING_PROBE PASS/FAIL`. Exit zero alone is not success. This fixture
+uses the historical 16-Husk root profile; adapt its selection/counts before replaying against the
+current mounted opening roster. Current production wave counts are checked by `dragonWaveProbeJar`.
+The historical fixture proved far-target native pursuit on an isolated elevated pad, actual attributed melee, public
+native ally/projectile/cloud damage cancellation before/after parent death, mode exclusion, no death
+replenishment, and owned-only cleanup. It does not prove human login/rendering or all-species natural
+terrain navigation; #163 must exercise the integrated mounted/Guardian/Warden/Wither roster and real
+projectile collisions, arrival/retaliation transitions and unload/reload on actual End terrain.
+
+The final-wave integration is `finalWaveProbeJar` / `scripts/run-final-wave-probe.py`; it enables
+both modules and verifies native Warden brain pursuit/sonic, actual enhanced Wither blasts and
+minions, physical skull damage, no owned stars, original minion gates, countdown packets and
+owned cleanup beyond ten seconds. Wither countdowns use the existing attempt-owned scheduler
+and cleanup hooks; normal wave transitions retain dead-parent attribution, while debug replacement
+or termination clears it. Ordinary Wither scheduling and star re-drops remain independent.
 
 Use the existing permission-controlled Server Configuration GUI or YAML and `/kreiscraft reload`.
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains
 YAML-only, and enabling combat still requires a restart. An explicit reload with `enabled: false`
 aborts immediately; a later reload with `enabled: true` does not start the stopped module.
-Removing the entire section also aborts/disables combat, matching the bundled default-off policy.
+Removing the entire section also aborts/disables combat; bundled fresh installs enable both modules.
 Missing sections deserialize default tuning without inserting a section into the live YAML tree.
 Dimension Access and travel/respawn policy are untouched.
 
@@ -62,8 +194,8 @@ Keep later attacks inside the same `EncounterController` boundary:
   the old attempt's closed/cancelled ownership, so an already queued callback is inert even after
   another attempt has begun. Completed/cancelled tasks leave the ownership set.
 - `own(entity, kind)`: tag and register every spawned persistent hazard/indicator/objective.
-  Cleanup removes them without touching unrelated entities. Invalid expired references are
-  pruned when registering more entities. The managed dragon and participants are not artifacts.
+  Cleanup removes them without touching unrelated entities. Attack children release expired
+  references when they close. The managed dragon and participants are not artifacts.
 - `onCleanup(restore)`: register temporary player effects, UI and other reversible changes. The
   returned action can be run on normal expiry; it removes itself and runs exactly once. Any
   outstanding restorations run on termination. A failed restoration is logged without suppressing
@@ -84,6 +216,51 @@ Closing that scope at the final gate cancels Hunt indicators/damage/landing work
 attempt-owned restoration, the continuous absence timer or the rolling explosion clock/budget.
 Every full termination closes both scopes; recovery recognizes live artifacts from either scope.
 The finale threshold snapshots the effective native maximum at attempt start, preserving modifiers.
+
+## Main actions and lingering hazards (#149)
+
+The attack scope owns a **main-action child** and separate **hazard children**. All current attack
+entry points, including debug triggers, run setup and subsequent callbacks through these existing
+`EncounterWork` scopes. Closing a main child signals completion once by releasing its executing
+membership. Repeated completion/cancellation is harmless; it does not close sibling hazards.
+
+| Main action | Completion boundary | Lingering work |
+| --- | --- | --- |
+| Dive | Native movement recovery releases flight control; cancellation/failure also completes | None |
+| Ground Smash | After three-second grounded recovery and two-second climb; cancellation/failure also completes | Bounded owned debris child, no damage/placement/drops; the crater is permanent terrain, never temporary work |
+| Prey | All countdown deposition callbacks finish (including skipped targets) | Each pool owns its display/render/expiry independently; all owned pools share the per-player damage-rate rule |
+| Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
+| Fireball Rain | Last real projectile resolves, disappears or times out | Independent radius-five, six-second pools and harmless debris |
+| Landing | Native approach deadline or melee-window end releases the reservation | None |
+| Legacy stationary lane | Warning resolves into an active lane | Lane rendering/damage/expiry remain separately owned; existing two-lane limit is retained |
+
+Setup, native-flight, rendering, refresh and damage exceptions close the applicable child and log
+the failure. Pool failure removes pool membership without aborting the Encounter coordinator.
+Ownership is installed before metadata/rendering that may fail. Spawn callbacks revalidate the
+specific owner, not merely the same dragon or phase: synchronous pause/phase replacement cannot
+attach a new warning to an already-closed owner. Cancelled scheduler callbacks are inert even if
+Paper queued them before cancellation. Cleanup is idempotent and logs failures independently,
+so one failed cancellation/restoration/removal does not suppress other work or native-flight release.
+
+`/dragondebug status` shows `main=executing|idle`, `attack=<name>|none`, and `hazards=<count>`
+alongside the existing lane/mark/area/native-phase details. For example, trigger Prey, wait for
+deposition, and inspect `main=idle, attack=none, hazards=1`: the visible pool still damages until
+expiry. `cancel` or `pause` removes both executing and lingering work and leaves automatic attacks
+paused. `trigger` replaces all existing attack work before starting its requested production action;
+`resume` does the same cleanup before re-enabling automatic coordination. Final phase replacement,
+60-second reset, victory, disable and world unload close both main actions and hazards.
+
+No new lifecycle toggle or timing knob is needed. Existing validated, per-attempt warning,
+movement, pool-lifetime/damage and landing tuning remains authoritative; rotation redesign follows
+in the approved successor tickets. Automated command/event tests are not live Paper combat evidence;
+integrated #163 must verify active pool cancellation, native release and real rendering on Paper.
+
+Prey #160 now uses this separation for scheduling: existing pools do not hold the executing slot or
+delay a melee landing, and are not removed by ordinary main completion/landing. The shared production
+`depositBreathPool(ground, radius, lifetimeSeconds)` boundary lets Rain supply its own size/lifetime
+without duplicating ownership or damage policy. Overlapping/staggered pools share one rolling
+per-player cooldown on the attempt's game-tick clock; cleanup clears both hazard and rate membership.
+See the [Prey configuration and operator checks](/shattered-crown-hunt/#marked-prey-and-shared-pools-160).
 
 ## Historical automated evidence (#139 baseline)
 
@@ -110,9 +287,9 @@ Bootstrap, module-independence, configuration, GUI and localized-message regress
 Spotless, Checkstyle, `-Werror` production compilation, shadow JAR and InvUI compatibility passed.
 No NMS code changed; version-specific execution remains excluded.
 
-## Supported-Paper verification still required
+## Historical #139 supported-Paper verification request
 
-Target is Java 25 / Paper 26.2. No running Paper/Minecraft process was available on this machine
+At that historical checkpoint, target was Java 25 / Paper 26.2. No running Paper/Minecraft process was available
 during implementation. **No live restart, ritual-respawn, AI/rendering or multiplayer balance
 evidence is claimed.** On the supported deployment, record:
 

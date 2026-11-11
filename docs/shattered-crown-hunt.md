@@ -9,6 +9,70 @@ See the [live-playtest follow-up](/shattered-crown/#live-playtest-follow-up-movi
 behavior and tuning. The stationary lane/sweep contract below remains available with
 `movement-attacks: false`.
 
+## Unlocked rotation (#157, native movement profile)
+
+With the default `movement-attacks: true`, one coordinator runs throughout shielded and vulnerable
+phases. Bombardment and Prey are initially available. Destroying all four crystals in waves one,
+two and three permanently unlocks Dive, Rain and Smash respectively; later shields do not relock
+them. Fireball Rain is runnable after wave two; see the [native Rain contract](/shattered-crown-rain/).
+The compatibility stationary profile below retains its old diagnostic cadence/shape contract.
+
+Each round shuffles every available family once. Newly available families join the unfinished
+round once, without replaying its already consumed families. Round boundaries do not immediately
+repeat a selection. Failed/rejected placements consume their turn too, so an impossible family
+cannot starve the others. A new attempt/manual resume starts a fresh round; ordinary wave changes
+retain the unfinished round. The first warning starts **at Opening Grace expiry** (normally 30s),
+not an additional cadence later. Manual triggers bypass grace; pause/resume never refill it.
+
+After main completion, a uniformly selected **inclusive 40–80 server-tick (2–4s) delay** precedes
+the next warning. Dive/Smash include recovery, Prey includes all deposition, Bombardment includes
+impact; Rain includes resolution or cleanup of its last native projectile. Sibling pools do not hold
+the main-action slot. Cancellation, native-flight/render failures and lost targets release
+that slot and receive the same bounded delay. Rejected or failed initial setups consume their turn
+but retry the next family after one second, avoiding a full idle combat gap. Pausing cancels all automatic work and hazards.
+No per-family cadence or final cadence factor controls this native rotation.
+
+Vulnerable landing opportunities use `landing-cadence-seconds` (default 30s, 10–120s). A due
+opportunity takes the next idle main slot, independently of the ranged round/gap; it neither consumes
+a family nor clears/waits out existing pools. Failed landing geometry/setup/approach consumes only
+that opportunity. The next opportunity is due one configured cadence after landing completion,
+and at least one ranged-family turn must intervene, including when cadence and gap deadlines tie.
+An overdue opportunity cannot replace the first grace-expiry warning. Native approach has its existing
+5–45s timeout (default20s). Long native paths can legitimately exceed20s; tune this existing knob
+within its validated bounds rather than force movement or suppress timeout recovery.
+The melee window is **exactly six seconds from actual podium arrival**, not from the
+approach request. Native phase events start the clock immediately; a one-tick monitor handles
+already-sitting arrivals. Paper's podium Y is normally the fight origin (zero), not portal height:
+landing checks use current podium footing/headroom, without promising intact walking approaches over craters.
+No new ranged/main attack starts until release; old owned pools keep their
+rendering, damage and independent expiry. Release restores native flight and starts the next
+post-completion delay. Normal wave-gate replacement cancels applicable work without stuck reservations.
+
+`attack-gap-min-seconds` and `attack-gap-max-seconds` default to 2 and 4; each must be finite within
+2–10 and minimum must not exceed maximum. Existing 5–10-second overrides remain valid. They are rounded to server ticks and snapshotted per
+attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
+Existing YAML retains explicit tuning: set `lane-length: 40.0`, `lane-width: 10.0`, `dive-pass-seconds: 1.5`,
+`attack-gap-min-seconds: 2.0` and `attack-gap-max-seconds: 4.0` to adopt the new defaults next attempt.
+Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
+`hazards`, remaining round `queued`, `last-selection` (including rejected setups), and
+`next-warning-seconds` (`paused` without a coordinator).
+The remaining gap can reach zero while landing/main work owns the slot; zero does not override it.
+Selection nonrepetition does not promise alternating successful warnings when geometry rejects the
+other family; rejected turns remain bounded and cannot starve the currently usable attacks.
+
+Controlled Encounter/public-event regressions cover seeded rounds, cross-round nonrepetition,
+both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain availability,
+grace, and the six-second window with damaging old pools. `rotationProbeJar` is a disposable real
+Paper probe, never part of the production JAR; it uses real registered native players/battle/AI,
+production commands and public pool ownership. Its extended-lifetime pool is a bounded fixture for
+natural landing arrival, not a claim that ordinary Prey lasts 120s. Synthetic transport is not human
+rendering, multiplayer balance or a full-fight acceptance claim.
+
+**#161 policy update:** [permanent terrain impacts](/shattered-crown-terrain/) supersede all older
+walking-route, arrival-footprint and preserved-ground guarantees below, including stationary paths.
+Supported target footing, bounds, existing-hazard restrictions and full warnings still apply.
+Historical RED/GREEN/runtime reports retain their original meaning, not the current route policy.
+
 Ticket #136 extends the four-Anchor opening of [The Shattered Crown](/shattered-crown/).
 The final opening Anchor starts Hunt scheduling once, cancels pending bombardments and releases the
 shield immediately. Permitted ordinary melee and ranged flight damage remain native combat events;
@@ -20,53 +84,53 @@ see the [current complete encounter and final safeguards](/shattered-crown/).
 ## Initial Server Configuration profile
 
 All keys are under `modules.shattered-crown`, editable through the Server Configuration GUI with
-English/German labels. The shipped profile targets approximately 20 mixed enchanted diamond/netherite
-players, **not validated balance**. Values are finite, bounded and snapshotted per Encounter; ordinary
+English/German labels. The approved redesign uses four fully enchanted reference players with population
+scaling, **not validated balance**. Values are finite, bounded and snapshotted per Encounter; ordinary
 valid reloads affect only the next attempt. Invalid bounds/combinations reject the entire reload.
 
 | Key | Default | Bounds / meaning |
 | --- | --- | --- |
-| `lane-length` | 24 | 8–40 blocks along the rectangle |
-| `lane-width` | 6 | 2–12 blocks across the rectangle |
-| `lane-warning-seconds` | 3 | 1–15 seconds before activation |
+| `lane-length` | 40 | 8–40 blocks along the rectangle |
+| `lane-width` | 10 | 2–12 blocks across the rectangle |
+| `lane-warning-seconds` | 2 | 1–15 seconds before activation |
 | `lane-lifetime-seconds` | 6 | 1–20 seconds of temporary active danger |
 | `lane-cadence-seconds` | 10 | 2–120 seconds between warning opportunities; first after this interval |
-| `lane-damage` | 4 | 0–100 health points per eligible cadence pulse, native dragon-breath damage |
+| `lane-damage` | 8 | 0–100 reference HP for physical Dive; raw units for legacy lane pulses |
 | `lane-damage-cadence-seconds` | 1 | 0.5–5 seconds; no pulse at exclusive expiry |
 | `landing-cadence-seconds` | 30 | 10–120 seconds between landing opportunities |
-| `landing-window-seconds` | 12 | 8–30 seconds, starting **after actual native arrival**, not the approach request |
+| `landing-window-seconds` | 6 | exactly 6 seconds, starting **after actual native arrival**, not the approach request |
 | `landing-approach-seconds` | 20 | 5–45 seconds to wait for native arrival, then abandon this opportunity |
 | `landing-radius` | 12 | 8–24 blocks around the real podium reserved against native breath clouds |
-| `prey-count` | 3 | 1–4 distinct eligible players per countdown, or fewer if attendance is lower |
+| `prey-percentage` | 35 | 1–100%; ceil(percentage × everyone connected in the managed End), capped only by eligible targets |
 | `prey-cadence-seconds` | 20 | 5–120 seconds between opportunities; first after this interval |
 | `prey-countdown-seconds` | 4 | 2–15 seconds before depositing pools |
-| `pool-radius` | 3 | 1–6 blocks, inclusive horizontal radius, at most three blocks vertically |
+| `pool-radius` | 5 | 1–6 blocks, inclusive horizontal radius, at most three blocks vertically |
 | `pool-damage` | 3 | 0–100 health points per native dragon-breath damage pulse |
-| `pool-damage-cadence-seconds` | 1 | 0.5–5 seconds, first pulse at activation, exclusive expiry |
+| `pool-damage-cadence-seconds` | 1 | 0.5–5 seconds; globally at most one owned-pool pulse/player/second, exclusive expiry |
 | `pool-lifetime-seconds` | 6 | 1–15 seconds, `[activation, expiry)` |
-| `sweep-radius` | 12 | 4–16 blocks from the fixed ground-projected dragon center |
+| `sweep-radius` | 8 | 4–16 blocks; physical Smash caps at eight |
 | `sweep-angle` | 90 | 30–120 degrees, centered on the dragon's warning-time facing |
-| `sweep-warning-seconds` | 4 | 2–15 seconds before the single hit |
+| `sweep-warning-seconds` | 3 | 3–15 seconds before the single hit |
 | `sweep-cadence-seconds` | 25 | 5–120 seconds between opportunities; first after this interval |
-| `sweep-damage` | 6 | 0–100 health points through the native damage/cancellation pathway |
+| `sweep-damage` | 12 | 0–100 reference HP for physical Smash; raw units for legacy sectors |
 | `sweep-knockback` | 1.2 | 0–2 horizontal velocity, vertical component one-third of this value |
-| `final-health-fraction` | 0.3 | 0.1–0.5; exactly two cleared sites return once |
+| `final-health-fraction` | 0.3 | Deprecated compatibility value, ignored; waves are fixed at 100/65/30% |
 | `final-cadence-factor` | 0.7 | 0.5–0.9; familiar cadence acceleration with warning/serialization floors |
 | `final-pool-lifetime-factor` | 0.5 | 0.25–0.9; final pools expire sooner |
 | `explosion-window-seconds` | 2 | 0.25–5; shared rolling managed-dragon budget window |
 | `explosion-window-budget` | 40 | 1–200 health points across accepted explosions/parts |
 
-Final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**, pool lifetime **3s**. Ordinary
-warning durations, lane lifetime, knockback and the complete 12s actual-arrival melee window stay
+Diagnostic stationary-profile final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**,
+Prey pool lifetime **3s**. The native shuffled rotation instead retains its2–4-second default post-main gap
+and permanently unlocked families throughout all shields; Rain pools always last6s. Ordinary
+warning durations, lane lifetime and knockback stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
-forced-wipe timer is introduced. During the two-Anchor shield, only learned opening bombardments
-run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
+forced-wipe timer is introduced. Only the diagnostic stationary shield uses8s Bombardment cadence.
+The complete profile remains finite, bounded and next-attempt only.
 
 `lane-cadence-seconds >= lane-warning-seconds + 0.5` serializes warnings.
-`lane-width / 2 + 2 <= lane-warning-seconds * 3` reserves conservative walking escape time.
-Prey cadence must be at least countdown + pool lifetime + 0.5 seconds; pool radius + 2 must fit
-within countdown × 3. Sweep cadence must exceed warning by 0.5 seconds; radius × sin(angle / 2) + 2
-must fit within warning × 3. Invalid cross-field combinations reject the entire configuration publication.
+Prey cadence must be at least countdown + 0.5 seconds; Sweep cadence must exceed warning by 0.5 seconds.
+Radius/width walking-escape budget vetoes were retired by #161. Invalid remaining combinations reject publication.
 Lifetime is `[activation, expiry)`: by default six one-second damage opportunities, not a seventh
 expiry hit. Damage uses Paper's armor, invulnerability frames and other plugins' combat cancellation;
 native breath may independently damage according to native combat rules. Lanes do not stack on each
@@ -76,6 +140,9 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
 
 ## Visible geometry and safe placement
 
+This section records the historical stationary geometry. Its walking-route/arrival-footprint vetoes
+are superseded by #161; current placement uses surviving supported ground, not preserved terrain.
+
 - A target is selected in deterministic UUID-sorted round-robin order from eligible living online
   survival/adventure participants. Each lane fixes its ground-level center at warning time and
   alternates cardinal orientations, trying the other orientation if the first is unsafe. It never
@@ -83,9 +150,10 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
   damage has inclusive horizontal edges and at most three blocks' vertical distance from its ground.
 - A native flame rectangle (44 boundary particles per refresh) and a viewer-facing native TextDisplay
   countdown show shape and timing. The same immutable rectangle produces active dragon-breath
-  boundary particles and a purple remaining-lifetime countdown. English/German action bars announce
-  warning time and the short-side escape; a dragon growl provides a secondary audio cue. No client
-  mods, resource packs, mandatory audio or repeated chat instruction spam are required.
+   boundary particles and a purple remaining-lifetime countdown. A dragon growl provides a secondary
+   audio cue. No automatic chat, action bars or replacement titles are sent (including refreshed
+   countdowns); see the [Encounter communication policy](/shattered-crown/#encounter-communication-policy-156).
+   No client mods, resource packs or mandatory audio are required.
 - Before warning **and** activation, placement checks solid footing, clear player-sized body space,
   actual arena boundaries and arrival exclusion over the full footprint. No custom effect changes
   blocks or creates terrain. The implementation conservatively skips uneven/obstructed areas rather
@@ -106,39 +174,52 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
   dead/offline players and players outside the arena are excluded from planning/damage. The existing
   protected projectile/TNT-origin rejection and ordinary cancelled-combat handling remain in force.
 
-## Marked Prey, pools and fixed wing sweeps (#137)
+## Marked Prey and shared pools (#160)
+
+Each automatic selection counts all connected players in the managed End, including dead players
+awaiting respawn, Creative, Spectator, protected arrivals and outer-island occupants. Four request two marks, eight request three,
+twenty request seven; only living online Survival/Adventure combat participants may actually be marked.
+The old `prey-count` key is retired and ignored: remove it and use `prey-percentage`, without a fixed
+three/four-target ceiling. Valid configuration changes take effect on the next attempt.
+
+`/dragondebug trigger prey <player>` deliberately marks only that named eligible player; it runs the
+same countdown, revalidation, ground projection and pool lifecycle as automatic selection. The unnamed
+player command uses its sender as the single debug target. Use automatic scheduling to inspect scaling.
 
 - UUID-sorted round-robin selection marks distinct current participants. Each has a native viewer-facing
   TextDisplay above their head with their name and remaining seconds, plus a moving flame circle of the
   future pool radius. Teammates see marks without a glowing-state mutation, resource pack or sound.
-  The marked recipient receives an English/German action-bar countdown and a secondary warning growl.
-  Refresh is 250 ms; no attack countdown floods chat.
+   The marked recipient hears a secondary warning growl. The in-world name/countdown refreshes every
+   250 ms; it sends no chat or action-bar messages.
 - At expiry, revalidate death, logout, world/mode/arena departure and protected arrival entry before
   projecting a pool at the player's **current** location. Entering an excluded area removes the mark;
   stepping back out cannot resurrect it. Invalid terrain or arrival overlap omits the pool, never
   moves it to stale coordinates.
 - Pools are fixed circles rendered by purple dragon-breath boundaries and a purple lifetime display.
   Indicators do not deal vanilla damage: one controlled native damage pulse owns custom damage.
-  Co-located marks yield one pool, not stacked hits. Native cancellation, armor and invulnerability
-  frames remain authoritative. The lifetime is exclusive at expiry.
+   Co-located marks retain independent pools, not stacked hits. Across every owned Prey/Rain pool,
+   a shared rolling game-tick cooldown permits at most one configured pulse per player per second,
+   even with staggered starts or movement between pools. A slower configured cadence stays slower;
+   a cadence below one second does not bypass the global ceiling. Damage remains **raw native HP**
+   (`pool-damage: 3`), not the reference-gear conversion used by single-impact attacks. Native
+   cancellation, armor and invulnerability frames remain authoritative. Lifetime is exclusive at expiry.
 - Sweeps require endangered participants and usable ground within 24 vertical blocks below the dragon.
   Warning fixes ground center, yaw, radius and inclusive sector edges. A flame arc **and both radial
   edges** warn the same sector later rendered with sweep particles and hit once. Turning or flying
   elsewhere does not relocate the warned impact. Damage height is ground ±3 blocks. The outward shove
   happens only after native damage reduces health, not after cancelled, zero-damage or invulnerability-
   rejected hits; disable during damage prevents post-cleanup knockback.
-- Attack families are conservatively serialized: no new lane during marks/pools/sweeps; no new mark or
-  sweep while a lane or another family is pending/active. Multiple marks and disjoint pools are the
-  intentional combination. Before each pool, validate the **entire proposed pool set**, including each
-  existing endangered player's escape, not merely the new target's route. A second pool is omitted if
-  it seals the first pool's only corridor. Shapes sample solid footing and player-body clearance;
+- Main actions serialize, but deposited pools no longer hold the main-action slot. Before each Prey
+   deposition, validate the **entire proposed pool set**, including each endangered player's escape
+   from the combined danger area. Owned pools may overlap and walking routes may cross their union.
+   Shapes sample solid footing and player-body clearance;
   nearby native breath clouds and arrival geometry exclude footprints/routes. Unsafe combinations
   are omitted rather than promising pathfinding through arbitrary player-built obstructions.
-- A due landing prevents all new warnings, waits for marks/pools/sweeps and lanes to finish, then
-  reserves the complete native-arrival melee window with no custom hazards. Bounded deferral covers
+- A due landing prevents all new warnings, waits for pending main actions and lanes, then
+   reserves the complete native-arrival melee window. Already deposited pools remain active. Bounded deferral covers
   the longest configured lane, prey/pool or sweep lifetime plus native approach timeout. The automated
   full sequence demonstrates lane at 10s → marks at 20s → pools at 24s → clear landing approach at
-  30.25s → native arrival and 12s melee window → fixed sweep at 50s. Callback ordering may defer an
+   30.25s → native arrival and a six-second melee window. Historical cadence examples are not the new shuffled rotation. Callback ordering may defer an
   opportunity by one 250 ms coordinator interval. Cadences are opportunities, not guaranteed hits.
 - Arrival-origin arrows, primed TNT and attributable clouds cannot damage the managed dragon,
   Anchors or defenders after moving into combat. Lingering-potion splash transfers protected
@@ -150,20 +231,46 @@ protections, not a global damage-immunity rule. Scheduling uses the existing sch
   callbacks; missing/refused displays never cause invisible damage. Existing `crown_artifact`
   recovery handles `prey`, `pool` and `sweep` kinds. There are no custom temporary block changes or
   additional native damaging entities.
-- Ceilings: at most four marks **or** four pools **or** one sweep (or the existing two lanes), 64
-  particle recipients, 32 circle or 50 sector-boundary particles per 250 ms refresh. Four circles for
-  20 recipients emit at most 10,240 boundary particles/second; one sweep emits 4,000. Five Hunt
-  cadence/coordinator tasks plus discovery coexist with at most two tasks per mark, three per pool,
-  two per sweep, and finite absence/landing callbacks. Repeated 20-player attempts observe at most
-  20 active scheduler tasks, returning to discovery alone on reset. These are bounds, **not measured
-  Paper tick/performance evidence**.
+- Marks scale with population and lingering pool count depends on cadence/lifetime, not a fixed cap.
+   Rendering retains its 64-recipient limit and finite per-effect tasks; reset returns to discovery alone.
+   Repeated 20-player fixtures now permit seven marks/pools and check a 30-task ceiling. Those fixture
+   bounds are **not measured Paper tick/performance evidence**. The shorter compatibility landing now
+   permits seven marks/pools plus one main warning and a 32-task ceiling after the #161 merge.
+
+### Production pool boundary and verification
+
+`EncounterController.depositBreathPool(ground, radius, lifetimeSeconds)` is the shared production
+boundary for Fireball Rain: effect-specific radius `(0,32]` and duration `(0,120]` seconds, called on
+the server thread. It snapshots the local surface and owns the display/render/damage/exclusive expiry
+as a sibling hazard. It returns false for missing owners/footing or isolated startup failure. Rain
+supplies its own duration; Prey uses its configured lifetime and existing final-phase factor.
+Rendering, startup, refresh, removed-display and damage failures release only the affected pool.
+Wider pause/cancel/phase/reset/victory/disable/unload cleanup releases all pools and rate membership.
+Every breath emission continues through `CrownParticles` with Paper's required Float payload.
+
+Current regressions cover 4/8/20 population rounding and eligibility capping, radius-five overlap,
+staggered starts/different durations, unchanged raw damage, exclusive expiry, isolated failures,
+target departures and same-tick returns, jumping projection, next Prey before old-pool expiry and
+melee landing with lingering pools. Run Java 25 `./gradlew spotlessApply check build --max-workers=2`;
+`check` includes the real-Paper particle conversion/native boundary tests. Integrated native combat
+and fixture verification remains in #163; human readability/balance is a separate observation, not
+a hidden prerequisite to the agent-executable candidate. Historical evidence below is not #160 acceptance.
+
+A disposable Paper 26.2 build 132 / Java 25 native-player fixture also executed the actual production
+named-Prey command on the naturally created, production-adopted main-End dragon. It observed the
+warning before damage, ground projection after a jump, two raw base/final 3-HP pulses, real particle
+packet conversion, idle main action with one lingering pool, then cancel with zero hazard/area
+membership and no later damage. Dragon AI was disabled only after adoption to isolate this check;
+natural health regeneration was disabled for exact damage measurement. This is server-side synthetic
+transport evidence, **not** authenticated client rendering, native flight, the integrated Prey/Rain
+overlap path, a full attempt or four-player balance acceptance. #163 still owns that integrated verification.
 
 ## Supported Paper landings, not a stationary replacement fight
 
 At a landing opportunity the controller reserves the next clear interval: no new lane warnings start
-while existing lanes expire. It checks four usable ground-level approaches around the real podium
-and nearby native breath danger. Terrain/native danger can defer or omit a landing rather than force
-players onto a void perch. Deferral is bounded by the longest custom warning/hazard lifetime + approach timeout; native
+while existing lanes expire. It projects real podium footing/headroom and checks nearby native breath
+danger, without demanding four preserved walking approaches over craters. Terrain/native danger can defer or omit a landing rather than force
+players onto a void perch. Stationary-profile deferral is bounded by the longest custom warning/hazard lifetime + approach timeout; native
 movement is subsequently allowed its configured approach timeout. New warnings resume on omission.
 
 The controller uses only supported `EnderDragon.setPhase` and `EnderDragonChangePhaseEvent`:
@@ -171,14 +278,14 @@ The controller uses only supported `EnderDragon.setPhase` and `EnderDragonChange
 1. Request `FLY_TO_PORTAL`; native AI controls flight and `LAND_ON_PORTAL` movement. No teleport or
    velocity scripting occurs in production.
 2. Observe a native sitting phase **and** proximity to the podium (within eight blocks horizontally
-   and vertically). Only then announce arrival and begin the complete melee window. A premature
+   and vertically). Only then begin the six-second melee window, without an automatic chat message. A premature
    sitting callback while still flying elsewhere cannot consume the attack window.
 3. Hold `SEARCH_FOR_BREATH_ATTACK_TARGET` through the window, preventing competing native takeoff,
    charge/strafe and breath transitions from immediately cancelling or covering it. This is a native
    sitting phase, not midair `HOVER`. It leaves ordinary melee damage handling intact. Native sitting
    projectile behavior is unchanged; ranged contribution remains available during flight.
 4. On window expiry release to `LEAVE_PORTAL`. A failed approach releases to native circling (or native
-   takeoff if already sitting). Empty participation, unusable approaches or new nearby native breath
+   takeoff if already sitting). Empty participation, unusable podium footing or new nearby native breath
    danger terminate the reservation safely. `DYING` and already-cancelled phase events are not
    overridden. Unrelated worlds/dragons retain their native behavior.
 
@@ -191,7 +298,8 @@ event ending the Encounter prevents further work from continuing after cleanup.
 
 Entity and particle load is bounded: two lane displays maximum, 64 particle recipients maximum,
 44 particles per lane per 250 ms refresh (3,520 particles/second per lane for 20 recipients).
-Scheduling is per hazard/attempt, never per particle/player: five Hunt cadence/coordinator tasks;
+Scheduling is per hazard/attempt, never per particle/player: one native rotation coordinator
+(five cadence/coordinator tasks in the stationary compatibility profile);
 at most one landing deferral or monitor plus deadline/window; each lane has bounded refresh,
 activation/expiry and damage tasks. Despawned displays can retain only their finite expiry callbacks,
 never an unbounded repeating damage task. There are no every-world per-tick entity scans. Nearby

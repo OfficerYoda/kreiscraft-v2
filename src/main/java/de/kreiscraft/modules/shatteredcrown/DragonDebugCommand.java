@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.shatteredcrown;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.kreiscraft.core.command.SuggestionProviders;
@@ -27,11 +28,26 @@ final class DragonDebugCommand {
             root.then(Commands.literal(action)
                     .executes(ctx -> control(action, ctx.getSource().getSender(), encounter, messages)));
         }
+        var wave = Commands.literal("wave");
+        for (int number = 1; number <= 3; number++) {
+            final int selected = number;
+            wave.then(Commands.literal(Integer.toString(number))
+                    .executes(ctx -> wave(selected, null, ctx.getSource().getSender(), encounter, messages))
+                    .then(Commands.argument("players", IntegerArgumentType.integer(0))
+                            .executes(ctx -> wave(selected, IntegerArgumentType.getInteger(ctx, "players"),
+                                    ctx.getSource().getSender(), encounter, messages))));
+        }
+        root.then(wave);
         var trigger = Commands.literal("trigger");
         for (var attack : EncounterController.DebugAttack.values()) {
-            trigger.then(Commands.literal(attack.name().toLowerCase(Locale.ROOT))
+            trigger.then(Commands.literal(attack == EncounterController.DebugAttack.RAIN
+                    ? "fireball-rain"
+                    : attack.name().toLowerCase(Locale.ROOT))
                     .executes(ctx -> {
                         var sender = ctx.getSource().getSender();
+                        if (attack == EncounterController.DebugAttack.RAIN) {
+                            return trigger(attack, sender, null, encounter, messages);
+                        }
                         if (!(sender instanceof Player player)) {
                             messages.send(sender, "shattered-crown.debug-target-required");
                             return 0;
@@ -54,6 +70,17 @@ final class DragonDebugCommand {
         return root.then(trigger).build();
     }
 
+    private static int wave(int selected, Integer population, CommandSender sender,
+            Supplier<EncounterController> supplier, MessageService messages) {
+        var encounter = supplier.get();
+        if (encounter == null) {
+            messages.send(sender, "shattered-crown.debug-disabled");
+            return 0;
+        }
+        encounter.debugWave(selected, population, sender);
+        return Command.SINGLE_SUCCESS;
+    }
+
     private static int control(String action, CommandSender sender, Supplier<EncounterController> supplier,
             MessageService messages) {
         var encounter = supplier.get();
@@ -68,7 +95,7 @@ final class DragonDebugCommand {
             default -> {
             }
         }
-        messages.send(sender, "shattered-crown.debug-result", "result", encounter.debugStatus());
+        encounter.debugStatus(sender);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -79,7 +106,7 @@ final class DragonDebugCommand {
             messages.send(sender, "shattered-crown.debug-disabled");
             return 0;
         }
-        messages.send(sender, "shattered-crown.debug-result", "result", encounter.debugTrigger(attack, target));
+        encounter.debugTrigger(attack, target, sender);
         return Command.SINGLE_SUCCESS;
     }
 }

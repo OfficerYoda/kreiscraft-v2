@@ -28,7 +28,7 @@ public final class ShatteredCrownModule implements Module {
 
     @Override
     public List<String> dependsOn() {
-        return List.of();
+        return List.of("wither");
     }
 
     @Override
@@ -44,6 +44,7 @@ public final class ShatteredCrownModule implements Module {
             }
             encounter =
                     new EncounterController(ctx.plugin().getServer(), battles, config, ctx.scheduler(), ctx.messages());
+            ctx.services().publish(EncounterService.class, encounter);
             ctx.events().register(encounter);
             encounter.start();
             ctx.commands().register(DragonDebugCommand.build(() -> encounter, ctx.messages(), ctx.plugin().getServer()),

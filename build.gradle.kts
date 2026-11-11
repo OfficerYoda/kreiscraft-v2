@@ -142,6 +142,98 @@ tasks.register<Jar>("dragonFlightProbeJar") {
     }
 }
 
+tasks.register<Jar>("dragonDamageProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dragon-damage-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { exclude("plugin.yml") }
+    from(sourceSets.main.get().output) {
+        include("de/kreiscraft/modules/shatteredcrown/DragonBattleAccess*.class")
+        include("de/kreiscraft/platform/NmsDragonFlight*.class", "de/kreiscraft/platform/DragonFlightControl.class")
+    }
+    from("src/paperTest/damage-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("dragonWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dragon-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/DragonWaveProbe*.class") }
+    from("src/paperTest/wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("defenderRoamingProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("defender-roaming-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/platform/DefenderRoamingProbe*.class") }
+    from("src/paperTest/defender-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("finalWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("final-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/FinalWaveProbe*.class") }
+    from("src/paperTest/final-wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("rotationProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("rotation-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/RotationProbe*.class") }
+    from("src/paperTest/rotation-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("openingRosterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("opening-roster-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/OpeningRosterProbe*.class") }
+    from("src/paperTest/opening-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("secondWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("second-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/platform/SecondWaveProbe*.class") }
+    from("src/paperTest/second-wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("diveEncounterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("dive-encounter-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { exclude("plugin.yml") }
+    from("src/paperTest/dive-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("smashEncounterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("smash-encounter-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/SmashEncounterProbe*.class") }
+    from("src/paperTest/smash-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("rainProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("rain-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/RainProbe*.class") }
+    from("src/paperTest/rain-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("releaseCandidateProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("release-candidate-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/ReleaseCandidateProbe*.class") }
+    from("src/paperTest/release-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.compileJava {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))

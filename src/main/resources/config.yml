@@ -156,10 +156,9 @@ modules:
     defender-type: HUSK
     defender-health: 40.0
     defender-damage: 6.0
-    defender-leash: 16.0
-    arena-radius: 80.0
-    arena-min-y: 40.0
-    arena-max-y: 160.0
+    opening-armor-percentage: 35
+    arena-radius: 192.0
+    opening-grace-seconds: 30.0
     arrival-x: 100.0
     arrival-y: 50.0
     arrival-z: 0.0
@@ -172,30 +171,40 @@ modules:
     bombardment-cadence-seconds: 8.0
     bombardment-damage: 6.0
     bombardment-radius: 4.0
-    lane-length: 24.0
-    lane-width: 6.0
-    lane-warning-seconds: 3.0
+    lane-length: 40.0
+    lane-width: 10.0
+    lane-warning-seconds: 2.0
+    dive-pass-seconds: 1.5
+    dive-climb-seconds: 1.0
     lane-lifetime-seconds: 6.0
     lane-cadence-seconds: 10.0
-    lane-damage: 4.0
+    lane-damage: 8.0
     lane-damage-cadence-seconds: 1.0
     landing-cadence-seconds: 30.0
-    landing-window-seconds: 12.0
+    landing-window-seconds: 6.0
+    attack-gap-min-seconds: 2.0
+    attack-gap-max-seconds: 4.0
     landing-approach-seconds: 20.0
     landing-radius: 12.0
-    prey-count: 3
+    prey-percentage: 35.0
     prey-cadence-seconds: 20.0
     prey-countdown-seconds: 4.0
-    pool-radius: 3.0
+    pool-radius: 5.0
     pool-damage: 3.0
     pool-damage-cadence-seconds: 1.0
     pool-lifetime-seconds: 6.0
-    sweep-radius: 12.0
+    sweep-radius: 8.0
     sweep-angle: 90.0
-    sweep-warning-seconds: 4.0
+    sweep-warning-seconds: 3.0
     sweep-cadence-seconds: 25.0
-    sweep-damage: 6.0
+    sweep-damage: 12.0
     sweep-knockback: 1.2
+    smash-crater-radius: 5.0
+    smash-crater-depth: 1
+    debris-lifetime-seconds: 4.0
+    rain-spawn-height: 20.0
+    rain-descent-seconds: 2.0
+    rain-damage: 4.0
     final-health-fraction: 0.3
     final-cadence-factor: 0.7
     final-pool-lifetime-factor: 0.5

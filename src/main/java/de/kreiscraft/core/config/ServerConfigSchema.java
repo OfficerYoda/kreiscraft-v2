@@ -338,7 +338,6 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("max-health", 1, 1024));
         fields.add(crownNumber("defender-health", 1, 1000));
         fields.add(crownNumber("defender-damage", 0, 100));
-        fields.add(crownNumber("defender-leash", 4, 32));
         fields.add(crownNumber("bombardment-warning-seconds", 1, 15));
         fields.add(crownNumber("bombardment-cadence-seconds", 2, 120));
         fields.add(crownNumber("bombardment-damage", 0, 100));
@@ -346,16 +345,19 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("lane-length", 8, 40));
         fields.add(crownNumber("lane-width", 2, 12));
         fields.add(crownNumber("lane-warning-seconds", 1, 15));
+        fields.add(crownNumber("dive-pass-seconds", 1, 10));
+        fields.add(crownNumber("dive-climb-seconds", 0.5, 10));
         fields.add(crownNumber("lane-lifetime-seconds", 1, 20));
         fields.add(crownNumber("lane-cadence-seconds", 2, 120));
         fields.add(crownNumber("lane-damage", 0, 100));
         fields.add(crownNumber("lane-damage-cadence-seconds", 0.5, 5));
         fields.add(crownNumber("landing-cadence-seconds", 10, 120));
-        fields.add(crownNumber("landing-window-seconds", 8, 30));
+        fields.add(crownNumber("landing-window-seconds", 6, 6));
+        fields.add(crownNumber("attack-gap-min-seconds", 2, 10));
+        fields.add(crownNumber("attack-gap-max-seconds", 2, 10));
         fields.add(crownNumber("landing-approach-seconds", 5, 45));
         fields.add(crownNumber("landing-radius", 8, 24));
-        fields.add(field(path("modules", "shattered-crown", "prey-count"), ConfigFieldType.INTEGER,
-                ConfigValidators.integerRange(1, 4), ConfigLifecycle.HOT_RELOAD));
+        fields.add(crownNumber("prey-percentage", 1, 100));
         fields.add(crownNumber("prey-cadence-seconds", 5, 120));
         fields.add(crownNumber("prey-countdown-seconds", 2, 15));
         fields.add(crownNumber("pool-radius", 1, 6));
@@ -364,17 +366,27 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("pool-lifetime-seconds", 1, 15));
         fields.add(crownNumber("sweep-radius", 4, 16));
         fields.add(crownNumber("sweep-angle", 30, 120));
-        fields.add(crownNumber("sweep-warning-seconds", 2, 15));
+        fields.add(crownNumber("sweep-warning-seconds", 3, 15));
         fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
         fields.add(crownNumber("sweep-damage", 0, 100));
         fields.add(crownNumber("sweep-knockback", 0, 2));
+        fields.add(crownNumber("smash-crater-radius", 1, 8));
+        fields.add(field(path("modules", "shattered-crown", "smash-crater-depth"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(1, 3), ConfigLifecycle.HOT_RELOAD));
+        fields.add(crownNumber("debris-lifetime-seconds", 0.5, 10));
+        fields.add(crownNumber("rain-spawn-height", 16, 24));
+        fields.add(crownNumber("rain-descent-seconds", 1.5, 2.5));
+        fields.add(crownNumber("rain-damage", 0, 100));
         fields.add(crownNumber("final-health-fraction", 0.1, 0.5));
         fields.add(crownNumber("final-cadence-factor", 0.5, 0.9));
         fields.add(crownNumber("final-pool-lifetime-factor", 0.25, 0.9));
         fields.add(crownNumber("explosion-window-seconds", 0.25, 5));
         fields.add(crownNumber("explosion-window-budget", 1, 200));
         fields.add(crownNumber("arena-radius", 16, 256));
-        for (String key : List.of("arena-min-y", "arena-max-y", "ground-max-y", "arrival-y")) {
+        fields.add(crownNumber("opening-grace-seconds", 0, 120));
+        fields.add(field(path("modules", "shattered-crown", "opening-armor-percentage"), ConfigFieldType.INTEGER,
+                ConfigValidators.integerRange(0, 50), ConfigLifecycle.HOT_RELOAD));
+        for (String key : List.of("ground-max-y", "arrival-y")) {
             fields.add(crownNumber(key, -64, 320));
         }
         fields.add(crownNumber("arrival-x", -512, 512));

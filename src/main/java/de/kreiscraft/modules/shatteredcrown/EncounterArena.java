@@ -13,18 +13,21 @@ import org.bukkit.entity.Player;
 final class EncounterArena {
     private final Location center;
     private final ShatteredCrownConfig config;
-    private String rejection = "no eligible target or clear flight path";
+    private String rejection = "shattered-crown.reject-no-path";
+    private Object[] rejectionValues = {};
 
     void resetRejection() {
-        rejection = "no eligible target or clear flight path";
+        reject("shattered-crown.reject-no-path");
     }
 
-    String rejection() {
-        return rejection;
+    net.kyori.adventure.text.Component rejection(de.kreiscraft.core.message.MessageService messages,
+            org.bukkit.command.CommandSender requester) {
+        return messages.renderFor(requester, rejection, rejectionValues);
     }
 
-    boolean reject(String reason) {
+    boolean reject(String reason, Object... values) {
         rejection = reason;
+        rejectionValues = values;
         return false;
     }
 
@@ -47,7 +50,8 @@ final class EncounterArena {
         return center.getWorld().equals(location.getWorld())
                 && horizontalSquared(location, center.getX(), center.getZ()) <= config.arenaRadius()
                         * config.arenaRadius()
-                && location.getY() >= config.arenaMinY() && location.getY() <= config.arenaMaxY();
+                && location.getY() >= center.getWorld().getMinHeight()
+                && location.getY() < center.getWorld().getMaxHeight();
     }
 
     boolean protectedArrival(Location location) {
@@ -62,49 +66,45 @@ final class EncounterArena {
         int distance = config.anchorDistance().intValue();
         for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance},
                 new int[] {-distance, 0}, new int[] {0, -distance})) {
-            Location ground = anchorGround(center.getBlockX() + offset[0], center.getBlockZ() + offset[1], locations);
-            if (ground == null) {
-                return List.of();
-            }
-            locations.add(ground);
+            Location fallback = center.clone().add(offset[0] + 0.5, 0, offset[1] + 0.5);
+            locations.add(anchorSite(fallback));
         }
         return locations;
     }
 
-    private Location anchorGround(int x, int z, List<Location> occupied) {
+    /** Fixed horizontal objective site; empty columns retain the last known placement height. */
+    Location anchorSite(Location previous) {
+        Location site = previous.clone();
         World world = center.getWorld();
+        int highest = world.getHighestBlockYAt(site.getBlockX(), site.getBlockZ());
+        if (highest >= world.getMinHeight()
+                && !world.getBlockAt(site.getBlockX(), highest, site.getBlockZ()).isEmpty()) {
+            site.setY(Math.min(world.getMaxHeight() - 3, highest + 1));
+        }
+        return site;
+    }
+
+    /** Defenders prefer nearby surviving footing; objectives themselves need no foundation. */
+    Location defenderSite(Location home) {
+        Location preferred = home.clone().add(2, 0, 0);
+        World world = home.getWorld();
         for (int radius = 0; radius <= config.groundSearchRadius(); radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
                         continue;
                     }
-                    int y = world.getHighestBlockYAt(x + dx, z + dz) + 1;
-                    Location candidate = new Location(world, x + dx + 0.5, y, z + dz + 0.5);
-                    if (y <= config.groundMaxY() && usable(candidate)
-                            && occupied.stream().noneMatch(other -> other.distanceSquared(candidate) <= 144)) {
-                        return candidate;
+                    int x = preferred.getBlockX() + dx;
+                    int z = preferred.getBlockZ() + dz;
+                    Location feet = new Location(world, x + 0.5, world.getHighestBlockYAt(x, z) + 1, z + 0.5);
+                    if (feet.getY() > world.getMinHeight() && feet.getY() < world.getMaxHeight() - 1
+                            && walkable(feet)) {
+                        return feet;
                     }
                 }
             }
         }
-        return null;
-    }
-
-    boolean usable(Location location) {
-        // Enough flat footing for the objective, defenders and a melee approach; never build terrain.
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-                Location spot = location.clone().add(x, 0, z);
-                if (!contains(spot) || protectedArrival(spot)
-                        || !spot.getBlock().getRelative(0, -1, 0).getType().isSolid()
-                        || !spot.getBlock().isEmpty() || !spot.getBlock().getRelative(0, 1, 0).isEmpty()
-                        || !spot.getBlock().getRelative(0, 2, 0).isEmpty()) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return preferred;
     }
 
     boolean inBombardment(Location location, Location impact, double radius) {
@@ -114,11 +114,7 @@ final class EncounterArena {
     }
 
     boolean bombardmentSafe(Location impact, double radius, List<Player> participants) {
-        double arrivalDistance = radius + config.arrivalRadius();
-        if (!walkable(impact)
-                || Math.abs(impact.getY() - config.arrivalY()) <= config.arrivalHeight() / 2 + 3
-                        && horizontalSquared(impact, center.getX() + config.arrivalX(),
-                                center.getZ() + config.arrivalZ()) <= arrivalDistance * arrivalDistance) {
+        if (!contains(impact) || AttackSurface.column(impact, 0, 4) == null) {
             return false;
         }
         double search = radius + config.bombardmentWarningSeconds() * 3 + 32;
@@ -127,8 +123,7 @@ final class EncounterArena {
                 || cloud.getRadius() > 32 || overlaps(impact, radius, cloud))) {
             return false;
         }
-        return participants.stream().filter(player -> inBombardment(player.getLocation(), impact, radius))
-                .allMatch(player -> escapeRoute(player.getLocation(), impact, radius, danger));
+        return true;
     }
 
     private boolean overlaps(Location location, double radius, AreaEffectCloud cloud) {
@@ -136,25 +131,6 @@ final class EncounterArena {
         double distance = radius + cloud.getRadius();
         return Math.abs(location.getY() - pool.getY()) <= 3
                 && horizontalSquared(location, pool.getX(), pool.getZ()) <= distance * distance;
-    }
-
-    private boolean escapeRoute(Location start, Location impact, double radius, List<AreaEffectCloud> danger) {
-        // Conservative straight walking corridors, bounded by warning time at 3 blocks/second.
-        // No other bombardment can be pending: the controller serializes this opening pattern.
-        double reach = config.bombardmentWarningSeconds() * 3;
-        for (int direction = 0; direction < 16; direction++) {
-            double angle = direction * Math.PI * 2 / 16;
-            for (double distance = 0; distance <= reach; distance += 0.5) {
-                Location step = start.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-                if (!walkable(step) || danger.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
-                    break;
-                }
-                if (horizontalSquared(step, impact.getX(), impact.getZ()) > (radius + 1) * (radius + 1)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private boolean walkable(Location location) {
@@ -174,13 +150,7 @@ final class EncounterArena {
 
     boolean laneSafe(BreathLane lane, List<BreathLane> existing, List<Player> participants) {
         if (lane.surface != null && !lane.surface.unchanged()) {
-            return reject("dive ground changed after warning");
-        }
-        Location arrival = new Location(center.getWorld(), center.getX() + config.arrivalX(), lane.center.getY(),
-                center.getZ() + config.arrivalZ());
-        if (Math.abs(lane.center.getY() - config.arrivalY()) <= config.arrivalHeight() / 2 + 3
-                && lane.contains(arrival, config.arrivalRadius())) {
-            return reject("dive overlaps protected arrival");
+            return reject("shattered-crown.reject-dive-ground");
         }
         // Sample the whole footprint: void, protection or an unusable raised surface is not an arena.
         int lengthSteps = (int) Math.ceil(lane.length);
@@ -189,7 +159,7 @@ final class EncounterArena {
             double along = -lane.length / 2 + x * lane.length / lengthSteps;
             for (int z = 0; z <= widthSteps; z++) {
                 double across = -lane.width / 2 + z * lane.width / widthSteps;
-                if (lane.surface == null && !walkable(lane.point(along, across))) {
+                if (!contains(lane.point(along, across))) {
                     return false;
                 }
             }
@@ -199,37 +169,27 @@ final class EncounterArena {
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || lane.contains(cloud.getLocation(), cloud.getRadius() + 1))
                 || existing.stream().anyMatch(other -> rectanglesOverlap(lane, other))) {
-            return reject("dive overlaps a breath cloud or another lane");
+            return reject("shattered-crown.reject-dive-overlap");
         }
         // Do not add pressure while somebody is already escaping existing danger.
         if (participants.stream()
                 .anyMatch(player -> existing.stream().anyMatch(other -> other.contains(player.getLocation(), 1))
                         || clouds.stream().anyMatch(cloud -> overlaps(player.getLocation(), 0.5, cloud)))) {
-            return reject("participant is still escaping existing breath");
+            return reject("shattered-crown.reject-escaping-breath");
         }
-        boolean escapes = participants.stream().filter(player -> lane.contains(player.getLocation(), 1))
-                .allMatch(player -> lane.surface == null ? laneEscape(player.getLocation(), lane, existing, clouds)
-                        : terrainEscape(player.getLocation(), step -> lane.contains(step, 1), existing, List.of(),
-                                clouds, config.laneWarningSeconds()));
-        return escapes || reject("dive has no body-sized escape within warning time");
+        return true;
     }
 
     boolean areaSafe(HuntArea area, List<HuntArea> existing, List<BreathLane> lanes, List<Player> participants,
             double warningSeconds) {
         if (area.surface != null && !area.surface.unchanged()) {
-            return reject("area ground changed after warning");
-        }
-        Location arrival = new Location(center.getWorld(), center.getX() + config.arrivalX(), area.center.getY(),
-                center.getZ() + config.arrivalZ());
-        if (Math.abs(area.center.getY() - config.arrivalY()) <= config.arrivalHeight() / 2 + 3
-                && area.contains(arrival, config.arrivalRadius())) {
-            return reject("area overlaps protected arrival");
+            return reject("shattered-crown.reject-area-ground");
         }
         double search = area.radius + warningSeconds * 3 + 32;
         var clouds = nearbyBreath(area.center, search, area.surface == null ? 6 : 16);
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || overlaps(area.center, area.radius + 1, cloud))) {
-            return reject("area overlaps native breath or has too many nearby clouds");
+            return reject("shattered-crown.reject-area-breath");
         }
         for (double x = -area.radius; x <= area.radius; x += 0.5) {
             for (double z = -area.radius; z <= area.radius; z += 0.5) {
@@ -242,57 +202,28 @@ final class EncounterArena {
                     spot = projected;
                 }
                 final Location checked = spot;
-                if (area.contains(spot, 0) && (area.surface == null && !walkable(spot)
+                if (area.contains(spot, 0) && (!contains(spot)
                         || existing.stream().anyMatch(other -> other.contains(checked, 1))
                         || lanes.stream().anyMatch(lane -> lane.contains(checked, 1)))) {
-                    return reject("area overlaps another hazard or has unusable ground");
+                    return reject("shattered-crown.reject-area-overlap");
                 }
             }
         }
-        boolean escapes =
-                participants.stream().filter(player -> area.contains(player.getLocation(), 1)).allMatch(player -> {
-                    if (area.surface != null) {
-                        return terrainEscape(player.getLocation(), step -> area.contains(step, 1), lanes, existing,
-                                clouds, warningSeconds);
-                    }
-                    Location start = groundBelow(player.getLocation());
-                    if (start == null) {
-                        return false;
-                    }
-                    for (int direction = 0; direction < 16; direction++) {
-                        double angle = direction * Math.PI * 2 / 16;
-                        for (double distance = 0; distance <= warningSeconds * 3; distance += 0.5) {
-                            Location step = start.clone().add(Math.cos(angle) * distance, 0,
-                                    Math.sin(angle) * distance);
-                            if (!walkable(step) || existing.stream().anyMatch(other -> other.contains(step, 0.5))
-                                    || lanes.stream().anyMatch(lane -> lane.contains(step, 0.5))
-                                    || clouds.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
-                                break;
-                            }
-                            if (!area.contains(step, 1)) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                });
-        return escapes || reject("area has no body-sized escape within warning time");
+        return true;
+    }
+
+    /** Owned pools may overlap. Permanent destruction intentionally removes walking-route guarantees. */
+    boolean poolsSafe(List<HuntArea> pools, List<BreathLane> lanes, List<Player> participants, double warningSeconds) {
+        if (!pools.stream().allMatch(pool -> areaSafe(pool, List.of(), lanes, participants, warningSeconds))) {
+            return false;
+        }
+        return true;
     }
 
     /** Resolve feet to nearby footing, including a player jumping when a mark expires. */
     Location groundBelow(Location feet) {
-        if (config.movementAttacks()) {
-            Location ground = AttackSurface.column(feet, 0, 4);
-            return ground != null && contains(ground) && !protectedArrival(ground) ? ground : null;
-        }
-        Location ground = feet.clone();
-        for (int y = feet.getBlockY(); y >= feet.getBlockY() - 3; y--) {
-            ground.setY(y);
-            if (walkable(ground)) {
-                return ground.clone();
-            }
-        }
-        return null;
+        Location ground = AttackSurface.column(feet, 0, config.movementAttacks() ? 4 : 3);
+        return ground != null && contains(ground) && !protectedArrival(ground) ? ground : null;
     }
 
     boolean surface(BreathLane lane) {
@@ -307,52 +238,14 @@ final class EncounterArena {
         return area.surface != null;
     }
 
-    private boolean terrainEscape(Location feet, java.util.function.Predicate<Location> inside,
-            List<BreathLane> lanes, List<HuntArea> areas, List<AreaEffectCloud> clouds, double seconds) {
-        Location start = groundBelow(feet);
-        if (start == null) {
+    boolean landingSafe() {
+        // Real podium footing remains valid; cratered walking approaches are not a route veto (#161).
+        Location podium = anchorSite(center); // Paper reports a fight origin, not portal surface height.
+        if (groundBelow(podium) == null) {
             return false;
         }
-        for (int direction = 0; direction < 16; direction++) {
-            double angle = direction * Math.PI * 2 / 16;
-            Location previous = start;
-            double cost = 0;
-            for (double distance = 0; distance <= seconds * 3; distance += 0.5) {
-                Location next = start.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-                next.setY(previous.getY());
-                Location step = AttackSurface.step(next);
-                if (step == null || !contains(step) || protectedArrival(step)
-                        || lanes.stream().anyMatch(lane -> lane.contains(step, 0.5))
-                        || areas.stream().anyMatch(area -> area.contains(step, 0.5))
-                        || clouds.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
-                    break;
-                }
-                cost += 0.5 + Math.max(0, step.getY() - previous.getY()) * 0.5;
-                if (cost > seconds * 3) {
-                    break;
-                }
-                if (!inside.test(step)) {
-                    return true;
-                }
-                previous = step;
-            }
-        }
-        return false;
-    }
-
-    boolean landingSafe() {
-        // Native landing uses the real podium. Require ground-level melee approaches, not a void perch.
-        int distance = (int) Math.min(8, config.landingRadius() - 3);
-        for (int[] offset : List.of(new int[] {distance, 0}, new int[] {0, distance}, new int[] {-distance, 0},
-                new int[] {0, -distance})) {
-            Location approach = anchorGround(center.getBlockX() + offset[0], center.getBlockZ() + offset[1], List.of());
-            if (approach == null || Math.sqrt(horizontalSquared(approach, center.getX(), center.getZ())) + 3 > config
-                    .landingRadius()) {
-                return false;
-            }
-        }
         double reach = config.landingRadius() + 32;
-        var clouds = nearbyBreath(center, reach, 32);
+        var clouds = nearbyBreath(podium, reach, 32);
         return clouds.size() <= 32 && clouds.stream().noneMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || horizontalSquared(cloud.getLocation(), center.getX(),
                         center.getZ()) <= Math.pow(config.landingRadius() + cloud.getRadius(), 2));
@@ -367,7 +260,7 @@ final class EncounterArena {
 
     boolean atPodium(Location dragon) {
         return contains(dragon) && horizontalSquared(dragon, center.getX(), center.getZ()) <= 64
-                && Math.abs(dragon.getY() - center.getY()) <= 8;
+                && Math.abs(dragon.getY() - anchorSite(center).getY()) <= 8;
     }
 
     private boolean rectanglesOverlap(BreathLane lane, BreathLane other) {
@@ -376,24 +269,6 @@ final class EncounterArena {
                         + (other.eastWest ? other.length : other.width) / 2 + 1
                 && Math.abs(lane.center.getZ() - other.center.getZ()) <= (lane.eastWest ? lane.width : lane.length) / 2
                         + (other.eastWest ? other.width : other.length) / 2 + 1;
-    }
-
-    private boolean laneEscape(Location start, BreathLane lane, List<BreathLane> existing,
-            List<AreaEffectCloud> clouds) {
-        for (int direction = 0; direction < 16; direction++) {
-            double angle = direction * Math.PI * 2 / 16;
-            for (double distance = 0; distance <= config.laneWarningSeconds() * 3; distance += 0.5) {
-                Location step = start.clone().add(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-                if (!walkable(step) || existing.stream().anyMatch(other -> other.contains(step, 0.5))
-                        || clouds.stream().anyMatch(cloud -> overlaps(step, 0.5, cloud))) {
-                    break;
-                }
-                if (!lane.contains(step, 1)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static double horizontalSquared(Location location, double x, double z) {
