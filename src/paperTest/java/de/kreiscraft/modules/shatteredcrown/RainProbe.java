@@ -321,9 +321,9 @@ public final class RainProbe extends JavaPlugin implements Listener {
                         "combat eligibility differs from scaling");
                 long opening =
                         world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender")).count();
-                check(opening >= 80 && opening <= 96,
-                        "current mounted opening roster, not historical Husk placeholders");
                 getLogger().info("RAIN_ROSTER opening=" + opening + " wavePopulation=" + encounter.wavePopulation());
+                check(opening >= encounter.rosterUnits() * 40 && opening <= encounter.rosterUnits() * 48,
+                        "current mounted opening roster for frozen first-entry units, not later End population");
                 // Defeat the opening defenders through genuine native deaths for the pure damage calibration.
                 // Separate cover cases deliberately exercise early obstruction; dragon AI remains continuously on.
                 world.getEntitiesByClass(Mob.class).stream().filter(mob -> artifact(mob, "defender"))
