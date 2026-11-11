@@ -329,7 +329,7 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(53).doesNotHaveDuplicates();
+        assertThat(names).hasSize(54).doesNotHaveDuplicates();
         pages.setPage(0);
         click(gui, 52);
         assertThat(pages.getPage()).isEqualTo(1);
@@ -343,6 +343,8 @@ class ServerConfigGuiTest {
                 : "Sturzflugaufstieg (Sekunden)"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening grace (seconds)"
                 : "Vorbereitungszeit (Sekunden)"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening armor (%)"
+                : "Eröffnungsrüstung (%)"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Permanent Smash crater radius"
                 : "Dauerhafter Bodenschlag-Kraterradius"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Permanent Smash crater depth"

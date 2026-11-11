@@ -72,6 +72,8 @@ Tower height/species rotate deterministically by Anchor and unit. About35% of ar
 receive one or two unenchanted leather/chainmail pieces with occasional iron (11/31 at one unit/Anchor).
 No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup
 disabled. Armor choice is captured for species-preserving recovery, never rerolled into another life.
+The armor percentage is editable in Server Configuration in both English and German; validated
+reloads apply to the next Encounter, not an already spawned roster.
 `defender-health` applies to every mount/passenger; `defender-damage` tunes supported native melee
 attributes, not bow/spear item damage. The roster is active during the30-second Opening Grace.
 
