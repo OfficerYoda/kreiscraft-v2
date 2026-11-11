@@ -44,6 +44,7 @@ public final class ShatteredCrownModule implements Module {
             }
             encounter =
                     new EncounterController(ctx.plugin().getServer(), battles, config, ctx.scheduler(), ctx.messages());
+            ctx.services().publish(EncounterController.class, encounter);
             ctx.events().register(encounter);
             encounter.start();
             ctx.commands().register(DragonDebugCommand.build(() -> encounter, ctx.messages(), ctx.plugin().getServer()),

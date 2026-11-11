@@ -75,6 +75,11 @@ class EncounterTest {
         // WorldMock.getEnderDragonBattle is unimplemented; entity/world behavior stays real.
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public void targetDefender(org.bukkit.entity.Mob defender, org.bukkit.entity.Player target) {
+                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -131,7 +136,7 @@ class EncounterTest {
         assertThat(hit(anchor).isCancelled()).isTrue();
         assertThat(anchor.isValid()).isTrue();
 
-        for (Zombie defender : defenders()) {
+        for (org.bukkit.entity.Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -213,7 +218,7 @@ class EncounterTest {
 
     private void clearFinalGate() {
         for (int stage = 0; stage < 3; stage++) {
-            for (Zombie defender : defenders()) {
+            for (org.bukkit.entity.Mob defender : defenders()) {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -275,7 +280,7 @@ class EncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
         var bossBar = dragon.getDragonBattle().getBossBar();
-        for (Zombie defender : defenders()) {
+        for (org.bukkit.entity.Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -389,8 +394,9 @@ class EncounterTest {
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
-    private List<Zombie> defenders() {
-        return end.getEntitiesByClass(Zombie.class).stream().filter(Entity::isValid).toList();
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon)
+                .filter(Entity::isValid).toList();
     }
 
     @Test
@@ -544,13 +550,13 @@ class EncounterTest {
     void cancelledDeathAndDamageDoNotAdvanceTheObjectiveAndVanillaRewardsAreUnmodified() throws Exception {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        for (Zombie defender : defenders()) {
+        for (org.bukkit.entity.Mob defender : defenders()) {
             var cancelled = new EntityDeathEvent(defender, mock(DamageSource.class), List.of());
             cancelled.setCancelled(true);
             server.getPluginManager().callEvent(cancelled);
         }
         assertThat(crystals().getFirst().isGlowing()).isFalse();
-        for (Zombie defender : defenders()) {
+        for (org.bukkit.entity.Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }

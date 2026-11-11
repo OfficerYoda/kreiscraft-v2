@@ -86,6 +86,11 @@ class HuntEncounterTest {
         }).when(commands).register(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public void targetDefender(org.bukkit.entity.Mob defender, org.bukkit.entity.Player target) {
+                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 var nativeControl = new SimulatedDragonFlight(source, scheduler, tick);
                 return new de.kreiscraft.platform.DragonFlightControl() {
@@ -165,7 +170,7 @@ class HuntEncounterTest {
 
     private void hunt() throws Exception {
         startEncounter();
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon).forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -608,11 +613,12 @@ class HuntEncounterTest {
             assertThat(crossing.isCancelled()).isFalse();
             dragon.setHealth(dragon.getHealth() - crossing.getFinalDamage());
             scheduler.advance(Duration.ZERO);
-            end.getEntitiesByClass(Zombie.class).forEach(defender -> {
-                defender.setHealth(0);
-                server.getPluginManager()
-                        .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
-            });
+            end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon)
+                    .forEach(defender -> {
+                        defender.setHealth(0);
+                        server.getPluginManager()
+                                .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+                    });
             end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
         }
     }
@@ -1217,7 +1223,7 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+        end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon).forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         });
@@ -1812,10 +1818,12 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(60));
         player.teleport(new Location(end, 10.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(1));
-        end.getEntitiesByClass(Zombie.class).stream().filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
-            defender.setHealth(0);
-            server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
-        });
+        end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon)
+                .filter(org.bukkit.entity.Entity::isValid).forEach(defender -> {
+                    defender.setHealth(0);
+                    server.getPluginManager()
+                            .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
+                });
         end.getEntitiesByClass(EnderCrystal.class).forEach(this::hit);
         player.setHealth(20);
         scheduler.advance(Duration.ofSeconds(24));

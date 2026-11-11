@@ -23,6 +23,30 @@ public interface DragonBattleAccess {
         defender.setRemoveWhenFarAway(false);
     }
 
+    /** Warden uses brain memory, unlike ordinary Mob's target field. Never reset its sonic cooldown each tick. */
+    default void targetDefender(Mob defender, Player target) {
+        if (!(defender instanceof org.bukkit.entity.Warden warden)) {
+            defender.setTarget(target);
+            return;
+        }
+        if (warden.getTarget() == target) {
+            return;
+        }
+        if (warden.getTarget() != null) {
+            warden.clearAnger(warden.getTarget());
+        }
+        de.kreiscraft.platform.NmsWardenCombat.target(warden, target);
+    }
+
+    default void forgetDefenderTarget(Mob defender, Player player) {
+        if (player.equals(defender.getTarget())) {
+            targetDefender(defender, null);
+        }
+        if (defender instanceof org.bukkit.entity.Warden warden) {
+            warden.clearAnger(player);
+        }
+    }
+
     /** Raw native dragon-breath units; retains the separately configured pool/lane/sweep semantics. */
     default void bombardmentDamage(Player player, EnderDragon dragon, double damage) {
         player.damage(damage, DamageSource.builder(DamageType.DRAGON_BREATH)

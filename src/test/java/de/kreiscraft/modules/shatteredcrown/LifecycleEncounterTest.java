@@ -80,6 +80,18 @@ class LifecycleEncounterTest {
         // Only unsupported Paper lookup/native attribute metadata is adapted, not encounter behavior.
         battles = new DragonBattleAccess() {
             @Override
+            public void forgetDefenderTarget(Mob defender, org.bukkit.entity.Player player) {
+                if (player.equals(defender.getTarget())) {
+                    defender.setTarget(null); // MockBukkit omits Warden anger; native mode clearing is in FinalWaveProbe.
+                }
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -113,6 +125,119 @@ class LifecycleEncounterTest {
     void tearDown() {
         module.disable();
         MockBukkit.unmock();
+    }
+
+    @Test
+    void finalWaveRepeatsOneWardenAndEnhancedWitherPairPerFrozenUnitAtEveryAnchor() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        for (int index = 0; index < 4; index++) {
+            var observer = server.addPlayer();
+            observer.teleport(new Location(end, 250, 64, 0));
+            observer.setGameMode(index % 2 == 0 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
+        }
+        encounter.debugWave(3, player);
+        assertThat(encounter.wavePopulation()).isEqualTo(5);
+        assertThat(encounter.rosterUnits()).isEqualTo(2);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).hasSize(8);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(8);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(16);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        encounter::anchorId, java.util.stream.Collectors.counting()))
+                .values()).containsOnly(4L);
+        server.addPlayer().teleport(new Location(end, 250, 64, 0));
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(16);
+        encounter.close();
+    }
+
+    @Test
+    void enhancedWitherMinionsJoinOriginalAnchorBeforeSpawnAndStillGateAfterParentDeath() throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        var witherConfig = new de.kreiscraft.modules.wither.WitherConfig(600, 40, 8, 300, 4,
+                20, true, true, 4, true, true, 20, true, true, 50);
+        var listener = new de.kreiscraft.modules.wither.WitherListener(() -> witherConfig,
+                context.messages(), scheduler, () -> encounter);
+        context.events().register(listener);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        var parent = end.getEntitiesByClass(org.bukkit.entity.Wither.class).iterator().next();
+        var anchor = encounter.anchorId(parent);
+        assertThat(parent.getHealth()).isEqualTo(600);
+        var spawns = new java.util.ArrayList<Entity>();
+        context.events().register(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void minion(org.bukkit.event.entity.CreatureSpawnEvent event) {
+                if (event.getEntity() instanceof org.bukkit.entity.WitherSkeleton) {
+                    assertThat(encounter.anchorId(event.getEntity())).isEqualTo(anchor);
+                    spawns.add(event.getEntity());
+                }
+            }
+        });
+        // Only the unsupported native explosion operation is adapted; native blasts get the Paper probe.
+        var world = spy(end);
+        doAnswer(call -> true).when(world).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
+        parent.teleport(new Location(world, parent.getX(), parent.getY(), parent.getZ()));
+        parent.setHealth(300);
+        var damage = new org.bukkit.event.entity.EntityDamageEvent(parent,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
+        server.getPluginManager().callEvent(damage);
+        assertThat(spawns).hasSize(4);
+        for (Mob boss : end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
+                .filter(mob -> !(mob instanceof org.bukkit.entity.WitherSkeleton)).toList()) {
+            boss.setHealth(0);
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(boss,
+                    org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), new java.util.ArrayList<>()));
+        }
+        assertThat(end.getEntitiesByClass(EnderCrystal.class).stream().filter(crystal -> !crystal.isGlowing()))
+                .hasSize(1);
+        assertThat(spawns).allMatch(encounter::ownsCombatant);
+        encounter.close();
+    }
+
+    @Test
+    void ownedWitherDeathDropsNoStarsAndSchedulesOneAttributedCountdownEvenWithDuplicateCallbacks()
+            throws Exception {
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        var witherConfig = new de.kreiscraft.modules.wither.WitherConfig(600, 40, 8, 300, 4,
+                20, true, true, 4, true, true, 20, true, true, 50);
+        var listener = new de.kreiscraft.modules.wither.WitherListener(() -> witherConfig,
+                context.messages(), scheduler, () -> encounter);
+        context.events().register(listener);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        encounter.debugWave(3, player);
+        var parent = end.getEntitiesByClass(org.bukkit.entity.Wither.class).iterator().next();
+        var world = spy(end);
+        doAnswer(call -> true).when(world).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
+        parent.teleport(new Location(world, parent.getX(), parent.getY(), parent.getZ()));
+        parent.setHealth(0);
+        for (int callback = 0; callback < 2; callback++) {
+            var drops = new java.util.ArrayList<>(List.of(new org.bukkit.inventory.ItemStack(Material.NETHER_STAR)));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(parent,
+                    org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), drops));
+            assertThat(drops).isEmpty();
+        }
+        scheduler.advance(Duration.ofSeconds(11));
+        org.mockito.Mockito.verify(world, org.mockito.Mockito.times(1)).createExplosion(any(org.bukkit.Location.class),
+                org.mockito.ArgumentMatchers.eq(20f), org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq(parent));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Item.class)).isEmpty();
+        encounter.close();
+        listener.shutdown();
     }
 
     @Test
@@ -155,12 +280,12 @@ class LifecycleEncounterTest {
         assertThat(encounter.waveNumber()).isEqualTo(3);
         assertThat(encounter.wavePopulation()).isEqualTo(4);
         assertThat(encounter.rosterUnits()).isEqualTo(1);
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(8);
         encounter.close();
     }
 
     private void clearWave() {
-        List.copyOf(end.getEntitiesByClass(Zombie.class)).forEach(defender -> {
+        end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon).toList().forEach(defender -> {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
                     mock(org.bukkit.damage.DamageSource.class), List.of()));
@@ -344,7 +469,7 @@ class LifecycleEncounterTest {
         context.events().register(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void spawning(org.bukkit.event.entity.CreatureSpawnEvent event) {
-                if (event.getEntity() instanceof Zombie) {
+                if (event.getEntity() instanceof Mob && event.getEntity() != dragon) {
                     assertThat(encounter.ownsCombatant(event.getEntity())).isTrue();
                     assertThat(encounter.anchorId(event.getEntity())).isNotNull();
                 }
@@ -357,7 +482,7 @@ class LifecycleEncounterTest {
         }
         for (int wave : new int[] {3, 1, 2, 3}) {
             var old = crystals();
-            var parent = end.getEntitiesByClass(Zombie.class).stream().filter(encounter::ownsCombatant)
+            var parent = end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
                     .findFirst().orElseThrow();
             var child = encounter.spawnCombatant(parent.getLocation(), org.bukkit.entity.EntityType.HUSK, parent,
                     battles::preventDespawn);
@@ -374,7 +499,8 @@ class LifecycleEncounterTest {
             assertThat(oldMembers).noneMatch(Entity::isValid).noneMatch(encounter::ownsCombatant);
             assertThat(old).noneMatch(Entity::isValid);
             assertThat(crystals()).hasSize(4).noneMatch(Entity::isGlowing);
-            assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(33).contains(unrelated);
+            assertThat(end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon))
+                    .hasSize(wave == 3 ? 17 : 33).contains(unrelated);
             assertThat(dragon.getHealth()).isEqualTo(wave == 1 ? 1000 : wave == 2 ? 650 : 300);
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5", "roster-units=2",
                     "mode=manual", "shield=true", "objectives=0/4");
@@ -1061,7 +1187,7 @@ class LifecycleEncounterTest {
             player.teleport(new Location(end, 100, 50, 0));
         } else {
             for (int stage = 0; stage < 3; stage++) {
-                end.getEntitiesByClass(Zombie.class).forEach(defender -> {
+                end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon).forEach(defender -> {
                     defender.setHealth(0);
                     server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(defender,
                             mock(org.bukkit.damage.DamageSource.class), List.of()));

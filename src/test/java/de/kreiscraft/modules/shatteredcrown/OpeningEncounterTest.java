@@ -77,6 +77,11 @@ class OpeningEncounterTest {
         scheduler = new MockScheduler();
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
+            public void targetDefender(org.bukkit.entity.Mob defender, org.bukkit.entity.Player target) {
+                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
+            }
+
+            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -143,8 +148,9 @@ class OpeningEncounterTest {
         return end.getEntitiesByClass(EnderCrystal.class).stream().filter(Entity::isValid).toList();
     }
 
-    private List<Zombie> defenders() {
-        return end.getEntitiesByClass(Zombie.class).stream().filter(Entity::isValid).toList();
+    private List<org.bukkit.entity.Mob> defenders() {
+        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon)
+                .filter(Entity::isValid).toList();
     }
 
     private EntityDamageEvent hit(Entity target) {
@@ -154,7 +160,7 @@ class OpeningEncounterTest {
         return event;
     }
 
-    private void defeat(Zombie defender) {
+    private void defeat(org.bukkit.entity.Mob defender) {
         defender.setHealth(0);
         server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
     }
