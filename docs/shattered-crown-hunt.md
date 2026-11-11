@@ -9,6 +9,11 @@ See the [live-playtest follow-up](/shattered-crown/#live-playtest-follow-up-movi
 behavior and tuning. The stationary lane/sweep contract below remains available with
 `movement-attacks: false`.
 
+**#161 policy update:** [permanent terrain impacts](/shattered-crown-terrain/) supersede all older
+walking-route, arrival-footprint and preserved-ground guarantees below, including stationary paths.
+Supported target footing, bounds, existing-hazard restrictions and full warnings still apply.
+Historical RED/GREEN/runtime reports retain their original meaning, not the current route policy.
+
 Ticket #136 extends the four-Anchor opening of [The Shattered Crown](/shattered-crown/).
 The final opening Anchor starts Hunt scheduling once, cancels pending bombardments and releases the
 shield immediately. Permitted ordinary melee and ranged flight damage remain native combat events;
@@ -28,10 +33,10 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | --- | --- | --- |
 | `lane-length` | 24 | 8–40 blocks along the rectangle |
 | `lane-width` | 6 | 2–12 blocks across the rectangle |
-| `lane-warning-seconds` | 3 | 1–15 seconds before activation |
+| `lane-warning-seconds` | 2 | 1–15 seconds before activation |
 | `lane-lifetime-seconds` | 6 | 1–20 seconds of temporary active danger |
 | `lane-cadence-seconds` | 10 | 2–120 seconds between warning opportunities; first after this interval |
-| `lane-damage` | 4 | 0–100 health points per eligible cadence pulse, native dragon-breath damage |
+| `lane-damage` | 8 | 0–100 reference HP for physical Dive; raw units for legacy lane pulses |
 | `lane-damage-cadence-seconds` | 1 | 0.5–5 seconds; no pulse at exclusive expiry |
 | `landing-cadence-seconds` | 30 | 10–120 seconds between landing opportunities |
 | `landing-window-seconds` | 12 | 8–30 seconds, starting **after actual native arrival**, not the approach request |
@@ -44,11 +49,11 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `pool-damage` | 3 | 0–100 health points per native dragon-breath damage pulse |
 | `pool-damage-cadence-seconds` | 1 | 0.5–5 seconds; globally at most one owned-pool pulse/player/second, exclusive expiry |
 | `pool-lifetime-seconds` | 6 | 1–15 seconds, `[activation, expiry)` |
-| `sweep-radius` | 12 | 4–16 blocks from the fixed ground-projected dragon center |
+| `sweep-radius` | 8 | 4–16 blocks; physical Smash caps at eight |
 | `sweep-angle` | 90 | 30–120 degrees, centered on the dragon's warning-time facing |
-| `sweep-warning-seconds` | 4 | 2–15 seconds before the single hit |
+| `sweep-warning-seconds` | 4 | 4–15 seconds before the single hit |
 | `sweep-cadence-seconds` | 25 | 5–120 seconds between opportunities; first after this interval |
-| `sweep-damage` | 6 | 0–100 health points through the native damage/cancellation pathway |
+| `sweep-damage` | 12 | 0–100 reference HP for physical Smash; raw units for legacy sectors |
 | `sweep-knockback` | 1.2 | 0–2 horizontal velocity, vertical component one-third of this value |
 | `final-health-fraction` | 0.3 | Deprecated compatibility value, ignored; waves are fixed at 100/65/30% |
 | `final-cadence-factor` | 0.7 | 0.5–0.9; familiar cadence acceleration with warning/serialization floors |
@@ -63,10 +68,8 @@ forced-wipe timer is introduced. During each four-Anchor shield, learned opening
 run (8s cadence, 3s warning). The complete profile remains finite, bounded and next-attempt only.
 
 `lane-cadence-seconds >= lane-warning-seconds + 0.5` serializes warnings.
-`lane-width / 2 + 2 <= lane-warning-seconds * 3` reserves conservative walking escape time.
-Prey cadence must be at least countdown + 0.5 seconds; pool radius + 2 must fit
-within countdown × 3. Sweep cadence must exceed warning by 0.5 seconds; radius × sin(angle / 2) + 2
-must fit within warning × 3. Invalid cross-field combinations reject the entire configuration publication.
+Prey cadence must be at least countdown + 0.5 seconds; Sweep cadence must exceed warning by 0.5 seconds.
+Radius/width walking-escape budget vetoes were retired by #161. Invalid remaining combinations reject publication.
 Lifetime is `[activation, expiry)`: by default six one-second damage opportunities, not a seventh
 expiry hit. Damage uses Paper's armor, invulnerability frames and other plugins' combat cancellation;
 native breath may independently damage according to native combat rules. Lanes do not stack on each

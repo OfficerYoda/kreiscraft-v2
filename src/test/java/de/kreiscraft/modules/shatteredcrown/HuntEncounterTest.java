@@ -187,6 +187,13 @@ class HuntEncounterTest {
 
     private void startEncounter() throws Exception {
         if (!config.node("movement-attacks").getBoolean(true)) {
+            // Explicit historical sector tuning; native Smash uses the redesigned defaults.
+            if (config.node("sweep-radius").virtual()) {
+                config.node("sweep-radius").set(12);
+            }
+            if (config.node("sweep-damage").virtual()) {
+                config.node("sweep-damage").set(6);
+            }
             if (config.node("lane-warning-seconds").virtual()) {
                 config.node("lane-warning-seconds").set(3);
             }
@@ -229,8 +236,9 @@ class HuntEncounterTest {
                 assertThat(player.getHealth()).isEqualTo(12);
             }
             case SMASH -> {
+                end.getBlockAt(10, 62, 0).setType(Material.END_STONE); // Surviving ground below the new crater.
                 scheduler.advance(Duration.ofSeconds(5));
-                assertThat(player.getHealth()).isEqualTo(14);
+                assertThat(player.getHealth()).isEqualTo(8);
             }
             case PREY -> {
                 scheduler.advance(Duration.ofSeconds(4));
@@ -710,6 +718,13 @@ class HuntEncounterTest {
 
     @Test
     void completeDefaultRotationIncludesEveryAttackAcrossTerrainAndLandings() throws Exception {
+        for (int y = 56; y < 63; y++) {
+            for (int x = -40; x <= 40; x++) {
+                for (int z = -40; z <= 40; z++) {
+                    end.getBlockAt(x, y, z).setType(Material.END_STONE);
+                }
+            }
+        }
         config.node("movement-attacks").set(true);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(25);
@@ -756,17 +771,20 @@ class HuntEncounterTest {
     }
 
     @Test
-    void terrainAwareDiveStillRejectsVoidAndDistantCloudOverlap() throws Exception {
+    void terrainAwareDiveCrossesHolesButStillRejectsDistantCloudOverlap() throws Exception {
         config.node("movement-attacks").set(true);
         hunt();
         // A void trench cuts through both candidate orientations, not a climbable one-block rise.
         end.getBlockAt(11, 63, 0).setType(Material.AIR);
         scheduler.advance(Duration.ofSeconds(11));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        player.setOp(true);
+        debug("cancel", player);
         end.getBlockAt(11, 63, 0).setType(Material.END_STONE);
         var cloud = end.spawn(new Location(end, 15, 64, 5), org.bukkit.entity.AreaEffectCloud.class);
         cloud.setParticle(org.bukkit.Particle.DRAGON_BREATH);
         cloud.setRadius(8);
+        debug("trigger dive", player);
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
     }
@@ -788,6 +806,237 @@ class HuntEncounterTest {
     }
 
     @Test
+    void validCraterReloadAppliesRadiusDepthAndLifetimeOnlyToTheNextAttempt() throws Exception {
+        config.node("movement-attacks").set(true);
+        for (int x = 5; x <= 15; x++) {
+            for (int z = -5; z <= 5; z++) {
+                end.getBlockAt(x, 62, z).setType(Material.END_STONE);
+                end.getBlockAt(x, 61, z).setType(Material.END_STONE);
+            }
+        }
+        startEncounter();
+        var next = config.copy();
+        next.node("smash-crater-radius").set(2);
+        next.node("smash-crater-depth").set(2);
+        next.node("debris-lifetime-seconds").set(1);
+        module.onConfigReload(next);
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        assertThat(end.getBlockAt(10, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        debug("cancel", player);
+        player.teleport(new Location(end, 100, 50, 0));
+        scheduler.advance(Duration.ofSeconds(60));
+        player.teleport(new Location(end, 10.5, 63, 0.5));
+        player.setHealth(20);
+        scheduler.advance(Duration.ofSeconds(1));
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(26);
+        assertThat(end.getBlockAt(10, 62, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(10, 61, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(13, 62, 0).getType()).isEqualTo(Material.END_STONE);
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=executing") && text.contains("hazards=0"));
+    }
+
+    @Test
+    void smashMainCompletionDoesNotPrematurelyClearLongerLivedOwnedDebris() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("debris-lifetime-seconds").set(10);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(10));
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=idle") && text.contains("hazards=1"));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @Test
+    void smashDestroysArrivalGroundAndAnAnchorFoundationWithoutBypassingPlayerOrCrystalGates() throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("arrival-x").set(29.5);
+        config.node("arrival-y").set(64);
+        config.node("arrival-radius").set(3);
+        player.teleport(new Location(end, 24.5, 64, 0.5));
+        var protectedPlayer = server.addPlayer();
+        protectedPlayer.teleport(new Location(end, 29.5, 64, 0.5));
+        startEncounter();
+        player.setOp(true);
+        var objective = end.getEntitiesByClass(EnderCrystal.class).stream()
+                .filter(crystal -> crystal.getX() == 24.5).findFirst().orElseThrow();
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getBlockAt(24, 63, 0).isEmpty()).isTrue();
+        assertThat(end.getBlockAt(29, 63, 0).isEmpty()).isTrue();
+        assertThat(protectedPlayer.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(8);
+        assertThat(objective.isValid()).isTrue();
+        assertThat(hit(objective).isCancelled()).isTrue();
+        debug("cancel", player);
+        assertThat(end.getBlockAt(24, 63, 0).isEmpty()).isTrue();
+        assertThat(objective.isValid()).isTrue();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"8,true", "8.01,false", "-8,true", "-8.01,false"})
+    void smashDamageUsesTheEightBlockBoundaryNotTheFiveBlockCrater(double offset, boolean included) throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(probe.getHealth()).isEqualTo(included ? 8 : 20);
+        assertThat(referenceHits).isEqualTo(included ? 2 : 1);
+        assertThat(probe.getLocation().getBlock().getRelative(0, -1, 0).getType()).isEqualTo(Material.END_STONE);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"cancel,false", "cancel,true", "pause,false", "pause,true",
+            "unload,false", "unload,true", "disable,false", "disable,true", "victory,false", "victory,true",
+            "reset,false", "reset,true", "wave,false", "wave,true"})
+    void everySmashTerminationCancelsTemporaryWorkButNeverRestoresCommittedGround(String termination, boolean impact)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        if (termination.equals("victory")) {
+            hunt();
+            clearFinalGate();
+        } else {
+            startEncounter();
+        }
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofMillis(impact ? 5000 : 4950));
+        var unrelated = end.spawn(new Location(end, 35, 65, 35), org.bukkit.entity.FallingBlock.class);
+        switch (termination) {
+            case "cancel", "pause" -> debug(termination, player);
+            case "reset" -> {
+                player.teleport(new Location(end, 100, 50, 0));
+                scheduler.advance(Duration.ofSeconds(60));
+            }
+            case "wave" -> debug("wave 2", player);
+            case "unload" -> server.getPluginManager().callEvent(new org.bukkit.event.world.WorldUnloadEvent(end));
+            case "disable" -> module.disable();
+            case "victory" -> {
+                server.getPluginManager().callEvent(new EntityDeathEvent(dragon, mock(DamageSource.class), List.of()));
+            }
+            default -> throw new AssertionError(termination);
+        }
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).containsExactly(unrelated);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(impact ? Material.AIR : Material.END_STONE);
+        assertThat(referenceHits).isEqualTo(impact ? 1 : 0);
+    }
+
+    @Test
+    void staleDebrisRecoveryRemovesOnlyMarkedEntitiesAndDoesNotRebuildTerrain() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        debug("cancel", player);
+        var stale = end.spawn(new Location(end, 10, 70, 0), org.bukkit.entity.FallingBlock.class);
+        stale.getPersistentDataContainer().set(EncounterRecovery.ARTIFACT,
+                org.bukkit.persistence.PersistentDataType.STRING, "debris");
+        var unrelated = end.spawn(new Location(end, 35, 70, 35), org.bukkit.entity.FallingBlock.class);
+        var loaded = new org.bukkit.event.world.EntitiesLoadEvent(end.getChunkAt(0, 0), List.of(stale, unrelated));
+        server.getPluginManager().callEvent(loaded);
+        server.getPluginManager().callEvent(loaded);
+        assertThat(stale.isValid()).isFalse();
+        assertThat(unrelated.isValid()).isTrue();
+        assertThat(end.getBlockAt(10, 63, 0).isEmpty()).isTrue();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"smash-crater-radius,0", "smash-crater-radius,9",
+            "smash-crater-radius,NaN", "smash-crater-depth,0", "smash-crater-depth,4", "smash-crater-depth,1.5",
+            "debris-lifetime-seconds,0", "debris-lifetime-seconds,11", "debris-lifetime-seconds,Infinity"})
+    void invalidDestructionTuningIsRejectedAtomicallyAtTheConfigurationBoundary(String key, double value)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        var invalid = config.copy();
+        invalid.node(key).set(value);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> module.onConfigReload(invalid))
+                .isInstanceOf(RuntimeException.class);
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).hasSize(81);
+        assertThat(player.getHealth()).isEqualTo(8);
+    }
+
+    @Test
+    void damagedGroundWithoutWalkingEscapeStillAllowsEveryWarnedAttack() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        // Keep target footing, but a two-block-deep trench defeats the retired straight walking-route veto.
+        for (int x = -5; x <= 26; x++) {
+            for (int z = -16; z <= 16; z++) {
+                double distance = Math.hypot(x - 10, z);
+                if (distance >= 4 && distance <= 6) {
+                    end.getBlockAt(x, 63, z).setType(Material.AIR);
+                    end.getBlockAt(x, 61, z).setType(Material.END_STONE);
+                }
+            }
+        }
+        for (String attack : List.of("bombardment", "dive", "prey", "smash")) {
+            debug("trigger " + attack, player);
+            scheduler.advance(Duration.ofSeconds(6));
+            assertThat(player.getHealth()).as(attack).isLessThan(20);
+            debug("cancel", player);
+            player.setHealth(20);
+            player.teleport(new Location(end, 10.5, 64, 0.5));
+        }
+    }
+
+    @Test
+    void destructiveSmashCommitsOnceAtImpactAndCancellationKeepsTheCrater() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        scheduler.advance(Duration.ofMillis(4950));
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        assertThat(player.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(player.getHealth()).isEqualTo(8);
+        assertThat(referenceHits).isEqualTo(1);
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(15, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(end.getBlockAt(16, 63, 0).getType()).isEqualTo(Material.END_STONE);
+        var debris = end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class);
+        assertThat(debris).hasSize(81);
+        assertThat(debris).allSatisfy(block -> {
+            assertThat(block.getBlockData().getMaterial()).isEqualTo(Material.END_STONE);
+            assertThat(block.canHurtEntities()).isFalse();
+            assertThat(block.getDropItem()).isFalse();
+            assertThat(block.getCancelDrop()).isTrue();
+            assertThat(block.getVelocity().getY()).isPositive();
+        });
+        debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=executing"));
+        scheduler.advance(Duration.ofSeconds(2));
+        assertThat(referenceHits).isEqualTo(1);
+        debug("cancel", player);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(20));
+        assertThat(end.getBlockAt(10, 63, 0).getType()).isEqualTo(Material.AIR);
+        assertThat(referenceHits).isEqualTo(1);
+    }
+
+    @Test
     void smashWarnsRisesImpactsAndLeavesAGroundedRecovery() throws Exception {
         config.node("movement-attacks").set(true);
         config.node("lane-cadence-seconds").set(120);
@@ -798,7 +1047,7 @@ class HuntEncounterTest {
         assertThat(dragon.getLocation().getY()).isEqualTo(82);
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(1));
-        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(player.getHealth()).isEqualTo(8);
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
         scheduler.advance(Duration.ofSeconds(2));
         assertThat(dragon.getLocation().getY()).isEqualTo(66);
@@ -939,7 +1188,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void clearGroundInsideTheLaneStillNeedsAReachablePlayerSizedEscapeOutsideIt() throws Exception {
+    void clearGroundInsideTheLaneDoesNotRequireAWalkingEscapeOutsideIt() throws Exception {
         hunt();
         // Keep the complete warned rectangle but remove every route beyond its short sides.
         for (int x = -3; x <= 23; x++) {
@@ -950,19 +1199,21 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(13));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(20);
-        // A real northward walking corridor makes the same attack fair on the next cadence.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(16);
+        player.setOp(true);
+        debug("cancel", player);
+        // Restoring a corridor is optional; the next production trigger still uses the same warning.
         for (int x = 9; x <= 11; x++) {
             for (int z = -8; z <= 0; z++) {
                 end.getBlockAt(x, 63, z).setType(Material.END_STONE);
             }
         }
-        scheduler.advance(Duration.ofSeconds(7));
+        debug("trigger dive", player);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         player.teleport(new Location(end, 10.5, 64, -5.5));
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(player.getHealth()).isEqualTo(16);
     }
 
     @Test
@@ -1201,7 +1452,7 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"lane-width,0", "lane-length,41", "lane-warning-seconds,1",
+    @org.junit.jupiter.params.provider.CsvSource({"lane-width,0", "lane-length,41", "lane-warning-seconds,0",
             "lane-lifetime-seconds,21", "lane-damage,NaN", "lane-cadence-seconds,3",
             "lane-damage-cadence-seconds,0", "landing-window-seconds,7", "landing-cadence-seconds,0",
             "landing-approach-seconds,Infinity", "landing-radius,25"})
@@ -1355,15 +1606,15 @@ class HuntEncounterTest {
     }
 
     @Test
-    void theLaneDamageHeightCannotOverlapArrivalProtectionAboveOtherwiseUsableGround() throws Exception {
+    void theLaneMayOverlapArrivalGeometryWhilePlayerProtectionRemainsIndependent() throws Exception {
         config.node("arrival-x").set(10.5);
         config.node("arrival-y").set(69);
         config.node("arrival-height").set(4);
         config.node("arrival-radius").set(3);
         hunt();
         scheduler.advance(Duration.ofSeconds(13));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(20);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(player.getHealth()).isEqualTo(16);
     }
 
     @Test
@@ -1871,7 +2122,8 @@ class HuntEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"void", "arrival-footprint", "native-pool", "no-route"})
-    void unsafeCurrentPreyFootprintsAreOmittedRatherThanRemovingEscapeRoutes(String obstruction) throws Exception {
+    void preyRejectsMissingTargetFootingAndNativeCloudsButNotArrivalRimsOrMissingWalkingRoutes(String obstruction)
+            throws Exception {
         if (obstruction.equals("arrival-footprint")) {
             config.node("arrival-x").set(15);
             config.node("arrival-y").set(64);
@@ -1895,8 +2147,9 @@ class HuntEncounterTest {
             }
         }
         scheduler.advance(Duration.ofSeconds(4));
-        assertThat(player.getHealth()).isEqualTo(20);
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        boolean rejected = List.of("void", "native-pool").contains(obstruction);
+        assertThat(player.getHealth()).isEqualTo(rejected ? 20 : 17);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(rejected ? 0 : 1);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
