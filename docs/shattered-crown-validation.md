@@ -14,6 +14,11 @@ Run Java25 `check build dragonWaveProbeJar --max-workers=2` (including `testNms`
 it exercises native main-End battle adoption, real native damage/death/crystal events, frozen
 4→1 / 5→2 Roster Units, both gates, all debug waves and cleanup without human clients.
 This narrower fixture is not defender AI, full ritual/reward delivery, client rendering or balance proof.
+The final-wave fixture additionally runs **both production modules** via `finalWaveProbeJar` and
+`scripts/run-final-wave-probe.py`: actual native Warden pursuit/sonic, enhanced Wither spawn/half/death
+blasts, pre-owned minions and original gates, physical skull impact, countdown UI packets, star
+suppression/ordinary rewards, chunk unload/recovery and delayed-effect cleanup. See the
+[final-wave operator contract](/shattered-crown/#final-warden-and-enhanced-wither-wave-155).
 #163 separates agent-executable integrated runtime evidence from remaining four-maxed-player human
 readability/balance observations. Missing human clients is not a hidden agent implementation blocker.
 

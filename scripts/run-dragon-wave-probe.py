@@ -45,7 +45,7 @@ for index, line in enumerate(lines):
     if line.startswith("  ") and not line.startswith("   ") and line.endswith(":"):
         module = line.strip()[:-1]
     if line.startswith("    enabled:"):
-        lines[index] = "    enabled: " + ("true" if module == "shattered-crown" else "false")
+        lines[index] = "    enabled: " + ("true" if module in ("shattered-crown", "wither") else "false")
 (plugins / "Kreiscraft").mkdir()
 (plugins / "Kreiscraft/config.yml").write_text("\n".join(lines) + "\n")
 (root / "artifacts.json").write_text(json.dumps({

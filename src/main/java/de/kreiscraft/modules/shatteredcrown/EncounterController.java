@@ -1698,7 +1698,7 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     /** Combat attribution survives parent death, but never crosses an attempt boundary. */
     public boolean ownsCombatant(Entity entity) {
-        return entity != null && combatOwners.containsKey(entity.getUniqueId());
+        return entity != null && work != null && !work.isClosed() && combatOwners.containsKey(entity.getUniqueId());
     }
 
     /** Original objective identity; roaming, riding and parent death do not reassign it. */

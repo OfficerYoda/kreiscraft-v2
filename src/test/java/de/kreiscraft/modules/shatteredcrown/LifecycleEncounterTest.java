@@ -128,29 +128,37 @@ class LifecycleEncounterTest {
     }
 
     @Test
-    void finalWaveRepeatsOneWardenAndEnhancedWitherPairPerFrozenUnitAtEveryAnchor() throws Exception {
+    void finalWaveRequiresEnhancedWitherModuleInsteadOfSilentlyFallingBackToVanilla() {
+        assertThat(module.dependsOn()).contains("wither");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1,1,4,8,2", "4,1,4,8,2", "5,2,8,16,4", "8,2,8,16,4",
+            "12,3,12,24,6", "20,5,20,40,10", "68,17,68,136,34"})
+    void finalWaveRepeatsOneWardenAndEnhancedWitherPairPerFrozenUnitAtEveryAnchor(
+            int population, int units, int speciesCount, int total, long perAnchor) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
                 scheduler, context.messages());
         context.events().register(encounter);
         encounter.start();
         scheduler.advance(Duration.ZERO);
-        for (int index = 0; index < 4; index++) {
+        for (int index = 0; index < population - 1; index++) {
             var observer = server.addPlayer();
             observer.teleport(new Location(end, 250, 64, 0));
             observer.setGameMode(index % 2 == 0 ? org.bukkit.GameMode.CREATIVE : org.bukkit.GameMode.SPECTATOR);
         }
         encounter.debugWave(3, player);
-        assertThat(encounter.wavePopulation()).isEqualTo(5);
-        assertThat(encounter.rosterUnits()).isEqualTo(2);
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).hasSize(8);
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(8);
-        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(16);
+        assertThat(encounter.wavePopulation()).isEqualTo(population);
+        assertThat(encounter.rosterUnits()).isEqualTo(units);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Warden.class)).hasSize(speciesCount);
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Wither.class)).hasSize(speciesCount);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(total);
         assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)
                 .collect(java.util.stream.Collectors.groupingBy(
                         encounter::anchorId, java.util.stream.Collectors.counting()))
-                .values()).containsOnly(4L);
+                .values()).containsOnly(perAnchor);
         server.addPlayer().teleport(new Location(end, 250, 64, 0));
-        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(16);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(total);
         encounter.close();
     }
 
@@ -185,8 +193,14 @@ class LifecycleEncounterTest {
         doAnswer(call -> true).when(world).createExplosion(any(org.bukkit.Location.class),
                 org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.anyBoolean(), any(Entity.class));
-        parent.teleport(new Location(world, parent.getX(), parent.getY(), parent.getZ()));
+        parent.teleport(new Location(world, 150, 64, 10)); // Roam far from the original logical Anchor.
         parent.setHealth(300);
+        var cancelled = new org.bukkit.event.entity.EntityDamageEvent(parent,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
+        cancelled.setCancelled(true);
+        server.getPluginManager().callEvent(cancelled);
+        assertThat(spawns).isEmpty();
         var damage = new org.bukkit.event.entity.EntityDamageEvent(parent,
                 org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                 org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), 1000);
@@ -236,7 +250,21 @@ class LifecycleEncounterTest {
                 org.mockito.ArgumentMatchers.eq(20f), org.mockito.ArgumentMatchers.eq(true),
                 org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq(parent));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.Item.class)).isEmpty();
+        encounter.onCleanup(() -> assertThat(encounter.ownsCombatant(parent)).isFalse());
         encounter.close();
+        doAnswer(call -> true).when(world).createExplosion(org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyFloat(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean());
+        var staleDrops = new java.util.ArrayList<>(List.of(new org.bukkit.inventory.ItemStack(Material.NETHER_STAR)));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDeathEvent(parent,
+                org.mockito.Mockito.mock(org.bukkit.damage.DamageSource.class), staleDrops));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.Item.class)).isEmpty();
+        scheduler.advance(Duration.ofSeconds(11));
+        org.mockito.Mockito.verify(world, org.mockito.Mockito.never()).createExplosion(
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyFloat(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean());
         listener.shutdown();
     }
 

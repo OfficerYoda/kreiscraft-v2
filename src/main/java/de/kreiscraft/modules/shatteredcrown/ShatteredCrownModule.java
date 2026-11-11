@@ -28,7 +28,7 @@ public final class ShatteredCrownModule implements Module {
 
     @Override
     public List<String> dependsOn() {
-        return List.of();
+        return List.of("wither");
     }
 
     @Override

@@ -32,6 +32,8 @@ public final class WitherListener implements PriorityListener {
 
     private static final String TEAM_NAME = "bedrock_wither";
     private static final String HALF_TAG = "Half";
+    private static final org.bukkit.NamespacedKey CROWN_ARTIFACT =
+            new org.bukkit.NamespacedKey("kreiscraft", "crown_artifact");
     private static final int DEATH_COUNTDOWN_TICKS = 10;
 
     private final Supplier<WitherConfig> config;
@@ -62,6 +64,10 @@ public final class WitherListener implements PriorityListener {
         return encounter != null && encounter.ownsCombatant(entity) ? encounter : null;
     }
 
+    private boolean crownArtifact(Entity entity) {
+        return entity.getPersistentDataContainer().has(CROWN_ARTIFACT);
+    }
+
     /** Cancels all in-flight death-countdown tasks. Call from {@code WitherModule.disable()}. */
     public void shutdown() {
         Set.copyOf(ownedCleanup).forEach(Runnable::run);
@@ -75,6 +81,9 @@ public final class WitherListener implements PriorityListener {
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
+        }
+        if (crownArtifact(wither) && owner(wither) == null) {
+            return; // Removed/persisted old roots must never become ordinary Wither gameplay.
         }
         WitherConfig cfg = config.get();
         AttributeInstance maxHealthAttr = wither.getAttribute(Attribute.MAX_HEALTH);
@@ -96,6 +105,10 @@ public final class WitherListener implements PriorityListener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onExplosionPrime(ExplosionPrimeEvent event) {
         if (!(event.getEntity() instanceof Wither wither)) {
+            return;
+        }
+        if (crownArtifact(wither) && (owner(wither) == null || wither.isDead() || !wither.isValid())) {
+            event.setCancelled(true);
             return;
         }
         WitherConfig cfg = config.get();
@@ -125,7 +138,7 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
-        if (owner(wither) != null) {
+        if (crownArtifact(wither)) {
             return;
         }
         WitherConfig cfg = config.get();
@@ -157,7 +170,8 @@ public final class WitherListener implements PriorityListener {
         }
         EncounterController encounter = owner(wither);
         WitherConfig cfg = config.get();
-        if (encounter == null || wither.getHealth() - event.getFinalDamage() > cfg.halfHealthThreshold()
+        if (encounter == null || wither.isDead() || !wither.isValid()
+                || wither.getHealth() - event.getFinalDamage() > cfg.halfHealthThreshold()
                 || wither.getScoreboardTags().contains(HALF_TAG)) {
             return;
         }
@@ -177,7 +191,7 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
-        if (owner(wither) != null) {
+        if (crownArtifact(wither)) {
             event.getDrops().removeIf(item -> item.getType() == org.bukkit.Material.NETHER_STAR);
             return;
         }
@@ -236,6 +250,9 @@ public final class WitherListener implements PriorityListener {
         }
         EncounterController encounter = owner(wither);
         if (encounter == null) {
+            if (crownArtifact(wither)) {
+                event.getDrops().removeIf(item -> item.getType() == org.bukkit.Material.NETHER_STAR);
+            }
             return;
         }
         event.getDrops().removeIf(item -> item.getType() == org.bukkit.Material.NETHER_STAR);
@@ -280,7 +297,7 @@ public final class WitherListener implements PriorityListener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onOwnedDrop(org.bukkit.event.entity.EntityDropItemEvent event) {
-        if (event.getEntity() instanceof Wither && owner(event.getEntity()) != null
+        if (event.getEntity() instanceof Wither && crownArtifact(event.getEntity())
                 && event.getItemDrop().getItemStack().getType() == org.bukkit.Material.NETHER_STAR) {
             event.setCancelled(true);
             event.getItemDrop().remove();

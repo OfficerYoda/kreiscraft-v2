@@ -89,7 +89,8 @@ Reset/disable/unload cancels owned delayed work and removes descendants/effects,
 The executable build132 native check is `defenderRoamingProbeJar`. Build with Java 25:
 `./gradlew spotlessApply check build defenderRoamingProbeJar --max-workers=2`.
 Stage its JAR **alongside** the production shadow JAR in a fresh disposable, loopback-only Paper
-server with Crown enabled (other modules disabled), then launch with `-Dkreiscraft.defender-probe=true`.
+server with Crown and its Wither dependency enabled (other modules disabled), then launch with
+`-Dkreiscraft.defender-probe=true`.
 It registers a genuine native player with synthetic transport, lets the native main-End battle create
 its dragon, and observes the production controller; it never instantiates a second encounter. The
 probe exits after `DEFENDER_ROAMING_PROBE PASS/FAIL`. Exit zero alone is not success. This fixture
@@ -99,6 +100,13 @@ native ally/projectile/cloud damage cancellation before/after parent death, mode
 replenishment, and owned-only cleanup. It does not prove human login/rendering or all-species natural
 terrain navigation; #163 must exercise the integrated mounted/Guardian/Warden/Wither roster and real
 projectile collisions, arrival/retaliation transitions and unload/reload on actual End terrain.
+
+The final-wave integration is `finalWaveProbeJar` / `scripts/run-final-wave-probe.py`; it enables
+both modules and verifies native Warden brain pursuit/sonic, actual enhanced Wither blasts and
+minions, physical skull damage, no owned stars, original minion gates, countdown packets and
+owned cleanup beyond ten seconds. Wither countdowns use the existing attempt-owned scheduler
+and cleanup hooks; normal wave transitions retain dead-parent attribution, while debug replacement
+or termination clears it. Ordinary Wither scheduling and star re-drops remain independent.
 
 Use the existing permission-controlled Server Configuration GUI or YAML and `/kreiscraft reload`.
 Combat/geometry fields remain hot-reloadable **for the next attempt**. World identity remains

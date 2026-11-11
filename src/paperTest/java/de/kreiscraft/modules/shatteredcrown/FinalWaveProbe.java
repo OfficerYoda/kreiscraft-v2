@@ -48,6 +48,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class FinalWaveProbe extends JavaPlugin implements Listener {
     private static final NamespacedKey ARTIFACT = new NamespacedKey("kreiscraft", "crown_artifact");
     private final List<ServerPlayer> players = new ArrayList<>();
+    private final List<Sink> sinks = new ArrayList<>();
     private final List<WitherSkull> skulls = new ArrayList<>();
     private World end;
     private EnderDragon dragon;
@@ -73,6 +74,11 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
     private boolean controlSpawn;
     private UUID unloadedWarden;
     private boolean nativeUnloaded;
+    private int unloadTick;
+    private boolean allyShotStarted;
+    private boolean allySkullHit;
+    private int arrivalVetoes;
+    private Warden idleWarden;
 
     @Override
     public void onEnable() {
@@ -117,7 +123,9 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
         var player = new ServerPlayer(server, ((CraftWorld) world).getHandle(), profile,
                 ClientInformation.createDefault());
         player.snapTo(40.5, 151, 0.5, 0, 0);
-        server.getPlayerList().placeNewPlayer(new Sink(), player, CommonListenerCookie.createInitial(profile, false));
+        var sink = new Sink();
+        sinks.add(sink);
+        server.getPlayerList().placeNewPlayer(sink, player, CommonListenerCookie.createInitial(profile, false));
         player.getBukkitEntity().setGameMode(index == 0 ? GameMode.SURVIVAL
                 : index % 2 == 0 ? GameMode.CREATIVE : GameMode.SPECTATOR);
         players.add(player);
@@ -158,7 +166,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
         try {
             ticks++;
             players.forEach(player -> player.connection.tick());
-            if (ticks >= 2400) {
+            if (ticks >= 3600) {
                 throw new IllegalStateException("bounded timeout stage=" + stage);
             }
             var player = players.getFirst().getBukkitEntity();
@@ -225,6 +233,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                         .noneMatch(item -> item.getItemStack().getType() == Material.NETHER_STAR),
                         "native death no stars");
                 require(!home.isGlowing(), "parent death does not unlock original gate");
+                require(!sinks.getFirst().countdowns.isEmpty(), "native countdown UI packets shown");
                 ((CraftEnderCrystal) home).getHandle().hurtServer(((CraftWorld) end).getHandle(),
                         players.getFirst().damageSources().playerAttack(players.getFirst()), 100);
                 require(home.isValid(), "real original crystal attack rejected while only minions remain");
@@ -237,6 +246,8 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                         .noneMatch(item -> item.getItemStack().getType() == Material.NETHER_STAR),
                         "no delayed star re-drop");
                 getLogger().info("FINAL_WAVE deadParentBlast count=" + blasts + " minions=" + minions);
+                require(sinks.getFirst().countdowns.isEmpty() && sinks.getFirst().progressUpdates >= 10,
+                        "native countdown advances then hides on natural expiry");
                 end.getEntitiesByClass(WitherSkeleton.class).forEach(mob -> mob.setHealth(0));
                 require(home.isGlowing(), "minion deaths expose their original floating Anchor");
                 ((CraftEnderCrystal) home).getHandle().hurtServer(((CraftWorld) end).getHandle(),
@@ -304,7 +315,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 survivor.setAI(true); // Genuine native targeting and ranged AI.
                 enderman.teleport(new Location(end, 95.5, 151, 3.5));
                 next();
-            } else if (stage == 5 && skullHits > 0) {
+            } else if (stage == 5 && skullHits > 0 && (!allyShotStarted || allySkullHit)) {
                 require(!skulls.isEmpty() && skulls.stream().allMatch(this::owned), "native skull ownership");
                 require(player.getHealth() < 20, "physical native skull impact damages eligible player");
                 require(activeWither.getTarget() == player, "native Wither eligible center target");
@@ -313,19 +324,40 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                             "native Wither head rejects Enderman/allied targets " + head);
                 }
                 activeWither.setAI(false);
+                if (!allyShotStarted) {
+                    allyShotStarted = true;
+                    activeWither.rangedAttack(warden, 1); // Controlled physical ally collision, not a target-policy claim.
+                    return;
+                }
+                require(warden.getHealth() == 500, "physical owned skull collision cannot hurt allied Warden");
                 player.teleport(new Location(end, 100, 50, 0));
                 var survivor = end.getEntitiesByClass(Wither.class).stream().filter(Entity::isValid).findFirst()
                         .orElseThrow();
                 double health = player.getHealth();
+                require(!players.getFirst().isChangingDimension() && players.getFirst().connection.hasClientLoaded(),
+                        "arrival damage fixture is native-loaded, not dimension-change invulnerable");
                 player.setNoDamageTicks(0);
                 player.damage(5, DamageSource.builder(DamageType.EXPLOSION).withDirectEntity(survivor)
                         .withCausingEntity(survivor).build());
                 require(player.getHealth() == health, "attributed blast arrival protection");
+                player.damage(5, DamageSource.builder(DamageType.SONIC_BOOM).withDirectEntity(warden)
+                        .withCausingEntity(warden).build());
+                player.damage(5, DamageSource.builder(DamageType.WITHER_SKULL).withDirectEntity(skulls.getFirst())
+                        .withCausingEntity(survivor).build());
+                require(player.getHealth() == health && arrivalVetoes >= 3,
+                        "native sonic/skull/blast events explicitly vetoed at arrival");
+                player.teleport(survivor.getLocation().clone().add(2, 0, 0));
+                var pendingSkull = survivor.launchProjectile(WitherSkull.class);
+                pendingSkull.setDirection(new org.bukkit.util.Vector());
+                require(pendingSkull.isValid() && owned(pendingSkull),
+                        "live pre-owned native skull before replacement");
                 survivor.setHealth(0); // Queue another real death countdown, then replace it.
+                require(!sinks.getFirst().countdowns.isEmpty(), "replacement has queued native countdown UI");
                 replaced = new ArrayList<>(defenders());
                 replaced.addAll(skulls);
                 command("wave 1");
                 require(replaced.stream().noneMatch(Entity::isValid), "debug cleanup roots/minions/skulls");
+                require(sinks.getFirst().countdowns.isEmpty(), "debug hides countdown UI synchronously");
                 next();
             } else if (stage == 6 && ticks - stageTick >= 240) {
                 require(blasts == 3, "old queued countdown inert beyond10s into replacement wave");
@@ -333,21 +365,52 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                 defenders().forEach(mob -> mob.setAI(false));
                 var missing = end.getEntitiesByClass(Warden.class).iterator().next();
                 unloadedWarden = missing.getUniqueId();
-                missing.teleport(new Location(end, 170.5, 151, 70.5));
-                require(end.unloadChunk(10, 4, true), "native out-of-ticket chunk unload requested");
+                players.subList(1, 5).forEach(observer -> observer.getBukkitEntity()
+                        .teleport(new Location(Bukkit.getWorlds().getFirst(), 0.5, 100, 0.5)));
+                // Native DragonBattle keeps the whole main island loaded while a nearby player sustains it.
+                // Move presence away briefly and release ONLY this fixture's outer force-load tickets.
+                player.teleport(new Location(end, 350.5, 151, 0.5));
+                for (int x = 7; x <= 9; x++) {
+                    for (int z = -9; z <= 9; z++) {
+                        end.setChunkForceLoaded(x, z, false);
+                    }
+                }
+                missing.teleport(new Location(end, 184.5, 151, 40.5));
+                require(end.unloadChunkRequest(11, 2), "native out-of-ticket chunk unload requested");
                 next();
-            } else if (stage == 7 && ticks - stageTick >= 25) {
+            } else if (stage == 7 && nativeUnloaded && ticks - unloadTick >= 25) {
                 require(nativeUnloaded, "actual native EntitiesUnloadEvent observed for Warden");
                 require(end.getEntitiesByClass(Warden.class).size() == 8,
                         "invalid Warden recovered, not permanent gate");
-                end.loadChunk(10, 4);
+                player.teleport(new Location(end, 40.5, 151, 0.5));
+                end.loadChunk(11, 2);
                 var dead = end.getEntitiesByClass(Warden.class).iterator().next();
                 dead.setHealth(0);
                 next();
             } else if (stage == 8 && ticks - stageTick >= 25) {
                 require(end.getEntitiesByClass(Warden.class).size() == 7, "actual Warden death not replenished");
+                idleWarden = end.getEntitiesByClass(Warden.class).iterator().next();
+                idleWarden.setAI(true);
+                player.teleport(new Location(end, 100, 50, 0));
+                next();
+            } else if (stage == 9) {
+                if ((ticks - stageTick) % 500 == 0) {
+                    // A genuine same-tick arrival round trip resets absence, not the Warden's native dig clock.
+                    player.teleport(new Location(end, 40.5, 151, 0.5));
+                    player.teleport(new Location(end, 100, 50, 0));
+                }
+                if (ticks - stageTick >= 1300) {
+                    require(idleWarden.isValid() && idleWarden.getPose() != org.bukkit.entity.Pose.DIGGING
+                            && idleWarden.getTarget() == null,
+                            "persistent native Warden does not burrow after65s idle");
+                    getLogger().info("FINAL_WAVE native idle Warden retained65s uuid=" + idleWarden.getUniqueId());
+                    next();
+                }
+            } else if (stage == 10) {
                 var survivor = end.getEntitiesByClass(Wither.class).iterator().next();
+                player.teleport(survivor.getLocation().clone().add(2, 0, 0));
                 survivor.setHealth(0);
+                require(!sinks.getFirst().countdowns.isEmpty(), "disable has queued native countdown UI");
                 replaced = new ArrayList<>(defenders());
                 int before = blasts;
                 World controlWorld = Bukkit.getWorlds().getFirst();
@@ -363,13 +426,20 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
                         .orElseThrow();
                 require(ordinaryStar.isInvulnerable() && ordinaryStar.isGlowing(),
                         "ordinary enhanced star re-drop retained");
+                // Fresh loaded control isolates deletion from the earlier Enderman's native projectile teleport.
+                enderman.remove();
+                enderman = end.spawn(new Location(end, 40.5, 151, 3.5), org.bukkit.entity.Enderman.class);
+                ((Mob) enderman).setAI(false);
                 getServer().getPluginManager().disablePlugin(getServer().getPluginManager().getPlugin("Kreiscraft"));
                 require(defenders().isEmpty() && anchors().isEmpty() && enderman.isValid(), "disable scoped cleanup");
+                require(sinks.getFirst().countdowns.isEmpty(), "disable hides countdown UI synchronously");
                 blasts = before;
                 next();
-            } else if (stage == 9 && ticks - stageTick >= 240) {
+            } else if (stage == 11 && ticks - stageTick >= 240) {
                 require(blasts == 3 && replaced.stream().noneMatch(Entity::isValid), "disable pending blast inert");
-                require(ordinaryStar.isValid(), "owned cleanup does not remove ordinary rewards");
+                require(ordinaryStar.isValid() || players.stream().anyMatch(fixture -> fixture.getBukkitEntity()
+                        .getInventory().contains(Material.NETHER_STAR)),
+                        "owned cleanup preserves ordinary rewards, including native pickup");
                 require(leaked == 0, "no unowned roots/minions/skulls observed");
                 finish(true, null);
             }
@@ -396,6 +466,7 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
         if (unloadedWarden != null && event.getEntities().stream()
                 .anyMatch(entity -> entity.getUniqueId().equals(unloadedWarden))) {
             nativeUnloaded = true;
+            unloadTick = ticks;
             getLogger().info("FINAL_WAVE native Warden chunk unload=" + unloadedWarden);
         }
     }
@@ -407,6 +478,14 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
             if (!owned(skull)) {
                 leaked++;
             }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void hit(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (event.getEntity() instanceof WitherSkull && event.getHitEntity() == warden) {
+            allySkullHit = true;
+            getLogger().info("FINAL_WAVE physical skull ally collision");
         }
     }
 
@@ -434,6 +513,14 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void arrivalDamage(EntityDamageEvent event) {
+        if (stage == 5 && !players.isEmpty() && event.getEntity() == players.getFirst().getBukkitEntity()
+                && event.isCancelled()) {
+            arrivalVetoes++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void death(EntityDeathEvent event) {
         if (event.getEntity() instanceof Wither && owned(event.getEntity())) {
             require(event.getDrops().stream().noneMatch(item -> item.getType() == Material.NETHER_STAR),
@@ -454,6 +541,8 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
 
     private static final class Sink extends Connection {
         private PacketListener listener;
+        private final java.util.Set<UUID> countdowns = new java.util.HashSet<>();
+        private int progressUpdates;
 
         private Sink() {
             super(PacketFlow.SERVERBOUND);
@@ -473,6 +562,31 @@ public final class FinalWaveProbe extends JavaPlugin implements Listener {
 
         @Override
         public void send(Packet<?> packet, io.netty.channel.ChannelFutureListener callback, boolean flush) {
+            if (packet instanceof net.minecraft.network.protocol.game.ClientboundBossEventPacket boss) {
+                boss.dispatch(new net.minecraft.network.protocol.game.ClientboundBossEventPacket.Handler() {
+                    @Override
+                    public void add(UUID id, net.minecraft.network.chat.Component name, float progress,
+                            net.minecraft.world.BossEvent.BossBarColor color,
+                            net.minecraft.world.BossEvent.BossBarOverlay overlay, boolean dark, boolean music,
+                            boolean fog) {
+                        if (name.getString().equals("Explosion")) {
+                            countdowns.add(id);
+                        }
+                    }
+
+                    @Override
+                    public void updateProgress(UUID id, float progress) {
+                        if (countdowns.contains(id)) {
+                            progressUpdates++;
+                        }
+                    }
+
+                    @Override
+                    public void remove(UUID id) {
+                        countdowns.remove(id);
+                    }
+                });
+            }
             if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position
                     && listener instanceof net.minecraft.server.network.ServerGamePacketListenerImpl game) {
                 // Real handler clears dimension-change damage immunity; transport ACK is synthetic, not a client.
