@@ -184,6 +184,7 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                 verifyRoster();
                 roster.forEach(mob -> {
                     mob.setAI(false);
+                    mob.setVelocity(new org.bukkit.util.Vector());
                     mob.setGravity(false); // Park inactive calibration groups, not production movement behavior.
                 });
                 for (EntityType type : List.of(EntityType.ZOMBIE_HORSE, EntityType.SPIDER, EntityType.CAVE_SPIDER)) {
@@ -214,7 +215,11 @@ public final class OpeningRosterProbe extends JavaPlugin implements Listener {
                     require(active.teleport(new Location(player.getWorld(), 40.5, 151, -9 + index * 3),
                             io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS),
                             "park completed calibration group away from projectile path");
-                    group.forEach(mob -> mob.setGravity(false));
+                    group.forEach(mob -> {
+                        // Disabling gravity does not stop residual movement into the calibration floor.
+                        mob.setVelocity(new org.bukkit.util.Vector());
+                        mob.setGravity(false);
+                    });
                     if (++index == cases.size()) {
                         escapedRider = (Mob) cases.getFirst().getPassengers().getFirst();
                         player.getWorld().setChunkForceLoaded(-19, 0, true);
