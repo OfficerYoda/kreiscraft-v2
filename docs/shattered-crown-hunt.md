@@ -14,7 +14,7 @@ behavior and tuning. The stationary lane/sweep contract below remains available 
 With the default `movement-attacks: true`, one coordinator runs throughout shielded and vulnerable
 phases. Bombardment and Prey are initially available. Destroying all four crystals in waves one,
 two and three permanently unlocks Dive, Rain and Smash respectively; later shields do not relock
-them. Rain appears in `unlocked` status but not `available` until #162 installs its main action.
+them. Fireball Rain is runnable after wave two; see the [native Rain contract](/shattered-crown-rain/).
 The compatibility stationary profile below retains its old diagnostic cadence/shape contract.
 
 Each round shuffles every available family once. Newly available families join the unfinished
@@ -26,7 +26,7 @@ not an additional cadence later. Manual triggers bypass grace; pause/resume neve
 
 After main completion, a uniformly selected **inclusive 100–200 server-tick (5–10s) delay** precedes
 the next warning. Dive/Smash include recovery, Prey includes all deposition, Bombardment includes
-impact; #162 must complete Rain only after its last projectile resolves. Sibling pools do not hold
+impact; Rain includes resolution or cleanup of its last native projectile. Sibling pools do not hold
 the main-action slot. Cancellation, setup/native-flight/render failures and lost targets release
 that slot and receive the same bounded delay. Pausing cancels all automatic work and hazards.
 No per-family cadence or final cadence factor controls this native rotation.
@@ -58,7 +58,7 @@ Selection nonrepetition does not promise alternating successful warnings when ge
 other family; rejected turns remain bounded and cannot starve the currently usable attacks.
 
 Controlled Encounter/public-event regressions cover seeded rounds, cross-round nonrepetition,
-both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain unavailability,
+both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain availability,
 grace, and the six-second window with damaging old pools. `rotationProbeJar` is a disposable real
 Paper probe, never part of the production JAR; it uses real registered native players/battle/AI,
 production commands and public pool ownership. Its extended-lifetime pool is a bounded fixture for

@@ -93,6 +93,11 @@ public final class EncounterController implements Listener, AutoCloseable {
     private final List<HuntArea> areas = new ArrayList<>();
     private final Set<HuntArea> pools = new HashSet<>();
     private final java.util.Map<UUID, Long> poolCooldowns = new java.util.HashMap<>();
+    private final java.util.Map<UUID, RainShot> rainShots = new java.util.HashMap<>();
+
+    private record RainShot(EncounterWork owner, EnderDragon source) {
+    }
+
     private long encounterTicks;
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
@@ -225,7 +230,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     enum DebugAttack {
-        DIVE, SMASH, PREY, BOMBARDMENT, LANDING
+        DIVE, SMASH, PREY, BOMBARDMENT, LANDING, RAIN
     }
 
     private boolean attacking() {
@@ -367,7 +372,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             messages.send(sender, "shattered-crown.debug-no-encounter");
             return;
         }
-        if (!isParticipant(target)) {
+        if (!(attack == DebugAttack.RAIN && target == null) && !isParticipant(target)) {
             messages.send(sender, "shattered-crown.debug-target-ineligible");
             return;
         }
@@ -382,6 +387,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                 case PREY -> markPrey();
                 case BOMBARDMENT -> warnBombardment();
                 case LANDING -> requestLanding();
+                case RAIN -> fireballRain();
             }
         } catch (RuntimeException error) {
             resetAttacks();
@@ -395,7 +401,11 @@ public final class EncounterController implements Listener, AutoCloseable {
             messages.send(sender, "shattered-crown.debug-not-started", "reason", reason);
             return;
         }
-        messages.send(sender, "shattered-crown.debug-started", "attack", attack, "player", target.getName());
+        if (target == null) {
+            messages.send(sender, "shattered-crown.debug-started-all", "attack", attack);
+        } else {
+            messages.send(sender, "shattered-crown.debug-started", "attack", attack, "player", target.getName());
+        }
     }
 
     private void resetAttacks() {
@@ -691,11 +701,10 @@ public final class EncounterController implements Listener, AutoCloseable {
         attackWork.repeating(cadence, cadence, this::warnLane);
     }
 
-    /** Rain is a permanent unlock but cannot enter a round until #162 supplies its main action. */
+    /** Runnable families retain their permanent wave unlocks during later shields. */
     public Set<AttackFamily> availableAttacks() {
         var available = java.util.EnumSet.noneOf(AttackFamily.class);
         available.addAll(unlockedAttacks());
-        available.remove(AttackFamily.RAIN);
         return Set.copyOf(available);
     }
 
@@ -732,7 +741,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             case PREY -> markPrey();
             case DIVE -> warnLane();
             case SMASH -> smash();
-            case RAIN -> throw new IllegalStateException("Rain content is not installed");
+            case RAIN -> fireballRain();
         }
     }
 
@@ -1038,6 +1047,131 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     private void markPrey() {
         startAction(DebugAttack.PREY, this::markPrey);
+    }
+
+    private void fireballRain() {
+        startAction(DebugAttack.RAIN, owner -> {
+            EnderDragon source = dragon;
+            var grounds = attackTargets().stream().map(target -> arena.groundBelow(target.getLocation()))
+                    .filter(ground -> ground != null && arena.contains(ground) && !arena.protectedArrival(ground)
+                            && ground.getY() + config.rainSpawnHeight() < ground.getWorld().getMaxHeight())
+                    .toList();
+            int[] remaining = {grounds.size()};
+            for (Location ground : grounds) {
+                EncounterWork shot = owner.child(() -> {
+                    if (--remaining[0] == 0) {
+                        owner.close();
+                    }
+                });
+                shot.run(() -> {
+                    warnRain(ground);
+                    shot.later(Duration.ofSeconds(1), () -> {
+                        double speed = config.rainSpawnHeight() / (config.rainDescentSeconds() * 20);
+                        var ball = ground.getWorld().spawn(ground.clone().add(0, config.rainSpawnHeight(), 0),
+                                org.bukkit.entity.LargeFireball.class, projectile -> {
+                                    shot.own(projectile, "rain-projectile");
+                                    projectile.setShooter(source);
+                                    projectile.setIsIncendiary(false);
+                                    projectile.setYield(0);
+                                    battles.prepareRainFireball(projectile, speed);
+                                    projectile.setVelocity(new org.bukkit.util.Vector(0, -speed, 0));
+                                });
+                        if (shot.isClosed() || !ball.isValid()) {
+                            ball.remove();
+                            shot.close();
+                            return;
+                        }
+                        UUID id = ball.getUniqueId();
+                        rainShots.put(id, new RainShot(shot, source));
+                        shot.onCleanup(() -> rainShots.remove(id));
+                        shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+                            if (!ball.isValid()) {
+                                shot.close();
+                            }
+                        });
+                    });
+                    // Lost/unloaded/stopped projectiles cannot hold the main action indefinitely.
+                    shot.later(seconds(1 + config.rainDescentSeconds() + 3), shot::close);
+                });
+            }
+        });
+    }
+
+    private void warnRain(Location ground) {
+        // Keep the fixed warning for all three seconds, even if cover resolves a projectile early.
+        EncounterWork warningWork = attackWork.child(() -> {
+        });
+        warningWork.run(() -> {
+            TextDisplay warning = ground.getWorld().spawn(ground.clone().add(0, 1.5, 0), TextDisplay.class);
+            warningWork.own(warning, "rain-warning");
+            battles.faceWarningToViewer(warning);
+            warning.text(Component.text("3.0s", NamedTextColor.GOLD));
+            drawAreaRing(new HuntArea(ground, 2), Particle.FLAME);
+            attackParticipants()
+                    .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
+            int[] pulses = {0};
+            warningWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+                warning.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
+                        Math.max(0, 3 - ++pulses[0] * 0.25)), NamedTextColor.GOLD));
+                drawAreaRing(new HuntArea(ground, 2), Particle.FLAME);
+            });
+            warningWork.later(Duration.ofSeconds(3), warningWork::close);
+        });
+        if (warningWork.isClosed()) {
+            throw new IllegalStateException("Rain warning unavailable");
+        }
+    }
+
+    private static boolean rainProjectile(Entity entity) {
+        return entity instanceof org.bukkit.entity.LargeFireball
+                && "rain-projectile".equals(entity.getPersistentDataContainer()
+                        .get(EncounterRecovery.ARTIFACT, PersistentDataType.STRING));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onRainCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (!rainProjectile(event.getEntity())) {
+            return;
+        }
+        boolean cancelled = event.isCancelled();
+        event.setCancelled(true); // Native entity hit/explosion must never add a second damage path.
+        RainShot shot = rainShots.remove(event.getEntity().getUniqueId());
+        if (shot == null || shot.owner().isClosed()) {
+            return;
+        }
+        Location impact = event.getEntity().getLocation().clone(); // Native collision position, never the old target.
+        shot.owner().run(() -> {
+            if (!cancelled && dragon == shot.source()) {
+                Location ground = arena.groundBelow(impact);
+                if (ground != null) {
+                    impactTerrain(ground, 2, 1);
+                    impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
+                    impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
+                    for (Player player : attackParticipants()) {
+                        if (shot.owner().isClosed() || dragon != shot.source()) {
+                            break;
+                        }
+                        if (arena.inBombardment(player.getLocation(), impact, 2)) {
+                            battles.referenceDamage(player, shot.source(), config.rainDamage());
+                        }
+                    }
+                    if (!shot.owner().isClosed() && dragon == shot.source()) {
+                        Location crater = arena.groundBelow(impact);
+                        if (crater != null) {
+                            depositBreathPool(crater, 5, 6);
+                        }
+                    }
+                }
+            }
+        });
+        shot.owner().close();
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onRainExplosion(org.bukkit.event.entity.ExplosionPrimeEvent event) {
+        if (rainProjectile(event.getEntity())) {
+            event.setCancelled(true);
+        }
     }
 
     /** Main completion closes only this child; deposited hazards are sibling Encounter work. */
@@ -2147,6 +2281,11 @@ public final class EncounterController implements Listener, AutoCloseable {
         Entity direct = event instanceof EntityDamageByEntityEvent byEntity ? byEntity.getDamager()
                 : event.getDamageSource().getDirectEntity();
         Entity source = event.getDamageSource().getCausingEntity();
+        if (rainProjectile(target) || rainProjectile(direct)
+                || rainProjectile(event.getDamageSource().getDirectEntity())) {
+            event.setCancelled(true); // Includes native player-hit deflection before velocity/owner mutation.
+            return;
+        }
         if (source == null) {
             source = direct;
         }

@@ -69,4 +69,8 @@ public interface DragonBattleAccess {
     default void faceWarningToViewer(TextDisplay warning) {
         warning.setBillboard(Display.Billboard.CENTER);
     }
+
+    default void prepareRainFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
+        de.kreiscraft.platform.NmsCrownFireball.prepare(fireball, speed);
+    }
 }
