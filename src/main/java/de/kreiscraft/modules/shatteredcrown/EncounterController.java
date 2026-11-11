@@ -629,6 +629,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         finalEntered = selected == 3;
         wavePopulation = population;
         rosterUnits = (int) Math.ceil(population / 4.0);
+        if (selected == 3) {
+            // One bonus pair at 13 players, then another every eight players; earlier waves keep their base units.
+            rosterUnits += Math.max(0, rosterUnits / 2 - 1);
+        }
         installingWave = true;
         EnderDragon source = dragon;
         hunting = false;

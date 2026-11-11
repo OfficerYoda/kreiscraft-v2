@@ -220,7 +220,7 @@ class LifecycleEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"1,1", "2,1", "4,1", "5,2", "8,2", "9,3", "12,3",
-            "13,4", "16,4", "17,5", "20,5", "68,17"})
+            "13,5", "16,5", "17,6", "20,6", "21,8", "24,8", "25,9", "28,9", "29,11", "32,11", "68,24"})
     void finalWaveDistributesOneWardenAndEnhancedWitherPerFrozenUnitAcrossAllAnchors(
             int population, int units) throws Exception {
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
@@ -261,6 +261,8 @@ class LifecycleEncounterTest {
             assertThat(crystals().stream().filter(Entity::isGlowing)).hasSize(2);
         }
         server.addPlayer().teleport(new Location(end, 250, 64, 0));
+        assertThat(encounter.rosterUnits()).isEqualTo(units);
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(2 * units);
         player.teleport(new Location(server.addSimpleWorld("departed-final-observer"), 0, 64, 0));
         assertThat(end.getEntitiesByClass(Mob.class).stream().filter(encounter::ownsCombatant)).hasSize(2 * units);
         encounter.close();

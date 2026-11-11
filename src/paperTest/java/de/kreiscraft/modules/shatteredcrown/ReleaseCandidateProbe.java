@@ -504,7 +504,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     if (anchors().size() != 4) {
                         return;
                     }
-                    check(defenders().size() == (attempt == 0 ? 10 : 2), "uncapped distributed final boss roster");
+                    check(defenders().size() == (attempt == 0 ? 12 : 2), "uncapped distributed final boss roster");
                     if (ticks - since < 230) {
                         return; // Let all native 220-tick charges and destructive enhanced spawn blasts actually finish.
                     }
@@ -515,7 +515,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     var parent = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
                     parent.setNoDamageTicks(0);
                     parent.damage(400, fixtures.getFirst().getBukkitEntity());
-                    check(defenders().size() == (attempt == 0 ? 14 : 6), "enhanced half-health four owned minions");
+                    check(defenders().size() == (attempt == 0 ? 16 : 6), "enhanced half-health four owned minions");
                     clearWave();
                     check(encounter.availableAttacks().size() == 5, "all five permanent families runnable");
                     command("resume");

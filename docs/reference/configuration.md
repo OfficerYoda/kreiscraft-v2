@@ -11,11 +11,12 @@ Complete reference for every key in Kreiscraft's configuration files.
 ### Shattered Crown fixed mechanics
 
 The three waves contain exactly four Anchors at 100%, 65% and 30% effective maximum health.
-Population freezes once per wave and scales complete Roster Units with `ceil(population/4)`, without
+Population freezes once per wave. Base Roster Units=`ceil(population/4)`, without
 a cap. These are not configuration knobs. Wave one has three mounted pairs and one 4–6-member undead
 tower per unit. Wave two has one Ravager, Guardian, Piglin Brute, Vindicator, Blaze and Breeze per unit
 at each Anchor (24 total at 1–4 End players;48 at 5–8). Wave three has one Warden/enhanced-Wither pair
-per unit across the entire wave (1+1 at population1–4;2+2 at5–8;5+5 at20), plus owned minions.
+per unit across the entire wave, using `base + max(0, floor(base/2) - 1)` units
+(1+1 at population1–4;2+2 at5–8;6+6 at20;11+11 at29–32), plus owned minions.
 Bosses and species are evenly distributed across the four Anchors; empty Anchors start exposed.
 Both modules must be enabled
 before startup. `defender-count`/`defender-type` are retained compatibility fields, ignored by the

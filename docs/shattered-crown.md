@@ -52,8 +52,9 @@ Ground Smash after wave three. Unlocks survive later shields. The shuffled rotat
 Wave two has exactly one **Ravager, Guardian, Piglin Brute,
 Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
 72 at 9–12; no random pool, per-species scaling or cap. Wave three instead has
-**ceil(wave population / 4) Wardens and the same number of enhanced Withers across the entire wave**,
-distributed evenly across the four Anchors. The explicit extension point is
+**base + max(0, floor(base / 2) - 1) Wardens and the same number of enhanced Withers across the entire wave**,
+where `base = ceil(wave population / 4)`. The first bonus pair starts at thirteen players, with another
+every eight players thereafter. Bosses are distributed evenly across the four Anchors. The explicit extension point is
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: opening/second units repeat
 per Anchor; final units distribute their two bosses across Anchors. Use
 `spawnCombatant(location, type, objective, initializer)` for roots. That helper
@@ -166,7 +167,9 @@ balance, ritual completion or native reward delivery. Those remain integrated #1
 
 Each final-wave Roster Unit is **one native Warden plus one enhanced Wither across the entire wave**.
 One through four connected End players face one Warden/one Wither; five through eight face
-two Wardens/two Withers; twenty face five of each. Each species cycles around the four Anchors,
+two Wardens/two Withers; nine through twelve face three of each, thirteen through sixteen five,
+seventeen through twenty six, twenty-one through twenty-four eight, and twenty-nine through thirty-two eleven.
+Each species cycles around the four Anchors,
 with Withers offset by two Anchors from Wardens. Total boss counts and each species' counts differ
 by at most one between Anchors. At population 1–4 the bosses defend opposite Anchors and the other
 two crystals start exposed; all four crystals still must be destroyed. The snapshot includes connected dead players, Creative/Spectator
