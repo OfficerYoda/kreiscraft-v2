@@ -13,18 +13,21 @@ import org.bukkit.entity.Player;
 final class EncounterArena {
     private final Location center;
     private final ShatteredCrownConfig config;
-    private String rejection = "no eligible target or clear flight path";
+    private String rejection = "shattered-crown.reject-no-path";
+    private Object[] rejectionValues = {};
 
     void resetRejection() {
-        rejection = "no eligible target or clear flight path";
+        reject("shattered-crown.reject-no-path");
     }
 
-    String rejection() {
-        return rejection;
+    net.kyori.adventure.text.Component rejection(de.kreiscraft.core.message.MessageService messages,
+            org.bukkit.command.CommandSender requester) {
+        return messages.renderFor(requester, rejection, rejectionValues);
     }
 
-    boolean reject(String reason) {
+    boolean reject(String reason, Object... values) {
         rejection = reason;
+        rejectionValues = values;
         return false;
     }
 
@@ -147,7 +150,7 @@ final class EncounterArena {
 
     boolean laneSafe(BreathLane lane, List<BreathLane> existing, List<Player> participants) {
         if (lane.surface != null && !lane.surface.unchanged()) {
-            return reject("dive ground changed after warning");
+            return reject("shattered-crown.reject-dive-ground");
         }
         // Sample the whole footprint: void, protection or an unusable raised surface is not an arena.
         int lengthSteps = (int) Math.ceil(lane.length);
@@ -166,13 +169,13 @@ final class EncounterArena {
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || lane.contains(cloud.getLocation(), cloud.getRadius() + 1))
                 || existing.stream().anyMatch(other -> rectanglesOverlap(lane, other))) {
-            return reject("dive overlaps a breath cloud or another lane");
+            return reject("shattered-crown.reject-dive-overlap");
         }
         // Do not add pressure while somebody is already escaping existing danger.
         if (participants.stream()
                 .anyMatch(player -> existing.stream().anyMatch(other -> other.contains(player.getLocation(), 1))
                         || clouds.stream().anyMatch(cloud -> overlaps(player.getLocation(), 0.5, cloud)))) {
-            return reject("participant is still escaping existing breath");
+            return reject("shattered-crown.reject-escaping-breath");
         }
         return true;
     }
@@ -180,13 +183,13 @@ final class EncounterArena {
     boolean areaSafe(HuntArea area, List<HuntArea> existing, List<BreathLane> lanes, List<Player> participants,
             double warningSeconds) {
         if (area.surface != null && !area.surface.unchanged()) {
-            return reject("area ground changed after warning");
+            return reject("shattered-crown.reject-area-ground");
         }
         double search = area.radius + warningSeconds * 3 + 32;
         var clouds = nearbyBreath(area.center, search, area.surface == null ? 6 : 16);
         if (clouds.size() > 32 || clouds.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || overlaps(area.center, area.radius + 1, cloud))) {
-            return reject("area overlaps native breath or has too many nearby clouds");
+            return reject("shattered-crown.reject-area-breath");
         }
         for (double x = -area.radius; x <= area.radius; x += 0.5) {
             for (double z = -area.radius; z <= area.radius; z += 0.5) {
@@ -202,7 +205,7 @@ final class EncounterArena {
                 if (area.contains(spot, 0) && (!contains(spot)
                         || existing.stream().anyMatch(other -> other.contains(checked, 1))
                         || lanes.stream().anyMatch(lane -> lane.contains(checked, 1)))) {
-                    return reject("area overlaps another hazard or leaves the combat area");
+                    return reject("shattered-crown.reject-area-overlap");
                 }
             }
         }

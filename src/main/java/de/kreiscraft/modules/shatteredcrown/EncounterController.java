@@ -54,7 +54,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
  * Communication policy: automatic cues stay in-world (displays, sounds, visuals, native boss bars),
  * never chat, action bars or replacement titles. Only explicitly requested debug replies use chat.
  */
-public final class EncounterController implements Listener, AutoCloseable {
+public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private final Server server;
@@ -396,7 +396,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         if (!busy()) {
-            String reason = arena.rejection();
+            Component reason = arena.rejection(messages, sender);
             resetAttacks();
             messages.send(sender, "shattered-crown.debug-not-started", "reason", reason);
             return;
@@ -486,7 +486,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         server.getWorlds().forEach(world -> world.getEntities().forEach(this::recoverStale));
         World occupied = server.getWorld(NamespacedKey.fromString(nextConfig.worldKey()));
-        if (occupied != null && !occupied.getPlayers().isEmpty()) {
+        if (occupied != null && scalingPopulation() > 0) {
             recordEntry(occupied);
         }
         if (discovery == null) {
@@ -534,12 +534,12 @@ public final class EncounterController implements Listener, AutoCloseable {
         }
         config = nextConfig;
         World world = server.getWorld(NamespacedKey.fromString(config.worldKey()));
-        if (world == null || world.getPlayers().isEmpty()) {
+        if (world == null || scalingPopulation() == 0) {
             populationWorld = null;
             entryPopulation = 0;
         }
         if (world == null || unavailableWorlds.contains(world.getUID())
-                || world.getEnvironment() != World.Environment.THE_END || world.getPlayers().isEmpty()) {
+                || world.getEnvironment() != World.Environment.THE_END || scalingPopulation() == 0) {
             return;
         }
         recordEntry(world);
@@ -1871,7 +1871,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             EnderDragon source = dragon;
             for (Player player : participants) {
                 // Damage invokes public combat events, which can synchronously end this attempt.
-                if (dragon != source) {
+                if (owner.isClosed() || dragon != source) {
                     break;
                 }
                 if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,

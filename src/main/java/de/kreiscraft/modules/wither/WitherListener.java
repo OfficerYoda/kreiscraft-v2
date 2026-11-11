@@ -3,7 +3,7 @@ package de.kreiscraft.modules.wither;
 import de.kreiscraft.core.event.PriorityListener;
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
-import de.kreiscraft.modules.shatteredcrown.EncounterController;
+import de.kreiscraft.modules.shatteredcrown.EncounterService;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -39,7 +39,7 @@ public final class WitherListener implements PriorityListener {
     private final Supplier<WitherConfig> config;
     private final MessageService messages;
     private final Scheduler scheduler;
-    private final Supplier<EncounterController> encounters;
+    private final Supplier<EncounterService> encounters;
 
     /** Tracks in-flight death-countdown tasks so shutdown() can cancel them. */
     private final Set<Scheduler.Task> activeTasks = new LinkedHashSet<>();
@@ -52,15 +52,15 @@ public final class WitherListener implements PriorityListener {
     }
 
     public WitherListener(Supplier<WitherConfig> config, MessageService messages, Scheduler scheduler,
-            Supplier<EncounterController> encounters) {
+            Supplier<EncounterService> encounters) {
         this.config = config;
         this.messages = messages;
         this.scheduler = scheduler;
         this.encounters = encounters;
     }
 
-    private EncounterController owner(Entity entity) {
-        EncounterController encounter = encounters.get();
+    private EncounterService owner(Entity entity) {
+        EncounterService encounter = encounters.get();
         return encounter != null && encounter.ownsCombatant(entity) ? encounter : null;
     }
 
@@ -168,7 +168,7 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
-        EncounterController encounter = owner(wither);
+        EncounterService encounter = owner(wither);
         WitherConfig cfg = config.get();
         if (encounter == null || wither.isDead() || !wither.isValid()
                 || wither.getHealth() - event.getFinalDamage() > cfg.halfHealthThreshold()
@@ -195,7 +195,6 @@ public final class WitherListener implements PriorityListener {
             event.getDrops().removeIf(item -> item.getType() == org.bukkit.Material.NETHER_STAR);
             return;
         }
-        WitherConfig cfg = config.get();
         Location loc = wither.getLocation();
         event.getDrops().forEach(itemStack -> {
             Entity item = loc.getWorld().dropItem(loc, itemStack);
@@ -204,26 +203,13 @@ public final class WitherListener implements PriorityListener {
         });
         event.getDrops().clear();
 
-        Map<Player, BossBar> bars = new HashMap<>();
-        int radius = cfg.deathBossBarRadius();
-        for (Player player : loc.getWorld().getPlayers()) {
-            if (player.getLocation().distance(loc) <= radius) {
-                BossBar bar = BossBar.bossBar(
-                        messages.renderFor(player, "wither.explosion-title"),
-                        0f,
-                        BossBar.Color.PURPLE,
-                        BossBar.Overlay.PROGRESS);
-                bars.put(player, bar);
-                player.showBossBar(bar);
-            }
-        }
+        Map<Player, BossBar> bars = showDeathBars(loc);
 
         int[] tick = {0};
         Scheduler.Task[] taskRef = {null};
         taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
             tick[0]++;
-            float progress = Math.min(tick[0] / (float) DEATH_COUNTDOWN_TICKS, 1f);
-            bars.values().forEach(bar -> bar.progress(progress));
+            updateDeathBars(bars, tick[0]);
             if (tick[0] >= DEATH_COUNTDOWN_TICKS) {
                 loc.getWorld()
                         .createExplosion(
@@ -248,7 +234,7 @@ public final class WitherListener implements PriorityListener {
         if (!(event.getEntity() instanceof Wither wither)) {
             return;
         }
-        EncounterController encounter = owner(wither);
+        EncounterService encounter = owner(wither);
         if (encounter == null) {
             if (crownArtifact(wither)) {
                 event.getDrops().removeIf(item -> item.getType() == org.bukkit.Material.NETHER_STAR);
@@ -261,21 +247,13 @@ public final class WitherListener implements PriorityListener {
         }
         encounter.onCleanup(() -> ownedDeaths.remove(wither.getUniqueId()));
         Location loc = wither.getLocation().clone();
-        Map<Player, BossBar> bars = new HashMap<>();
-        for (Player player : loc.getWorld().getPlayers()) {
-            if (player.getLocation().distance(loc) <= config.get().deathBossBarRadius()) {
-                BossBar bar = BossBar.bossBar(messages.renderFor(player, "wither.explosion-title"), 0,
-                        BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
-                bars.put(player, bar);
-                player.showBossBar(bar);
-            }
-        }
+        Map<Player, BossBar> bars = showDeathBars(loc);
         Runnable hide = encounter.onCleanup(() -> bars.forEach(Player::hideBossBar));
         int[] tick = {0};
         Scheduler.Task[] task = {null};
         task[0] = encounter.runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
             tick[0]++;
-            bars.values().forEach(bar -> bar.progress(Math.min(tick[0] / (float) DEATH_COUNTDOWN_TICKS, 1)));
+            updateDeathBars(bars, tick[0]);
             if (tick[0] >= DEATH_COUNTDOWN_TICKS) {
                 WitherConfig cfg = config.get();
                 loc.getWorld().createExplosion(loc, (float) cfg.deathExplosionPower(), cfg.deathExplosionFire(),
@@ -293,6 +271,24 @@ public final class WitherListener implements PriorityListener {
         });
         ownedCleanup.add(cleanup);
         encounter.onCleanup(() -> ownedCleanup.remove(cleanup));
+    }
+
+    private Map<Player, BossBar> showDeathBars(Location location) {
+        Map<Player, BossBar> bars = new HashMap<>();
+        int radius = config.get().deathBossBarRadius();
+        for (Player player : location.getWorld().getPlayers()) {
+            if (player.getLocation().distance(location) <= radius) {
+                BossBar bar = BossBar.bossBar(messages.renderFor(player, "wither.explosion-title"), 0,
+                        BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
+                bars.put(player, bar);
+                player.showBossBar(bar);
+            }
+        }
+        return bars;
+    }
+
+    private void updateDeathBars(Map<Player, BossBar> bars, int tick) {
+        bars.values().forEach(bar -> bar.progress(Math.min(tick / (float) DEATH_COUNTDOWN_TICKS, 1)));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

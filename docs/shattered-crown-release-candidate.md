@@ -36,7 +36,8 @@ Do not install `build/paper-probe/` JARs on production.
 | Three | 30% | Four Anchors,4 Wardens+4 enhanced Withers, plus owned Wither minions | 8+8 roots | 20+20 roots |
 
 Units per Anchor=`ceil(snapshot/4)`, uncapped. Opening freezes everyone online server-wide at first
-End entry. Later waves freeze everyone connected in the managed End, including Creative/Spectator,
+End entry; connected dead arrivals retain that snapshot while awaiting respawn. Later waves freeze
+everyone connected in the managed End, including Creative/Spectator,
 outer-island and connected dead players. Those observers/dead players are never combat targets and
 do not sustain absence. Joining/leaving does not resize a spawned wave. Prey requests distinct
 `ceil(.35*all-End)` targets:4→2,8→3,20→7, capped only by eligible combat players. Rain targets ALL eligible.
@@ -116,6 +117,12 @@ including during Prey warning. Old marks must not deposit after return.
   Never claim all terrain permutations or production performance from an isolated fixture.
 
 ## Native assertions versus human observations
+
+The two-module final-wave fixture uses the shared runner:
+`python3 scripts/run-dragon-wave-probe.py NEW_DIR PAPER_CACHE_DIR PRODUCTION_JAR final`.
+`scripts/run-final-wave-probe.py` remains a compatibility entrypoint with the same artifact,
+timeout, process-exit and port-release validation. `python3 scripts/check-final-wave-runner.py`
+checks routing/staging with a fake JVM; it is not native combat evidence.
 
 Pinned executable commands,versions,hashes,counts,failed attempts and runtime measurements are
 recorded in `sc-163-evidence.md`. Registered native fixtures use genuine Paper worlds,AI,events,

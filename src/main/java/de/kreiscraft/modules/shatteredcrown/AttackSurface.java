@@ -28,7 +28,7 @@ final class AttackSurface {
                 }
                 Location ground = column(spot, 6, 6);
                 if (!arena.contains(spot)) {
-                    arena.reject("surface outside combat area");
+                    arena.reject("shattered-crown.reject-surface-outside");
                     return null;
                 }
                 // ponytail: holes have no surface to project; surviving footing still defines valid attack geometry.
@@ -36,15 +36,14 @@ final class AttackSurface {
                     continue;
                 }
                 if (!arena.contains(ground)) {
-                    arena.reject("surface rejected at " + x + "," + center.getBlockY() + "," + z
-                            + ": outside combat area");
+                    arena.reject("shattered-crown.reject-surface-position", "x", x, "y", center.getBlockY(), "z", z);
                     return null;
                 }
                 surface.heights.put(key(x, z), ground.getBlockY());
             }
         }
         if (surface.heights.isEmpty()) {
-            arena.reject("no supported ground in attack footprint");
+            arena.reject("shattered-crown.reject-no-ground");
             return null;
         }
         return surface;

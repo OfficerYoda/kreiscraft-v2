@@ -29,7 +29,7 @@ public final class WitherModule implements Module {
             throw new ModuleException("failed to load config for module " + id(), e);
         }
         this.listener = new WitherListener(() -> config, ctx.messages(), ctx.scheduler(),
-                () -> ctx.services().find(de.kreiscraft.modules.shatteredcrown.EncounterController.class).orElse(null));
+                () -> ctx.services().find(de.kreiscraft.modules.shatteredcrown.EncounterService.class).orElse(null));
         ctx.events().register(listener);
     }
 

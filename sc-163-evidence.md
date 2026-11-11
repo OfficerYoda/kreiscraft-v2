@@ -207,3 +207,47 @@ combat feel or balance session is available or fabricated. Outgoing packet asser
 rendered presentation, authenticated login or a real client reconnect. Parent retains final
 Standards+Spec review, final build/delivery/merge and issue closure. No external agent-executable
 blocker remains; no push/PR/issue closure was performed.
+
+## Final-review correction replay (new production artifact)
+
+The six final findings are corrected on `feat/sc-review-fixes` (implementation `3360d829`):
+reentrant Bombardment owner closure, dead-connected opening snapshot retention, interface-only
+Wither ownership service, recipient-localized geometry rejection, shared countdown presentation
+and final mode in the general native runner. No reward/explosion/ownership policies were merged.
+External `T/sc-review-fixes-evidence.md` maps each fix to its actual RED/GREEN and native evidence.
+
+Fresh unfiltered Java25 `check build` plus all12 probe JAR tasks, `--rerun-tasks --max-workers=2`,
+passed:1844 ordinary cases/185 suites,0 failures/errors,five existing unrelated skips;16 NMS
+cases/three suites,0 failures/errors/skips (`T/sc-review-full-check.log`, `sc-review-counts.json`).
+Production SHA256 **61d9c1b642838c76f88515ae587b13fec0970eef548a7a310ea0700ef28434ee**
+is pinned in `T/sc-review-artifacts/`. Earlier rows above retain their historical artifact hashes;
+they are not relabelled as new-hash executions.
+
+- `T/sc-review-wave-native-1`: DRAGON_WAVE_PROBE PASS,24ticks,exit0,port53907 released.
+- `T/sc-review-final-native-1`, general runner **final** mode: FINAL_WAVE_PROBE PASS,
+  72checks/2815ticks/three blasts/four minions/one sonic/one skull hit,exit0,port53853 released.
+  Real two-module service integration/countdown progress+expiry+cleanup and existing gameplay
+  fixture assertions passed unchanged. Both runs recorded timeoutFalse and exact deployed hashes.
+- `T/sc-review-dive-native-1`: DIVE_ENCOUNTER_PROBE PASS,2109checks,exit0,port54299
+  released. Production debug/automatic Bombardment6HP on Easy/Normal/Hard, physical Dive8HP,
+  cancellation/invalid-target/zero-Dive-particle/native-control and cleanup assertions passed.
+- `T/sc-review-final-compat-native-1`: documented compatibility command genuinely repeats
+  FINAL_WAVE_PROBE PASS,72checks/2847ticks,exit0,port54562 released.
+- `T/sc-review-release-native-1`: RELEASE_INTERRUPT_READY,20547checks/10098ticks/two native
+  victories,automaticChat0/actionbars0/titles0; initial12000/subsequent500 actual orb XP,
+  both200tick DYING animations,first egg/native later veto,19→18 gateways,13 destroyed columns
+  retained. Real saved mixed-artifact SIGSTOP/backup/SIGKILL interruption (intentional exit-9),
+  enabled restart PASS619checks/600ticks and disabled restart PASS350checks/340ticks (both exit0),
+  aggregate RELEASE_CANDIDATE_VERIFICATION PASS. Same native dragon restored;ports53852/54521
+  released. All seven owned JVM PIDs across these replays are independently absent.
+
+Final complete Java25 gate repeated after comment/operator-doc edits (`T/sc-review-final-check.log`):
+same1844/16 counts; production and all12 probes SHA256-compared byte-identical to the pinned runs.
+`T/sc-review-completed-native-validation.json` records actual log hashes/exits/PID absence/ports.
+Release100tick resource samples are retained in `T/sc-review-release-resource-samples.json`;
+health replenishment and concurrent slice JVMs are stated in the external report, not production
+performance or human-balance evidence. Historical failures above remain unmodified.
+
+The stdlib `scripts/check-final-wave-runner.py` also passed general+compatibility routing/staging,
+artifact hashing,process exit,timeout and port checks. Its fake JVM is not native combat evidence.
+Broader old-hash slice replays and four-human observations are not claimed by these targeted reruns.
