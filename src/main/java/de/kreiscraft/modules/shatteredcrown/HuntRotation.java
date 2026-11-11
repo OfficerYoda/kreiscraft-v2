@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.shatteredcrown;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -21,12 +22,12 @@ final class HuntRotation {
     EncounterController.AttackFamily next(Set<EncounterController.AttackFamily> available) {
         remaining.removeIf(attack -> !available.contains(attack));
         var added = new ArrayList<>(available.stream().filter(attack -> !round.contains(attack)).sorted().toList());
-        shuffle(added);
+        Collections.shuffle(added, random);
         remaining.addAll(added); // New unlocks join the unfinished round exactly once.
         round.addAll(available);
         if (remaining.isEmpty()) {
             remaining.addAll(available.stream().sorted().toList());
-            shuffle(remaining);
+            Collections.shuffle(remaining, random);
             round.clear();
             round.addAll(available);
         }
@@ -36,15 +37,6 @@ final class HuntRotation {
         }
         last = remaining.removeFirst();
         return last;
-    }
-
-    private void shuffle(List<EncounterController.AttackFamily> attacks) {
-        for (int index = attacks.size() - 1; index > 0; index--) {
-            int other = random.nextInt(index + 1);
-            var saved = attacks.get(index);
-            attacks.set(index, attacks.get(other));
-            attacks.set(other, saved);
-        }
     }
 
     void completed(long tick, int minimumTicks, int maximumTicks) {
@@ -57,6 +49,10 @@ final class HuntRotation {
 
     String queued() {
         return remaining.toString();
+    }
+
+    String selected() {
+        return last == null ? "none" : last.name();
     }
 
     long remainingTicks(long tick) {

@@ -265,6 +265,7 @@ public final class EncounterController implements Listener, AutoCloseable {
                         + ", main=" + (busy() ? "executing" : "idle")
                         + ", attack=" + activeAttack() + ", hazards=" + hazards.size()
                         + ", queued=[" + (rotation == null ? "" : rotation.queued()) + "]"
+                        + ", last-selection=" + (rotation == null ? "none" : rotation.selected())
                         + ", next-warning-seconds="
                         + (rotation == null ? (manualMode ? "paused" : openingGrace() ? "grace" : "idle")
                                 : rotation.remainingTicks(encounterTicks) / 20.0)

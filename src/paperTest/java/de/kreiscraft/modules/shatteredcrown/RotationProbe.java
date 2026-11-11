@@ -36,6 +36,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class RotationProbe extends JavaPlugin implements Listener {
     private static final NamespacedKey ARTIFACT = new NamespacedKey("kreiscraft", "crown_artifact");
     private final List<String> starts = new ArrayList<>();
+    private final List<String> selections = new ArrayList<>();
     private World end;
     private ServerPlayer fixture;
     private EnderDragon dragon;
@@ -43,6 +44,7 @@ public final class RotationProbe extends JavaPlugin implements Listener {
     private Sink sink;
     private Location pad;
     private String previous = "none";
+    private String previousSelection = "none";
     private String status;
     private int ticks;
     private int stage;
@@ -50,6 +52,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
     private int arrival = -1;
     private int departure = -1;
     private int landingHits;
+    private int observedHits;
+    private int landingHealthDrops;
     private boolean deposited;
     private boolean finished;
 
@@ -167,10 +171,15 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                 }
             }
             // Maintain a live measurable damage recipient; do not suppress native combat or dragon AI.
+            if (landingHits > observedHits && fixture.getBukkitEntity().getHealth() < 20) {
+                landingHealthDrops++;
+            }
+            observedHits = landingHits;
             fixture.getBukkitEntity().setHealth(20);
             fixture.getBukkitEntity().setFoodLevel(20);
             String state = status();
             String attack = state.split(", attack=")[1].split(",")[0];
+            String selected = state.split(", last-selection=")[1].split(",")[0];
             if (stage == 2 && ticks % 100 == 0) {
                 getLogger().info("ROTATION_BOUNDARY landing=" + attack + " dragon=" + dragon.getLocation()
                         + " podium=" + dragon.getPodium() + " phase=" + dragon.getPhase() + " status=" + state);
@@ -180,25 +189,33 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                 return;
             }
             if (stage == 1) {
-                if (starts.isEmpty()) {
+                if (selections.isEmpty()) {
                     require(!attack.equals("none"), "first warning at exact grace expiry");
                 }
                 if (attack.equals("none") && !previous.equals("none")) {
                     completion = ticks;
                     getLogger().info("ROTATION main completed at=" + ticks);
                 }
-                if (!attack.equals("none") && !attack.equals(previous)) {
-                    require(attack.equals("BOMBARDMENT") || attack.equals("PREY"), "only opening unlocks");
-                    if (!starts.isEmpty()) {
-                        require(!attack.equals(starts.getLast()), "no immediate round repeat");
+                if (!selected.equals(previousSelection)) {
+                    require(selected.equals("BOMBARDMENT") || selected.equals("PREY"), "only opening unlocks");
+                    if (!selections.isEmpty()) {
+                        require(!selected.equals(selections.getLast()), "no immediate shuffled selection repeat");
                         require(ticks - completion == 100,
                                 "exact 5-second POST-completion gap " + (ticks - completion));
                     }
+                    selections.add(selected);
+                    getLogger().info("ROTATION selection=" + selected + " executing=" + attack + " tick=" + ticks);
+                    if (attack.equals("none")) {
+                        completion = ticks; // A rejected setup completed synchronously and still receives the full gap.
+                    }
+                }
+                if (!attack.equals("none") && !attack.equals(previous)) {
                     starts.add(attack);
                     getLogger().info("ROTATION warning=" + attack + " tick=" + ticks);
                 }
                 previous = attack;
-                if (starts.size() >= 4 && attack.equals("none")) {
+                previousSelection = selected;
+                if (selections.size() >= 4 && starts.size() >= 4 && attack.equals("none")) {
                     command("wave 3");
                     require(status().contains("mode=manual"), "wave debug leaves paused");
                     require(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.RAIN)
@@ -227,6 +244,7 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     require(departure >= 0 && departure - arrival == 120,
                             "six seconds from actual native arrival to native departure");
                     require(landingHits >= 2, "old pool damage continues through native landing");
+                    require(landingHealthDrops >= 2, "native pool events actually reduce player health");
                     command("cancel");
                     require(status().contains("hazards=0") && status.contains("mode=manual"),
                             "cancel drains hazards and pauses");
@@ -237,6 +255,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     finished = true;
                     getLogger().info("ROTATION_PROBE PASS ticks=" + ticks + " starts=" + starts + " landingHits="
                             + landingHits
+                            + " healthDrops=" + landingHealthDrops
+                            + " selections=" + selections
                             + (starts.isEmpty() ? " landingOnly" : " nativeGrace+openingRounds+postCompletion")
                             + " nativeBattle+unlocks+nativeArrival120+oldPoolDamage+cleanup AI=true");
                     getServer().shutdown();

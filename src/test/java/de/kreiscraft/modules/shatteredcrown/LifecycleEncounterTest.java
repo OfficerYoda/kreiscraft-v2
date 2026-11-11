@@ -443,7 +443,7 @@ class LifecycleEncounterTest {
         org.mockito.Mockito.doThrow(new IllegalStateException("native warning metadata failure"))
                 .doCallRealMethod().when(battles).faceWarningToViewer(any());
         var encounter = rotationEncounter(new java.util.Random(7));
-        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=5.0");
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=5.0", "last-selection=BOMBARDMENT");
         scheduler.advance(Duration.ofMillis(4950));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(50));

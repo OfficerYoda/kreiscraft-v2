@@ -51,8 +51,11 @@ post-completion delay. Normal wave-gate replacement cancels applicable work with
 5–10 and minimum must not exceed maximum. They are rounded to server ticks and snapshotted per
 attempt. `landing-window-seconds` now validates **6 only**; replace old 12s configuration values.
 Status includes `mode`, wave/permanent `unlocked`, actually `available`, executing `attack`, lingering
-`hazards`, remaining round `queued`, and `next-warning-seconds` (`paused` without a coordinator).
+`hazards`, remaining round `queued`, `last-selection` (including rejected setups), and
+`next-warning-seconds` (`paused` without a coordinator).
 The remaining gap can reach zero while landing/main work owns the slot; zero does not override it.
+Selection nonrepetition does not promise alternating successful warnings when geometry rejects the
+other family; rejected turns remain bounded and cannot starve the currently usable attacks.
 
 Controlled Encounter/public-event regressions cover seeded rounds, cross-round nonrepetition,
 both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain unavailability,
@@ -224,7 +227,7 @@ player command uses its sender as the single debug target. Use automatic schedul
    Rendering retains its 64-recipient limit and finite per-effect tasks; reset returns to discovery alone.
    Repeated 20-player fixtures now permit seven marks/pools and check a 30-task ceiling. Those fixture
    bounds are **not measured Paper tick/performance evidence**. The shorter compatibility landing now
-   permits seven marks/pools plus one lane and a 31-task ceiling in that repeated-attempt fixture.
+   permits seven marks/pools plus one main warning and a 32-task ceiling after the #161 merge.
 
 ### Production pool boundary and verification
 
@@ -257,8 +260,8 @@ overlap path, a full attempt or four-player balance acceptance. #163 still owns 
 ## Supported Paper landings, not a stationary replacement fight
 
 At a landing opportunity the controller reserves the next clear interval: no new lane warnings start
-while existing lanes expire. It checks four usable ground-level approaches around the real podium
-and nearby native breath danger. Terrain/native danger can defer or omit a landing rather than force
+while existing lanes expire. It projects real podium footing/headroom and checks nearby native breath
+danger, without demanding four preserved walking approaches over craters. Terrain/native danger can defer or omit a landing rather than force
 players onto a void perch. Stationary-profile deferral is bounded by the longest custom warning/hazard lifetime + approach timeout; native
 movement is subsequently allowed its configured approach timeout. New warnings resume on omission.
 
@@ -274,7 +277,7 @@ The controller uses only supported `EnderDragon.setPhase` and `EnderDragonChange
    sitting phase, not midair `HOVER`. It leaves ordinary melee damage handling intact. Native sitting
    projectile behavior is unchanged; ranged contribution remains available during flight.
 4. On window expiry release to `LEAVE_PORTAL`. A failed approach releases to native circling (or native
-   takeoff if already sitting). Empty participation, unusable approaches or new nearby native breath
+   takeoff if already sitting). Empty participation, unusable podium footing or new nearby native breath
    danger terminate the reservation safely. `DYING` and already-cancelled phase events are not
    overridden. Unrelated worlds/dragons retain their native behavior.
 
@@ -287,7 +290,8 @@ event ending the Encounter prevents further work from continuing after cleanup.
 
 Entity and particle load is bounded: two lane displays maximum, 64 particle recipients maximum,
 44 particles per lane per 250 ms refresh (3,520 particles/second per lane for 20 recipients).
-Scheduling is per hazard/attempt, never per particle/player: five Hunt cadence/coordinator tasks;
+Scheduling is per hazard/attempt, never per particle/player: one native rotation coordinator
+(five cadence/coordinator tasks in the stationary compatibility profile);
 at most one landing deferral or monitor plus deadline/window; each lane has bounded refresh,
 activation/expiry and damage tasks. Despawned displays can retain only their finite expiry callbacks,
 never an unbounded repeating damage task. There are no every-world per-tick entity scans. Nearby
