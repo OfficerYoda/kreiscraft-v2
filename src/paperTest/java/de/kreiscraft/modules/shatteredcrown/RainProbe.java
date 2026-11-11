@@ -217,7 +217,8 @@ public final class RainProbe extends JavaPlugin implements Listener {
             // Use the real original east Anchor at z=0, not a summoned duplicate crystal.
             rainCrystal = world.getEntitiesByClass(EnderCrystal.class).stream()
                     .filter(crystal -> artifact(crystal, "anchor") && crystal.getX() == 24.5).findFirst().orElseThrow();
-            locked = new Location(world, rainCrystal.getX(), world.getHighestBlockYAt(24, rainCrystal.getBlockZ()) + 1,
+            locked = new Location(world, rainCrystal.getX(),
+                    world.getHighestBlockYAt(24, rainCrystal.getLocation().getBlockZ()) + 1,
                     rainCrystal.getZ());
         }
         crystalCollision = false;
