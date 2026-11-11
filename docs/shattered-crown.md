@@ -43,14 +43,35 @@ spectator and outside-arena players. Later joins/leaves never resize existing de
 
 Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
 Ground Smash after wave three. Unlocks survive later shields. Rain choreography and complete
-rotation redesign remain downstream work. Waves one and two retain their configured placeholder
-until #153–154 supply content. Wave three uses the complete Warden/enhanced-Wither pair below.
+rotation redesign remain downstream work. Wave two has exactly one **Ravager, Guardian, Piglin Brute,
+Vindicator, Blaze and Breeze per Roster Unit at each Anchor**: 24 total at population 1–4, 48 at 5–8,
+72 at 9–12; no random pool, per-species scaling or cap. Wave one retains its configured placeholder
+until #153 supplies its content. Wave three uses the complete Warden/enhanced-Wither pair below.
 The explicit extension point is
 `EncounterController.spawnRosterUnit(Anchor objective, int wave, int unit)`: replace one unit's
 content there using `spawnCombatant(location, type, objective, initializer)` for roots. That helper
 registers ownership and membership before public spawn callbacks; never add the returned Mob again.
 Use the parent overload for descendants and `inheritOwnership` in projectile/effect pre-spawn consumers.
 All are owned by `waveWork`; do not scale again or equate defender deaths with crystal completion.
+
+Wave-two roots use validated `defender-health` and available native `ATTACK_DAMAGE` attributes.
+Native weapons, beam magic, fireballs and wind charges retain their vanilla damage/physics; the
+damage setting is not a promised final HP loss. Piglin Brutes are immune to End zombification.
+Owned Guardians use native ground paths with steered hops and approach to beam range; owned Blazes
+approach to ranged combat instead of treating arena-wide acquisition as stationary firing range.
+Their native beam/fireball attacks remain intact; ordinary Guardians/Blazes are not modified.
+Owned Brute/Breeze Brain attack/walk/look memories are cleared on target ineligibility so native
+retaliation cannot retain a protected arrival; ordinary Brain-driven mobs are unchanged.
+Replacements retain species, initialization and original Anchor membership. A surviving member of
+any species holds its crystal; Fireball Rain is unlocked only after all four exposed crystals die.
+
+`secondWaveProbeJar` runs beside the production shadow JAR on disposable Paper build 132 with
+`-Dkreiscraft.second-wave-probe=true`. It registers native player fixtures, exercises every species'
+movement, targeting and attributed attacks on unmodified End ground (including physical Blaze/Breeze
+projectile collisions), native combat protection/cancellation, frozen eight-player scaling and cleanup.
+Other roster AI and random mob spawning are isolated for these checks; transport is synthetic, not
+human rendering or full-fight choreography. `DragonWaveProbe` additionally covers natural 65% entry,
+native defender deaths/crystal destruction and the two health gates.
 
 All waves reuse four fixed horizontal sites. Crystals use the current highest block plus one-block
 placement clearance, or their last known height for an empty column (podium height on first use).
@@ -154,8 +175,11 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   below eight blocks without stretching the two-second countdown. Main action completes only after
   the climb restores native flight; the rotation's next gap can begin then.
 - **Smash:** uses sweep cadence, warning, damage and knockback. Its circular radius is capped at eight
-  blocks; warning time is at least `(radius + 2) / 3` seconds. The dragon rises, plunges for one second,
+  blocks; the FULL four-second warning has particles, sound and countdown. The dragon rises, plunges for one second,
   impacts with debris and sound, stays grounded for three seconds, then climbs for two seconds.
+  Main completion follows the climb. `sweep-damage: 12` targets six reference hearts on Easy/Normal/Hard.
+  The impact permanently removes roughly radius-five, one-block-deep ground. Debris cannot hurt, place
+  or drop; no arrival/portal/tower/Anchor terrain is preserved. See [terrain impacts](/shattered-crown-terrain/).
   `sweep-angle` applies only to legacy sectors.
 - Flight uses an owned native **airborne charge phase**, applying movement inside the dragon tick
   before multipart repositioning, with no repeated teleports or no-AI state. Native contact
@@ -163,8 +187,8 @@ with a **ground smash**. Set it to `false` to use the earlier stationary attacks
   encounter eligibility and combat cancellation. Attack cleanup restores native flight; existing
   persistent phase recovery handles restarts. New attack warnings wait while flight is active.
 - Dive strips, smash disks and Prey pools now snapshot local ground heights (up to six blocks of
-  relief from the center). Warning geometry and damage use the same surface. Escape checks follow
-  one-block steps with player-body clearance, additional uphill time, and void/cloud exclusion.
+  relief from the center). Warning geometry and damage use the same surface. Surviving columns and
+  hazard/arena bounds remain valid; holes or missing walking escapes no longer veto attacks.
   Changed footing cancels the attack instead of silently moving its warning.
 - The default Hunt rotation retains overdue attacks through other attacks and landings. Oldest due
   attacks get priority; refused placement retries after one second and does not block other families.
@@ -198,8 +222,9 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 The target defaults to the player running the command; console must name an online player.
 The target must be alive in survival/adventure inside the main-End combat arena. An eligible player
 entering the arena starts the encounter as usual. Triggers bypass cooldown and phase selection, so
-dives and smashes can be tested while the opening Anchors still shield the dragon. Terrain, escape
-routes, arrival protection, combat cancellation and the actual warning/damage paths still apply.
+dives and smashes can be tested while the opening Anchors still shield the dragon. Valid geometry,
+arrival PLAYER protection, combat cancellation and actual warning/damage paths still apply.
+`pause`/`cancel` remove temporary debris but never rebuild committed craters.
 
 `trigger` cancels the previous custom attack and enters manual mode. `pause`/`cancel` clear active
 effects, restore flight and leave automatic attacks paused. `resume` restarts the current phase's
@@ -251,10 +276,10 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | Key | Default | Accepted bounds / meaning |
 | --- | --- | --- |
 | `max-health` | 1000 | 1–1024; conservative native attribute range, no virtual health |
-| `defender-count` | 4 | 1–32, per placeholder Roster Unit; complete units scale per Anchor |
-| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, melee defenders |
-| `defender-health` | 40 | 1–1000 |
-| `defender-damage` | 6 | 0–100, native attack attribute |
+| `defender-count` | 4 | 1–32, waves one/three placeholder unit only; wave two is fixed at six species |
+| `defender-type` | `HUSK` | `HUSK` or `ZOMBIE`, waves one/three placeholder only |
+| `defender-health` | 40 | 1–1000, root native health including all six wave-two species |
+| `defender-damage` | 6 | 0–100, available native attack attributes; weapons/projectiles/beam magic remain native |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
 | `bombardment-cadence-seconds` | 8 | 2–120 seconds between warning starts; first warning after this interval |
 | `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |
@@ -276,7 +301,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 
 Damage is in health points (two per heart). All numeric values must be finite. The complete Anchor
 search footprint must fit within the arena. Cadence must exceed warning duration by at least
-0.5 seconds; `radius + 2 <= warning-seconds * 3` reserves conservative walking time to escape.
+0.5 seconds. Walking-route guarantees are retired by the permanent-terrain redesign (#161).
 Invalid combinations reject the reload atomically, leaving the running profile unchanged.
 The absence reset is fixed at **60 continuous seconds**
 of scheduler time (1200 game ticks), not a population-based timer or a forced fight duration.
@@ -367,17 +392,16 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   Impact uses a distinct explosion visual/sound, not a real explosion.
   Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
   attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters
-  arrival protection, or if its warning disappears. No impact footprint may overlap the protected
-  arrival cylinder. Native damage is applied once and honors other plugins' combat cancellation.
-- Placement and resolution check actual footing and a reachable straight walking corridor for
-  every endangered participant (16 directions, half-block samples with player-body clearance,
-  conservative 3 blocks/second). Point-sized diagonal gaps between walls do not count as routes.
+  arrival protection, or if its warning disappears. Footprint rims may overlap arrival geometry;
+  protected PLAYERS remain excluded. Native damage is applied once and honors combat cancellation.
+- Placement/resolution require supported target footing, arena/build-height bounds and valid geometry,
+  not straight walking corridors off cratered ground.
   Nearby native dragon-breath clouds are considered existing danger: overlapping bombardments
-  and routes through those pools are omitted. More than 32 nearby clouds also refuses the pattern.
+  are omitted. More than 32 nearby clouds also refuses the pattern.
   Terrain that changes during the warning is checked again at impact. Unsafe placements are
   omitted rather than stacking danger or constructing terrain; another cadence may try again.
-  Custom bombardments leave no persistent damaging pool and never change blocks. This conservative
-  placement can skip attacks on steep or obstructed terrain; live geometry/rendering remains unvalidated.
+  Custom bombardments leave no persistent damaging pool and never change blocks; permanent destruction
+  belongs to Smash and Rain, without duplicate native explosions.
 - Victory clears custom artifacts without editing XP, drops, portal, egg, gateway or ritual state.
   It never removes or simulates a kill of the dragon. Reset restores the existing dragon's original
   native maximum and full health; the next participant begins a fresh configured-health attempt.

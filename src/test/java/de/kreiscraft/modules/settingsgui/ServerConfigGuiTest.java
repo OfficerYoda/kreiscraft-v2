@@ -315,16 +315,26 @@ class ServerConfigGuiTest {
         var names = new ArrayList<String>();
         int thresholdSlot = -1;
         String threshold = locale.equals("en") ? "Legacy health fraction (ignored)" : "Alter Lebensanteil (ignoriert)";
-        for (int slot = 0; slot < 54; slot++) {
-            if (gui.getItem(slot) != null) {
-                String name = plain(stackAt(gui, slot));
-                names.add(name);
-                if (name.startsWith(threshold)) {
-                    thresholdSlot = slot;
+        var pages = (xyz.xenondevs.invui.gui.PagedGui<?>) gui;
+        assertThat(pages.getPageCount()).isEqualTo(2);
+        for (int page = 0; page < pages.getPageCount(); page++) {
+            pages.setPage(page);
+            for (int slot = 0; slot < 45; slot++) {
+                if (gui.getItem(slot) != null) {
+                    String name = plain(stackAt(gui, slot));
+                    names.add(name);
+                    if (name.startsWith(threshold)) {
+                        thresholdSlot = slot;
+                    }
                 }
             }
         }
-        assertThat(names).hasSize(52);
+        assertThat(names).hasSize(53).doesNotHaveDuplicates();
+        pages.setPage(0);
+        click(gui, 52);
+        assertThat(pages.getPage()).isEqualTo(1);
+        click(gui, 51);
+        assertThat(pages.getPage()).isZero();
         assertThat(names).noneMatch(name -> name.startsWith(locale.equals("en") ? "Defender leash radius"
                 : "Verteidiger-Bewegungsradius"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Dive pass (seconds)"
@@ -333,6 +343,12 @@ class ServerConfigGuiTest {
                 : "Sturzflugaufstieg (Sekunden)"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Opening grace (seconds)"
                 : "Vorbereitungszeit (Sekunden)"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Permanent Smash crater radius"
+                : "Dauerhafter Bodenschlag-Kraterradius"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Permanent Smash crater depth"
+                : "Dauerhafte Bodenschlag-Kratertiefe"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Flying debris lifetime"
+                : "Fliegende Trümmerdauer"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
         String[] labels = locale.equals("en")
                 ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",

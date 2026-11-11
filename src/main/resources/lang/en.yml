@@ -10,6 +10,8 @@ core:
       <modules>
   player-only: "<prefix> <red>This command can only be used by players."
 server-config:
+  previous-page: "Previous page"
+  next-page: "Next page"
   lifecycle:
     hot-reload: "<green>Applied automatically when this editor closes."
     restart-required: "<red>Requires a server restart."
@@ -144,7 +146,10 @@ server-config:
     shattered-crown-sweep-angle: "Wing sweep angle (degrees)"
     shattered-crown-sweep-warning-seconds: "Wing sweep warning (seconds)"
     shattered-crown-sweep-cadence-seconds: "Wing sweep cadence (seconds)"
-    shattered-crown-sweep-damage: "Wing sweep damage"
+    shattered-crown-sweep-damage: "Ground Smash reference damage (HP)"
+    shattered-crown-smash-crater-radius: "Permanent Smash crater radius"
+    shattered-crown-smash-crater-depth: "Permanent Smash crater depth (blocks)"
+    shattered-crown-debris-lifetime-seconds: "Flying debris lifetime (seconds)"
     shattered-crown-sweep-knockback: "Wing sweep knockback"
     shattered-crown-final-health-fraction: "Legacy health fraction (ignored)"
     shattered-crown-final-cadence-factor: "Final attack cadence multiplier"

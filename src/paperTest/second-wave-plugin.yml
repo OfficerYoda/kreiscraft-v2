@@ -1,0 +1,5 @@
+name: SecondWaveProbe
+version: '1.0'
+main: de.kreiscraft.platform.SecondWaveProbe
+api-version: '26.2'
+depend: [Kreiscraft]

@@ -89,11 +89,6 @@ class FinalEncounterTest {
             }
 
             @Override
-            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
-                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
-            }
-
-            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -115,6 +110,17 @@ class FinalEncounterTest {
             }
 
             @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
+            }
+
+            @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
@@ -130,6 +136,8 @@ class FinalEncounterTest {
         config = BasicConfigurationNode.root();
         config.node("opening-grace-seconds").set(0); // Isolate final-phase timing from opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
+        config.node("sweep-radius").set(12); // Explicit historical sector tuning, not native Smash defaults.
+        config.node("sweep-damage").set(6);
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
     }
@@ -219,7 +227,7 @@ class FinalEncounterTest {
                     end.getBlockAt(crystal.getLocation().getBlockX(), 63, crystal.getLocation().getBlockZ()).isEmpty())
                             .isTrue();
         }
-        assertThat(end.getEntitiesByClass(Zombie.class)).hasSize(16)
+        assertThat(end.getEntitiesByClass(Mob.class).stream().filter(mob -> mob != dragon)).hasSize(24)
                 .allSatisfy(defender -> assertThat(defender.getLocation().getBlock().getRelative(0, -1, 0).getType())
                         .isEqualTo(Material.END_STONE));
         clearAnchors();
@@ -260,7 +268,7 @@ class FinalEncounterTest {
         assertThat(dragon.getHealth()).isEqualTo(650);
         assertThat(crystals()).hasSize(4);
         assertThat(crystals().stream().map(Entity::getLocation)).containsExactlyInAnyOrderElementsOf(openingLocations);
-        assertThat(defenders()).hasSize(16);
+        assertThat(defenders()).hasSize(24);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount).isCancelled()).isTrue();
         clearAnchors();
         damage(dragon, EntityDamageEvent.DamageCause.PROJECTILE, amount);
@@ -1176,8 +1184,9 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
+                // Seven owned pools can coexist with one warned main action; no walking-route veto.
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(32);
                 assertParticipantHealth(20);
                 assertThat(participants).allSatisfy(participant -> assertThat(participant.getVelocity().lengthSquared())
                         .isZero()); // Cancelled sweeps never shove players.
@@ -1197,8 +1206,8 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(7);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
+                assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(32);
                 assertParticipantHealth(20);
             }
             participants.forEach(participant -> participant.teleport(new Location(end, 100, 50, 0)));

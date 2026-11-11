@@ -23,8 +23,17 @@ public interface DragonBattleAccess {
         defender.setRemoveWhenFarAway(false);
     }
 
+    /** Owned Guardian/Blaze ground pursuit; ordinary mobs retain their native goals/navigation. */
+    default void prepareRangedDefender(Mob defender) {
+        de.kreiscraft.platform.NmsCrownDefenders.prepare(defender);
+    }
+
     /** Warden uses brain memory, unlike ordinary Mob's target field. Never reset its sonic cooldown each tick. */
     default void targetDefender(Mob defender, Player target) {
+        if (defender instanceof org.bukkit.entity.PiglinBrute || defender instanceof org.bukkit.entity.Breeze) {
+            de.kreiscraft.platform.NmsCrownDefenders.target(defender, target);
+            return;
+        }
         if (!(defender instanceof org.bukkit.entity.Warden warden)) {
             defender.setTarget(target);
             return;

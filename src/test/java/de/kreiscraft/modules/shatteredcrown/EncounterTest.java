@@ -22,6 +22,7 @@ import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -75,11 +76,6 @@ class EncounterTest {
         // WorldMock.getEnderDragonBattle is unimplemented; entity/world behavior stays real.
         module = new ShatteredCrownModule(new DragonBattleAccess() {
             @Override
-            public void targetDefender(org.bukkit.entity.Mob defender, org.bukkit.entity.Player target) {
-                defender.setTarget(target); // Native Warden brain/sonic is exercised by FinalWaveProbe.
-            }
-
-            @Override
             public de.kreiscraft.platform.DragonFlightControl controlFlight(EnderDragon source, Runnable tick) {
                 return new SimulatedDragonFlight(source, scheduler, tick);
             }
@@ -101,6 +97,17 @@ class EncounterTest {
             @Override
             public void faceWarningToViewer(org.bukkit.entity.TextDisplay warning) {
                 // DisplayMock.setBillboard is unimplemented; all warning entity effects remain real.
+            }
+
+            @Override
+            public void prepareRangedDefender(Mob defender) {
+                // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
+            }
+
+            @Override
+            public void targetDefender(Mob defender, org.bukkit.entity.Player target) {
+                // MockBukkit has no Brute/Breeze Brain; SecondWaveProbe checks the native transition.
+                defender.setTarget(target);
             }
 
             @Override
@@ -136,7 +143,7 @@ class EncounterTest {
         assertThat(hit(anchor).isCancelled()).isTrue();
         assertThat(anchor.isValid()).isTrue();
 
-        for (org.bukkit.entity.Mob defender : defenders()) {
+        for (Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -218,7 +225,7 @@ class EncounterTest {
 
     private void clearFinalGate() {
         for (int stage = 0; stage < 3; stage++) {
-            for (org.bukkit.entity.Mob defender : defenders()) {
+            for (Mob defender : defenders()) {
                 defender.setHealth(0);
                 server.getPluginManager()
                         .callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
@@ -280,7 +287,7 @@ class EncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(crystals()).hasSize(4);
         var bossBar = dragon.getDragonBattle().getBossBar();
-        for (org.bukkit.entity.Mob defender : defenders()) {
+        for (Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }
@@ -394,9 +401,8 @@ class EncounterTest {
         assertThat(hit(dragon).isCancelled()).isTrue();
     }
 
-    private List<org.bukkit.entity.Mob> defenders() {
-        return end.getEntitiesByClass(org.bukkit.entity.Mob.class).stream().filter(mob -> mob != dragon)
-                .filter(Entity::isValid).toList();
+    private List<Mob> defenders() {
+        return end.getEntitiesByClass(Mob.class).stream().filter(Entity::isValid).filter(mob -> mob != dragon).toList();
     }
 
     @Test
@@ -550,13 +556,13 @@ class EncounterTest {
     void cancelledDeathAndDamageDoNotAdvanceTheObjectiveAndVanillaRewardsAreUnmodified() throws Exception {
         enable();
         scheduler.advance(Duration.ofSeconds(1));
-        for (org.bukkit.entity.Mob defender : defenders()) {
+        for (Mob defender : defenders()) {
             var cancelled = new EntityDeathEvent(defender, mock(DamageSource.class), List.of());
             cancelled.setCancelled(true);
             server.getPluginManager().callEvent(cancelled);
         }
         assertThat(crystals().getFirst().isGlowing()).isFalse();
-        for (org.bukkit.entity.Mob defender : defenders()) {
+        for (Mob defender : defenders()) {
             defender.setHealth(0);
             server.getPluginManager().callEvent(new EntityDeathEvent(defender, mock(DamageSource.class), List.of()));
         }

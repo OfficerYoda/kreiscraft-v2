@@ -178,12 +178,28 @@ tasks.register<Jar>("finalWaveProbeJar") {
     from("src/paperTest/final-wave-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("secondWaveProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("second-wave-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/platform/SecondWaveProbe*.class") }
+    from("src/paperTest/second-wave-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.register<Jar>("diveEncounterProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("dive-encounter-probe")
     destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
     from(paperTest.output) { exclude("plugin.yml") }
     from("src/paperTest/dive-plugin.yml") { rename { "plugin.yml" } }
+}
+
+tasks.register<Jar>("smashEncounterProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("smash-encounter-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/SmashEncounterProbe*.class") }
+    from("src/paperTest/smash-plugin.yml") { rename { "plugin.yml" } }
 }
 
 tasks.compileJava {

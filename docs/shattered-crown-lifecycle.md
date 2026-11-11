@@ -193,7 +193,8 @@ membership. Repeated completion/cancellation is harmless; it does not close sibl
 
 | Main action | Completion boundary | Lingering work |
 | --- | --- | --- |
-| Dive / Ground Smash | Native movement recovery releases flight control; cancellation/failure also completes | None in the current moving attacks |
+| Dive | Native movement recovery releases flight control; cancellation/failure also completes | None |
+| Ground Smash | After three-second grounded recovery and two-second climb; cancellation/failure also completes | Bounded owned debris child, no damage/placement/drops; the crater is permanent terrain, never temporary work |
 | Prey | All countdown deposition callbacks finish (including skipped targets) | Each pool owns its display/render/expiry independently; all owned pools share the per-player damage-rate rule |
 | Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
 | Landing | Native approach deadline or melee-window end releases the reservation | None |
