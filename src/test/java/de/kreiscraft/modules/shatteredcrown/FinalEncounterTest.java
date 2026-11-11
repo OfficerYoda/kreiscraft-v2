@@ -898,7 +898,7 @@ class FinalEncounterTest {
                 EnderDragon.Phase.LEAVE_PORTAL);
         server.getPluginManager().callEvent(takeoff);
         assertThat(takeoff.getNewPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5799));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
@@ -1044,13 +1044,16 @@ class FinalEncounterTest {
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         arriveAtPodium();
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isFalse();
-        scheduler.advance(Duration.ofMillis(11999));
+        scheduler.advance(Duration.ofMillis(5749));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(1));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
+        moveParticipants(100, 0); // Protected arrival omits the next Prey before this isolated sector check.
+        end.getPlayers().forEach(recipient -> recipient.teleport(new Location(end, 100, 50, 0)));
+        scheduler.advance(Duration.ofMillis(12750));
         moveParticipants(0.5, 10.5);
-        scheduler.advance(Duration.ofMillis(7500)); // Hunt 50s: the fixed sweep follows the clear melee window.
+        scheduler.advance(Duration.ofSeconds(1));
         assertWorldCountdown("4.0s");
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofSeconds(4));
@@ -1090,6 +1093,7 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         var loot = new org.bukkit.inventory.ItemStack(Material.DRAGON_EGG);
+        double healthAtVictory = player.getHealth();
         var victory = new EntityDeathEvent(dragon, mock(DamageSource.class),
                 new java.util.ArrayList<>(List.of(loot)), experience);
         server.getPluginManager().callEvent(victory);
@@ -1101,7 +1105,7 @@ class FinalEncounterTest {
         assertThat(crystals()).isEmpty();
         assertThat(defenders()).isEmpty();
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertParticipantHealth(17);
+        assertParticipantHealth(healthAtVictory);
         assertThat(dragon.getDragonBattle().hasBeenPreviouslyKilled()).isEqualTo(previouslyKilled);
         for (var participant : end.getPlayers()) {
             var recipient = (PlayerMock) participant;

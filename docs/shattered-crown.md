@@ -282,7 +282,7 @@ point for about 20 mixed enchanted diamond/netherite players, not dynamically sc
 | `defender-health` | 40 | 1–1000, root native health including all six wave-two species |
 | `defender-damage` | 6 | 0–100, available native attack attributes; weapons/projectiles/beam magic remain native |
 | `bombardment-warning-seconds` | 3 | 1–15 seconds before impact |
-| `bombardment-cadence-seconds` | 8 | 2–120 seconds between warning starts; first warning after this interval |
+| `bombardment-cadence-seconds` | 8 | 2–120; stationary compatibility profile only, not the native unlocked rotation |
 | `bombardment-damage` | 6 | 0–100 [reference health points](shattered-crown-damage.md) lost with full Protection IV netherite, no Resistance/absorption; calibrated across Easy/Normal/Hard, not raw damage |
 | `bombardment-radius` | 4 | 1–12 blocks; circular impact, at most 3 blocks vertically from warned ground |
 | `arena-radius` | 192 | 16–256 blocks, horizontal cylinder around the battle podium over the full world build height |

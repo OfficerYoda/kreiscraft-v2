@@ -329,7 +329,7 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(54).doesNotHaveDuplicates();
+        assertThat(names).hasSize(56).doesNotHaveDuplicates();
         pages.setPage(0);
         click(gui, 52);
         assertThat(pages.getPage()).isEqualTo(1);

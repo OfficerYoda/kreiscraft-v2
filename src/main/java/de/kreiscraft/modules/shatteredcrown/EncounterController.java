@@ -166,6 +166,10 @@ public final class EncounterController implements Listener, AutoCloseable {
     private DebugAttack debugAttack;
     private Player debugTarget;
     private HuntRotation rotation;
+    private final java.util.random.RandomGenerator random;
+    private Scheduler.Task rotationLoop;
+    private long nextLanding;
+    private boolean landingNeedsRangedTurn;
     private UUID populationWorld;
     private int entryPopulation;
     private long graceTicks;
@@ -225,7 +229,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private boolean attacking() {
-        return hunting || debugAttack != null;
+        return hunting || debugAttack != null || config.movementAttacks() && !manualMode && !openingGrace();
     }
 
     private List<Player> attackTargets() {
@@ -262,8 +266,14 @@ public final class EncounterController implements Listener, AutoCloseable {
                         + ", main=" + (busy() ? "executing" : "idle")
                         + ", attack=" + activeAttack() + ", hazards=" + hazards.size()
                         + ", queued=[" + (rotation == null ? "" : rotation.queued()) + "]"
+                        + ", last-selection=" + (rotation == null ? "none" : rotation.selected())
+                        + ", next-warning-seconds="
+                        + (rotation == null ? (manualMode ? "paused" : openingGrace() ? "grace" : "idle")
+                                : rotation.remainingTicks(encounterTicks) / 20.0)
+                        + ", available=" + availableAttacks()
                         + ", lanes=" + lanes.size() + ", marks=" + marks.size() + ", areas=" + areas.size()
                         + ", landing=" + landingRequested + ", flight=" + (flight != null)
+                        + ", landing-window=" + landingWindow
                         + ", native=" + dragon.getPhase()
                         + ", combat-population=" + combatPopulation() + ", scaling-population=" + scalingPopulation()
                         + ", entry-snapshot=" + entryPopulation + ", grace-seconds=" + remainingGraceSeconds()
@@ -389,6 +399,14 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void resetAttacks() {
+        resetAttacks(true);
+    }
+
+    private void resetAttacks(boolean discardRound) {
+        if (rotationLoop != null) {
+            rotationLoop.cancel();
+            rotationLoop = null;
+        }
         if (attackWork != null) {
             attackWork.close();
             attackWork = new EncounterWork(scheduler, server.getLogger());
@@ -400,12 +418,19 @@ public final class EncounterController implements Listener, AutoCloseable {
         areas.clear();
         pools.clear();
         poolCooldowns.clear();
-        rotation = null;
+        if (discardRound) {
+            rotation = null;
+            landingNeedsRangedTurn = false;
+        }
         debugAttack = null;
         debugTarget = null;
     }
 
     private void scheduleBombardments() {
+        if (config.movementAttacks()) {
+            startRotation();
+            return;
+        }
         if (!manualMode && !openingGrace()) {
             Duration cadence = seconds(config.bombardmentCadenceSeconds());
             bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
@@ -429,6 +454,14 @@ public final class EncounterController implements Listener, AutoCloseable {
 
     public EncounterController(Server server, DragonBattleAccess battles,
             ShatteredCrownConfig config, Scheduler scheduler, MessageService messages) {
+        this(server, battles, config, scheduler, messages, java.util.random.RandomGenerator.getDefault());
+    }
+
+    /** Seedable randomness at the Encounter boundary for reproducible scheduling checks. */
+    public EncounterController(Server server, DragonBattleAccess battles,
+            ShatteredCrownConfig config, Scheduler scheduler, MessageService messages,
+            java.util.random.RandomGenerator random) {
+        this.random = java.util.Objects.requireNonNull(random);
         this.server = server;
         this.battles = battles;
         this.config = config;
@@ -552,6 +585,10 @@ public final class EncounterController implements Listener, AutoCloseable {
             if (--graceTicks == 0) {
                 clock[0].cancel();
                 if (!manualMode) {
+                    if (config.movementAttacks()) {
+                        startRotation();
+                        return;
+                    }
                     if (hunting) {
                         hunting = false;
                         startHunt();
@@ -584,7 +621,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         installingWave = true;
         EnderDragon source = dragon;
         hunting = false;
-        resetAttacks();
+        resetAttacks(!config.movementAttacks());
         if (dragon != source || closed) {
             return;
         }
@@ -619,29 +656,12 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         hunting = true;
+        nextLanding = encounterTicks + Math.round(config.landingCadenceSeconds() * 20);
         if (manualMode || openingGrace()) {
             return;
         }
         if (config.movementAttacks()) {
-            rotation = new HuntRotation(
-                    attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5),
-                    attackCadence(config.preyCadenceSeconds(), config.preyCountdownSeconds() + 0.5),
-                    attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5),
-                    attackCadence(config.landingCadenceSeconds(), 10),
-                    this::busy,
-                    attack -> {
-                        arena.resetRejection();
-                        switch (attack) {
-                            case DIVE -> warnLane();
-                            case PREY -> markPrey();
-                            case SMASH -> warnSweep();
-                            case LANDING -> requestLanding();
-                        }
-                        return busy();
-                    }, (attack, reason) -> server.getLogger()
-                            .info("[Shattered Crown] " + attack + " deferred: "
-                                    + (reason.startsWith("another") ? reason : arena.rejection() + "; retry in 1s")));
-            attackWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), rotation::tick);
+            startRotation();
             return;
         }
         Duration cadence = seconds(attackCadence(config.laneCadenceSeconds(), config.laneWarningSeconds() + 0.5));
@@ -669,6 +689,51 @@ public final class EncounterController implements Listener, AutoCloseable {
                 seconds(attackCadence(config.sweepCadenceSeconds(), config.sweepWarningSeconds() + 0.5));
         attackWork.repeating(sweepCadence, sweepCadence, this::warnSweep);
         attackWork.repeating(cadence, cadence, this::warnLane);
+    }
+
+    /** Rain is a permanent unlock but cannot enter a round until #162 supplies its main action. */
+    public Set<AttackFamily> availableAttacks() {
+        var available = java.util.EnumSet.noneOf(AttackFamily.class);
+        available.addAll(unlockedAttacks());
+        available.remove(AttackFamily.RAIN);
+        return Set.copyOf(available);
+    }
+
+    private void startRotation() {
+        if (manualMode || openingGrace() || rotationLoop != null || dragon == null) {
+            return;
+        }
+        if (rotation == null) {
+            rotation = new HuntRotation(random);
+            landingNeedsRangedTurn = true; // Even an overdue landing cannot replace the first grace-expiry warning.
+        }
+        rotationLoop = attackWork.repeating(Duration.ofMillis(50), Duration.ofMillis(50), this::rotationTick);
+        rotationTick(); // The first warning starts at grace expiry, not one pulse later.
+    }
+
+    private void rotationTick() {
+        if (manualMode || openingGrace() || busy() || dragon == null) {
+            return;
+        }
+        if (hunting && encounterTicks >= nextLanding && !landingNeedsRangedTurn) {
+            nextLanding = encounterTicks + Math.round(config.landingCadenceSeconds() * 20);
+            requestLanding();
+            if (busy()) {
+                return;
+            }
+        }
+        if (!rotation.ready(encounterTicks)) {
+            return;
+        }
+        arena.resetRejection();
+        landingNeedsRangedTurn = false;
+        switch (rotation.next(availableAttacks())) {
+            case BOMBARDMENT -> warnBombardment();
+            case PREY -> markPrey();
+            case DIVE -> warnLane();
+            case SMASH -> smash();
+            case RAIN -> throw new IllegalStateException("Rain content is not installed");
+        }
     }
 
     private double attackCadence(double ordinary, double minimum) {
@@ -759,19 +824,25 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         landingDeadline = owner.later(seconds(config.landingApproachSeconds()), this::endLanding);
-        landingMonitor = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+        landingMonitor = owner.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
             if (!arena.landingSafe() || dragon.getWorld().getPlayers().stream().noneMatch(arena::participant)) {
                 endLanding();
             } else if (!landingWindow && sitting(dragon.getPhase()) && arena.atPodium(dragon.getLocation())) {
-                landingWindow = true;
-                landingDeadline.cancel();
+                beginLandingWindow(owner);
                 dragon.setPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
-                if (dragon == null || !attacking()) {
-                    return;
-                }
-                landingEnd = owner.later(seconds(config.landingWindowSeconds()), this::endLanding);
             }
         });
+    }
+
+    private void beginLandingWindow(EncounterWork owner) {
+        if (landingWindow || owner == null || owner.isClosed()) {
+            return;
+        }
+        landingWindow = true;
+        if (landingDeadline != null) {
+            landingDeadline.cancel();
+        }
+        landingEnd = owner.later(seconds(config.landingWindowSeconds()), this::endLanding);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -799,6 +870,9 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         if (sitting(event.getNewPhase()) || landingWindow) {
+            if (arena.atPodium(dragon.getLocation())) {
+                beginLandingWindow(mainWork);
+            }
             event.setNewPhase(EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
         } else if (event.getNewPhase() != EnderDragon.Phase.FLY_TO_PORTAL
                 && event.getNewPhase() != EnderDragon.Phase.LAND_ON_PORTAL) {
@@ -852,7 +926,6 @@ public final class EncounterController implements Listener, AutoCloseable {
             return;
         }
         if (!attacking() || landingRequested || landingDue || dragon == null
-                || debugAttack == null && !anchors.isEmpty()
                 || lanes.size() >= 2
                 || !marks.isEmpty() || pendingArea()
                 || lanes.stream().anyMatch(lane -> !lane.active)) {
@@ -976,8 +1049,16 @@ public final class EncounterController implements Listener, AutoCloseable {
         });
         owner.onCleanup(() -> {
             if (mainWork == owner) {
+                if (mainAttack == DebugAttack.LANDING) {
+                    nextLanding = encounterTicks + Math.round(config.landingCadenceSeconds() * 20);
+                    landingNeedsRangedTurn = true;
+                }
                 mainWork = null;
                 mainAttack = null;
+                if (rotation != null) {
+                    rotation.completed(encounterTicks, (int) Math.round(config.attackGapMinSeconds() * 20),
+                            (int) Math.round(config.attackGapMaxSeconds() * 20));
+                }
             }
         });
         mainWork = owner;
@@ -1586,7 +1667,7 @@ public final class EncounterController implements Listener, AutoCloseable {
     }
 
     private void warnBombardment(EncounterWork owner) {
-        if (dragon == null || debugAttack == null && anchors.isEmpty() || bombardmentIndicator != null) {
+        if (dragon == null || landingRequested || bombardmentIndicator != null) {
             return;
         }
         var targets = attackTargets().stream().limit(64).toList();
@@ -1602,7 +1683,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         EnderDragon warnedDragon = dragon;
         bombardmentIndicator = impact.getWorld().spawn(impact.clone().add(0, 1.5, 0), TextDisplay.class);
         // Spawning fires public events: do not resume after a synchronous phase exit/disable.
-        if (owner.isClosed() || dragon != warnedDragon || debugAttack == null && anchors.isEmpty()
+        if (owner.isClosed() || dragon != warnedDragon
                 || !bombardmentIndicator.isValid()) {
             cancelPendingBombardment();
             return;
@@ -1634,7 +1715,7 @@ public final class EncounterController implements Listener, AutoCloseable {
         bombardmentImpact = owner.later(seconds(config.bombardmentWarningSeconds()), () -> {
             boolean visible = bombardmentIndicator != null && bombardmentIndicator.isValid();
             cancelPendingBombardment();
-            if (!visible || dragon == null || debugAttack == null && anchors.isEmpty() || !isParticipant(target)) {
+            if (!visible || dragon == null || !isParticipant(target)) {
                 return;
             }
             var participants = dragon.getWorld().getPlayers().stream().filter(arena::participant).toList();
@@ -1648,7 +1729,7 @@ public final class EncounterController implements Listener, AutoCloseable {
             EnderDragon source = dragon;
             for (Player player : participants) {
                 // Damage invokes public combat events, which can synchronously end this attempt.
-                if (dragon != source || debugAttack == null && anchors.isEmpty()) {
+                if (dragon != source) {
                     break;
                 }
                 if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
@@ -2142,7 +2223,9 @@ public final class EncounterController implements Listener, AutoCloseable {
                 anchors.remove(objective);
                 if (anchors.isEmpty()) {
                     clearedWaves = waveNumber;
-                    resetAttacks();
+                    if (!config.movementAttacks()) {
+                        resetAttacks();
+                    }
                     startHunt();
                 }
             }
@@ -2457,6 +2540,9 @@ public final class EncounterController implements Listener, AutoCloseable {
         debugTarget = null;
         manualMode = false;
         rotation = null;
+        rotationLoop = null;
+        nextLanding = 0;
+        landingNeedsRangedTurn = false;
         stopBombardments();
         if (work != null) {
             work.close();

@@ -134,6 +134,8 @@ server-config:
     shattered-crown-lane-damage-cadence-seconds: "Atemschadensintervall (Sekunden)"
     shattered-crown-landing-cadence-seconds: "Landeintervall (Sekunden)"
     shattered-crown-landing-window-seconds: "Nahkampffenster (Sekunden)"
+    shattered-crown-attack-gap-min-seconds: "Minimale Pause nach Angriff (Sekunden)"
+    shattered-crown-attack-gap-max-seconds: "Maximale Pause nach Angriff (Sekunden)"
     shattered-crown-landing-approach-seconds: "Landeanflug-Zeitlimit (Sekunden)"
     shattered-crown-landing-radius: "Freier Nahkampf-Anflugradius"
     shattered-crown-prey-percentage: "Markierte Spieler (% der End-Population)"

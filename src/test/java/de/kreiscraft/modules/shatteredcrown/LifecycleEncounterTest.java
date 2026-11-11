@@ -106,6 +106,14 @@ class LifecycleEncounterTest {
             }
 
             @Override
+            public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
+                new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
+                        .simulateDamage(amount,
+                                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.DRAGON_BREATH)
+                                        .withDirectEntity(source).withCausingEntity(source).build());
+            }
+
+            @Override
             public void prepareRangedDefender(Mob defender) {
                 // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
             }
@@ -166,14 +174,14 @@ class LifecycleEncounterTest {
         config.node("prey-cadence-seconds").set(5);
         config.node("lane-cadence-seconds").set(120);
         config.node("sweep-cadence-seconds").set(120);
+        deadPlayers.forEach(connected -> connected.setHealth(0));
         var encounter = new EncounterController(server, battles, ShatteredCrownConfig.load(config),
-                scheduler, context.messages());
+                scheduler, context.messages(), new java.util.Random(4096)); // First production round starts Prey.
         context.events().register(encounter);
         try {
             encounter.start();
             scheduler.advance(Duration.ZERO);
             assertThat(encounter.firstEntryPopulation()).isEqualTo(5); // Server-wide snapshot stays unchanged.
-            deadPlayers.forEach(connected -> connected.setHealth(0));
             assertThat(deadPlayers).allSatisfy(connected -> {
                 assertThat(connected.isOnline()).isTrue();
                 assertThat(connected.isDead()).isTrue();
@@ -183,7 +191,7 @@ class LifecycleEncounterTest {
             assertThat(end.getPlayers()).containsExactlyInAnyOrder(player, teammate);
             assertThat(encounter.combatPopulation()).isEqualTo(2);
             clearWave();
-            scheduler.advance(Duration.ofSeconds(5));
+            scheduler.advance(Duration.ZERO);
             assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(2); // Four connected → two marks.
             assertThat(encounter.scalingPopulation()).isEqualTo(4);
             acceptedDragonHit(100000);
@@ -256,6 +264,270 @@ class LifecycleEncounterTest {
                     org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                     mock(org.bukkit.damage.DamageSource.class), 10));
         }
+    }
+
+    @Test
+    void openingRoundsAlternateBothFamiliesAndGapBeginsAtMainCompletion() throws Exception {
+        config.node("pool-damage").set(0);
+        config.node("bombardment-damage").set(0);
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages(), new java.util.Random(7));
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        scheduler.advance(Duration.ofMillis(29950));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("main=executing", "grace-seconds=0.0");
+        var starts = new java.util.ArrayList<String>();
+        String previous = "none";
+        int completedAt = -1;
+        for (int tick = 0; tick < 1800; tick++) {
+            String state = status(encounter);
+            String attack = state.split(", attack=")[1].split(",")[0];
+            if (!attack.equals("none") && !attack.equals(previous)) {
+                starts.add(attack);
+                if (completedAt >= 0) {
+                    assertThat(tick - completedAt).isBetween(100, 200);
+                }
+            }
+            if (attack.equals("none") && !previous.equals("none")) {
+                completedAt = tick;
+            }
+            previous = attack;
+            scheduler.advance(Duration.ofMillis(50));
+        }
+        assertThat(starts.size()).isGreaterThanOrEqualTo(6);
+        for (int index = 0; index + 1 < starts.size(); index += 2) {
+            assertThat(starts.subList(index, index + 2)).containsExactlyInAnyOrder("PREY", "BOMBARDMENT");
+        }
+        for (int index = 1; index < starts.size(); index++) {
+            assertThat(starts.get(index)).isNotEqualTo(starts.get(index - 1));
+        }
+        encounter.close();
+    }
+
+    private EncounterController rotationEncounter(java.util.Random random) throws Exception {
+        var encounter = new EncounterController(server, battles, ShatteredCrownConfig.load(config),
+                scheduler, context.messages(), random);
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        return encounter;
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {5, 10})
+    void configuredGapEndpointsWaitAfterImpactNotAfterTheWarningStarts(int seconds) throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(seconds);
+        config.node("attack-gap-max-seconds").set(seconds);
+        config.node("bombardment-damage").set(0);
+        config.node("pool-damage").set(0);
+        var encounter = rotationEncounter(new java.util.Random(7));
+        assertThat(status(encounter)).contains("attack=BOMBARDMENT");
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=" + seconds + ".0");
+        scheduler.advance(Duration.ofMillis(seconds * 1000 - 50));
+        assertThat(status(encounter)).contains("main=idle");
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("attack=PREY");
+        encounter.close();
+    }
+
+    @Test
+    void newUnlockJoinsTheUnfinishedRoundAndEarlierFamiliesRunDuringLaterShields() throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(5);
+        config.node("attack-gap-max-seconds").set(5);
+        config.node("bombardment-damage").set(0);
+        config.node("pool-damage").set(0);
+        config.node("lane-damage").set(0);
+        var encounter = rotationEncounter(new java.util.Random(7));
+        scheduler.advance(Duration.ofSeconds(3));
+        clearWave();
+        assertThat(encounter.availableAttacks()).containsExactlyInAnyOrder(EncounterController.AttackFamily.PREY,
+                EncounterController.AttackFamily.BOMBARDMENT, EncounterController.AttackFamily.DIVE);
+        assertThat(status(encounter)).contains("next-warning-seconds=5.0");
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(status(encounter)).contains("attack=PREY");
+        scheduler.advance(Duration.ofSeconds(4));
+        acceptedDragonHit(100000);
+        assertThat(encounter.waveNumber()).isEqualTo(2);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(status(encounter)).contains("attack=DIVE", "shield=true");
+        encounter.debugPause();
+        clearWave();
+        assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.availableAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
+        acceptedDragonHit(100000);
+        assertThat(encounter.availableAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
+        clearWave();
+        assertThat(encounter.availableAttacks()).contains(EncounterController.AttackFamily.SMASH);
+        encounter.close();
+    }
+
+    @Test
+    void sixSecondLandingStartsAtArrivalAndDoesNotClearOrFreezeAnOldPool() throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(5);
+        config.node("attack-gap-max-seconds").set(5);
+        config.node("landing-cadence-seconds").set(10);
+        config.node("pool-lifetime-seconds").set(15);
+        config.node("pool-damage").set(1);
+        config.node("bombardment-damage").set(0);
+        var encounter = rotationEncounter(new java.util.Random(0) {
+            @Override
+            public int nextInt(int bound) {
+                return 0; // First shuffled family is Prey; gap randomness uses the other overload.
+            }
+        });
+        clearWave();
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(status(encounter)).contains("main=idle", "hazards=1");
+        scheduler.advance(Duration.ofMillis(8050));
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        assertThat(status(encounter)).contains("attack=LANDING", "hazards=1");
+        scheduler.advance(Duration.ofMillis(950)); // Approach time cannot consume the melee window.
+        dragon.teleport(new Location(end, 0, 64, 0));
+        var arrival = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon, dragon.getPhase(),
+                EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        server.getPluginManager().callEvent(arrival);
+        dragon.setPhase(arrival.getNewPhase());
+        assertThat(status(encounter)).contains("landing-window=true");
+        double health = player.getHealth();
+        scheduler.advance(Duration.ofMillis(5950));
+        assertThat(status(encounter)).contains("attack=LANDING", "hazards=1");
+        assertThat(player.getHealth()).isLessThan(health); // Old pool keeps delivering actual damage.
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("main=idle", "hazards=0");
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
+        encounter.close();
+    }
+
+    @Test
+    void rejectedSetupsLostTargetsAndRepeatedResumeCannotStallOrDuplicateTheCoordinator() throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(5);
+        config.node("attack-gap-max-seconds").set(5);
+        config.node("bombardment-damage").set(0);
+        config.node("pool-damage").set(0);
+        player.teleport(new Location(end, 70, 64, 0)); // No walkable warning footprint or pool deposition.
+        var encounter = rotationEncounter(new java.util.Random(7));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(status(encounter)).contains("attack=PREY");
+        scheduler.advance(Duration.ofSeconds(4)); // Prey validates current terrain at deposition, not marking.
+        assertThat(status(encounter)).contains("main=idle");
+        player.teleport(new Location(end, 10, 64, 0));
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(status(encounter)).contains("attack=BOMBARDMENT");
+        player.setGameMode(org.bukkit.GameMode.CREATIVE);
+        scheduler.advance(Duration.ofMillis(250));
+        assertThat(status(encounter)).contains("main=idle", "hazards=0");
+        player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        scheduler.advance(Duration.ofMillis(4950));
+        assertThat(status(encounter)).contains("main=idle");
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("attack=PREY");
+        encounter.debugPause();
+        scheduler.advance(Duration.ofSeconds(60));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        for (int repeat = 0; repeat < 4; repeat++) {
+            encounter.debugResume();
+            assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        }
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSizeLessThanOrEqualTo(1);
+        encounter.close();
+        scheduler.advance(Duration.ofSeconds(30));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+    }
+
+    @Test
+    void nativeWarningSetupExceptionStillAllowsTheOtherFamilyAtThePostFailureDeadline() throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(5);
+        config.node("attack-gap-max-seconds").set(5);
+        config.node("pool-damage").set(0);
+        battles = spy(battles);
+        org.mockito.Mockito.doThrow(new IllegalStateException("native warning metadata failure"))
+                .doCallRealMethod().when(battles).faceWarningToViewer(any());
+        var encounter = rotationEncounter(new java.util.Random(7));
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=5.0", "last-selection=BOMBARDMENT");
+        scheduler.advance(Duration.ofMillis(4950));
+        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("attack=PREY");
+        encounter.close();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {5, 10})
+    void failedNativeLandingApproachYieldsToTheNextFamilyInsteadOfReservingAnotherLandingForever(int gap)
+            throws Exception {
+        config.node("opening-grace-seconds").set(0);
+        config.node("attack-gap-min-seconds").set(gap);
+        config.node("attack-gap-max-seconds").set(gap);
+        config.node("landing-cadence-seconds").set(10);
+        config.node("bombardment-damage").set(0);
+        config.node("pool-damage").set(0);
+        var encounter = rotationEncounter(new java.util.Random(7));
+        clearWave();
+        scheduler.advance(Duration.ofMillis(gap == 5 ? 12050 : 10000));
+        assertThat(status(encounter)).contains("attack=LANDING", "landing-window=false");
+        scheduler.advance(Duration.ofSeconds(20)); // Mock native dragon does not arrive; genuine approach timeout.
+        assertThat(status(encounter)).contains("main=idle");
+        scheduler.advance(Duration.ofSeconds(gap));
+        assertThat(status(encounter)).contains(gap == 5 ? "attack=DIVE" : "attack=PREY");
+        encounter.close();
+    }
+
+    @Test
+    void overdueLandingCannotReplaceTheFirstRangedWarningAtGraceExpiry() throws Exception {
+        config.node("landing-cadence-seconds").set(10);
+        var encounter = rotationEncounter(new java.util.Random(7));
+        clearWave();
+        scheduler.advance(Duration.ofMillis(29950));
+        assertThat(status(encounter)).contains("main=idle");
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("attack=BOMBARDMENT", "grace-seconds=0.0");
+        encounter.close();
+    }
+
+    @Test
+    void nativeFightOriginAtYZeroDoesNotMakeTheRealPodiumGroundAnImpossibleLanding() throws Exception {
+        dragon.setPodium(new Location(end, 0, 0, 0)); // Paper reports fight origin, not the raised portal surface.
+        var encounter = rotationEncounter(new java.util.Random(7));
+        encounter.debugTrigger(EncounterController.DebugAttack.LANDING, player, player);
+        assertThat(status(encounter)).contains("attack=LANDING");
+        assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
+        dragon.teleport(new Location(end, 0, 64, 0));
+        var arrival = new org.bukkit.event.entity.EnderDragonChangePhaseEvent(dragon, dragon.getPhase(),
+                EnderDragon.Phase.SEARCH_FOR_BREATH_ATTACK_TARGET);
+        server.getPluginManager().callEvent(arrival);
+        dragon.setPhase(arrival.getNewPhase());
+        assertThat(status(encounter)).contains("landing-window=true");
+        scheduler.advance(Duration.ofMillis(5950));
+        assertThat(status(encounter)).contains("attack=LANDING");
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(status(encounter)).contains("main=idle");
+        encounter.close();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"attack-gap-min-seconds,4", "attack-gap-max-seconds,11",
+            "attack-gap-min-seconds,NaN", "attack-gap-max-seconds,Infinity", "landing-window-seconds,12"})
+    void rotationTimingRejectsOutOfContractValues(String key, double value) throws Exception {
+        config.node(key).set(value);
+        assertThatThrownBy(() -> ShatteredCrownConfig.load(config)).isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void reversedGapBoundsCannotPublish() throws Exception {
+        config.node("attack-gap-min-seconds").set(9);
+        config.node("attack-gap-max-seconds").set(6);
+        assertThatThrownBy(() -> ShatteredCrownConfig.load(config)).hasRootCauseMessage(
+                "shattered-crown.attack-gap-max-seconds must be finite and between 9.0 and 10.0");
     }
 
     private void acceptedDragonHit(double amount) {
@@ -477,8 +749,7 @@ class LifecycleEncounterTest {
         }
         dispatcher.execute("dragondebug resume", source);
         assertThat(status(encounter)).contains("mode=automatic", "wave=3", "shield=true");
-        scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).hasSize(1);
+        assertThat(status(encounter)).contains("main=executing");
         encounter.close();
         assertThat(crystals()).isEmpty();
         assertThat(defenders()).containsExactly(unrelated);
