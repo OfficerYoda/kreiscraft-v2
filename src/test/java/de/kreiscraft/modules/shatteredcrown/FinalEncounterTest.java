@@ -123,6 +123,8 @@ class FinalEncounterTest {
         config = BasicConfigurationNode.root();
         config.node("opening-grace-seconds").set(0); // Isolate final-phase timing from opening grace.
         config.node("movement-attacks").set(false); // Legacy stationary-hazard contract.
+        config.node("sweep-radius").set(12); // Explicit historical sector tuning, not native Smash defaults.
+        config.node("sweep-damage").set(6);
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
     }
@@ -1170,9 +1172,9 @@ class FinalEncounterTest {
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
-                // Seven Prey marks can coexist with one Bombardment warning.
+                // Seven owned pools can coexist with one warned main action; no walking-route veto.
                 assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(32);
                 assertParticipantHealth(20);
                 assertThat(participants).allSatisfy(participant -> assertThat(participant.getVelocity().lengthSquared())
                         .isZero()); // Cancelled sweeps never shove players.
@@ -1193,7 +1195,7 @@ class FinalEncounterTest {
                     dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 }
                 assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(8);
-                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(30);
+                assertThat(scheduled.stream().filter(task -> !task.isCancelled()).count()).isLessThanOrEqualTo(32);
                 assertParticipantHealth(20);
             }
             participants.forEach(participant -> participant.teleport(new Location(end, 100, 50, 0)));

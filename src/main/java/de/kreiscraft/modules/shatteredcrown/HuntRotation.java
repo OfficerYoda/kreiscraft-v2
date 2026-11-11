@@ -53,7 +53,7 @@ final class HuntRotation {
             reported.remove(chosen);
         } else {
             retry.put(chosen, time + 1);
-            diagnostic(chosen, "no eligible target, terrain/escape route or flight clearance; retry in 1s");
+            diagnostic(chosen, "no eligible target, valid geometry or flight clearance; retry in 1s");
         }
     }
 

@@ -1,6 +1,6 @@
 """Run built production+probe JARs on fresh Paper132 worlds. Never use the shared run/ directory.
 
-Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR
+Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|smash]
 The cache directory supplies libraries/, cache/, versions/, eula.txt and paper-26.2-132.jar.
 """
 from pathlib import Path
@@ -35,9 +35,11 @@ with socket.socket() as sock:
 plugins = server / "plugins"
 plugins.mkdir()
 production = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
-opening = len(sys.argv) > 4 and sys.argv[4] == "opening"
-stem = "opening-roster-probe" if opening else "dragon-wave-probe"
-probe = next((repo / "build/paper-probe").glob(stem + "-*.jar"))
+mode = sys.argv[4] if len(sys.argv) > 4 else "wave"
+stems = {"wave": "dragon-wave", "smash": "smash-encounter", "opening": "opening-roster"}
+if mode not in stems:
+    raise ValueError("probe must be wave, smash or opening")
+probe = next((repo / "build/paper-probe").glob(stems[mode] + "-probe-*.jar"))
 shutil.copy2(production, plugins / "Kreiscraft.jar")
 shutil.copy2(probe, plugins / "DragonWaveProbe.jar")
 with zipfile.ZipFile(production) as jar:
@@ -48,6 +50,15 @@ for index, line in enumerate(lines):
         module = line.strip()[:-1]
     if line.startswith("    enabled:"):
         lines[index] = "    enabled: " + ("true" if module == "shattered-crown" else "false")
+    if mode == "smash" and module == "shattered-crown":
+        key = line.strip().split(":", 1)[0]
+        overrides = {"opening-grace-seconds": 0, "arrival-x": 45.5, "arrival-z": 40.5,
+                     "arrival-y": 64, "arrival-radius": 3, "arrival-height": 64,
+                     "lane-cadence-seconds": 120, "prey-cadence-seconds": 120,
+                     "landing-cadence-seconds": 120, "bombardment-cadence-seconds": 120,
+                     "sweep-cadence-seconds": 10}
+        if key in overrides:
+            lines[index] = f"    {key}: {overrides[key]}"
 (plugins / "Kreiscraft").mkdir()
 (plugins / "Kreiscraft/config.yml").write_text("\n".join(lines) + "\n")
 (root / "artifacts.json").write_text(json.dumps({
@@ -60,8 +71,7 @@ for index, line in enumerate(lines):
 with (root / "console.log").open("w") as log:
     process = subprocess.Popen([
         str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
-        "-Dterminal.jline=false", "-Dterminal.ansi=false",
-        "-Dkreiscraft.opening-probe=true" if opening else "-Dkreiscraft.wave-probe=true",
+        "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{mode}-probe=true",
         "-jar", "paper-26.2-132.jar", "--nogui",
     ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
     (root / "owned-pid.txt").write_text(str(process.pid))
@@ -78,6 +88,23 @@ with (root / "console.log").open("w") as log:
     (root / "exit.txt").write_text(str(code))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-marker = "OPENING_ROSTER_PROBE" if opening else "DRAGON_WAVE_PROBE"
-sys.exit(0 if code == 0 and marker + " PASS" in text and marker + " FAIL" not in text
-         and not re.search(r"\bERROR\]", text) else 1)
+marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE"}[mode]
+passed = code == 0 and marker + " PASS" in text and marker + " FAIL" not in text and not re.search(r"\bERROR\]", text)
+if passed and mode == "smash":
+    with (root / "console-restart.log").open("w") as log:
+        process = subprocess.Popen([
+            str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
+            "-Dterminal.jline=false", "-Dterminal.ansi=false", "-Dkreiscraft.smash-probe=true",
+            "-Dkreiscraft.smash-restart=true", "-jar", "paper-26.2-132.jar", "--nogui",
+        ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
+        (root / "owned-restart-pid.txt").write_text(str(process.pid))
+        try:
+            code = process.wait(timeout=120)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            code = process.wait()
+        (root / "exit-restart.txt").write_text(str(code))
+    text = (root / "console-restart.log").read_text()
+    print(text[-14000:])
+    passed = code == 0 and "SMASH_RESTART_PROBE PASS" in text and " FAIL" not in text and not re.search(r"\bERROR\]", text)
+sys.exit(0 if passed else 1)
