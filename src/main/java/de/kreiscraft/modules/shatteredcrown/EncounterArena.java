@@ -236,9 +236,13 @@ final class EncounterArena {
     }
 
     boolean landingSafe() {
-        // Native landing still uses the real podium, even after its walking approaches are cratered.
+        // Real podium footing remains valid; cratered walking approaches are not a route veto (#161).
+        Location podium = anchorSite(center); // Paper reports a fight origin, not portal surface height.
+        if (groundBelow(podium) == null) {
+            return false;
+        }
         double reach = config.landingRadius() + 32;
-        var clouds = nearbyBreath(center, reach, 32);
+        var clouds = nearbyBreath(podium, reach, 32);
         return clouds.size() <= 32 && clouds.stream().noneMatch(cloud -> !Float.isFinite(cloud.getRadius())
                 || cloud.getRadius() > 32 || horizontalSquared(cloud.getLocation(), center.getX(),
                         center.getZ()) <= Math.pow(config.landingRadius() + cloud.getRadius(), 2));
@@ -253,7 +257,7 @@ final class EncounterArena {
 
     boolean atPodium(Location dragon) {
         return contains(dragon) && horizontalSquared(dragon, center.getX(), center.getZ()) <= 64
-                && Math.abs(dragon.getY() - center.getY()) <= 8;
+                && Math.abs(dragon.getY() - anchorSite(center).getY()) <= 8;
     }
 
     private boolean rectanglesOverlap(BreathLane lane, BreathLane other) {

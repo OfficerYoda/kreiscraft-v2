@@ -178,6 +178,14 @@ tasks.register<Jar>("finalWaveProbeJar") {
     from("src/paperTest/final-wave-plugin.yml") { rename { "plugin.yml" } }
 }
 
+tasks.register<Jar>("rotationProbeJar") {
+    dependsOn(tasks.named(paperTest.classesTaskName))
+    archiveBaseName.set("rotation-probe")
+    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
+    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/RotationProbe*.class") }
+    from("src/paperTest/rotation-plugin.yml") { rename { "plugin.yml" } }
+}
+
 tasks.register<Jar>("openingRosterProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("opening-roster-probe")

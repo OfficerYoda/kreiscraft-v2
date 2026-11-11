@@ -26,6 +26,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double finalCadenceFactor, Double finalPoolLifetimeFactor,
         Double explosionWindowSeconds, Double explosionWindowBudget, Boolean movementAttacks,
         Double openingGraceSeconds, Double divePassSeconds, Double diveClimbSeconds,
+        Double attackGapMinSeconds, Double attackGapMaxSeconds,
         Integer openingArmorPercentage,
         Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
@@ -83,6 +84,10 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         openingArmorPercentage = openingArmorPercentage == null ? 35 : openingArmorPercentage;
         bounded("opening-armor-percentage", openingArmorPercentage, 0, 50);
         movementAttacks = movementAttacks == null ? true : movementAttacks;
+        attackGapMinSeconds = attackGapMinSeconds == null ? 5.0 : attackGapMinSeconds;
+        attackGapMaxSeconds = attackGapMaxSeconds == null ? 10.0 : attackGapMaxSeconds;
+        bounded("attack-gap-min-seconds", attackGapMinSeconds, 5, 10);
+        bounded("attack-gap-max-seconds", attackGapMaxSeconds, attackGapMinSeconds, 10);
         openingGraceSeconds = openingGraceSeconds == null ? 30.0 : openingGraceSeconds;
         bounded("opening-grace-seconds", openingGraceSeconds, 0, 120);
         worldKey = worldKey == null ? "minecraft:the_end" : worldKey;
@@ -116,7 +121,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("dive-climb-seconds", diveClimbSeconds, 0.5, 10);
         laneDamageCadenceSeconds = laneDamageCadenceSeconds == null ? 1.0 : laneDamageCadenceSeconds;
         landingCadenceSeconds = landingCadenceSeconds == null ? 30.0 : landingCadenceSeconds;
-        landingWindowSeconds = landingWindowSeconds == null ? 12.0 : landingWindowSeconds;
+        landingWindowSeconds = landingWindowSeconds == null ? 6.0 : landingWindowSeconds;
         landingApproachSeconds = landingApproachSeconds == null ? 20.0 : landingApproachSeconds;
         landingRadius = landingRadius == null ? 12.0 : landingRadius;
         preyPercentage = preyPercentage == null ? 35.0 : preyPercentage;
@@ -170,7 +175,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
                     "shattered-crown prey requires serialized marks");
         }
         bounded("landing-cadence-seconds", landingCadenceSeconds, 10, 120);
-        bounded("landing-window-seconds", landingWindowSeconds, 8, 30);
+        bounded("landing-window-seconds", landingWindowSeconds, 6, 6);
         bounded("landing-approach-seconds", landingApproachSeconds, 5, 45);
         bounded("landing-radius", landingRadius, 8, 24);
         bounded("lane-length", laneLength, 8, 40);
