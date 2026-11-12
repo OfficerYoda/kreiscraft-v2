@@ -1,11 +1,13 @@
 package de.kreiscraft.modules.wither;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,6 +23,8 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.WitherSkeleton;
@@ -346,6 +350,27 @@ class WitherListenerTest {
     // --- Death event tests (countdown + shutdown) ---
 
     @Test
+    void onEntityDeath_marksSavedExplosionOriginOnlyDuringCountdown() {
+        WorldMock arena = spiedWorldWithExplosionSupport("origin-marker");
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), arena);
+        Location origin = new Location(arena, 12.5, 70.0, -8.5);
+        wither.teleport(origin);
+
+        listener.onEntityDeath(new EntityDeathEvent(
+                wither, mock(DamageSource.class), new ArrayList<>()));
+        wither.teleport(new Location(arena, 30.0, 80.0, 40.0));
+
+        scheduler.advance(Duration.ofSeconds(8));
+        verify(arena, times(9))
+                .spawnParticle(Particle.END_ROD, origin, 12, 0.15, 0.15, 0.15, 0.0);
+
+        scheduler.advance(Duration.ofSeconds(12));
+        verify(arena, times(10))
+                .spawnParticle(Particle.END_ROD, origin, 12, 0.15, 0.15, 0.15, 0.0);
+        verify(arena).createExplosion(12.5, 70.0, -8.5, 20.0f, true, true);
+    }
+
+    @Test
     void onEntityDeath_afterTenSeconds_createsExplosion() {
         WorldMock arena = spiedWorldWithExplosionSupport("arena");
         WitherMock wither = new WitherMock(server, UUID.randomUUID(), arena);
@@ -419,6 +444,9 @@ class WitherListenerTest {
         verify(arena, never())
                 .createExplosion(
                         anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
+        verify(arena, times(6))
+                .spawnParticle(eq(Particle.END_ROD), any(Location.class), eq(12),
+                        eq(0.15), eq(0.15), eq(0.15), eq(0.0));
     }
 
     // --- Helper ---
@@ -429,6 +457,8 @@ class WitherListenerTest {
      */
     private WorldMock spiedWorldWithExplosionSupport(String name) {
         WorldMock spy = spy(server.addSimpleWorld(name));
+        doNothing().when(spy).spawnParticle(eq(Particle.END_ROD), any(Location.class), eq(12),
+                eq(0.15), eq(0.15), eq(0.15), eq(0.0));
         doReturn(true).when(spy)
                 .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
         doReturn(true).when(spy)
