@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
@@ -119,6 +122,39 @@ class CombatListenerTest {
     }
 
     // --- ProjectileHitEvent ---
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void enderPearl_hitOrDamage_doesNotTag(boolean damage) {
+        PlayerMock shooter = server.addPlayer("alice");
+        PlayerMock victim = server.addPlayer("bob");
+        EnderPearl pearl = mock(EnderPearl.class);
+        when(pearl.getShooter()).thenReturn(shooter);
+        when(pearl.getWorld()).thenReturn(shooter.getWorld());
+
+        if (damage) {
+            listener.onEntityDamageByEntity(new EntityDamageByEntityEvent(
+                    pearl, victim, EntityDamageEvent.DamageCause.PROJECTILE, 0.0));
+        } else {
+            listener.onProjectileHit(new ProjectileHitEvent(pearl, victim, null, null));
+        }
+
+        verify(service, never()).tag(any(UUID.class), any(Duration.class));
+    }
+
+    @Test
+    void projectileDamage_bothPlayers_tagsBoth() {
+        PlayerMock shooter = server.addPlayer("alice");
+        PlayerMock victim = server.addPlayer("bob");
+        Arrow arrow = mock(Arrow.class);
+        when(arrow.getShooter()).thenReturn(shooter);
+
+        listener.onEntityDamageByEntity(new EntityDamageByEntityEvent(
+                arrow, victim, EntityDamageEvent.DamageCause.PROJECTILE, 2.0));
+
+        verify(service).tag(eq(shooter.getUniqueId()), eq(Duration.ofSeconds(10)));
+        verify(service).tag(eq(victim.getUniqueId()), eq(Duration.ofSeconds(10)));
+    }
 
     @Test
     void projectileDamage_selfHit_doesNotTag() {

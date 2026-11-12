@@ -3,6 +3,7 @@ package de.kreiscraft.modules.combat;
 import de.kreiscraft.core.event.PriorityListener;
 import java.time.Duration;
 import java.util.function.Supplier;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -27,7 +28,7 @@ public final class CombatListener implements PriorityListener {
         Entity victim = event.getEntity();
         Entity damager = event.getDamager();
 
-        if (!(victim instanceof Player victimPlayer)) {
+        if (damager instanceof EnderPearl || !(victim instanceof Player victimPlayer)) {
             return;
         }
 
@@ -58,7 +59,7 @@ public final class CombatListener implements PriorityListener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
         Entity hitEntity = event.getHitEntity();
-        if (!(hitEntity instanceof Player victim)) {
+        if (event.getEntity() instanceof EnderPearl || !(hitEntity instanceof Player victim)) {
             return;
         }
 
