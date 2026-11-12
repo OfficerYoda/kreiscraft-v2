@@ -7,10 +7,12 @@ import de.kreiscraft.modules.shatteredcrown.EncounterService;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Server;
@@ -216,7 +218,10 @@ public final class WitherListener implements PriorityListener {
         Scheduler.Task[] taskRef = {null};
         taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
             // ponytail: reuse the countdown to mark only the origin, not the blast radius.
-            loc.getWorld().spawnParticle(Particle.END_ROD, loc, 12, 0.15, 0.15, 0.15, 0.0);
+            for (Color color : List.of(Color.RED, Color.ORANGE, Color.BLACK)) {
+                loc.getWorld().spawnParticle(Particle.DUST, loc, 20, 0.6, 0.6, 0.6, 0.0,
+                        new Particle.DustOptions(color, 2.0f));
+            }
             tick[0]++;
             updateDeathBars(bars, tick[0]);
             if (tick[0] >= DEATH_COUNTDOWN_TICKS) {

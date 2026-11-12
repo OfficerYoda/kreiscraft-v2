@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.attribute.Attribute;
@@ -41,6 +42,7 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.ArmorStandMock;
 import org.mockbukkit.mockbukkit.entity.WitherMock;
 import org.mockbukkit.mockbukkit.world.WorldMock;
+import org.mockito.ArgumentCaptor;
 
 class WitherListenerTest {
 
@@ -361,12 +363,18 @@ class WitherListenerTest {
         wither.teleport(new Location(arena, 30.0, 80.0, 40.0));
 
         scheduler.advance(Duration.ofSeconds(8));
-        verify(arena, times(9))
-                .spawnParticle(Particle.END_ROD, origin, 12, 0.15, 0.15, 0.15, 0.0);
+        verify(arena, times(27))
+                .spawnParticle(eq(Particle.DUST), eq(origin), eq(20), eq(0.6), eq(0.6), eq(0.6), eq(0.0),
+                        any(Particle.DustOptions.class));
 
         scheduler.advance(Duration.ofSeconds(12));
-        verify(arena, times(10))
-                .spawnParticle(Particle.END_ROD, origin, 12, 0.15, 0.15, 0.15, 0.0);
+        ArgumentCaptor<Particle.DustOptions> dust = ArgumentCaptor.forClass(Particle.DustOptions.class);
+        verify(arena, times(30))
+                .spawnParticle(eq(Particle.DUST), eq(origin), eq(20), eq(0.6), eq(0.6), eq(0.6), eq(0.0),
+                        dust.capture());
+        assertThat(dust.getAllValues()).extracting(Particle.DustOptions::getColor)
+                .containsOnly(Color.RED, Color.ORANGE, Color.BLACK);
+        assertThat(dust.getAllValues()).extracting(Particle.DustOptions::getSize).containsOnly(2.0f);
         verify(arena).createExplosion(12.5, 70.0, -8.5, 20.0f, true, true);
     }
 
@@ -444,9 +452,9 @@ class WitherListenerTest {
         verify(arena, never())
                 .createExplosion(
                         anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
-        verify(arena, times(6))
-                .spawnParticle(eq(Particle.END_ROD), any(Location.class), eq(12),
-                        eq(0.15), eq(0.15), eq(0.15), eq(0.0));
+        verify(arena, times(18))
+                .spawnParticle(eq(Particle.DUST), any(Location.class), eq(20),
+                        eq(0.6), eq(0.6), eq(0.6), eq(0.0), any(Particle.DustOptions.class));
     }
 
     // --- Helper ---
@@ -457,8 +465,8 @@ class WitherListenerTest {
      */
     private WorldMock spiedWorldWithExplosionSupport(String name) {
         WorldMock spy = spy(server.addSimpleWorld(name));
-        doNothing().when(spy).spawnParticle(eq(Particle.END_ROD), any(Location.class), eq(12),
-                eq(0.15), eq(0.15), eq(0.15), eq(0.0));
+        doNothing().when(spy).spawnParticle(eq(Particle.DUST), any(Location.class), eq(20),
+                eq(0.6), eq(0.6), eq(0.6), eq(0.0), any(Particle.DustOptions.class));
         doReturn(true).when(spy)
                 .createExplosion(anyDouble(), anyDouble(), anyDouble(), anyFloat());
         doReturn(true).when(spy)
