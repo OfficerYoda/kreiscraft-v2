@@ -215,12 +215,17 @@ public final class WitherListener implements PriorityListener {
         Map<Player, BossBar> bars = showDeathBars(loc);
 
         int[] tick = {0};
+        int[] particlePulse = {0};
         Scheduler.Task[] taskRef = {null};
-        taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
+        taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofMillis(200), () -> {
             // ponytail: reuse the countdown to mark only the origin, not the blast radius.
             for (Color color : List.of(Color.RED, Color.ORANGE, Color.BLACK)) {
                 loc.getWorld().spawnParticle(Particle.DUST, loc, 20, 0.6, 0.6, 0.6, 0.0,
                         new Particle.DustOptions(color, 2.0f));
+            }
+            // Keep the original one-second countdown cadence while particles pulse at 5 Hz.
+            if (particlePulse[0]++ % 5 != 0) {
+                return;
             }
             tick[0]++;
             updateDeathBars(bars, tick[0]);

@@ -362,14 +362,19 @@ class WitherListenerTest {
                 wither, mock(DamageSource.class), new ArrayList<>()));
         wither.teleport(new Location(arena, 30.0, 80.0, 40.0));
 
-        scheduler.advance(Duration.ofSeconds(8));
-        verify(arena, times(27))
+        scheduler.advance(Duration.ofMillis(200));
+        verify(arena, times(6))
+                .spawnParticle(eq(Particle.DUST), eq(origin), eq(20), eq(0.6), eq(0.6), eq(0.6), eq(0.0),
+                        any(Particle.DustOptions.class));
+
+        scheduler.advance(Duration.ofMillis(7800));
+        verify(arena, times(123))
                 .spawnParticle(eq(Particle.DUST), eq(origin), eq(20), eq(0.6), eq(0.6), eq(0.6), eq(0.0),
                         any(Particle.DustOptions.class));
 
         scheduler.advance(Duration.ofSeconds(12));
         ArgumentCaptor<Particle.DustOptions> dust = ArgumentCaptor.forClass(Particle.DustOptions.class);
-        verify(arena, times(30))
+        verify(arena, times(138))
                 .spawnParticle(eq(Particle.DUST), eq(origin), eq(20), eq(0.6), eq(0.6), eq(0.6), eq(0.0),
                         dust.capture());
         assertThat(dust.getAllValues()).extracting(Particle.DustOptions::getColor)
@@ -452,7 +457,7 @@ class WitherListenerTest {
         verify(arena, never())
                 .createExplosion(
                         anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
-        verify(arena, times(18))
+        verify(arena, times(78))
                 .spawnParticle(eq(Particle.DUST), any(Location.class), eq(20),
                         eq(0.6), eq(0.6), eq(0.6), eq(0.0), any(Particle.DustOptions.class));
     }
