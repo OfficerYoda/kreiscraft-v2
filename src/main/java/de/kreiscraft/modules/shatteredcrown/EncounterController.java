@@ -1870,28 +1870,30 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         if (owner.isClosed()) {
             return;
         }
-        bombardmentIndicator.setShadowed(true);
-        bombardmentIndicator.text(Component.text(config.bombardmentWarningSeconds(), NamedTextColor.GOLD));
+        // Keep the owned marker for warning validity/cleanup, but never show a numeric countdown.
+        bombardmentIndicator.text(Component.empty());
         targets.forEach(player -> {
             player.playSound(impact, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
         drawBombardment(impact);
+        drawFallingBombardment(impact, 0);
         final int[] pulses = {0};
-        bombardmentWarning = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
-            if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
-                cancelPendingBombardment();
-                owner.close();
-                return;
+        bombardmentWarning = owner.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            pulses[0]++;
+            if (pulses[0] % 5 == 0) {
+                if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
+                    cancelPendingBombardment();
+                    owner.close();
+                    return;
+                }
+                drawBombardment(impact);
             }
-            double remaining = Math.max(0, config.bombardmentWarningSeconds() - ++pulses[0] * 0.25);
-            bombardmentIndicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1f", remaining),
-                    NamedTextColor.GOLD));
-            drawBombardment(impact);
+            drawFallingBombardment(impact, pulses[0] * 0.05 / config.bombardmentWarningSeconds());
         });
         bombardmentImpact = owner.later(seconds(config.bombardmentWarningSeconds()), () -> {
-            boolean visible = bombardmentIndicator != null && bombardmentIndicator.isValid();
+            boolean valid = bombardmentIndicator != null && bombardmentIndicator.isValid();
             cancelPendingBombardment();
-            if (!visible || dragon == null || !isParticipant(target)) {
+            if (!valid || dragon == null || !isParticipant(target)) {
                 return;
             }
             var participants = dragon.getWorld().getPlayers().stream().filter(arena::participant).toList();
@@ -1921,10 +1923,21 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
             for (int point = 0; point < 32; point++) {
                 double angle = point * Math.PI * 2 / 32;
-                player.spawnParticle(Particle.FLAME, impact.clone().add(Math.cos(angle) * config.bombardmentRadius(),
-                        0.15, Math.sin(angle) * config.bombardmentRadius()), 1, 0, 0, 0, 0);
+                CrownParticles.spawn(player, Particle.FLAME,
+                        impact.clone().add(Math.cos(angle) * config.bombardmentRadius(),
+                                0.15, Math.sin(angle) * config.bombardmentRadius()),
+                        1, 0, 0, 0, 0);
             }
         });
+    }
+
+    private void drawFallingBombardment(Location impact, double progress) {
+        double top = Math.min(impact.getY() + 20, impact.getWorld().getMaxHeight() - 1);
+        Location flame = impact.clone();
+        flame.setY(top + (impact.getY() + 0.5 - top) * Math.min(1, progress));
+        // ponytail: cosmetic particles, not a projectile with another collision/damage path.
+        dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
+                .forEach(player -> CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0));
     }
 
     private void cancelPendingBombardment() {

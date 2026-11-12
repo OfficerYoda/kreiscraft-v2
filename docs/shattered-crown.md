@@ -17,12 +17,13 @@ produce no automatic chat, action bars or replacement title feed. This applies t
 attacks too, including debug-triggered attacks and both moving and legacy profiles; no opt-in
 chat/actionbar setting is provided.
 
-Keep floating labels/countdowns, sounds and applicable Attack Warning visuals, except Dive's two countdowns.
-Dive retains its warning/pass timing and sound but shows no numeric timer. Particle redesign
+Keep floating labels/countdowns, sounds and applicable Attack Warning visuals, except the Dive and
+Bombardment countdowns. Both retain their timing and sound but show no numeric timer. Particle redesign
 belongs to individual attacks, not this policy. The vanilla dragon boss bar is untouched; the
 enhanced-Wither boss/countdown presentation remains available and is not suppressed by Crown UI.
-Only **explicitly requested** `/dragondebug` results, errors and status use chat, through the
-recipient-localized message service. Status fields/attack enum names and low-level placement or
+Native player death messages use the server language (`core.language`: `en`/`de`) through Paper's normal
+broadcast. Other chat output is limited to **explicitly requested** `/dragondebug` results, errors and
+status, through the recipient-localized message service. Status fields/attack enum names and low-level placement or
 exception diagnostics remain technical identifiers; the surrounding reply and eligibility guidance
 are translated in English/German. Replies go only to the requesting operator, not attack targets.
 
@@ -514,7 +515,9 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
 - Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
   ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
-  a native TextDisplay shows a numeric countdown, and a dragon growl accompanies the warning.
+  and a flame trail descends from 20 blocks above the marked ground over the warning duration,
+  updating every server tick. There is no visible countdown; an invisible owned TextDisplay retains
+  warning-validity and cleanup checks. A dragon growl accompanies the warning.
   Impact uses a distinct explosion visual/sound, not a real explosion.
   Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
   attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters

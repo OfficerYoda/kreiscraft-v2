@@ -495,7 +495,7 @@ class OpeningEncounterTest {
         assertThat(indicators).hasSize(1);
         var indicator = indicators.iterator().next();
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(indicator.text())).contains("3");
+        assertThat(plain.serialize(indicator.text())).isEmpty();
         assertThat(indicator.getLocation().getX()).isEqualTo(10.5);
         assertThat(indicator.getLocation().getZ()).isEqualTo(0.5);
         scheduler.advance(Duration.ofMillis(2999));
@@ -802,16 +802,16 @@ class OpeningEncounterTest {
     }
 
     @Test
-    void warningsKeepWorldCountdownAndDistinctNativeSoundsWithoutChatOrActionBars() throws Exception {
+    void warningsKeepDistinctNativeSoundsWithoutCountdownChatOrActionBars() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         enable();
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(drainActionBars(player)).isEmpty();
         assertThat(drainActionBars(german)).isEmpty();
-        var countdown = end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class).iterator().next();
+        var warning = end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class).iterator().next();
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(countdown.text())).contains("3");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         assertThat(player.getHeardSounds()).anyMatch(sound -> sound.getSound().contains("ender_dragon.growl"));
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(player.getHeardSounds()).anyMatch(sound -> sound.getSound().contains("generic.explode"));

@@ -940,7 +940,7 @@ class FinalEncounterTest {
     }
 
     @Test
-    void finalInterludeAndShieldReleaseStayQuietWhileWorldCountdownAndNativeBossBarRemain() throws Exception {
+    void finalInterludeAndShieldReleaseStayQuietWithoutCountdownWhileNativeBossBarRemains() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         hunt();
@@ -950,11 +950,11 @@ class FinalEncounterTest {
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        var countdown = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(countdown.text())).contains("3");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(250));
-        assertThat(plain.serialize(countdown.text())).contains("2.8");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         player.teleport(player.getLocation().add(6, 0, 0));
         german.teleport(german.getLocation().add(6, 0, 0));
         scheduler.advance(Duration.ofSeconds(3));
