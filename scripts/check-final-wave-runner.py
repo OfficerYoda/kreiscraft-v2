@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory() as temporary:
     cache.mkdir()
     for name in ("libraries", "cache", "versions"):
         (cache / name).mkdir()
-    for name in ("eula.txt", "paper-26.2-132.jar"):
+    for name in ("eula.txt", "paper-26.3-249.jar"):
         (cache / name).write_text("fixture")
     production = root / "production.jar"
     with zipfile.ZipFile(production, "w") as jar:

@@ -1,5 +1,5 @@
 [versions]
-paper = "26.2.build.132-stable"
+paper = "26.3.build.249-stable"
 paperweight = "2.0.0-beta.21"
 shadow = "9.6.1"
 spotless = "8.9.0"
@@ -12,7 +12,7 @@ slf4j = "2.0.9"
 invui = "2.5.1"
 junit = "6.1.2"
 mockito = "5.20.0"
-mockbukkit = "4.117.0"
+mockbukkit = "4.120.0"
 assertj = "3.25.3"
 
 [libraries]
@@ -28,7 +28,7 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jun
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
-mockbukkit = { module = "org.mockbukkit.mockbukkit:mockbukkit-v26.2", version.ref = "mockbukkit" }
+mockbukkit = { module = "org.mockbukkit.mockbukkit:mockbukkit-v26.3", version.ref = "mockbukkit" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [plugins]

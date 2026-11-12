@@ -43,13 +43,13 @@ class CrownParticlesTest {
             }
             var packets = org.mockito.ArgumentCaptor.forClass(ClientboundLevelParticlesPacket.class);
             verify(handle.connection, times(6)).send(packets.capture());
-            assertThat(packets.getAllValues().getFirst().getParticle())
+            assertThat(packets.getAllValues().getFirst().particle())
                     .isInstanceOfSatisfying(net.minecraft.core.particles.PowerParticleOption.class,
                             breath -> assertThat(breath.getPower()).isEqualTo(1.0f));
             assertThat(packets.getAllValues()).allSatisfy(packet -> {
-                assertThat(packet.getParticle()).isNotNull();
-                assertThat(packet.getY()).isEqualTo(64);
-                assertThat(packet.getCount()).isEqualTo(1);
+                assertThat(packet.particle()).isNotNull();
+                assertThat(packet.y()).isEqualTo(64);
+                assertThat(packet.count()).isEqualTo(1);
             });
         }
     }

@@ -342,7 +342,9 @@ public final class RotationProbe extends JavaPlugin implements Listener {
             if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position
                     && listener instanceof net.minecraft.server.network.ServerGamePacketListenerImpl game) {
                 game.handleAcceptTeleportPacket(
-                        new net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket(position.id()));
+                        new net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket(position.id(),
+                                game.player.getX(), game.player.getY(), game.player.getZ(),
+                                game.player.getYRot(), game.player.getXRot()));
             }
             if (packet instanceof net.minecraft.network.protocol.common.ClientboundKeepAlivePacket keep
                     && listener instanceof net.minecraft.server.network.ServerCommonPacketListenerImpl common) {

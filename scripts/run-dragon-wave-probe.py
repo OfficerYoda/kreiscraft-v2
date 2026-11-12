@@ -1,7 +1,7 @@
 """Run built production+probe JARs on fresh Paper132 worlds. Never use the shared run/ directory.
 
 Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|final|smash|opening|rain|release|rotation|second|dive|damage|flight|defender]
-The cache directory supplies libraries/, cache/, versions/, eula.txt and paper-26.2-132.jar.
+The cache directory supplies libraries/, cache/, versions/, eula.txt and paper-26.3-249.jar.
 """
 from pathlib import Path
 import hashlib
@@ -25,7 +25,7 @@ server = root / "server"
 server.mkdir()
 for name in ("libraries", "cache", "versions"):
     shutil.copytree(cache / name, server / name)
-for name in ("eula.txt", "paper-26.2-132.jar"):
+for name in ("eula.txt", "paper-26.3-249.jar"):
     shutil.copy2(cache / name, server / name)
 with socket.socket() as sock:
     sock.bind(("127.0.0.1", 0))
@@ -112,7 +112,7 @@ if snapshot is not None:
     "rain_start": int(os.environ.get("RAIN_START", "0")),
     "production_sha256": hashlib.sha256(production.read_bytes()).hexdigest(),
     "probe_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
-    "paper_sha256": hashlib.sha256((server / "paper-26.2-132.jar").read_bytes()).hexdigest(),
+    "paper_sha256": hashlib.sha256((server / "paper-26.3-249.jar").read_bytes()).hexdigest(),
 }, indent=2))
 with (root / "console.log").open("w") as log:
     timed_out = False
@@ -121,7 +121,7 @@ with (root / "console.log").open("w") as log:
         "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{guard}-probe=true",
         f"-Dkreiscraft.rain-start={os.environ.get('RAIN_START', '0')}",
         f"-Dkreiscraft.release-restart={'true' if snapshot is not None else 'false'}",
-        "-jar", "paper-26.2-132.jar", "--nogui",
+        "-jar", "paper-26.3-249.jar", "--nogui",
     ], cwd=server, stdin=subprocess.PIPE, stdout=subprocess.PIPE if mode == "release" else log,
        stderr=subprocess.STDOUT, text=True)
     (root / "owned-pid.txt").write_text(str(process.pid))
@@ -173,7 +173,7 @@ if passed and mode in ("smash", "rain", "release") and snapshot is None:
         process = subprocess.Popen([
             str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
             "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{mode}-probe=true",
-            f"-Dkreiscraft.{mode}-restart=true", "-jar", "paper-26.2-132.jar", "--nogui",
+            f"-Dkreiscraft.{mode}-restart=true", "-jar", "paper-26.3-249.jar", "--nogui",
         ], cwd=server, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
         (root / "owned-restart-pid.txt").write_text(str(process.pid))
         try:
@@ -192,7 +192,7 @@ if passed and mode == "release":
     disabled.mkdir(exist_ok=False)
     for name in ("libraries", "cache", "versions"):
         shutil.copytree(cache / name, disabled / name)
-    for name in ("eula.txt", "paper-26.2-132.jar"):
+    for name in ("eula.txt", "paper-26.3-249.jar"):
         shutil.copy2(cache / name, disabled / name)
     shutil.copytree(root / "interrupted-world-backup", disabled / "wave_world")
     with socket.socket() as sock:
@@ -215,7 +215,7 @@ if passed and mode == "release":
             str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
             "-Dterminal.jline=false", "-Dterminal.ansi=false", "-Dkreiscraft.release-probe=true",
             "-Dkreiscraft.release-restart=true", "-Dkreiscraft.release-disabled-restart=true",
-            "-jar", "paper-26.2-132.jar", "--nogui",
+            "-jar", "paper-26.3-249.jar", "--nogui",
         ], cwd=disabled, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
         (root / "owned-disabled-restart-pid.txt").write_text(str(process.pid))
         try:

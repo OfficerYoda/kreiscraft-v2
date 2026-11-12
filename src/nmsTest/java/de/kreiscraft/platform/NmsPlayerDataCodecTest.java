@@ -59,11 +59,11 @@ class NmsPlayerDataCodecTest {
         Bootstrap.bootStrap();
         var builtIn = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
         try (var resources = new MultiPackResourceManager(PackType.SERVER_DATA,
-                List.of(ServerPacksSource.createVanillaPackSource()))) {
+                List.of(ServerPacksSource.createVanillaPackSource().fullResources()))) {
             TagLoader.loadTagsForExistingRegistries(resources, builtIn, ReloadableRegistrarEvent.Cause.INITIAL)
                     .forEach(tags -> tags.apply());
             var loaded = RegistryDataLoader.load(resources, builtIn.listRegistries().toList(),
-                    RegistryDataLoader.WORLDGEN_REGISTRIES, Runnable::run).join();
+                    RegistryDataLoader.WORLD_REGISTRIES, Runnable::run, ReloadableRegistrarEvent.Cause.INITIAL).join();
             registries = HolderLookup.Provider.create(Stream.concat(builtIn.listRegistries(), loaded.listRegistries()));
         }
         BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(registries)
@@ -315,7 +315,7 @@ class NmsPlayerDataCodecTest {
     }
 
     private static ItemStack stack(net.minecraft.world.item.Item item, int count) {
-        return CraftItemStack.asCraftMirror(new net.minecraft.world.item.ItemStack(item, count));
+        return CraftItemStack.asBukkitMirror(new net.minecraft.world.item.ItemStack(item, count));
     }
 
     private static RegistryOps<Tag> ops() {

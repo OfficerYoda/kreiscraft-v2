@@ -13,7 +13,7 @@ This tutorial takes you from a clean clone to a running local server with the de
 | Java        | 25      |
 | Git         | any     |
 
-No other tools are needed. Gradle and the Paper server are downloaded automatically.
+No other tools are needed. Gradle and the Paper 26.3 server are downloaded automatically. The plugin targets Paper 26.3.
 
 ---
 

@@ -843,15 +843,15 @@ public final class RainProbe extends JavaPlugin implements Listener {
             } else if (measuring
                     && packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket particle) {
                 particles++;
-                if (particle.getParticle().getType() == net.minecraft.core.particles.ParticleTypes.FLAME && age < 60) {
+                if (particle.particle().getType() == net.minecraft.core.particles.ParticleTypes.FLAME && age < 60) {
                     warningFrames[Math.max(0, age / 5)]++;
                     if (scenario != 6 && !automatic) {
-                        check(Math.abs(Math.hypot(particle.getX() - locked.getX(), particle.getZ() - locked.getZ())
+                        check(Math.abs(Math.hypot(particle.x() - locked.getX(), particle.z() - locked.getZ())
                                 - 5) < 0.001, "real warning particle positions match the locked radius-five pool");
                     }
                 }
-                if (particle.getParticle().getType() == net.minecraft.core.particles.ParticleTypes.DRAGON_BREATH) {
-                    check(particle.getParticle() instanceof net.minecraft.core.particles.PowerParticleOption power
+                if (particle.particle().getType() == net.minecraft.core.particles.ParticleTypes.DRAGON_BREATH) {
+                    check(particle.particle() instanceof net.minecraft.core.particles.PowerParticleOption power
                             && power.getPower() == 1.0f, "supported native breath particle payload");
                 }
             } else if (measuring && packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket) {

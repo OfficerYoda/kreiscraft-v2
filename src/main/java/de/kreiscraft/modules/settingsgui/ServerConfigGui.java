@@ -406,7 +406,7 @@ public final class ServerConfigGui {
             case "reboot" -> Material.CLOCK;
             case "settings-gui" -> Material.NETHER_STAR;
             case "sign-color" -> Material.OAK_SIGN;
-            case "sit" -> Material.WHITE_CARPET;
+            case "sit" -> Material.WHITE_CUSHION;
             case "spawn" -> Material.RECOVERY_COMPASS;
             case "start-sequence" -> Material.DRAGON_EGG;
             case "status" -> Material.NAME_TAG;
@@ -414,7 +414,7 @@ public final class ServerConfigGui {
             case "update-mode" -> Material.REDSTONE_LAMP;
             case "wither" -> Material.WITHER_SKELETON_SKULL;
             case "shattered-crown" -> Material.DRAGON_HEAD;
-            case "world-mgmt" -> Material.GRASS_BLOCK;
+            case "world-mgmt" -> Material.END_PORTAL_FRAME;
             default -> Material.PAPER;
         };
     }
