@@ -1,5 +1,5 @@
 name: RainProbe
 version: '1.0'
 main: de.kreiscraft.modules.shatteredcrown.RainProbe
-api-version: '26.2'
+api-version: '26.3'
 softdepend: [Kreiscraft]

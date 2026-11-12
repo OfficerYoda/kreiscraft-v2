@@ -1,5 +1,5 @@
 name: DragonWaveProbe
 version: 1.0
 main: de.kreiscraft.modules.shatteredcrown.DragonWaveProbe
-api-version: '26.2'
+api-version: '26.3'
 depend: [Kreiscraft]

@@ -1,5 +1,5 @@
 name: ReleaseCandidateProbe
 version: 1.0
 main: de.kreiscraft.modules.shatteredcrown.ReleaseCandidateProbe
-api-version: '26.2'
+api-version: '26.3'
 depend: [Kreiscraft]

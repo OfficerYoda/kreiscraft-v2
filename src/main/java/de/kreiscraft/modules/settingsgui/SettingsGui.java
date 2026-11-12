@@ -282,7 +282,7 @@ public final class SettingsGui {
             @Override
             public ItemProvider getItemProvider(Player viewer) {
                 // A soft, flat cushion represented with a vanilla carpet item.
-                return new ItemWrapper(named(Material.WHITE_CARPET, messages.renderFor(viewer, "settings-gui.sit")));
+                return new ItemWrapper(named(Material.WHITE_CUSHION, messages.renderFor(viewer, "settings-gui.sit")));
             }
 
             @Override

@@ -12,7 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.craftbukkit.entity.CraftEnderDragon;
 import org.bukkit.entity.EnderDragon;
 
-/** Paper 26.2 boundary: replace one dragon's charge instance, never the global phase registry. */
+/** Paper 26.3 boundary: replace one dragon's charge instance, never the global phase registry. */
 public final class NmsDragonFlight implements DragonFlightControl {
     private final CraftEnderDragon entity;
     private final net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon;
