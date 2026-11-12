@@ -20,14 +20,17 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.damage.DamageSource;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.WitherSkeleton;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -350,6 +353,37 @@ class WitherListenerTest {
     }
 
     // --- Death event tests (countdown + shutdown) ---
+
+    @Test
+    void onEntityDeath_bossBarFillsEveryServerTick_withoutChangingExplosionTime() {
+        WorldMock arena = spiedWorldWithExplosionSupport("smooth-countdown");
+        WitherMock wither = new WitherMock(server, UUID.randomUUID(), arena);
+        Player player = mock(Player.class);
+        when(player.getLocation()).thenReturn(wither.getLocation());
+        when(messages.renderFor(player, "wither.explosion-title")).thenReturn(Component.empty());
+        doReturn(List.of(player)).when(arena).getPlayers();
+
+        listener.onEntityDeath(new EntityDeathEvent(
+                wither, mock(DamageSource.class), new ArrayList<>()));
+        ArgumentCaptor<BossBar> shown = ArgumentCaptor.forClass(BossBar.class);
+        verify(player).showBossBar(shown.capture());
+        BossBar bar = shown.getValue();
+        scheduler.advance(Duration.ZERO);
+        assertThat(bar.progress()).isZero();
+
+        for (int tick = 1; tick < 180; tick++) {
+            scheduler.advance(Duration.ofMillis(50));
+            assertThat(bar.progress()).isEqualTo(tick / 180.0f);
+        }
+        verify(arena, never()).createExplosion(
+                anyDouble(), anyDouble(), anyDouble(), anyFloat(), anyBoolean(), anyBoolean());
+
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(bar.progress()).isEqualTo(1.0f);
+        verify(player).hideBossBar(bar);
+        verify(arena).createExplosion(
+                anyDouble(), anyDouble(), anyDouble(), eq(20.0f), eq(true), eq(true));
+    }
 
     @Test
     void onEntityDeath_marksSavedExplosionOriginOnlyDuringCountdown() {

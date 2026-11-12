@@ -37,7 +37,8 @@ public final class WitherListener implements PriorityListener {
     private static final String HALF_TAG = "Half";
     private static final org.bukkit.NamespacedKey CROWN_ARTIFACT =
             new org.bukkit.NamespacedKey("kreiscraft", "crown_artifact");
-    private static final int DEATH_COUNTDOWN_TICKS = 10;
+    // Preserve the nine-second delay: the original ten one-second callbacks started at t=0.
+    private static final int DEATH_COUNTDOWN_TICKS = 9 * 20;
 
     private final Supplier<WitherConfig> config;
     private final MessageService messages;
@@ -215,21 +216,17 @@ public final class WitherListener implements PriorityListener {
         Map<Player, BossBar> bars = showDeathBars(loc);
 
         int[] tick = {0};
-        int[] particlePulse = {0};
         Scheduler.Task[] taskRef = {null};
-        taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofMillis(200), () -> {
+        taskRef[0] = scheduler.runRepeating(Duration.ZERO, Duration.ofMillis(50), () -> {
             // ponytail: reuse the countdown to mark only the origin, not the blast radius.
-            for (Color color : List.of(Color.RED, Color.ORANGE, Color.BLACK)) {
-                loc.getWorld().spawnParticle(Particle.DUST, loc, 20, 0.6, 0.6, 0.6, 0.0,
-                        new Particle.DustOptions(color, 2.0f));
+            if (tick[0] % 4 == 0) {
+                for (Color color : List.of(Color.RED, Color.ORANGE, Color.BLACK)) {
+                    loc.getWorld().spawnParticle(Particle.DUST, loc, 20, 0.6, 0.6, 0.6, 0.0,
+                            new Particle.DustOptions(color, 2.0f));
+                }
             }
-            // Keep the original one-second countdown cadence while particles pulse at 5 Hz.
-            if (particlePulse[0]++ % 5 != 0) {
-                return;
-            }
-            tick[0]++;
             updateDeathBars(bars, tick[0]);
-            if (tick[0] >= DEATH_COUNTDOWN_TICKS) {
+            if (tick[0]++ >= DEATH_COUNTDOWN_TICKS) {
                 loc.getWorld()
                         .createExplosion(
                                 loc.getX(),
@@ -270,10 +267,9 @@ public final class WitherListener implements PriorityListener {
         Runnable hide = encounter.onCleanup(() -> bars.forEach(Player::hideBossBar));
         int[] tick = {0};
         Scheduler.Task[] task = {null};
-        task[0] = encounter.runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
-            tick[0]++;
+        task[0] = encounter.runRepeating(Duration.ZERO, Duration.ofMillis(50), () -> {
             updateDeathBars(bars, tick[0]);
-            if (tick[0] >= DEATH_COUNTDOWN_TICKS) {
+            if (tick[0]++ >= DEATH_COUNTDOWN_TICKS) {
                 WitherConfig cfg = config.get();
                 loc.getWorld().createExplosion(loc, (float) cfg.deathExplosionPower(), cfg.deathExplosionFire(),
                         cfg.deathExplosionBlockDamage(), wither);
