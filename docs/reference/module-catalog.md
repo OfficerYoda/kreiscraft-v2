@@ -344,8 +344,8 @@ Parses MiniMessage tags, legacy ampersand colour/decoration codes, and establish
 
 **Depends on:** none
 
-`/sit` toggles sitting on an invisible, temporary seat. Sneaking also stands up. The cushion
-(white carpet) in `/settings` closes the menu and runs the same command. Both require
+`/sit` toggles sitting on an invisible, temporary seat. Sneaking also stands up. The white cushion
+in `/settings` closes the menu and runs the same command. Both require
 `kreiscraft.sit.use` (default: true); the cushion is hidden when the module is disabled or
 the player lacks permission. Seats are removed on dismount, quit, death, teleport, and module
 disable. Sitting is not persisted and does not change combat rules. Existing vehicles are left alone.
@@ -398,7 +398,7 @@ Stores a MiniMessage prefix, suffix, and ARGB color for each player, persisted i
 
 Chat and the Tab player list parse the concatenated MiniMessage prefix, literal player name, and suffix without inserting a color or reset. Open prefix tags continue onto the name; closing tags and resets retain their normal meaning. A separating space is added after a visible prefix and before a visible suffix when missing; empty affixes add no spaces. Overhead nametags use the stored Minecraft team color.
 
-Join and leave announcements use the reloadable `modules.status.join-format` and `leave-format` MiniMessage templates, defaulting to `<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>` and the same format with `«` for leaving. Already-suppressed announcements remain suppressed.
+Join and leave announcements use the reloadable `modules.status.join-format` and `leave-format` MiniMessage templates, defaulting to `<gray>[<green>+<gray>]<reset> <player-prefix><name-colored><player-suffix>` and `<gray>[<red>-<gray>]<reset> <player-prefix><name-colored><player-suffix>` for leaving. Already-suppressed announcements remain suppressed.
 
 ### Events published
 
