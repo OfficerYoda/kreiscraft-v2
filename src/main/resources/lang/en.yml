@@ -399,6 +399,14 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  death:
+    bombardment: "<player> was reduced to ashes by the Ender Dragon's bombardment."
+    prey: "<player> became the Ender Dragon's next meal."
+    dive: "<player> stood in the Ender Dragon's flight path."
+    rain: "<player> discovered that dragon fire falls harder than rain."
+    smash: "<player> was crushed by the Ender Dragon."
+    dragon: "<player> challenged the Ender Dragon and lost."
+    minion: "<player> fell to a servant of the Ender Dragon."
   debug-status: "<prefix> <gray>Status: <status></gray>"
   debug-no-encounter: "<prefix> <yellow>No active encounter; enter the configured End arena in survival/adventure.</yellow>"
   debug-target-ineligible: "<prefix> <red>Target must be alive in survival/adventure inside the combat arena, outside protected arrival.</red>"

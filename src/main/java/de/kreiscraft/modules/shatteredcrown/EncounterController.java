@@ -36,6 +36,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
@@ -52,7 +53,7 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 /**
  * Owns one managed battle's attempt, objectives and cancellable work on the server thread.
  * Communication policy: automatic cues stay in-world (displays, sounds, visuals, native boss bars),
- * never chat, action bars or replacement titles. Only explicitly requested debug replies use chat.
+ * never chat, action bars or replacement titles. Only debug replies and native death messages use chat.
  */
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
@@ -65,6 +66,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private ShatteredCrownConfig config;
     private final Scheduler scheduler;
     private final MessageService messages;
+    private AttackDamage attackDamage;
+
+    private record AttackDamage(Player player, EnderDragon source, AttackFamily attack) {
+    }
+
     private final List<Mob> defenders = new ArrayList<>();
     private final java.util.Map<UUID, Anchor> combatOwners = new java.util.HashMap<>();
     private final Set<UUID> groundedArrows = new HashSet<>();
@@ -1052,7 +1058,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         break;
                     }
                     if (isParticipant(player) && lane.contains(player.getLocation(), 0)) {
-                        battles.bombardmentDamage(player, source, config.laneDamage());
+                        damage(player, source, config.laneDamage(), AttackFamily.DIVE, false);
                     }
                 }
             });
@@ -1175,7 +1181,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         break;
                     }
                     if (arena.inBombardment(player.getLocation(), impact, RAIN_RADIUS)) {
-                        battles.referenceDamage(player, shot.source(), config.rainDamage());
+                        damage(player, shot.source(), config.rainDamage(), AttackFamily.RAIN, true);
                     }
                 }
                 if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
@@ -1385,7 +1391,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         // One rolling cooldown across sibling hazards, not one independent clock per pool.
                         poolCooldowns.put(id, encounterTicks
                                 + (long) Math.ceil(Math.max(1, config.poolDamageCadenceSeconds()) * 20));
-                        battles.bombardmentDamage(recipient, source, config.poolDamage());
+                        damage(recipient, source, config.poolDamage(), AttackFamily.PREY, false);
                     }
                 }
             });
@@ -1503,7 +1509,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                             && Math.abs((lane.eastWest ? player.getX() - position.getX()
                                     : player.getZ() - position.getZ())) <= 2
                             && hit.add(player.getUniqueId())) {
-                        flightHit(player, source, config.laneDamage(), position, true);
+                        flightHit(player, source, config.laneDamage(), position, AttackFamily.DIVE);
                     }
                 }
             }, () -> climb(movement, source, config.diveClimbSeconds()));
@@ -1613,7 +1619,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                             if (isParticipant(player) && area.contains(player.getLocation(), 0)) {
                                 flightHit(player, source,
                                         config.sweepDamage() * area.smashDamageScale(player.getLocation()),
-                                        ground, true);
+                                        ground, AttackFamily.SMASH);
                             }
                         }
                         if (owner.isClosed() || movement.isClosed()) {
@@ -1657,19 +1663,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }, movement::close);
     }
 
-    private void flightHit(Player player, EnderDragon source, double amount, Location center) {
-        flightHit(player, source, amount, center, false);
-    }
-
-    private void flightHit(Player player, EnderDragon source, double amount, Location center, boolean reference) {
+    private void flightHit(Player player, EnderDragon source, double amount, Location center, AttackFamily attack) {
         double health = player.getHealth();
         flightDamage = true;
         try {
-            if (reference) {
-                battles.referenceDamage(player, source, amount);
-            } else {
-                battles.bombardmentDamage(player, source, amount);
-            }
+            damage(player, source, amount, attack, true);
         } finally {
             flightDamage = false;
         }
@@ -1679,6 +1677,21 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 direction.setX(1);
             }
             player.setVelocity(direction.normalize().multiply(config.sweepKnockback()).setY(0.4));
+        }
+    }
+
+    private void damage(Player player, EnderDragon source, double amount, AttackFamily attack, boolean reference) {
+        // ponytail: Paper fires death synchronously inside damage; no lasting last-hit attribution to expire.
+        AttackDamage previous = attackDamage;
+        attackDamage = new AttackDamage(player, source, attack);
+        try {
+            if (reference) {
+                battles.referenceDamage(player, source, amount);
+            } else {
+                battles.bombardmentDamage(player, source, amount);
+            }
+        } finally {
+            attackDamage = previous;
         }
     }
 
@@ -1803,7 +1816,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 }
                 if (isParticipant(recipient) && sweep.contains(recipient.getLocation(), 0)) {
                     double before = recipient.getHealth();
-                    battles.bombardmentDamage(recipient, source, config.sweepDamage());
+                    damage(recipient, source, config.sweepDamage(), AttackFamily.SMASH, false);
                     // Native cancellation/armor/invulnerability is authoritative; no successful damage, no shove.
                     if (dragon == source && hunting && isParticipant(recipient) && recipient.getHealth() < before) {
                         var velocity = recipient.getLocation().toVector().subtract(sweep.center.toVector()).setY(0);
@@ -1897,7 +1910,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 }
                 if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
                         config.bombardmentRadius())) {
-                    battles.referenceDamage(player, source, config.bombardmentDamage());
+                    damage(player, source, config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
                 }
             }
         });
@@ -2672,6 +2685,50 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         if (defenders.contains(event.getEntity())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        if (dragon == null || event.deathMessage() == null) {
+            return;
+        }
+        Entity source = deathSource(event.getDamageSource().getCausingEntity());
+        Entity direct = deathSource(event.getDamageSource().getDirectEntity());
+        String cause;
+        if (dragon.equals(source) || dragon.equals(direct)) {
+            cause = "dragon";
+            if (attackDamage != null && attackDamage.player().equals(event.getPlayer())
+                    && attackDamage.source().equals(dragon)
+                    && dragon.equals(event.getDamageSource().getDirectEntity())
+                    && event.getDamageSource().getDamageType() == org.bukkit.damage.DamageType.DRAGON_BREATH) {
+                cause = attackDamage.attack().name().toLowerCase(java.util.Locale.ROOT);
+            }
+        } else if (ownsCombatant(source) || ownsCombatant(direct)
+                || ownsCombatant(event.getDamageSource().getDirectEntity())) {
+            cause = "minion";
+        } else {
+            return;
+        }
+        // Keep Paper's broadcast, cancellation and showDeathMessages gamerule; use the server language.
+        String key = "shattered-crown.death." + cause;
+        Object[] placeholders = {"player", Component.text(event.getPlayer().getName())};
+        event.deathMessage(messages.render(key, placeholders));
+    }
+
+    private static Entity deathSource(Entity entity) {
+        if (entity instanceof ComplexEntityPart part) {
+            return part.getParent();
+        }
+        if (entity instanceof Projectile projectile && projectile.getShooter() instanceof Entity shooter) {
+            return shooter;
+        }
+        if (entity instanceof TNTPrimed tnt && tnt.getSource() != null) {
+            return tnt.getSource();
+        }
+        if (entity instanceof org.bukkit.entity.AreaEffectCloud cloud && cloud.getSource() instanceof Entity owner) {
+            return owner;
+        }
+        return entity;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

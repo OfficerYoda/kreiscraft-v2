@@ -399,6 +399,14 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  death:
+    bombardment: "<player> wurde vom Bombardement des Enderdrachen zu Asche verbrannt."
+    prey: "<player> wurde zur nächsten Mahlzeit des Enderdrachen."
+    dive: "<player> stand dem Enderdrachen im Weg."
+    rain: "<player> lernte, dass Drachenfeuer härter fällt als Regen."
+    smash: "<player> wurde vom Enderdrachen zerschmettert."
+    dragon: "<player> forderte den Enderdrachen heraus und verlor."
+    minion: "<player> fiel einem Diener des Enderdrachen zum Opfer."
   debug-status: "<prefix> <gray>Status: <status></gray>"
   debug-no-encounter: "<prefix> <yellow>Kein aktiver Kampf; betritt die konfigurierte End-Arena im Überlebens- oder Abenteuermodus.</yellow>"
   debug-target-ineligible: "<prefix> <red>Das Ziel muss lebendig im Überlebens- oder Abenteuermodus innerhalb der Kampfarena und außerhalb der geschützten Ankunft sein.</red>"

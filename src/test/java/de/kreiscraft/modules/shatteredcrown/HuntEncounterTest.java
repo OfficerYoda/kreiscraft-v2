@@ -61,6 +61,8 @@ class HuntEncounterTest {
     private CommandRegistrar commands;
     private com.mojang.brigadier.tree.LiteralCommandNode<io.papermc.paper.command.brigadier.CommandSourceStack> debugCommand;
     private int referenceHits;
+    private String language = "en";
+    private java.util.function.Consumer<DamageSource> deathOutcome;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -154,9 +156,15 @@ class HuntEncounterTest {
 
             @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
+                DamageSource damageSource = DamageSource.builder(DamageType.DRAGON_BREATH)
+                        .withDirectEntity(source).withCausingEntity(source).build();
+                if (deathOutcome != null) {
+                    // MockBukkit replaces lethal non-player sources with GENERIC; supply Paper's sourced death event.
+                    deathOutcome.accept(damageSource);
+                    return;
+                }
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
-                        .simulateDamage(amount, DamageSource.builder(DamageType.DRAGON_BREATH)
-                                .withDirectEntity(source).withCausingEntity(source).build());
+                        .simulateDamage(amount, damageSource);
             }
 
             @Override
@@ -220,7 +228,7 @@ class HuntEncounterTest {
         config.node("enabled").set(true);
         config.node("world-key").set(end.getKey().toString());
         module.enable(new ModuleContext(plugin, config,
-                new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server,
+                new ConfigurateMessageService(data, getClass().getClassLoader(), language, server,
                         recipient -> recipient.getName().equals("Deutsch") ? java.util.Optional.of("de")
                                 : java.util.Optional.empty()),
                 new ServiceRegistry(), scheduler, commands, new EventBus(plugin)));
@@ -234,6 +242,125 @@ class HuntEncounterTest {
         var source = mock(io.papermc.paper.command.brigadier.CommandSourceStack.class);
         org.mockito.Mockito.when(source.getSender()).thenReturn(sender);
         return dispatcher.execute("dragondebug " + command, source);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', value = {
+            "en|bombardment| was reduced to ashes by the Ender Dragon's bombardment.",
+            "en|prey| became the Ender Dragon's next meal.",
+            "en|dive| stood in the Ender Dragon's flight path.",
+            "en|fireball-rain| discovered that dragon fire falls harder than rain.",
+            "en|smash| was crushed by the Ender Dragon.",
+            "de|bombardment| wurde vom Bombardement des Enderdrachen zu Asche verbrannt.",
+            "de|prey| wurde zur nächsten Mahlzeit des Enderdrachen.",
+            "de|dive| stand dem Enderdrachen im Weg.",
+            "de|fireball-rain| lernte, dass Drachenfeuer härter fällt als Regen.",
+            "de|smash| wurde vom Enderdrachen zerschmettert."})
+    void fatalAttacksUseTheirOwnDeathMessageInBothLanguages(String locale, String attack, String message)
+            throws Exception {
+        language = locale;
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        player.setHealth(1);
+        var deaths = new java.util.ArrayList<net.kyori.adventure.text.Component>();
+        deathOutcome = source -> {
+            var event = new org.bukkit.event.entity.PlayerDeathEvent(player, source, List.of(), 0,
+                    net.kyori.adventure.text.Component.text("vanilla"), false);
+            server.getPluginManager().callEvent(event);
+            deaths.add(event.deathMessage());
+        };
+        debug("trigger " + attack, player);
+        if (attack.equals("fireball-rain")) {
+            scheduler.advance(Duration.ofSeconds(1));
+            var ball = end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class).iterator().next();
+            ball.teleport(player.getLocation().add(0, 1.5, 0));
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.ProjectileHitEvent(ball, player));
+        } else {
+            scheduler.advance(Duration.ofSeconds(8));
+        }
+        assertThat(deaths).isNotEmpty().allSatisfy(component -> assertThat(
+                net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(component))
+                        .isEqualTo(player.getName() + " " + message));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', value = {
+            "en|dragon| challenged the Ender Dragon and lost.",
+            "de|dragon| forderte den Enderdrachen heraus und verlor.",
+            "en|minion| fell to a servant of the Ender Dragon.",
+            "de|minion| fiel einem Diener des Enderdrachen zum Opfer.",
+            "en|dragon-part| challenged the Ender Dragon and lost.",
+            "en|dragon-cloud| challenged the Ender Dragon and lost.",
+            "en|minion-arrow| fell to a servant of the Ender Dragon.",
+            "en|minion-tnt| fell to a servant of the Ender Dragon."})
+    void nativeEncounterDeathsUseLocalizedFallbacks(String locale, String cause, String message) throws Exception {
+        language = locale;
+        startEncounter();
+        org.bukkit.entity.Entity attacker = cause.startsWith("dragon") ? dragon : defenders().getFirst();
+        switch (cause) {
+            case "dragon-part" -> {
+                var part = mock(org.bukkit.entity.ComplexEntityPart.class);
+                org.mockito.Mockito.when(part.getParent()).thenReturn(dragon);
+                attacker = part;
+            }
+            case "dragon-cloud" -> {
+                var cloud = mock(org.bukkit.entity.AreaEffectCloud.class);
+                org.mockito.Mockito.when(cloud.getSource()).thenReturn(dragon);
+                attacker = cloud;
+            }
+            case "minion-arrow" -> {
+                var arrow = mock(org.bukkit.entity.Arrow.class);
+                org.mockito.Mockito.when(arrow.getShooter()).thenReturn(defenders().getFirst());
+                attacker = arrow;
+            }
+            case "minion-tnt" -> {
+                var tnt = mock(org.bukkit.entity.TNTPrimed.class);
+                org.mockito.Mockito.when(tnt.getSource()).thenReturn(defenders().getFirst());
+                attacker = tnt;
+            }
+            default -> {
+            }
+        }
+        var source = DamageSource.builder(DamageType.MOB_ATTACK).withDirectEntity(attacker).build();
+        var event = new org.bukkit.event.entity.PlayerDeathEvent(player, source, List.of(), 0,
+                net.kyori.adventure.text.Component.text("vanilla"), false);
+        server.getPluginManager().callEvent(event);
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(event.deathMessage())).isEqualTo(player.getName() + " " + message);
+    }
+
+    @Test
+    void unrelatedAndSuppressedDeathsStayUnchangedAndAttackAttributionDoesNotLinger() throws Exception {
+        startEncounter();
+        player.setOp(true);
+        debug("trigger bombardment", player);
+        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(player.getHealth()).isLessThan(20).isGreaterThan(0);
+        var otherDragon = end.spawn(new Location(end, 30, 80, 0), EnderDragon.class);
+        for (var source : List.of(DamageSource.builder(DamageType.FALL).build(),
+                DamageSource.builder(DamageType.MOB_ATTACK).withCausingEntity(otherDragon).build())) {
+            var event = new org.bukkit.event.entity.PlayerDeathEvent(player, source, List.of(), 0,
+                    net.kyori.adventure.text.Component.text("vanilla"), false);
+            server.getPluginManager().callEvent(event);
+            assertThat(event.deathMessage()).isEqualTo(net.kyori.adventure.text.Component.text("vanilla"));
+        }
+        var source = DamageSource.builder(DamageType.DRAGON_BREATH).withDirectEntity(dragon)
+                .withCausingEntity(dragon).build();
+        var later = new org.bukkit.event.entity.PlayerDeathEvent(player, source, List.of(), 0,
+                net.kyori.adventure.text.Component.text("vanilla"), false);
+        server.getPluginManager().callEvent(later);
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(later.deathMessage()))
+                        .isEqualTo(player.getName() + " challenged the Ender Dragon and lost.");
+        for (boolean cancelled : List.of(false, true)) {
+            var suppressed = new org.bukkit.event.entity.PlayerDeathEvent(player, source, List.of(), 0,
+                    cancelled ? net.kyori.adventure.text.Component.text("vanilla") : null, false);
+            suppressed.setCancelled(cancelled);
+            server.getPluginManager().callEvent(suppressed);
+            assertThat(suppressed.deathMessage()).isEqualTo(
+                    cancelled ? net.kyori.adventure.text.Component.text("vanilla") : null);
+        }
     }
 
     @Test
