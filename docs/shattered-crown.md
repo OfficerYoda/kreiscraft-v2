@@ -515,8 +515,9 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
 - Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
   ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
-  and a flame trail with short-lived purple portal accents (two per eight flames) descends
+  and a flame trail with immediately visible purple dust accents (two per eight flames) descends
   from 20 blocks above the marked ground over the warning duration,
+  emitting both types together; their randomized fade-out remains client-controlled.
   updating every server tick. There is no visible countdown; an invisible owned TextDisplay retains
   warning-validity and cleanup checks. A dragon growl accompanies the warning.
   Impact uses a multi-point native explosion particle burst and distinct sound, not a real explosion.

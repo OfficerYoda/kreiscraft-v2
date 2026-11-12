@@ -812,7 +812,7 @@ class HuntEncounterTest {
                     ring.add(location.clone());
                 }
             }
-            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.PORTAL) {
+            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.DUST) {
                 Location location = call.getArgument(2);
                 assertThat(location.getX()).isEqualTo(impact.getX());
                 assertThat(location.getZ()).isEqualTo(impact.getZ());

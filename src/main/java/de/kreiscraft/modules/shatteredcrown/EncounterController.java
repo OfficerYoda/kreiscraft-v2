@@ -1940,8 +1940,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
                 .forEach(player -> {
                     CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
-                    // Portal accents: purple like breath but a much shorter lifetime, so they do not trail behind.
-                    CrownParticles.spawn(player, Particle.PORTAL, flame, 2, 0.15, 0.15, 0.15, 0);
+                    // Dust appears immediately; portal particles grow slowly into view.
+                    CrownParticles.spawn(player, Particle.DUST, flame, 2, 0.15, 0.15, 0.15, 0);
                 });
     }
 
