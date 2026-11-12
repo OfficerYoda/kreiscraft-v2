@@ -799,26 +799,42 @@ class HuntEncounterTest {
         player.setOp(true);
         Location impact = player.getLocation();
         var falling = new java.util.ArrayList<Double>();
+        var accents = new java.util.ArrayList<Double>();
         var ring = new java.util.ArrayList<Location>();
+        int[] bursts = {0};
         try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class, call -> {
             if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.FLAME) {
                 Location location = call.getArgument(2);
                 if (location.getX() == impact.getX() && location.getZ() == impact.getZ()) {
                     falling.add(location.getY());
+                    assertThat(call.<Integer>getArgument(3)).isEqualTo(8);
                 } else {
                     ring.add(location.clone());
                 }
+            }
+            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.DRAGON_BREATH) {
+                Location location = call.getArgument(2);
+                assertThat(location.getX()).isEqualTo(impact.getX());
+                assertThat(location.getZ()).isEqualTo(impact.getZ());
+                assertThat(call.<Integer>getArgument(3)).isEqualTo(1);
+                accents.add(location.getY());
+            }
+            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.EXPLOSION_EMITTER) {
+                bursts[0]++;
+                assertThat(call.<Integer>getArgument(3)).isEqualTo(1);
             }
             return null;
         })) {
             debug("trigger bombardment", player);
             assertThat(falling).containsExactly(impact.getY() + 20);
+            assertThat(accents).containsExactlyElementsOf(falling);
             assertThat(ring).hasSize(32).allSatisfy(location -> assertThat(location.getY())
                     .isCloseTo(impact.getY() + 0.15, org.assertj.core.data.Offset.offset(0.000001)));
             var marker = end.getEntitiesByClass(TextDisplay.class).iterator().next();
             assertThat(marker.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
             scheduler.advance(Duration.ofMillis(warning * 500L));
             assertThat(player.getHealth()).isEqualTo(20);
+            assertThat(bursts[0]).isZero();
             assertThat(falling.getLast()).isCloseTo(impact.getY() + 10.25,
                     org.assertj.core.data.Offset.offset(0.000001));
             assertThat(marker.text()).isEqualTo(net.kyori.adventure.text.Component.empty());
@@ -835,11 +851,13 @@ class HuntEncounterTest {
                         org.assertj.core.data.Offset.offset(0.000001));
             }
             assertThat(referenceHits).isEqualTo(cancel ? 0 : 1);
+            assertThat(bursts[0]).isEqualTo(cancel ? 0 : 1);
+            assertThat(accents).containsExactlyElementsOf(falling);
             assertThat(player.getHealth()).isEqualTo(cancel ? 20 : 14);
             assertThat(marker.isValid()).isFalse();
-            int emitted = falling.size() + ring.size();
+            int emitted = falling.size() + ring.size() + accents.size() + bursts[0];
             scheduler.advance(Duration.ofSeconds(warning + 2));
-            assertThat(falling.size() + ring.size()).isEqualTo(emitted);
+            assertThat(falling.size() + ring.size() + accents.size() + bursts[0]).isEqualTo(emitted);
             assertThat(end.getEntitiesByClass(org.bukkit.entity.Fireball.class)).isEmpty();
         }
     }

@@ -515,10 +515,11 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
 - Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
   ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
-  and a flame trail descends from 20 blocks above the marked ground over the warning duration,
+  and a flame trail with sparse purple dragon-breath accents (one per eight flames) descends
+  from 20 blocks above the marked ground over the warning duration,
   updating every server tick. There is no visible countdown; an invisible owned TextDisplay retains
   warning-validity and cleanup checks. A dragon growl accompanies the warning.
-  Impact uses a distinct explosion visual/sound, not a real explosion.
+  Impact uses a larger native explosion-emitter burst and distinct sound, not a real explosion.
   Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
   attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters
   arrival protection, or if its warning disappears. Footprint rims may overlap arrival geometry;

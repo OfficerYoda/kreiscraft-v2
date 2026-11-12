@@ -1901,7 +1901,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 return;
             }
             participants.stream().limit(64).forEach(player -> {
-                player.spawnParticle(Particle.EXPLOSION, impact.clone().add(0, 0.5, 0), 1);
+                CrownParticles.spawn(player, Particle.EXPLOSION_EMITTER, impact.clone().add(0, 0.5, 0),
+                        1, 0, 0, 0, 0);
                 player.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
             });
             EnderDragon source = dragon;
@@ -1937,7 +1938,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         flame.setY(top + (impact.getY() + 0.5 - top) * Math.min(1, progress));
         // ponytail: cosmetic particles, not a projectile with another collision/damage path.
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
-                .forEach(player -> CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0));
+                .forEach(player -> {
+                    CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
+                    CrownParticles.spawn(player, Particle.DRAGON_BREATH, flame, 1, 0.15, 0.15, 0.15, 0);
+                });
     }
 
     private void cancelPendingBombardment() {
