@@ -11,6 +11,7 @@ import de.kreiscraft.modules.api.metrics.ServerMetricsCollector;
 import de.kreiscraft.modules.api.verification.LinkGuiPrompt;
 import de.kreiscraft.modules.api.verification.VerificationService;
 import de.kreiscraft.modules.api.verification.WhitelistRequests;
+import de.kreiscraft.modules.api.verification.WhitelistReview;
 import de.kreiscraft.modules.api.scene.SceneEvents;
 import de.kreiscraft.shared.chat.ChatBridge;
 import de.kreiscraft.shared.gui.Gui;
@@ -40,6 +41,7 @@ public final class ApiModule implements Module {
     private ServerMetricsCollector metricsCollector;
     private SceneEvents scene;
     private WhitelistRequests whitelistRequests;
+    private WhitelistReview whitelistReview;
 
     // ---- stored from enable() for use in onConfigReload() ----
     private LinkGuiPrompt linkPrompt;
@@ -81,7 +83,12 @@ public final class ApiModule implements Module {
         ctx.events().register(scene);
         this.whitelistRequests = new WhitelistRequests(
                 ctx.plugin().getDataFolder().toPath().resolve("whitelist-requests"),
-                new ObjectMapper(), Clock.systemUTC());
+                new ObjectMapper(), Clock.systemUTC(),
+                entry -> scheduler.runOnMain(() -> whitelistReview.submitted(entry)));
+        this.whitelistReview = new WhitelistReview(whitelistRequests, whitelist, gui, messages,
+                scheduler, bukkitServer, logger);
+        ctx.events().register(whitelistReview);
+        ctx.commands().register(whitelistReview.command(), "Review whitelist requests in-game");
 
         this.server = buildServer(config);
         this.server.start();
@@ -92,6 +99,9 @@ public final class ApiModule implements Module {
 
     @Override
     public void disable() {
+        if (whitelistReview != null) {
+            whitelistReview.shutdown();
+        }
         if (server != null) {
             server.stop();
         }

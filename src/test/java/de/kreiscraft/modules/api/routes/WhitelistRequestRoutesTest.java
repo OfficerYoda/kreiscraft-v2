@@ -88,4 +88,32 @@ class WhitelistRequestRoutesTest {
         assertThat(requests.get("Player0", true, false).statusCode()).isEqualTo(200);
         assertThat(requests.get("Unknown", false, false).statusCode()).isEqualTo(200);
     }
+
+    @Test
+    void publicPollingReportsDecisionsAndOnlyExplicitPostReopensDeniedRequests() {
+        var whitelist = mock(WhitelistService.class);
+        when(whitelist.allNames()).thenReturn(List.of());
+        var submitted = new java.util.ArrayList<WhitelistRequests.Entry>();
+        var requests = new WhitelistRequests(directory, mapper, clock, submitted::add);
+        var app = Javalin.create();
+        WhitelistRequestRoutes.register(app, requests, whitelist, new MockScheduler());
+        JavalinTest.test(app, (server, client) -> {
+            client.post("/whitelist/Alice", RequestBody.create(new byte[0], null));
+            requests.resolve(requests.list().getFirst(), WhitelistRequests.Status.DECLINED);
+            var declined = mapper.readTree(client.get("/whitelist/Alice?reopen=true").body().string());
+            assertThat(declined.get("status").asText()).isEqualTo("declined");
+            assertThat(declined.get("resolvedAt").asText()).isEqualTo(clock.instant().toString());
+            assertThat(client.post("/whitelist/Alice", RequestBody.create(new byte[0], null)).code()).isEqualTo(200);
+            var reopened = client.post("/whitelist/Alice?reopen=true", RequestBody.create(new byte[0], null));
+            assertThat(reopened.code()).isEqualTo(202);
+            assertThat(mapper.readTree(reopened.body().string()).has("resolvedAt")).isFalse();
+            assertThat(submitted).hasSize(2);
+            assertThat(submitted.get(0).submissionId()).isNotEqualTo(submitted.get(1).submissionId());
+            requests.resolve(requests.list().getFirst(), WhitelistRequests.Status.APPROVED);
+            when(whitelist.allNames()).thenReturn(List.of("Alice"));
+            var approved = mapper.readTree(client.get("/whitelist/Alice").body().string());
+            assertThat(approved.get("status").asText()).isEqualTo("whitelisted");
+            assertThat(approved.has("resolvedAt")).isTrue();
+        });
+    }
 }

@@ -119,6 +119,13 @@ Listens on a plugin-messaging channel (default `kreiscraft:mod_checker`) for rep
 
 Starts a Javalin HTTP and WebSocket server. Exposes REST routes for player data, whitelist management, browser↔player account linking, and real-time metrics. WebSocket endpoints relay in-game chat and publish a read-only scene event stream to connected browser clients. Configuration parameters that affect Javalin internals (host, port, CORS origins, session cookie, heartbeat interval, HTTP async timeout) restart the server on reload; metrics refresh and verification timeouts require a full plugin restart.
 
+Whitelist requests submitted by the website are reviewed in-game with
+`/whitelist-requests` and `kreiscraft.api.whitelist-review` (default: op).
+Reviewers receive approve/deny chat buttons for new submissions and a pending count
+on joining. The paginated head menu uses left-click to approve and right-click to
+deny, with approved/denied submenus for revising decisions. Disabling `api` also
+disables request review and its notifications.
+
 ### Services published
 
 - `VerificationService` — manages pending browser–Bukkit account link requests.
