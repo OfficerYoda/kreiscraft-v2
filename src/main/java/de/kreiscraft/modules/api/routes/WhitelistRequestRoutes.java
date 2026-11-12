@@ -21,6 +21,7 @@ public final class WhitelistRequestRoutes {
     private static void handle(Context ctx, boolean submit, WhitelistRequests requests,
             WhitelistService whitelist, Scheduler scheduler) {
         String name = ctx.pathParam("playerName");
+        boolean reopen = "true".equals(ctx.queryParam("reopen"));
         if (!WhitelistRoutes.MC_NAME.matcher(name).matches()) {
             ctx.status(400).json(Map.of("error", "invalid_name"));
             return;
@@ -32,7 +33,7 @@ public final class WhitelistRequestRoutes {
                 boolean whitelisted = whitelist.allNames().stream().anyMatch(name::equalsIgnoreCase);
                 scheduler.runAsync(() -> {
                     try {
-                        response.complete(requests.get(name, submit, whitelisted));
+                        response.complete(requests.get(name, submit, whitelisted, reopen));
                     } catch (IOException e) {
                         response.complete(new WhitelistRequests.Result(503, Map.of("error", "storage_unavailable")));
                     } catch (RuntimeException e) {

@@ -56,6 +56,9 @@ permissions:
   kreiscraft.api.link:
     description: Link a browser session to a Bukkit account via /link-player
     default: true
+  kreiscraft.api.whitelist-review:
+    description: Receive and approve or deny whitelist requests in-game
+    default: op
   kreiscraft.bedrock.admin:
     description: Manage the bedrock whitelist
     default: op

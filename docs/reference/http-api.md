@@ -434,14 +434,18 @@ declined. Re-requesting a `pending` or `whitelisted` name keeps its
 | `resolvedAt`  | RFC 3339 timestamp | When an in-game admin approved or declined. Only for `whitelisted`/`declined`. |
 
 `whitelisted` is derived from the server's actual whitelist, so names added by
-hand in-game report it too. The request record itself stores no decision.
+hand in-game report it too. Request records also persist in-game decisions and their `resolvedAt`.
 
 **Current plugin scope:** Submissions persist across restarts in the plugin's
-`whitelist-requests/` directory and include a stable `submissionId`. In-game
-approval/decline review is a future issue: `declined`, `resolvedAt`, and reopening
-a declined request are reserved for that workflow. The existing admin
+`whitelist-requests/` directory and include a `submissionId` (renewed when reopened).
+Players with `kreiscraft.api.whitelist-review` receive clickable approve/deny chat
+notifications and a pending count on joining. `/whitelist-requests` opens a paginated
+player-head menu: left-click approves, right-click denies. The approved and denied
+submenus allow changing previous decisions. Stale chat actions and menu snapshots
+cannot overwrite a newer decision. Review storage I/O runs asynchronously; a failed
+save restores the previous live whitelist membership and reports an error. The existing admin
 `POST /whitelist` can still add players, and public status reflects the actual
-whitelist. New submissions are limited to 60 distinct names per minute globally;
+whitelist. New or reopened submissions are limited to 60 requests per minute globally;
 an exhausted quota returns `429 {"error": "rate_limited"}`. Storage failures
 return `503 {"error": "storage_unavailable"}` without accepting the request.
 
