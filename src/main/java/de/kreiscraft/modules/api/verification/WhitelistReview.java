@@ -92,8 +92,9 @@ public final class WhitelistReview implements Listener {
                                 if (entry == null) {
                                     messages.send(player, "api.whitelist-stale");
                                 } else {
-                                    decide(player, entry, status, () -> {
-                                    });
+                                    decide(player, entry, status,
+                                            () -> messages.send(player, "api.whitelist-resolved", "player",
+                                                    entry.playerName()));
                                 }
                             });
                         }
@@ -190,8 +191,11 @@ public final class WhitelistReview implements Listener {
             ItemStack head = stack(Material.PLAYER_HEAD, Component.text(entry.playerName(), NamedTextColor.GOLD));
             head.editMeta(SkullMeta.class, meta -> {
                 meta.setPlayerProfile(Bukkit.createProfile(entry.playerName()));
-                meta.lore(List.of(messages.renderFor(player, "api.whitelist-click-hint")
-                        .decoration(TextDecoration.ITALIC, false)));
+                meta.lore(List.of(
+                        messages.renderFor(player, "api.whitelist-approve-hint").decoration(TextDecoration.ITALIC,
+                                false),
+                        messages.renderFor(player, "api.whitelist-deny-hint").decoration(TextDecoration.ITALIC,
+                                false)));
             });
             head.setData(DataComponentTypes.TOOLTIP_DISPLAY,
                     TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.PROFILE).build());
@@ -254,7 +258,7 @@ public final class WhitelistReview implements Listener {
         return stack;
     }
 
-    private void decide(Player player, Entry entry, Status status, Runnable refresh) {
+    private void decide(Player player, Entry entry, Status status, Runnable onSuccess) {
         if (!authorized(player)) {
             return;
         }
@@ -295,8 +299,7 @@ public final class WhitelistReview implements Listener {
                     }
                     failure(player, result);
                 } else if (authorized(player)) {
-                    messages.send(player, "api.whitelist-resolved", "player", entry.playerName());
-                    refresh.run();
+                    onSuccess.run();
                 }
             });
         });

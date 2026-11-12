@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -127,6 +128,7 @@ class WhitelistReviewTest {
         assertThat(members).containsExactly("Alice");
         var restarted = new WhitelistRequests(directory, new ObjectMapper(), clock);
         assertThat(restarted.list().getFirst().status()).isEqualTo(Status.APPROVED);
+        verify(messages, never()).send(admin, "api.whitelist-resolved", "player", "Alice");
     }
 
     @Test
@@ -146,8 +148,11 @@ class WhitelistReviewTest {
                 assertThat(tooltip.hideTooltip()).isFalse();
                 assertThat(tooltip.hiddenComponents()).containsExactly(DataComponentTypes.PROFILE);
                 assertThat(head.getItemMeta().displayName().color()).isEqualTo(NamedTextColor.GOLD);
-                String lore = MiniMessage.miniMessage().serialize(head.getItemMeta().lore().getFirst());
-                assertThat(lore).contains(language.equals("en") ? "<green>approve" : "<green>annehmen")
+                var lore = head.getItemMeta().lore();
+                assertThat(lore).hasSize(2);
+                assertThat(MiniMessage.miniMessage().serialize(lore.get(0)))
+                        .contains(language.equals("en") ? "<green>approve" : "<green>annehmen");
+                assertThat(MiniMessage.miniMessage().serialize(lore.get(1)))
                         .contains(language.equals("en") ? "<red>deny" : "<red>ablehnen");
             }
         }
@@ -159,6 +164,7 @@ class WhitelistReviewTest {
         var original = requests.list().getFirst();
         var stale = review.build(admin, requests.list(), Status.PENDING, 0);
         execute("approve Alice " + original.submissionId());
+        verify(messages).send(admin, "api.whitelist-resolved", "player", "Alice");
         execute("deny Alice " + original.submissionId());
         assertThat(members).containsExactly("Alice");
         click(stale, 0, ClickType.RIGHT);
