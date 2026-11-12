@@ -48,6 +48,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    maxHeapSize = "2g"
     // Exclude paperweight's mapped server jar from the test classpath so that
     // MockBukkit can provide its own mock server implementation without conflicts.
     classpath = classpath.filter { !it.path.contains("paperweight") }

@@ -2024,6 +2024,7 @@ class HuntEncounterTest {
             // Five minutes of real public native-phase arrivals per attempt, not a private attack driver.
             for (int second = 0; second < 300; second++) {
                 scheduler.advance(Duration.ofSeconds(1));
+                end.clearSpawnedParticles(); // MockBukkit retains every particle; this test checks owned artifacts.
                 if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
                     dragon.teleport(new Location(end, 0, 67, 0));
                     nativePhase(EnderDragon.Phase.LAND_ON_PORTAL);
