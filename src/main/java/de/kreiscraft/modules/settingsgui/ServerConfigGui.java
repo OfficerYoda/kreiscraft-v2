@@ -414,7 +414,7 @@ public final class ServerConfigGui {
             case "update-mode" -> Material.REDSTONE_LAMP;
             case "wither" -> Material.WITHER_SKELETON_SKULL;
             case "shattered-crown" -> Material.DRAGON_HEAD;
-            case "world-mgmt" -> Material.GRASS_BLOCK;
+            case "world-mgmt" -> Material.END_PORTAL_FRAME;
             default -> Material.PAPER;
         };
     }
