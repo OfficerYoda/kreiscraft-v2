@@ -812,21 +812,22 @@ class HuntEncounterTest {
                     ring.add(location.clone());
                 }
             }
-            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.DRAGON_BREATH) {
+            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.PORTAL) {
                 Location location = call.getArgument(2);
                 assertThat(location.getX()).isEqualTo(impact.getX());
                 assertThat(location.getZ()).isEqualTo(impact.getZ());
-                assertThat(call.<Integer>getArgument(3)).isEqualTo(1);
+                assertThat(call.<Integer>getArgument(3)).isEqualTo(2);
                 accents.add(location.getY());
             }
-            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.EXPLOSION_EMITTER) {
+            if (call.getArgument(0) == player && call.getArgument(1) == org.bukkit.Particle.EXPLOSION) {
                 bursts[0]++;
-                assertThat(call.<Integer>getArgument(3)).isEqualTo(1);
+                assertThat(call.<Integer>getArgument(3)).isEqualTo(4);
             }
             return null;
         })) {
             debug("trigger bombardment", player);
             assertThat(falling).containsExactly(impact.getY() + 20);
+            // Each accent call carries count 2 (two purple particles per eight flames).
             assertThat(accents).containsExactlyElementsOf(falling);
             assertThat(ring).hasSize(32).allSatisfy(location -> assertThat(location.getY())
                     .isCloseTo(impact.getY() + 0.15, org.assertj.core.data.Offset.offset(0.000001)));

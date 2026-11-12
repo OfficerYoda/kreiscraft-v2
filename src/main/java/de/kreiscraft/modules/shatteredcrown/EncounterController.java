@@ -1901,8 +1901,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 return;
             }
             participants.stream().limit(64).forEach(player -> {
-                CrownParticles.spawn(player, Particle.EXPLOSION_EMITTER, impact.clone().add(0, 0.5, 0),
-                        1, 0, 0, 0, 0);
+                CrownParticles.spawn(player, Particle.EXPLOSION, impact.clone().add(0, 0.5, 0),
+                        4, 1.5, 1.5, 1.5, 0);
                 player.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
             });
             EnderDragon source = dragon;
@@ -1940,7 +1940,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
                 .forEach(player -> {
                     CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
-                    CrownParticles.spawn(player, Particle.DRAGON_BREATH, flame, 1, 0.15, 0.15, 0.15, 0);
+                    // Portal accents: purple like breath but a much shorter lifetime, so they do not trail behind.
+                    CrownParticles.spawn(player, Particle.PORTAL, flame, 2, 0.15, 0.15, 0.15, 0);
                 });
     }
 
