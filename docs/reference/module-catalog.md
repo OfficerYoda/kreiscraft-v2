@@ -13,7 +13,7 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `admin` | `de.kreiscraft.modules.admin` | stable | none | item, skull, head, spawnmob, ip, uuid, lastonline, ping, tps, statistic, sudo, kreiscrafthelp | General admin utility commands (item spawning, player info, TPS). |
 | `ai-chat` | `de.kreiscraft.modules.aichat` | stable | none | — | Chat-triggered AI replies via the OpenRouter chat-completions API. |
 | `anti-cheat` | `de.kreiscraft.modules.anticheat` | stable | none | hackerlogs | Detects Fabric/Forge clients via plugin messaging and persists hack reports from an external mod-checker. |
-| `api` | `de.kreiscraft.modules.api` | stable | none | — | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
+| `api` | `de.kreiscraft.modules.api` | stable | none | whitelist-requests | Javalin HTTP/WebSocket server exposing player data, whitelist management, metrics, and a bidirectional chat bridge. |
 | `bedrock` | `de.kreiscraft.modules.bedrock` | stable | none | bedrocklist | Detects and tracks Bedrock Edition players by username prefix; allows adding them to the whitelist. |
 | `chat-format` | `de.kreiscraft.modules.chatformat` | stable | `status` | — | Renders chat messages with a configurable MiniMessage template that embeds status prefix/suffix. |
 | `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | none | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences. |

@@ -29,6 +29,8 @@ Complete reference for all Kreiscraft commands and permission nodes.
 | `/sudo <target\|all> <text>` | — | `admin` | Force a player (or all players) to send a chat message. | `kreiscraft.admin.sudo` | op |
 | `/kreiscrafthelp` | `?`, `kchelp` | `admin` | Show configured website/Discord/YouTube help links. | `kreiscraft.admin.help` | true |
 | `/hackerlogs <target> [cheats\|xray]` | — | `anti-cheat` | View stored hack-log entries for a player selector (`@a` shows every selected player). | `kreiscraft.anticheat.view` | op |
+| `/whitelist-requests` | — | `api` | Open the paginated whitelist-request review menu. | `kreiscraft.api.whitelist-review` | op |
+| `/whitelist-requests approve\|deny <name> <submissionId>` | — | `api` | Approve or deny a specific whitelist request by name and submission id. | `kreiscraft.api.whitelist-review` | op |
 | `/bedrocklist add <name>` | — | `bedrock` | Register a Pending Bedrock Authorization by name for pre-login access. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist remove <name>` | — | `bedrock` | Explicitly remove a Bedrock authorization and revoke a bound whitelist entry. | `kreiscraft.bedrock.admin` | op |
 | `/bedrocklist list` | — | `bedrock` | List every known Bedrock player name in deterministic order. | `kreiscraft.bedrock.admin` | op |
@@ -113,6 +115,7 @@ Nodes are listed exactly as declared in `plugin.yml`, grouped by module. The **D
 ### `api` module
 
 - `kreiscraft.api.link` — **(true)** — Link a browser session to a Bukkit account via `/link-player`.
+- `kreiscraft.api.whitelist-review` — **(op)** — Receive and approve or deny whitelist requests in-game.
 
 ### `bedrock` module
 
