@@ -157,6 +157,59 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1,1,false", "1,4,false", "1,20,false", "2,4,false",
+            "2,10,false", "2,20,false", "3,4,false", "3,20,false", "2,20,true"})
+    void everyWaveSpreadsAllMobTypesAroundTheirOwnCrystal(int wave, int population, boolean holes) throws Exception {
+        if (holes) {
+            for (int[] offset : List.of(new int[] {24, 0}, new int[] {0, 24}, new int[] {-24, 0}, new int[] {0, -24})) {
+                for (int y = end.getMinHeight(); y <= 63; y++) {
+                    end.getBlockAt(offset[0] + 3, y, offset[1]).setType(Material.AIR);
+                }
+            }
+        }
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        try {
+            encounter.debugWave(wave, population, player);
+            var roots = defenders().stream().filter(mob -> mob.getVehicle() == null).toList();
+            assertThat(roots).isNotEmpty();
+            for (var crystal : crystals()) {
+                var assigned = roots.stream().filter(mob -> crystal.getUniqueId().equals(encounter.anchorId(mob)))
+                        .toList();
+                assertThat(assigned).isNotEmpty();
+                for (int i = 0; i < assigned.size(); i++) {
+                    Location site = assigned.get(i).getLocation();
+                    assertThat(Math.hypot(site.getX() - crystal.getX(), site.getZ() - crystal.getZ()))
+                            .isGreaterThanOrEqualTo(3 - 0.000001);
+                    assertThat(site.getBlock().getRelative(0, -1, 0).getType().isSolid()).isTrue();
+                    for (int j = i + 1; j < assigned.size(); j++) {
+                        Location other = assigned.get(j).getLocation();
+                        assertThat(Math.hypot(site.getX() - other.getX(), site.getZ() - other.getZ()))
+                                .isGreaterThanOrEqualTo(3 - 0.000001);
+                    }
+                }
+                if (assigned.size() > 1 && !holes) {
+                    assertThat(assigned.stream().mapToDouble(mob -> mob.getX()).average().orElseThrow())
+                            .isCloseTo(crystal.getX(), org.assertj.core.data.Offset.offset(0.000001));
+                    assertThat(assigned.stream().mapToDouble(mob -> mob.getZ()).average().orElseThrow())
+                            .isCloseTo(crystal.getZ(), org.assertj.core.data.Offset.offset(0.000001));
+                }
+            }
+            for (Mob mob : defenders()) {
+                for (Entity passenger : mob.getPassengers()) {
+                    assertThat(encounter.anchorId(passenger)).isEqualTo(encounter.anchorId(mob));
+                    assertThat(passenger.getLocation()).isEqualTo(mob.getLocation());
+                }
+            }
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void registryRejectsCrownWhenWitherIsMissingOrDisabled(boolean registered) throws Exception {
         var root = BasicConfigurationNode.root();
@@ -868,8 +921,9 @@ class LifecycleEncounterTest {
             var members = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(anchor.getUniqueId()))
                     .toList();
             counts.add(members.size());
+            // With the roster cap, spaced roots fit within five 3-block rings on this flat arena.
             assertThat(members).allSatisfy(mob -> assertThat(mob.getLocation().distanceSquared(anchor.getLocation()))
-                    .isLessThan(25));
+                    .isBetween(9 - 0.000001, 225 + 0.000001));
         }
         assertThat(java.util.Collections.max(counts) - java.util.Collections.min(counts))
                 .isZero();

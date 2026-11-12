@@ -62,6 +62,7 @@ class FinalEncounterTest {
     private ShatteredCrownModule module;
     private ConfigurationNode config;
     private List<Location> openingLocations;
+    private ServiceRegistry services;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -159,11 +160,12 @@ class FinalEncounterTest {
     }
 
     private void opening() throws Exception {
+        services = new ServiceRegistry();
         module.enable(new ModuleContext(plugin, config,
                 new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server,
                         recipient -> recipient.getName().equals("Deutsch") ? java.util.Optional.of("de")
                                 : java.util.Optional.empty()),
-                new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
+                services, scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
         scheduler.advance(Duration.ZERO);
         openingLocations = crystals().stream().map(Entity::getLocation).toList();
     }
@@ -429,8 +431,9 @@ class FinalEncounterTest {
         assertThat(pair).hasSize(4);
         var first = pair.get(reverse ? 1 : 0);
         var second = pair.get(reverse ? 0 : 1);
+        var encounter = (EncounterController) services.get(EncounterService.class);
         var firstWave = List.copyOf(defenders()).stream()
-                .filter(defender -> defender.getLocation().distanceSquared(first.getLocation()) < 9).toList();
+                .filter(defender -> first.getUniqueId().equals(encounter.anchorId(defender))).toList();
         assertThat(firstWave).hasSize(1);
         firstWave.forEach(defender -> {
             defeat(defender);

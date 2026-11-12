@@ -93,6 +93,12 @@ movement/combat without custom attack goals or a second damage engine.
 One online player produces16 members with one tower; four produce64 with two towers; twelve produce192 with six towers.
 Three-member towers are allocated around the ring first, then intact mounted pairs go to the least-populated Anchor.
 Individual undead fill the remaining roster and balance all four Anchors to exactly `4 * p` members each.
+All three waves place independent mobs and intact passenger groups in one shared layout around each
+crystal, regardless of species. Spawn positions are equally spaced on 3-block-step concentric rings,
+with at least 3 blocks between independent roots and from crystals. Placement alternates opposite
+sides rather than collecting each species in an arc. Nearby footing searches avoid occupied positions;
+replacement/return placement uses the same layout. Native riders and towers remain attached, and
+roster counts, equipment and Anchor membership do not change.
 Tower species rotate deterministically by tower ordinal. About35% of armor-capable undead
 receive one or two unenchanted leather/chainmail pieces with occasional iron (5/13 for one player).
 No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup

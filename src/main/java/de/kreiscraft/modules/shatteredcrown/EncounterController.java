@@ -60,6 +60,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private static final double RAIN_RADIUS = 5;
     private static final int MAX_MOB_POPULATION = 20;
+    private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
+            EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
     private final Server server;
     private final DragonBattleAccess battles;
     private ShatteredCrownConfig nextConfig;
@@ -471,6 +473,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         private final List<Mob> wave = new ArrayList<>();
         private boolean waveInstalled;
         private int recoveryPasses;
+        private int spawnCount;
+        private int spawnIndex;
 
         private Anchor(EnderCrystal crystal, Location home) {
             this.crystal = crystal;
@@ -2124,7 +2128,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private Mob spawnDefender(Anchor anchor) {
-        return spawnCombatant(arena.defenderSite(anchor.home), EntityType.valueOf(config.defenderType()), anchor,
+        return spawnCombatant(defenderSite(anchor), EntityType.valueOf(config.defenderType()), anchor,
                 defender -> {
                     battles.preventDespawn(defender);
                     defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
@@ -2132,6 +2136,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
                     defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
                 });
+    }
+
+    private Location defenderSite(Anchor anchor) {
+        var occupied = java.util.stream.Stream.concat(anchors.stream().map(objective -> objective.home),
+                defenders.stream().filter(mob -> mob.isValid() && !mob.isDead()).map(Mob::getLocation)).toList();
+        return arena.defenderSite(anchor.home, anchor.spawnIndex++, anchor.spawnCount,
+                occupied);
     }
 
     private EnderCrystal spawnAnchor(Location ground) {
@@ -2201,6 +2212,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private void installAnchor(Location ground, List<OpeningGroup> openingGroups) {
         var objective = new Anchor(spawnAnchor(ground), ground);
         anchors.add(objective);
+        int total = waveNumber == 2 ? SECOND_ROSTER_TYPES.stream().mapToInt(this::secondRosterCount).sum()
+                : rosterUnits + Math.min(rosterUnits, Math.max(2, (rosterUnits + 1) / 2));
+        objective.spawnCount = waveNumber == 1 ? openingGroups.size()
+                : (total + openingGround.size() - 1 - anchors.indexOf(objective)) / openingGround.size();
         if (waveNumber == 1) {
             for (var group : openingGroups) {
                 spawnOpeningGroup(objective, group);
@@ -2222,14 +2237,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             int anchorIndex = anchors.indexOf(objective);
             int anchorCount = openingGround.size();
             if (unit % anchorCount == anchorIndex) {
-                spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective,
+                spawnCombatant(defenderSite(objective), EntityType.WARDEN, objective,
                         battles::preventDespawn);
             }
             int withers = Math.max(2, (rosterUnits + 1) / 2);
             // Continue around the ring after the Wardens to balance both species and total counts.
             if (unit < withers && (unit + rosterUnits) % anchorCount == anchorIndex) {
                 // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
-                spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
+                spawnCombatant(defenderSite(objective), EntityType.WITHER, objective,
                         mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
             }
             return;
@@ -2241,19 +2256,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
 
     private void spawnSecondRoster(Anchor objective) {
         int offset = 0;
-        for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
-                EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX)) {
-            int count = switch (species) {
-                case RAVAGER, BREEZE -> (7 * rosterUnits + 9) / 10;
-                case VEX -> (3 * rosterUnits + 1) / 2;
-                case PIGLIN_BRUTE -> 2 * rosterUnits;
-                default -> rosterUnits;
-            };
+        for (EntityType species : SECOND_ROSTER_TYPES) {
+            int count = secondRosterCount(species);
             for (int member = 0; member < count; member++) {
                 if ((offset + member) % openingGround.size() != anchors.indexOf(objective)) {
                     continue;
                 }
-                spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
+                spawnCombatant(defenderSite(objective), species, objective, defender -> {
                     battles.preventDespawn(defender);
                     var damage = defender.getAttribute(Attribute.ATTACK_DAMAGE);
                     if (damage != null) {
@@ -2272,13 +2281,22 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
     }
 
+    private int secondRosterCount(EntityType species) {
+        return switch (species) {
+            case RAVAGER, BREEZE -> (7 * rosterUnits + 9) / 10;
+            case VEX -> (3 * rosterUnits + 1) / 2;
+            case PIGLIN_BRUTE -> 2 * rosterUnits;
+            default -> rosterUnits;
+        };
+    }
+
     private void spawnOpeningGroup(Anchor objective, OpeningGroup group) {
-        Location site = objective.home;
+        Location site = defenderSite(objective);
         switch (group.kind()) {
-            case 0 -> spawnOpeningPair(objective, site.clone().add(-2, 0, 0), EntityType.ZOMBIE_HORSE,
+            case 0 -> spawnOpeningPair(objective, site, EntityType.ZOMBIE_HORSE,
                     EntityType.ZOMBIE);
-            case 1 -> spawnOpeningPair(objective, site.clone().add(2, 0, 0), EntityType.SPIDER, EntityType.SKELETON);
-            case 2 -> spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER,
+            case 1 -> spawnOpeningPair(objective, site, EntityType.SPIDER, EntityType.SKELETON);
+            case 2 -> spawnOpeningPair(objective, site, EntityType.CAVE_SPIDER,
                     EntityType.BOGGED);
             case 3 -> {
                 int variation = group.unit();
@@ -2290,7 +2308,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     // Native passengers control the stack; a melee crown cannot reach players several mobs below.
                     EntityType type = member == 2 ? crowns.get(variation % crowns.size())
                             : types.get((variation + member) % types.size());
-                    Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
+                    Mob next = spawnCombatant(site, type, objective,
                             openingInitializer(type));
                     if (previous != null && !previous.addPassenger(next)) {
                         throw new IllegalStateException("Opening tower attachment was refused");
@@ -2302,14 +2320,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
                         EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
                 EntityType type = types.get(group.unit() % types.size());
-                spawnCombatant(arena.defenderSite(site), type, objective, openingInitializer(type));
+                spawnCombatant(site, type, objective, openingInitializer(type));
             }
             default -> throw new IllegalArgumentException("Unknown opening group " + group.kind());
         }
     }
 
     private void spawnOpeningPair(Anchor objective, Location site, EntityType mountType, EntityType riderType) {
-        site = arena.defenderSite(site);
         Mob mount = spawnCombatant(site, mountType, objective, openingInitializer(mountType));
         var initialize = openingInitializer(riderType);
         Mob rider = spawnCombatant(site, riderType, mount, mob -> {
@@ -2385,14 +2402,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     waveWork.forget(defender);
                     anchor.wave.remove(i--);
                     defender.remove();
-                    spawnCombatant(arena.defenderSite(home), defender.getType(), anchor,
+                    spawnCombatant(defenderSite(anchor), defender.getType(), anchor,
                             initialize == null ? battles::preventDespawn : initialize);
                     continue;
                 }
                 Location location = defender.getLocation();
                 if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
                         || arena.protectedArrival(location)) {
-                    defender.teleport(arena.defenderSite(home));
+                    defender.teleport(defenderSite(anchor));
                 }
                 Location targetOrigin = defender.getLocation();
                 battles.targetDefender(defender, home.getWorld().getPlayers().stream().filter(arena::participant)
