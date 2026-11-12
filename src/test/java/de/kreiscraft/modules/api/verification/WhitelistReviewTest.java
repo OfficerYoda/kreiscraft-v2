@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,12 +16,14 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mojang.brigadier.CommandDispatcher;
 import de.kreiscraft.core.message.MessageService;
+import de.kreiscraft.core.message.ConfigurateMessageService;
 import de.kreiscraft.core.scheduler.Scheduler;
 import de.kreiscraft.modules.api.verification.WhitelistRequests.Status;
 import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.whitelist.WhitelistService;
 import de.kreiscraft.testsupport.MockScheduler;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +37,8 @@ import java.util.Set;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -45,6 +50,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import xyz.xenondevs.invui.Click;
+import xyz.xenondevs.invui.item.ItemWrapper;
 
 class WhitelistReviewTest {
     @TempDir
@@ -121,6 +127,30 @@ class WhitelistReviewTest {
         assertThat(members).containsExactly("Alice");
         var restarted = new WhitelistRequests(directory, new ObjectMapper(), clock);
         assertThat(restarted.list().getFirst().status()).isEqualTo(Status.APPROVED);
+    }
+
+    @Test
+    void headsHideOnlyProfileTooltipAndUseLocalizedActionColors() throws Exception {
+        requests.get("Alice", true, false);
+        for (String language : List.of("en", "de")) {
+            var localized = new ConfigurateMessageService(directory.resolve(language), getClass().getClassLoader(),
+                    language, server);
+            // MockBukkit's ItemStack clone drops data components; inspect the stack handed to InvUI.
+            try (var wrappers = mockConstruction(ItemWrapper.class, (wrapper, context) -> when(wrapper.get())
+                    .thenReturn((org.bukkit.inventory.ItemStack) context.arguments().getFirst()))) {
+                var menu = new WhitelistReview(requests, whitelist, facade, localized, new MockScheduler(), server,
+                        Logger.getLogger("whitelist-test")).build(admin, requests.list(), Status.PENDING, 0);
+                var head = menu.getItem(0).getItemProvider(admin).get();
+                var tooltip = head.getData(DataComponentTypes.TOOLTIP_DISPLAY);
+                assertThat(tooltip).isNotNull();
+                assertThat(tooltip.hideTooltip()).isFalse();
+                assertThat(tooltip.hiddenComponents()).containsExactly(DataComponentTypes.PROFILE);
+                assertThat(head.getItemMeta().displayName().color()).isEqualTo(NamedTextColor.GOLD);
+                String lore = MiniMessage.miniMessage().serialize(head.getItemMeta().lore().getFirst());
+                assertThat(lore).contains(language.equals("en") ? "<green>approve" : "<green>annehmen")
+                        .contains(language.equals("en") ? "<red>deny" : "<red>ablehnen");
+            }
+        }
     }
 
     @Test

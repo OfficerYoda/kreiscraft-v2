@@ -11,6 +11,8 @@ import de.kreiscraft.shared.gui.Gui;
 import de.kreiscraft.shared.whitelist.WhitelistService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -184,12 +187,14 @@ public final class WhitelistReview implements Listener {
                 ". . . . . . . . .", ". . . . . . . . .", ". . . . . . . . .").build();
         for (int index = page * 45; index < Math.min(visible.size(), (page + 1) * 45); index++) {
             Entry entry = visible.get(index);
-            ItemStack head = stack(Material.PLAYER_HEAD, Component.text(entry.playerName()));
+            ItemStack head = stack(Material.PLAYER_HEAD, Component.text(entry.playerName(), NamedTextColor.GOLD));
             head.editMeta(SkullMeta.class, meta -> {
                 meta.setPlayerProfile(Bukkit.createProfile(entry.playerName()));
                 meta.lore(List.of(messages.renderFor(player, "api.whitelist-click-hint")
                         .decoration(TextDecoration.ITALIC, false)));
             });
+            head.setData(DataComponentTypes.TOOLTIP_DISPLAY,
+                    TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.PROFILE).build());
             menu.setItem(index % 45, item(head, (viewer, click) -> {
                 if (click == ClickType.LEFT || click == ClickType.RIGHT) {
                     load(viewer, current -> {

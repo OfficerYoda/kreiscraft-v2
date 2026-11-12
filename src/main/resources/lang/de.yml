@@ -231,7 +231,7 @@ api:
   whitelist-approved-tab: "Angenommene Spieler"
   whitelist-declined-tab: "Abgelehnte Spieler"
   whitelist-refresh: "Aktualisieren"
-  whitelist-click-hint: "<gray>Linksklick: annehmen | Rechtsklick: ablehnen"
+  whitelist-click-hint: "<gray>Linksklick: <green>annehmen</green> | Rechtsklick: <red>ablehnen</red>"
   whitelist-resolved: "<prefix> <green>Whitelist-Entscheidung für <player> gespeichert."
   whitelist-stale: "<prefix> <yellow>Diese Anfrage wurde geändert oder bereits geprüft. Aktualisiere mit /whitelist-requests."
   whitelist-busy: "<prefix> <yellow>Eine Whitelist-Entscheidung wird gespeichert. Versuche es gleich erneut."
