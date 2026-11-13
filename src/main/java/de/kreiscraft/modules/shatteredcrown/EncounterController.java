@@ -1221,43 +1221,66 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 break;
             }
             owner.own(mark, "prey");
-            owner.onCleanup(() -> marks.remove(target.getUniqueId(), mark));
+            owner.onCleanup(() -> {
+                marks.remove(target.getUniqueId(), mark);
+                if (target.isOnline()) {
+                    target.sendActionBar(Component.empty());
+                }
+            });
             battles.faceWarningToViewer(mark);
             if (owner.isClosed()) {
                 return;
             }
             marks.put(target.getUniqueId(), mark);
             final double[] age = {0};
-            mark.text(Component.text(target.getName() + " · " + config.preyCountdownSeconds() + "s",
-                    NamedTextColor.GOLD));
+            Component timer = preyTimer(config.preyCountdownSeconds());
+            mark.text(timer);
+            target.sendActionBar(timer);
             target.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
             final Scheduler.Task[] refresh = new Scheduler.Task[1];
-            refresh[0] = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            final int[] pulses = {0};
+            final boolean[] circleLocked = {false};
+            final Location[] lockedGround = {null};
+            refresh[0] = owner.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
                 if (!isParticipant(target) || !mark.isValid()) {
                     cancelMark(target);
                     refresh[0].cancel();
                     return;
                 }
-                age[0] += 0.25;
+                age[0] += 0.05;
                 double remaining = Math.max(0, config.preyCountdownSeconds() - age[0]);
-                mark.teleport(target.getLocation().add(0, 2.5, 0));
-                mark.text(Component.text(
-                        target.getName() + " · " + String.format(java.util.Locale.ROOT, "%.1fs", remaining),
-                        NamedTextColor.GOLD));
-                Location ground = arena.groundBelow(target.getLocation());
-                if (ground != null) {
-                    drawAreaRing(new HuntArea(ground, config.poolRadius()), Particle.FLAME);
+                if (!circleLocked[0] && remaining <= 1.0000001) {
+                    circleLocked[0] = true;
+                    Location ground = arena.groundBelow(target.getLocation());
+                    lockedGround[0] = ground == null ? null : ground.clone();
+                }
+                if (!circleLocked[0]) {
+                    mark.teleport(target.getLocation().add(0, 2.5, 0));
+                } else if (lockedGround[0] != null) {
+                    mark.teleport(lockedGround[0].clone().add(0, 2.5, 0));
+                }
+                if (++pulses[0] % 2 == 0) {
+                    Component nextTimer = preyTimer(remaining);
+                    mark.text(nextTimer);
+                    target.sendActionBar(nextTimer);
+                    Location ground = circleLocked[0] ? lockedGround[0] : arena.groundBelow(target.getLocation());
+                    if (ground != null) {
+                        drawAreaRing(new HuntArea(ground, config.poolRadius()), Particle.FLAME);
+                    }
                 }
             });
             owner.later(seconds(config.preyCountdownSeconds()), () -> {
                 boolean valid = isParticipant(target) && mark.isValid() && marks.containsValue(mark);
                 mark.remove();
                 marks.remove(target.getUniqueId(), mark);
+                if (target.isOnline()) {
+                    target.sendActionBar(Component.empty());
+                }
                 refresh[0].cancel();
                 if (!valid || landingRequested) {
                     return;
                 }
-                Location ground = arena.groundBelow(target.getLocation());
+                Location ground = circleLocked[0] ? lockedGround[0] : arena.groundBelow(target.getLocation());
                 if (ground == null) {
                     server.getLogger().fine("[Shattered Crown] Prey pool skipped: no nearby footing");
                     return;
@@ -2780,10 +2803,18 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         var mark = marks.remove(player.getUniqueId());
         if (mark != null) {
             mark.remove();
+            if (player.isOnline()) {
+                player.sendActionBar(Component.empty());
+            }
             if (marks.isEmpty() && mainAttack == DebugAttack.PREY && mainWork != null) {
                 mainWork.close();
             }
         }
+    }
+
+    private static Component preyTimer(double remaining) {
+        return Component.text(String.format(java.util.Locale.ROOT, "%.1fs", Math.max(0, remaining)),
+                NamedTextColor.GOLD);
     }
 
     private void clearDefenderTargets(Player player) {

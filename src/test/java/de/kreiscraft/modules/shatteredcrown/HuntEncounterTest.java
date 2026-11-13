@@ -679,7 +679,11 @@ class HuntEncounterTest {
             case LANDING -> assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         }
         assertThat(messages(player)).isEmpty();
-        assertThat(actionBars(player)).isEmpty();
+        if (attack == EncounterController.DebugAttack.PREY) {
+            assertThat(actionBars(player)).contains("4.0s");
+        } else {
+            assertOnlyPreyTimers(player);
+        }
         debug("cancel", player);
         assertThat(messages(player)).singleElement().asString().contains("mode=manual", "attack=none");
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
@@ -1048,7 +1052,7 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofMillis(2250));
             particles.verifyNoInteractions();
             assertThat(messages(player)).isEmpty();
-            assertThat(actionBars(player)).isEmpty();
+            assertOnlyPreyTimers(player);
             assertThat(referenceHits).isEqualTo(1);
         }
     }
@@ -1196,10 +1200,10 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         var mark = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                .serialize(mark.text())).contains(player.getName(), "3.0s");
+                .serialize(mark.text())).isEqualTo("3.0s");
+        assertThat(actionBars(player)).contains("4.0s", "3.0s");
         assertThat(messages(player)).isEmpty();
         assertThat(messages(german)).isEmpty();
-        assertThat(actionBars(player)).isEmpty();
         assertThat(actionBars(german)).isEmpty();
         debug("cancel", german);
         assertThat(messages(german)).singleElement().asString().contains("Status", "attack=none");
@@ -1364,7 +1368,7 @@ class HuntEncounterTest {
         assertThat(prey).isNotEmpty();
         assertThat(landings).isPositive();
         assertThat(messages(player)).isEmpty();
-        assertThat(actionBars(player)).isEmpty();
+        assertOnlyPreyTimers(player);
     }
 
     @Test
@@ -2280,9 +2284,16 @@ class HuntEncounterTest {
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
         net.kyori.adventure.text.Component bar;
         while ((bar = recipient.nextActionBar()) != null) {
-            result.add(plain.serialize(bar));
+            String text = plain.serialize(bar);
+            if (!text.isEmpty()) {
+                result.add(text);
+            }
         }
         return result;
+    }
+
+    private void assertOnlyPreyTimers(PlayerMock recipient) {
+        assertThat(actionBars(recipient)).allMatch(text -> text.matches("\\d+\\.\\d+s"));
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -2450,7 +2461,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void multiplePreyHaveVisibleMovingCountdownsThenPoolsAtTheirCurrentLocations() throws Exception {
+    void multiplePreyShowTimerOnlyAndPoolsLockTheirLocationsAtOneSecond() throws Exception {
         config.node("lane-cadence-seconds").set(120);
         config.node("prey-cadence-seconds").set(20);
         config.node("sweep-cadence-seconds").set(120);
@@ -2462,23 +2473,33 @@ class HuntEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).allSatisfy(mark -> {
             var text = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
                     .serialize(mark.text());
-            assertThat(text).contains("4.0s");
+            assertThat(text).isEqualTo("4.0s");
         });
         player.teleport(new Location(end, 18.5, 64, 10.5));
-        scheduler.advance(Duration.ofMillis(3999));
+        scheduler.advance(Duration.ofMillis(50));
+        assertThat(end.getEntitiesByClass(TextDisplay.class))
+                .anyMatch(mark -> Math.abs(mark.getX() - 18.5) < 0.001 && mark.getY() == 66.5);
+        scheduler.advance(Duration.ofMillis(2950)); // Lock the warning circle with one second remaining.
+        var lockedMark = end.getEntitiesByClass(TextDisplay.class).stream()
+                .filter(mark -> Math.abs(mark.getX() - 18.5) < 0.001).findFirst().orElseThrow();
+        assertThat(lockedMark.getLocation()).isEqualTo(new Location(end, 18.5, 66.5, 10.5));
+        actionBars(player);
+        player.teleport(new Location(end, 25.5, 64, 10.5));
+        scheduler.advance(Duration.ofMillis(999));
+        assertThat(lockedMark.getLocation()).isEqualTo(new Location(end, 18.5, 66.5, 10.5));
+        assertThat(actionBars(player)).contains("0.5s");
         assertThat(player.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofMillis(1));
-        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(player.getHealth()).isEqualTo(20); // The player moved away after the circle locked.
         assertThat(teammate.getHealth()).isEqualTo(14);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).anySatisfy(pool -> {
             assertThat(pool.getLocation().getX()).isEqualTo(18.5);
             assertThat(pool.getLocation().getZ()).isEqualTo(10.5);
         });
-        player.teleport(new Location(end, 25.5, 64, 10.5));
         teammate.teleport(new Location(end, -25.5, 64, 0.5));
         scheduler.advance(Duration.ofSeconds(6));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
-        assertThat(player.getHealth()).isEqualTo(14);
+        assertThat(player.getHealth()).isEqualTo(20);
     }
 
     @Test
@@ -2560,7 +2581,8 @@ class HuntEncounterTest {
         prey();
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(expected);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).extracting(display -> display.text())
-                .doesNotHaveDuplicates();
+                .allSatisfy(text -> assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                        .plainText().serialize(text)).isEqualTo("4.0s"));
     }
 
     @Test
@@ -2936,8 +2958,9 @@ class HuntEncounterTest {
         hunt();
         scheduler.advance(Duration.ofSeconds(20));
         assertWarningKind("prey");
-        assertThat(actionBars(player)).isEmpty();
-        assertThat(actionBars(german)).isEmpty();
+        var timers = new java.util.ArrayList<>(actionBars(player));
+        timers.addAll(actionBars(german));
+        assertThat(timers).contains("4.0s").allMatch(text -> text.matches("\\d+\\.\\d+s"));
         assertThat(messages(player)).isEmpty();
         assertThat(messages(german)).isEmpty();
         scheduler.advance(Duration.ofMillis(10250));
@@ -2951,8 +2974,8 @@ class HuntEncounterTest {
         german.teleport(new Location(end, 0.5, 64, 10.5));
         scheduler.advance(Duration.ofSeconds(1));
         assertWarningKind("sweep");
-        assertThat(actionBars(player)).isEmpty();
-        assertThat(actionBars(german)).isEmpty();
+        assertOnlyPreyTimers(player);
+        assertOnlyPreyTimers(german);
         assertThat(messages(player)).isEmpty();
         assertThat(messages(german)).isEmpty();
     }

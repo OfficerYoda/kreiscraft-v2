@@ -986,8 +986,11 @@ class FinalEncounterTest {
         var texts = new java.util.ArrayList<String>();
         net.kyori.adventure.text.Component text;
         while ((text = recipient.nextActionBar()) != null) {
-            texts.add(
-                    net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(text));
+            String value = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(text);
+            if (!value.isEmpty()) {
+                texts.add(value);
+            }
         }
         return texts;
     }
@@ -1126,7 +1129,7 @@ class FinalEncounterTest {
         for (var participant : end.getPlayers()) {
             var recipient = (PlayerMock) participant;
             assertThat(messages(recipient)).isEmpty();
-            assertThat(bars(recipient)).isEmpty();
+            assertThat(bars(recipient)).allMatch(text -> text.matches("\\d+\\.\\d+s"));
         }
     }
 
