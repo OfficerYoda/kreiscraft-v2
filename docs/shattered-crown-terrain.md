@@ -93,18 +93,18 @@ Destruction should be consequential while later attacks/objectives remain playab
 islands of preserved footing or automatic repairs. Safe walking escape is no longer promised.
 Older #136–138 historical reports describe their original contract, not this destruction policy.
 
-## Shared terrain seam for Fireball Rain (#162)
+## Shared terrain seam
 
 `EncounterController.impactTerrain(center, radius, depth)` is the smallest production entry point:
-call it with **5, 1** for Rain. It registers a sibling hazard with configured debris lifetime, so
+Bombardment calls it with its configured radius and depth **1**. It registers a sibling hazard with configured debris lifetime, so
 main completion cannot remove longer-lived debris. Attack cancellation still closes every sibling.
 
 `TerrainImpact.apply(center, radius, depth, lifetimeSeconds, owner)` is package-local and server-thread
-only. Rain can pass radius **5**, depth **1**, configured debris lifetime and an existing owned effect
+only. A caller passes its radius, depth, configured debris lifetime and an existing owned effect
 scope at each actual impact. It removes ground and creates a debris child; it does **not** deal damage,
 create explosions/pools, close the supplied owner, signal main completion or restore ground.
-The caller owns exactly-once impact timing and its separate calibrated 4 HP hit. If debris must
-outlive the Rain main action, pass a sibling hazard scope, not the main-action child.
+The caller owns exactly-once impact timing and its separate calibrated hit. If debris must
+outlive the main action, pass a sibling hazard scope, not the main-action child.
 
 ## Runnable evidence
 

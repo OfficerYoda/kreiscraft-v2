@@ -229,8 +229,7 @@ membership. Repeated completion/cancellation is harmless; it does not close sibl
 | Dive | Native movement recovery releases flight control; cancellation/failure also completes | None |
 | Ground Smash | After three-second grounded recovery and two-second climb; cancellation/failure also completes | Bounded owned debris child, no damage/placement/drops; the crater is permanent terrain, never temporary work |
 | Prey | All countdown deposition callbacks finish (including skipped targets) | Each pool owns its display/render/expiry independently; all owned pools share the per-player damage-rate rule |
-| Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | None in the current single-impact attack |
-| Fireball Rain | Last real projectile resolves, disappears or times out | Independent radius-five, six-second pools and harmless debris |
+| Bombardment | Warning resolves or is cancelled, and the impact damage callback finishes | Independent radius-four, six-second pool and harmless debris |
 | Landing | Native approach deadline or melee-window end releases the reservation | None |
 | Legacy stationary lane | Warning resolves into an active lane | Lane rendering/damage/expiry remain separately owned; existing two-lane limit is retained |
 
@@ -257,7 +256,7 @@ integrated #163 must verify active pool cancellation, native release and real re
 
 Prey #160 now uses this separation for scheduling: existing pools do not hold the executing slot or
 delay a melee landing, and are not removed by ordinary main completion/landing. The shared production
-`depositBreathPool(ground, radius, lifetimeSeconds)` boundary lets Rain supply its own size/lifetime
+`depositBreathPool(ground, radius, lifetimeSeconds)` boundary lets Bombardment supply its own size/lifetime
 without duplicating ownership or damage policy. Overlapping/staggered pools share one rolling
 per-player cooldown on the attempt's game-tick clock; cleanup clears both hazard and rate membership.
 See the [Prey configuration and operator checks](/shattered-crown-hunt/#marked-prey-and-shared-pools-160).

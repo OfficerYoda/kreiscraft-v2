@@ -11,7 +11,7 @@ are retained as history, not current runtime acceptance.
 
 ## Encounter communication policy (#156)
 
-Automatic Encounter output stays **in the world**, not in chat or above the hotbar. Opening,
+Automatic Encounter output stays **in the world**, not in chat or above the hotbar, except the marked Prey target's countdown action bar. Opening,
 Anchor exposure, shield changes, wave/finale transitions, attack announcements and landing states
 produce no automatic chat, action bars or replacement title feed. This applies to new waves and
 attacks too, including debug-triggered attacks and both moving and legacy profiles; no opt-in

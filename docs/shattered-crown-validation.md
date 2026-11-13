@@ -184,7 +184,7 @@ use the release-candidate guide above. Do not follow the old `-x testNms` exempt
 
 Run opening → exposed Anchors → shield release → Hunt → final pair → final Hunt, and native landing
 approach/arrival/takeoff with English and German clients. There must be no unsolicited Encounter chat,
-text above the hotbar or replacement title feed, including repeatedly refreshed Prey countdowns.
+text above the hotbar or replacement title feed, except the marked Prey target's countdown action bar.
 Floating world labels/countdowns, appropriate attack visuals and sounds must remain; verify the
 vanilla dragon boss bar and enhanced-Wither boss/countdown presentation when that encounter is active.
 Request `/dragondebug status`, `pause`, each supported `trigger`, `cancel` and `resume`; replies must

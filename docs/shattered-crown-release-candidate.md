@@ -4,7 +4,7 @@ title: Shattered Crown release-candidate verification
 
 # Four-player operator sequence (#163)
 
-Use a **disposable End or a verified backup**. Smash, Rain and enhanced Wither explosions permanently
+Use a **disposable End or a verified backup**. Smash, Bombardment and enhanced Wither explosions permanently
 destroy terrain, including arrival, podium and objective foundations. Cancel/reset/restart do not
 repair anything. Floating Anchors remain objectives; block destruction never clears their gates.
 Do not install `build/paper-probe/` JARs on production.
@@ -50,25 +50,24 @@ End entry; connected dead arrivals retain that snapshot while awaiting respawn. 
 everyone connected in the managed End, including Creative/Spectator,
 outer-island and connected dead players. Those observers/dead players are never combat targets and
 do not sustain absence. Joining/leaving does not resize a spawned wave. Prey requests distinct
-`ceil(.35*all-End)` targets:4→2,8→3,20→7, capped only by eligible combat players. Rain targets ALL eligible.
+`ceil(.35*all-End)` targets:4→2,8→3,20→7, capped only by eligible combat players. Bombardment targets ALL eligible.
 
 The dragon defaults to1000HP. Oversized melee/ranged/explosive/multipart hits clamp at650/300;
 all defender/minion lives must die before their own crystal glows. Destroy all four crystals in
-any order; defender deaths alone do not complete a wave. Permanent unlocks: Bombardment+Prey,
-then Dive, then Rain, then Smash. Initial30-second grace has active defenders but no dragon attacks.
+any order; defender deaths alone do not complete a wave. Permanent unlocks: Prey initially,
+then Dive after wave one, Bombardment after wave two, then Smash after wave three. Initial30-second grace has active defenders but no dragon attacks.
 Shuffled rounds use every available family once, no immediate repeat; default gap2–4 seconds AFTER main
 completion (one second after rejected initial setup). Landings reserve six seconds from actual arrival, not approach start; old pools remain.
 
 | Action | Default warning/motion | Clean reference HP loss on Easy/Normal/Hard |
 | --- | --- | --- |
-| Bombardment | Fixed radius4,3-second warning; no crater | 6HP/3 hearts |
+| Bombardment | Fixed radius4,3-second warning; permanent shallow crater and six-second pool | 6HP/3 hearts |
 | Dive | 2-second warning,1.5-second pass with early plunge,1-second climb;40×10 lane; NO particles | 8HP/4 hearts, once at actual low pass |
 | Smash | FULL3-second visible warning,1-second plunge,3-second grounded recovery,2-second climb | 12HP/6 hearts, radius8 |
-| Rain | Fixed radius5 warning/impact/pool,launch at1 second from20 blocks above,roughly2-second descent | 4HP/2 hearts, once at real radius5 impact |
-| Prey pool | 4-second mark;radius5;6-second ordinary lifetime,3 seconds in finale | Configured raw3HP/pulse, NOT calibrated3HP loss |
+| Prey pool | 4-second mark;radius5;6-second ordinary lifetime,3 seconds in finale | Configured raw6HP/pulse, NOT calibrated6HP loss |
 
-All Prey/Rain pools share maximum one pulse per player per20ticks; Rain pools always last6 seconds.
-Smash crater radius5/depth1; Rain radius5/depth1/no fire/native double explosion. Harmless debris
+All Prey/Bombardment pools share maximum one pulse per player per20ticks; Bombardment pools always last6 seconds.
+Smash crater radius5/depth1; Bombardment radius4/depth1/no fire/native double explosion. Harmless debris
 has default4-second lifetime/cap128 per impact and cannot deal extra damage, place blocks or drop.
 Wither defaults600HP/40attack/8armor,220-tick charge/power20 spawn,300HP threshold/power4 blast/four
 minions,10-second power20 death countdown. No owned Nether Stars; ordinary Wither rewards unchanged.
@@ -89,9 +88,9 @@ As OP (or `kreiscraft.shatteredcrown.debug`), record each command result and vis
 /dragondebug trigger dive <player>
 /dragondebug cancel
 /dragondebug wave 2
-/dragondebug trigger fireball-rain
+/dragondebug trigger bombardment
 /dragondebug cancel
-/dragondebug trigger fireball-rain <player>
+/dragondebug trigger bombardment <player>
 /dragondebug cancel
 /dragondebug wave 3
 /dragondebug trigger smash <player>
@@ -106,7 +105,7 @@ root/mount/passenger/minion, destroy all four crystals, cross each health thresh
 the final dragon. Wait through native DYING; compare initial12000/subsequent500XP, native portal,
 egg/gateway and actual four-crystal ritual. Do not force ritual END or fabricate death/reward events.
 
-Repeat each calibration difficulty with a fresh clean hit. Dodge Rain after warning; test real cover
+Repeat each calibration difficulty with a fresh clean hit. Dodge Bombardment after warning; test real cover
 and attempted deflection. Observe pools through actual expiry and old-pool landings; do not infer
 health loss from configured raw arguments. Return through native death/respawn and quit/rejoin,
 including during Prey warning. Old marks must not deposit after return.
@@ -117,7 +116,7 @@ including during Prey warning. Old marks must not deposit after return.
 - Move all eligible participants out; return at59 seconds: same attempt. Start new absence and
   wait60 continuous seconds: old entities/callbacks gone,same native dragon full200HP,retryable.
   Creative/Spectator/connected dead/arrival-only occupancy is not presence.
-- Reload invalid Rain/geometry/timing while warned: entire live tree/current snapshot unchanged.
+- Reload invalid Bombardment/geometry/timing while warned: entire live tree/current snapshot unchanged.
   Correct and reload: current attempt unchanged,next attempt consumes new values.
 - Exercise real relevant chunk/world unload/load and an owned saved active-process interruption/
   restart. Verify every artifact kind and countdown removed,unrelated control UUIDs/terrain retained,

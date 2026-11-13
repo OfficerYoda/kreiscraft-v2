@@ -61,7 +61,7 @@ Selection nonrepetition does not promise alternating successful warnings when ge
 other family; rejected turns remain bounded and cannot starve the currently usable attacks.
 
 Controlled Encounter/public-event regressions cover seeded rounds, cross-round nonrepetition,
-both exact delay endpoints, unlocks during unfinished rounds/later shields, Rain availability,
+both exact delay endpoints, unlocks during unfinished rounds/later shields, Bombardment availability,
 grace, and the six-second window with damaging old pools. `rotationProbeJar` is a disposable real
 Paper probe, never part of the production JAR; it uses real registered native players/battle/AI,
 production commands and public pool ownership. Its extended-lifetime pool is a bounded fixture for
@@ -122,7 +122,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 
 Diagnostic stationary-profile final defaults: **lane 7s, prey 14s, sweep 17.5s, landing 21s**,
 Prey pool lifetime **3s**. The native shuffled rotation instead retains its2–4-second default post-main gap
-and permanently unlocked families throughout all shields; Rain pools always last6s. Ordinary
+and permanently unlocked families throughout all shields; Bombardment pools always last6s. Ordinary
 warning durations, lane lifetime and knockback stay
 unchanged. Cadence opportunities still defer/omit unsafe combinations; no extra hazard family or
 forced-wipe timer is introduced. Only the diagnostic stationary shield uses8s Bombardment cadence.
@@ -187,17 +187,17 @@ same countdown, revalidation, ground projection and pool lifecycle as automatic 
 player command uses its sender as the single debug target. Use automatic scheduling to inspect scaling.
 
 - UUID-sorted round-robin selection marks distinct current participants. Each has a native viewer-facing
-  TextDisplay above their head with their name and remaining seconds, plus a moving flame circle of the
+  TextDisplay above their head with the remaining seconds, plus a moving flame circle of the
   future pool radius. Teammates see marks without a glowing-state mutation, resource pack or sound.
-   The marked recipient hears a secondary warning growl. The in-world name/countdown refreshes every
-   250 ms; it sends no chat or action-bar messages.
+   The marked recipient hears a secondary warning growl. The in-world countdown refreshes every
+   100 ms and is mirrored to the marked player's action bar; it sends no chat messages.
 - At expiry, revalidate death, logout, world/mode/arena departure and protected arrival entry before
   projecting a pool at the player's **current** location. Entering an excluded area removes the mark;
   stepping back out cannot resurrect it. Invalid terrain or arrival overlap omits the pool, never
   moves it to stale coordinates.
 - Pools are fixed circles rendered by purple dragon-breath boundaries and a purple lifetime display.
   Indicators do not deal vanilla damage: one controlled native damage pulse owns custom damage.
-   Co-located marks retain independent pools, not stacked hits. Across every owned Prey/Rain pool,
+   Co-located marks retain independent pools, not stacked hits. Across every owned Prey/Bombardment pool,
    a shared rolling game-tick cooldown permits at most one configured pulse per player per second,
    even with staggered starts or movement between pools. A slower configured cadence stays slower;
    a cadence below one second does not bypass the global ceiling. Damage remains **raw native HP**
@@ -242,7 +242,7 @@ player command uses its sender as the single debug target. Use automatic schedul
 `EncounterController.depositBreathPool(ground, radius, lifetimeSeconds)` is the shared production
 boundary for Bombardment: effect-specific radius `(0,32]` and duration `(0,120]` seconds, called on
 the server thread. It snapshots the local surface and owns the display/render/damage/exclusive expiry
-as a sibling hazard. It returns false for missing owners/footing or isolated startup failure. Rain
+as a sibling hazard. It returns false for missing owners/footing or isolated startup failure. Bombardment
 supplies its own duration; Prey uses its configured lifetime and existing final-phase factor.
 Rendering, startup, refresh, removed-display and damage failures release only the affected pool.
 Wider pause/cancel/phase/reset/victory/disable/unload cleanup releases all pools and rate membership.
@@ -262,7 +262,7 @@ warning before damage, ground projection after a jump, two raw base/final 3-HP p
 packet conversion, idle main action with one lingering pool, then cancel with zero hazard/area
 membership and no later damage. Dragon AI was disabled only after adoption to isolate this check;
 natural health regeneration was disabled for exact damage measurement. This is server-side synthetic
-transport evidence, **not** authenticated client rendering, native flight, the integrated Prey/Rain
+transport evidence, **not** authenticated client rendering, native flight, the integrated Prey/Bombardment
 overlap path, a full attempt or four-player balance acceptance. #163 still owns that integrated verification.
 
 ## Supported Paper landings, not a stationary replacement fight
