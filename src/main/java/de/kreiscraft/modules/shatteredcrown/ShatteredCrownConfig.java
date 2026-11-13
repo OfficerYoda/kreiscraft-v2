@@ -29,6 +29,8 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Double attackGapMinSeconds, Double attackGapMaxSeconds,
         Integer openingArmorPercentage,
         Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds,
+        Double smashShockwaveRadius, Double smashShockwaveSeconds, Double smashShockwaveDamagePercentage,
+        Double smashShockwaveKnockback,
         Double bombardmentSpawnHeight, Double bombardmentDescentSeconds) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
@@ -148,6 +150,14 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         bounded("smash-crater-depth", smashCraterDepth, 1, 3);
         bounded("debris-lifetime-seconds", debrisLifetimeSeconds, 0.5, 10);
         sweepKnockback = sweepKnockback == null ? 1.2 : sweepKnockback;
+        smashShockwaveRadius = smashShockwaveRadius == null ? 40.0 : smashShockwaveRadius;
+        smashShockwaveSeconds = smashShockwaveSeconds == null ? 3.0 : smashShockwaveSeconds;
+        smashShockwaveDamagePercentage = smashShockwaveDamagePercentage == null ? 50.0 : smashShockwaveDamagePercentage;
+        smashShockwaveKnockback = smashShockwaveKnockback == null ? sweepKnockback : smashShockwaveKnockback;
+        bounded("smash-shockwave-radius", smashShockwaveRadius, 1, 64);
+        bounded("smash-shockwave-seconds", smashShockwaveSeconds, 0.5, 10);
+        bounded("smash-shockwave-damage-percentage", smashShockwaveDamagePercentage, 0, 100);
+        bounded("smash-shockwave-knockback", smashShockwaveKnockback, 0, 2);
         finalHealthFraction = finalHealthFraction == null ? 0.3 : finalHealthFraction;
         finalCadenceFactor = finalCadenceFactor == null ? 0.7 : finalCadenceFactor;
         finalPoolLifetimeFactor = finalPoolLifetimeFactor == null ? 0.5 : finalPoolLifetimeFactor;

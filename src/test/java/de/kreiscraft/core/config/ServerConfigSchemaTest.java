@@ -203,6 +203,27 @@ class ServerConfigSchemaTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"smash-shockwave-radius,1,64", "smash-shockwave-seconds,0.5,10",
+            "smash-shockwave-damage-percentage,0,100", "smash-shockwave-knockback,0,2"})
+    void shockwaveSettingsAreGuiExposedHotReloadableAndBounded(String key, double min, double max)
+            throws SerializationException {
+        var schema = new ServerConfigSchema(ServerConfigSchema.editableFields());
+        var field = schema.find(List.of("modules", "shattered-crown", key)).orElseThrow();
+        assertThat(field.guiExposed()).isTrue();
+        assertThat(field.hotReloadable()).isTrue();
+        assertThat(field.type()).isEqualTo(ConfigFieldType.DOUBLE);
+        var value = CommentedConfigurationNode.root();
+        for (double valid : new double[] {min, max}) {
+            value.set(valid);
+            assertThat(field.validator().validate(value)).isEmpty();
+        }
+        for (double invalid : new double[] {min - 0.1, max + 0.1, Double.NaN, Double.POSITIVE_INFINITY}) {
+            value.set(invalid);
+            assertThat(field.validator().validate(value)).isPresent();
+        }
+    }
+
     @Test
     void performanceBar_exposesAllThresholdsAndFillEndpointsAsHotReloadableNumbers() {
         var fields = ServerConfigSchema.editableFields().stream()

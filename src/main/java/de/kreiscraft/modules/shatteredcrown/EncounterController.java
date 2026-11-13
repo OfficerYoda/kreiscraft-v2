@@ -58,7 +58,6 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
-    private static final double SMASH_SHOCKWAVE_RADIUS = 40;
     private static final int MAX_MOB_POPULATION = 20;
     private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
             EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
@@ -1634,7 +1633,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         if (owner.isClosed() || movement.isClosed()) {
                             return;
                         }
-                        startSmashShockwave(owner, ground, source);
+                        startSmashShockwave(ground, source);
                         // Keep the owned display valid for the flight watchdog, but hide the completed warning.
                         area.indicator.text(Component.empty());
                         movement.start(t -> impact.clone(), 3, position -> {
@@ -1643,21 +1642,24 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         });
     }
 
-    private void startSmashShockwave(EncounterWork owner, Location center, EnderDragon source) {
-        EncounterWork wave = owner.child(() -> {
+    private void startSmashShockwave(Location center, EnderDragon source) {
+        // Tuned waves may outlive recovery/climb; main completion must not truncate their travel.
+        EncounterWork wave = attackWork.child(() -> {
         });
         hazards.add(wave);
         wave.onCleanup(() -> hazards.remove(wave));
         Set<UUID> hit = new HashSet<>();
+        double maxRadius = config.smashShockwaveRadius();
+        int durationTicks = (int) Math.ceil(config.smashShockwaveSeconds() * 20);
         int[] tick = {0};
         wave.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
             if (dragon != source || !attacking()) {
                 wave.close();
                 return;
             }
-            // ponytail: fixed three-second travel; reuse the existing six-block local terrain projection.
-            double previous = tick[0] * SMASH_SHOCKWAVE_RADIUS / 60;
-            double radius = ++tick[0] * SMASH_SHOCKWAVE_RADIUS / 60;
+            // ponytail: reuse the existing six-block local terrain projection.
+            double previous = tick[0] * maxRadius / durationTicks;
+            double radius = ++tick[0] * maxRadius / durationTicks;
             var viewers = source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).toList();
             if (tick[0] == 1 || tick[0] % 2 == 0) {
                 int points = Math.max(16, (int) Math.ceil(2 * Math.PI * radius));
@@ -1682,17 +1684,25 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 }
                 Location feet = player.getLocation();
                 double distance = Math.hypot(feet.getX() - center.getX(), feet.getZ() - center.getZ());
-                if (distance < previous - 0.3 || distance > radius + 0.3 || distance >= SMASH_SHOCKWAVE_RADIUS) {
+                if (distance < previous - 0.3 || distance > radius + 0.3 || distance >= maxRadius) {
                     continue;
                 }
                 Location ground = shockwaveGround(center, feet);
                 if (ground != null && feet.getY() >= ground.getY() - 0.3 && feet.getY() <= ground.getY() + 0.6
                         && hit.add(player.getUniqueId())) {
-                    flightHit(player, source, config.sweepDamage() * 0.5 * (1 - distance / SMASH_SHOCKWAVE_RADIUS),
-                            center, AttackFamily.SMASH);
+                    double amount = config.sweepDamage() * config.smashShockwaveDamagePercentage() / 100
+                            * (1 - distance / maxRadius);
+                    if (amount > 0) {
+                        double health = player.getHealth();
+                        damage(player, source, amount, AttackFamily.SMASH, true);
+                        if (!wave.isClosed() && dragon == source && attacking() && isParticipant(player)
+                                && player.getHealth() < health && config.smashShockwaveKnockback() > 0) {
+                            knockback(player, center, config.smashShockwaveKnockback());
+                        }
+                    }
                 }
             }
-            if (radius >= SMASH_SHOCKWAVE_RADIUS) {
+            if (tick[0] >= durationTicks) {
                 wave.close();
             }
         });
@@ -1747,12 +1757,16 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             flightDamage = false;
         }
         if (dragon == source && flight != null && attacking() && isParticipant(player) && player.getHealth() < health) {
-            var direction = player.getLocation().toVector().subtract(center.toVector()).setY(0);
-            if (direction.lengthSquared() < 0.001) {
-                direction.setX(1);
-            }
-            player.setVelocity(direction.normalize().multiply(config.sweepKnockback()).setY(0.4));
+            knockback(player, center, config.sweepKnockback());
         }
+    }
+
+    private void knockback(Player player, Location center, double strength) {
+        var direction = player.getLocation().toVector().subtract(center.toVector()).setY(0);
+        if (direction.lengthSquared() < 0.001) {
+            direction.setX(1);
+        }
+        player.setVelocity(direction.normalize().multiply(strength).setY(0.4));
     }
 
     private void damage(Player player, EnderDragon source, double amount, AttackFamily attack, boolean reference) {

@@ -1751,21 +1751,50 @@ class HuntEncounterTest {
         assertThat(probe.getVelocity().lengthSquared()).isZero();
     }
 
-    @Test
-    void cancellingSmashAfterImpactStopsTheTravellingShockwave() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"3,4500", "8,9500"})
+    void cancellingSmashAfterImpactStopsTheTravellingShockwave(double seconds, long cancelMillis) throws Exception {
         config.node("movement-attacks").set(true);
+        config.node("smash-shockwave-seconds").set(seconds);
         startEncounter();
         player.setOp(true);
         debug("trigger smash", player);
         var probe = server.addPlayer();
-        probe.teleport(new Location(end, 25.5, 64, 0.5));
+        probe.teleport(new Location(end, 40.5, 64, 0.5));
         probe.getLocation().getChunk().load();
-        scheduler.advance(Duration.ofMillis(4500));
+        scheduler.advance(Duration.ofMillis(cancelMillis));
         debug("cancel", player);
-        scheduler.advance(Duration.ofSeconds(5));
+        scheduler.advance(Duration.ofSeconds(10));
         assertThat(probe.getHealth()).isEqualTo(20);
         assertThat(probe.getVelocity().lengthSquared()).isZero();
         assertThat(referenceHits).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"20,1,25,0.7,15", "40,8,75,1.8,30", "40,3,0,1.2,15", "40,3,50,0,15"})
+    void shockwaveSettingsControlTravelDamageAndKnockbackEvenAfterMainCompletion(double radius, double seconds,
+            double percentage, double knockback, double distance) throws Exception {
+        config.node("movement-attacks").set(true);
+        config.node("smash-shockwave-radius").set(radius);
+        config.node("smash-shockwave-seconds").set(seconds);
+        config.node("smash-shockwave-damage-percentage").set(percentage);
+        config.node("smash-shockwave-knockback").set(knockback);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 10.5 + distance, 64, 0.5));
+        probe.getLocation().getChunk().load();
+        scheduler.advance(Duration.ofMillis(4000 + (long) (seconds * 1000 * distance / radius) - 100));
+        assertThat(probe.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofMillis((long) (seconds * 1000)));
+        double damage = 12 * percentage / 100 * (1 - distance / radius);
+        assertThat(probe.getHealth()).isCloseTo(20 - damage, org.assertj.core.data.Offset.offset(0.00001));
+        assertThat(referenceHits).isEqualTo(percentage > 0 ? 2 : 1);
+        double expectedKnockback = percentage > 0 ? knockback : 0;
+        assertThat(probe.getVelocity().getX()).isCloseTo(expectedKnockback,
+                org.assertj.core.data.Offset.offset(0.00001));
+        assertThat(probe.getVelocity().getY()).isEqualTo(expectedKnockback > 0 ? 0.4 : 0);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -1847,7 +1876,12 @@ class HuntEncounterTest {
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"smash-crater-radius,0", "smash-crater-radius,9",
             "smash-crater-radius,NaN", "smash-crater-depth,0", "smash-crater-depth,4", "smash-crater-depth,1.5",
-            "debris-lifetime-seconds,0", "debris-lifetime-seconds,11", "debris-lifetime-seconds,Infinity"})
+            "debris-lifetime-seconds,0", "debris-lifetime-seconds,11", "debris-lifetime-seconds,Infinity",
+            "smash-shockwave-radius,0", "smash-shockwave-radius,65", "smash-shockwave-radius,NaN",
+            "smash-shockwave-seconds,0", "smash-shockwave-seconds,11", "smash-shockwave-seconds,Infinity",
+            "smash-shockwave-damage-percentage,-1", "smash-shockwave-damage-percentage,101",
+            "smash-shockwave-damage-percentage,NaN", "smash-shockwave-knockback,-1", "smash-shockwave-knockback,3",
+            "smash-shockwave-knockback,Infinity"})
     void invalidDestructionTuningIsRejectedAtomicallyAtTheConfigurationBoundary(String key, double value)
             throws Exception {
         config.node("movement-attacks").set(true);

@@ -399,6 +399,10 @@ public final class ServerConfigSchema {
         fields.add(crownNumber("sweep-cadence-seconds", 5, 120));
         fields.add(crownNumber("sweep-damage", 0, 100));
         fields.add(crownNumber("sweep-knockback", 0, 2));
+        fields.add(crownNumber("smash-shockwave-radius", 1, 64));
+        fields.add(crownNumber("smash-shockwave-seconds", 0.5, 10));
+        fields.add(crownNumber("smash-shockwave-damage-percentage", 0, 100));
+        fields.add(crownNumber("smash-shockwave-knockback", 0, 2));
         fields.add(crownNumber("smash-crater-radius", 1, 8));
         fields.add(field(path("modules", "shattered-crown", "smash-crater-depth"), ConfigFieldType.INTEGER,
                 ConfigValidators.integerRange(1, 3), ConfigLifecycle.HOT_RELOAD));
