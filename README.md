@@ -55,7 +55,7 @@ src/main/java/de/kreiscraft/
 
 ## Modules
 
-25 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `effects`, `firework`, and `positions` ship **disabled by default**. Shattered Crown requires the enabled Wither module. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md), [Configuration](docs/reference/configuration.md), [Commands & Permissions](docs/reference/commands-and-permissions.md), and [four-player Crown RC guide](docs/shattered-crown-release-candidate.md).
+26 modules. Toggle each with `modules.<id>.enabled: true|false` in `config.yml`. Most ship enabled; `effects`, `firework`, and `positions` ship **disabled by default**. Shattered Crown requires the enabled Wither module. Effects starts neutral and emits nothing until a player selects a particle. See the [Module Catalog](docs/reference/module-catalog.md), [Configuration](docs/reference/configuration.md), [Commands & Permissions](docs/reference/commands-and-permissions.md), and [four-player Crown RC guide](docs/shattered-crown-release-candidate.md).
 
 | Module ID | Summary |
 |---|---|
@@ -69,6 +69,7 @@ src/main/java/de/kreiscraft/
 | `combat` | Combat tag and elytra-block during combat, with a per-player display preference (module default when unset) |
 | `effects` | `/effects` — player-toggled particle trails |
 | `firework` | Custom firework rocket crafting recipe with configurable custom model data |
+| `dragon-egg` | Compass + dragon head tracks the single gameplay egg with two-minute pings |
 | `invsee` | `/invsee` and `/enderchest` (`/ec`) — inspect online and offline players' inventories |
 | `jail` | `/jail` and `/kerker` — teleport-based jail toggle with an operator-owned location set by `/setjail` and configurable blocked commands |
 | `positions` | Named waypoint system with InvUI GUI; `/positions` (`/pos`) with persistent per-player storage |

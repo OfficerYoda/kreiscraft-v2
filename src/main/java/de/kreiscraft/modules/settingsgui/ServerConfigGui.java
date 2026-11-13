@@ -398,6 +398,7 @@ public final class ServerConfigGui {
             case "chat-format" -> Material.WRITABLE_BOOK;
             case "clickthrough" -> Material.ENDER_CHEST;
             case "combat" -> Material.IRON_SWORD;
+            case "dragon-egg" -> Material.DRAGON_EGG;
             case "effects" -> Material.BLAZE_POWDER;
             case "firework" -> Material.FIREWORK_ROCKET;
             case "invsee" -> Material.BARREL;

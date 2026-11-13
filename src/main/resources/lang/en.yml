@@ -1,4 +1,9 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
+dragon-egg:
+  compass-name: "<gold>Dragon Egg Compass"
+  ping: "<prefix> <gray>Last egg ping: <gold><distance></gold> blocks away, <gold><seconds></gold> seconds ago."
+  dimension: "<prefix> <gray>Last egg ping: <gold><dimension></gold>, <gold><seconds></gold> seconds ago."
+  unavailable: "<prefix> <yellow>The dragon egg location is unavailable."
 core:
   reload:
     success: "<prefix> <green>Configuration reloaded."
@@ -30,6 +35,7 @@ server-config:
     chat-format: "Chat Format"
     clickthrough: "Click-through"
     combat: "Combat"
+    dragon-egg: "Dragon Egg"
     effects: "Effects"
     firework: "Firework"
     invsee: "Inventory Viewer"

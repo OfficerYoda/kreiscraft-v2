@@ -48,6 +48,12 @@ On first start, `YamlConfigService` copies `config.yml` from the JAR into the da
 
 Data files (subclasses of `DataFile<T>`) are module-managed YAML files stored under `plugins/Kreiscraft/data/`. They are loaded on demand, flushed on each auto-save tick, and are not part of the main `config.yml`. Player preferences are the exception: `data/settings.yml` is owned by the always-available `PlayerPreferencesService` published by the composition root, not by a module, so a player's language, click-through, combat display, effects, and TPS bar preferences persist even when the settings GUI or the consuming module is disabled.
 
+Dragon egg tracking ships enabled via `modules.dragon-egg.enabled: true` (restart-only).
+Its fixed two-minute sample interval is gameplay behavior, not a tuning field.
+`data/dragon-egg.yml` holds the single egg identity, custody, last known position and last ping
+position/timestamp as Activity Data. Unknown/destroyed eggs report unavailable; no replacement egg
+is automatically selected. See the [module catalog](/reference/module-catalog/#dragon-egg).
+
 ---
 
 ## Core Settings

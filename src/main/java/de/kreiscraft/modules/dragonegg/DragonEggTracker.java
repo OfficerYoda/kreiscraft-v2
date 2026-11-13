@@ -1,0 +1,261 @@
+package de.kreiscraft.modules.dragonegg;
+
+import java.util.Optional;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.LongSupplier;
+import org.bukkit.Location;
+import org.bukkit.Chunk;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Server;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.FallingBlock;
+import org.bukkit.entity.Item;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+
+/** Single-egg identity and Activity Data; all calls run on the server thread. */
+public final class DragonEggTracker {
+    public static final NamespacedKey EGG_KEY = new NamespacedKey("kreiscraft", "tracked_dragon_egg");
+    private final Server server;
+    private final DragonEggData data;
+    private final LongSupplier now;
+
+    public DragonEggTracker(Server server, DragonEggData data, LongSupplier now) {
+        this.server = server;
+        this.data = data;
+        this.now = now;
+    }
+
+    public boolean isTrackedEgg(ItemStack item) {
+        return item != null && item.getType() == Material.DRAGON_EGG
+                && matchesIdentity(item.getPersistentDataContainer().get(EGG_KEY, PersistentDataType.STRING));
+    }
+
+    public boolean claim(ItemStack item) {
+        if (isTrackedEgg(item)) {
+            return !data.get().kind.equals("DESTROYED");
+        }
+        if (item == null || item.getType() != Material.DRAGON_EGG || item.getAmount() != 1
+                || data.get().eggId != null) {
+            return false;
+        }
+        data.update(s -> s.eggId = UUID.randomUUID().toString());
+        item.editMeta(
+                meta -> meta.getPersistentDataContainer().set(EGG_KEY, PersistentDataType.STRING, data.get().eggId));
+        return true;
+    }
+
+    public boolean claimed() {
+        return data.get().eggId != null;
+    }
+
+    public boolean matchesIdentity(String id) {
+        return id != null && id.equals(data.get().eggId) && !data.get().kind.equals("DESTROYED");
+    }
+
+    public boolean claimBlock(Block block) {
+        if (block.getType() != Material.DRAGON_EGG || claimed()) {
+            return isTrackedBlock(block);
+        }
+        data.update(s -> s.eggId = UUID.randomUUID().toString());
+        trackBlock(block);
+        return true;
+    }
+
+    public boolean isTrackedBlock(Block block) {
+        return block.getType() == Material.DRAGON_EGG && data.get().kind.equals("BLOCK")
+                && Position.of(block.getLocation()).equals(data.get().position);
+    }
+
+    public void trackBlock(Block block) {
+        if (!claimed() || data.get().kind.equals("DESTROYED")) {
+            return;
+        }
+        data.update(s -> {
+            s.kind = "BLOCK";
+            s.carrier = null;
+            s.position = Position.of(block.getLocation());
+        });
+    }
+
+    public void destroy() {
+        data.update(s -> {
+            s.kind = "DESTROYED";
+            s.carrier = null;
+            s.position = null;
+            s.sampledPosition = null;
+        });
+    }
+
+    public boolean isTrackedEntity(Entity entity) {
+        return data.get().carrier != null && data.get().carrier.equals(entity.getUniqueId().toString())
+                && (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING"));
+    }
+
+    public void trackItem(Item item) {
+        if (claim(item.getItemStack())) {
+            // Bukkit returns a copy on some implementations; persist the marked stack explicitly.
+            ItemStack stack = item.getItemStack();
+            mark(stack);
+            item.setItemStack(stack);
+            trackEntity(item, "ITEM");
+        }
+    }
+
+    public void trackFalling(FallingBlock falling) {
+        falling.getPersistentDataContainer().set(EGG_KEY, PersistentDataType.STRING, data.get().eggId);
+        trackEntity(falling, "FALLING");
+    }
+
+    public void mark(ItemStack egg) {
+        if (egg != null && egg.getType() == Material.DRAGON_EGG && claimed() && !data.get().kind.equals("DESTROYED")) {
+            egg.editMeta(meta -> meta.getPersistentDataContainer().set(EGG_KEY, PersistentDataType.STRING,
+                    data.get().eggId));
+        }
+    }
+
+    private void trackEntity(Entity entity, String kind) {
+        data.update(s -> {
+            s.kind = kind;
+            s.carrier = entity.getUniqueId().toString();
+            s.position = Position.of(entity.getLocation());
+        });
+    }
+
+    public void rememberEntity(Entity entity) {
+        if (isTrackedEntity(entity)) {
+            trackEntity(entity, data.get().kind);
+        }
+    }
+
+    public void entitiesLoaded(Chunk chunk, List<Entity> entities) {
+        var s = data.get();
+        if ((s.kind.equals("ITEM") || s.kind.equals("FALLING")) && s.position != null
+                && s.position.world().equals(chunk.getWorld().getUID().toString())
+                && ((int) Math.floor(s.position.x()) >> 4) == chunk.getX()
+                && ((int) Math.floor(s.position.z()) >> 4) == chunk.getZ()
+                && entities.stream().noneMatch(this::isTrackedEntity)) {
+            unavailable();
+        }
+    }
+
+    /** Identity remains recoverable, but no location is asserted while custody is unknown. */
+    public void unavailable() {
+        if (!data.get().kind.equals("DESTROYED")) {
+            data.update(s -> {
+                s.kind = "UNKNOWN";
+                s.carrier = null;
+                s.position = null;
+            });
+        }
+    }
+
+    public boolean holdsTrackedEgg(Player player) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (isTrackedEgg(item)) {
+                return true;
+            }
+        }
+        return isTrackedEgg(player.getItemOnCursor());
+    }
+
+    public void trackHolder(Player player) {
+        if (data.get().eggId != null && !data.get().kind.equals("DESTROYED")) {
+            data.update(s -> {
+                s.kind = "PLAYER";
+                s.carrier = player.getUniqueId().toString();
+                s.position = Position.of(player.getLocation());
+            });
+        }
+    }
+
+    public void refresh() {
+        if (data.get().kind.equals("DESTROYED")) {
+            return;
+        }
+        for (Player player : server.getOnlinePlayers()) {
+            if (observePlayer(player)) {
+                return;
+            }
+        }
+        if (data.get().kind.equals("PLAYER")) {
+            Player player = server.getPlayer(UUID.fromString(data.get().carrier));
+            if (player != null) {
+                unavailable();
+            }
+        } else if (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING")) {
+            Entity entity = server.getEntity(UUID.fromString(data.get().carrier));
+            if (entity != null) {
+                trackEntity(entity, data.get().kind);
+            }
+            // Absence is not destruction: entity chunks may be unloaded or not loaded yet.
+        } else if (data.get().kind.equals("BLOCK")) {
+            Location location = data.get().position.location(server);
+            if (location != null
+                    && location.getWorld().isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)
+                    && location.getBlock().getType() != Material.DRAGON_EGG) {
+                destroy();
+            }
+        }
+    }
+
+    public boolean observePlayer(Player player) {
+        if (!claimed()) {
+            for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
+                ItemStack item = player.getInventory().getItem(slot);
+                if (claim(item)) {
+                    player.getInventory().setItem(slot, item);
+                    break;
+                }
+            }
+            ItemStack cursor = player.getItemOnCursor();
+            if (claim(cursor)) {
+                player.setItemOnCursor(cursor);
+            }
+        }
+        if (holdsTrackedEgg(player)) {
+            trackHolder(player);
+            return true;
+        }
+        return false;
+    }
+
+    public void sample() {
+        refresh();
+        if (data.get().position != null
+                && (data.get().sampledPosition == null || now.getAsLong() - data.get().sampledAt >= 120_000)) {
+            data.update(s -> {
+                s.sampledPosition = s.position;
+                s.sampledAt = now.getAsLong();
+            });
+        }
+    }
+
+    public Optional<Ping> ping() {
+        var state = data.get();
+        return state.kind.equals("DESTROYED") || state.position == null || state.sampledPosition == null
+                ? Optional.empty()
+                : Optional.of(new Ping(state.sampledPosition, state.sampledAt));
+    }
+
+    @ConfigSerializable
+    public record Position(String world, String dimension, double x, double y, double z) {
+        public static Position of(Location location) {
+            return new Position(location.getWorld().getUID().toString(), location.getWorld().getKey().toString(),
+                    location.getX(), location.getY(), location.getZ());
+        }
+
+        public Location location(Server server) {
+            var loadedWorld = server.getWorld(UUID.fromString(world));
+            return loadedWorld == null ? null : new Location(loadedWorld, x, y, z);
+        }
+    }
+
+    public record Ping(Position position, long sampledAt) {
+    }
+}
