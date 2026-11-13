@@ -128,7 +128,7 @@ class SettingsGuiTest {
     void root_allModuleCombinations_useRequestedSlotsAndStableOrder() {
         List<String> moduleIds = List.of("clickthrough", "combat", "effects", "sit");
         List<Material> materials = List.of(
-                Material.LIME_DYE, Material.DIAMOND_SWORD, Material.NETHER_STAR, Material.WHITE_CARPET);
+                Material.LIME_DYE, Material.DIAMOND_SWORD, Material.NETHER_STAR, Material.WHITE_CUSHION);
         List<List<Integer>> layouts = List.of(
                 List.of(), List.of(13), List.of(11, 15), List.of(10, 13, 16), List.of(10, 12, 14, 16));
         var permission = player.addAttachment(MockBukkit.createMockPlugin(), "kreiscraft.sit.use", false);
@@ -189,7 +189,7 @@ class SettingsGuiTest {
         Gui gui = rootWith(id -> id.equals("sit"));
 
         assertThat(gui.getItem(22)).as("the former sit slot stays empty").isNull();
-        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.WHITE_CARPET);
+        assertThat(stackAt(gui, 13).getType()).isEqualTo(Material.WHITE_CUSHION);
         assertThat(plain(stackAt(gui, 13).getItemMeta().displayName()))
                 .isEqualTo("settings-gui.sit");
         assertThat(occupiedSlots(rootWith(id -> false))).containsExactly(26);

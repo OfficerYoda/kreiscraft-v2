@@ -306,7 +306,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
 
     private void hitDragon(boolean explosive) {
         var handle = ((CraftEnderDragon) dragon).getHandle();
-        handle.invulnerableTime = 0;
+        handle.setInvulnerableTime(0);
         var player = fixtures.getFirst();
         handle.hurt(((CraftWorld) end).getHandle(), handle.head,
                 explosive ? player.damageSources().explosion(null, player)
@@ -319,7 +319,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                 new org.bukkit.util.Vector(1, 0, 0), 1, 0);
         arrow.setShooter(fixtures.getFirst().getBukkitEntity());
         var handle = ((CraftEnderDragon) dragon).getHandle();
-        handle.invulnerableTime = 0;
+        handle.setInvulnerableTime(0);
         handle.hurt(((CraftWorld) end).getHandle(), handle.head, fixtures.getFirst().damageSources()
                 .arrow(((org.bukkit.craftbukkit.entity.CraftArrow) arrow).getHandle(), fixtures.getFirst()), 100000);
         arrow.remove();
@@ -1294,7 +1294,9 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
             if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position
                     && listener instanceof net.minecraft.server.network.ServerGamePacketListenerImpl game) {
                 game.handleAcceptTeleportPacket(
-                        new net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket(position.id()));
+                        new net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket(position.id(),
+                                game.player.getX(), game.player.getY(), game.player.getZ(),
+                                game.player.getYRot(), game.player.getXRot()));
             }
             if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket chat) {
                 var text = chat.content().getString();

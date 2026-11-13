@@ -199,6 +199,8 @@ class ServerConfigGuiTest {
 
         assertThat(stackAt(gui, ServerConfigGui.entrySlot(categories.indexOf("wither"))).getType())
                 .isEqualTo(org.bukkit.Material.WITHER_SKELETON_SKULL);
+        assertThat(stackAt(gui, ServerConfigGui.entrySlot(categories.indexOf("sit"))).getType())
+                .isEqualTo(Material.WHITE_CUSHION);
         for (int index = 0; index < categories.size(); index++) {
             assertThat(stackAt(gui, ServerConfigGui.entrySlot(index)).getType())
                     .isNotIn(org.bukkit.Material.CHEST, org.bukkit.Material.PAPER);

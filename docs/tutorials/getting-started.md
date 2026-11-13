@@ -13,7 +13,7 @@ This tutorial takes you from a clean clone to a running local server with the de
 | Java        | 25      |
 | Git         | any     |
 
-No other tools are needed. Gradle and the Paper server are downloaded automatically.
+No other tools are needed. Gradle and the Paper 26.3 server are downloaded automatically. The plugin targets Paper 26.3.
 
 ---
 
@@ -71,16 +71,16 @@ The `run-paper` Gradle plugin downloads a Paper server on first run and places e
 On first run you will see Paper bootstrap output followed by plugin startup. Look for the `[Kreiscraft]` prefix in the log. The last line from the plugin is the startup summary:
 
 ```
-[Kreiscraft] [INFO] 21 modules enabled, 4 disabled, 0 failed.
+[Kreiscraft] [INFO] 22 modules enabled, 3 disabled, 0 failed.
 ```
 
 If you have configured the language to `de` (in `config.yml` → `core.language: de`) it reads:
 
 ```
-[Kreiscraft] [INFO] 21 Module aktiv, 4 deaktiviert, 0 fehlgeschlagen.
+[Kreiscraft] [INFO] 22 Module aktiv, 3 deaktiviert, 0 fehlgeschlagen.
 ```
 
-The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. Of the 25 modules, the bundled `config.yml` ships 21 enabled; `effects`, `firework`, `positions`, and `shattered-crown` are disabled by default, so a clean run reports 21 enabled and 4 disabled.
+The counts come from `StartupSummary` — enabled modules are those with `enabled: true` in `config.yml` under `modules.<id>`. Of the 25 modules, the bundled `config.yml` ships 22 enabled; `effects`, `firework`, and `positions` are disabled by default, so a clean run reports 22 enabled and 3 disabled.
 
 If any module fails to start, the log also prints a `SEVERE` line with the module id and exception before the summary. Check that line first when troubleshooting.
 

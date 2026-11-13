@@ -1,5 +1,5 @@
 name: DiveEncounterProbe
 version: 1
 main: de.kreiscraft.modules.shatteredcrown.DiveEncounterProbe
-api-version: '26.2'
+api-version: '26.3'
 depend: [Kreiscraft]

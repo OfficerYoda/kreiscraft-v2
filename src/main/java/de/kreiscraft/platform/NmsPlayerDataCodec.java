@@ -107,7 +107,7 @@ public final class NmsPlayerDataCodec implements PlayerDataCodec {
             net.minecraft.world.item.ItemStack stack =
                     net.minecraft.world.item.ItemStack.CODEC.parse(ops, tag).getOrThrow();
             // Keep the complete component patch, without a lossy ItemMeta conversion.
-            return CraftItemStack.asCraftMirror(stack.copy());
+            return CraftItemStack.asBukkitMirror(stack.copy());
         } catch (RuntimeException e) {
             throw new IOException("failed to decode item in " + position, e);
         }

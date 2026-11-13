@@ -133,9 +133,9 @@ modules:
   status:
     enabled: true
     join-format:
-      "<kc-prefix><gray> » <player-prefix><name-colored><player-suffix>"
+      "<gray>[<green>+<gray>]<reset> <player-prefix><name-colored><player-suffix>"
     leave-format:
-      "<kc-prefix><gray> « <player-prefix><name-colored><player-suffix>"
+      "<gray>[<red>-<gray>]<reset> <player-prefix><name-colored><player-suffix>"
   tablist:
     enabled: true
     update-interval: 20t

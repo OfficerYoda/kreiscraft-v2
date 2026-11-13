@@ -355,7 +355,7 @@ public final class DiveEncounterProbe extends JavaPlugin implements Listener {
             } else if (measuring) {
                 if (packet instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket particle) {
                     String type = net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE
-                            .getKey(particle.getParticle().getType()).toString();
+                            .getKey(particle.particle().getType()).toString();
                     particleTypes.add(type);
                     if (scenario == 3 && automaticDive && type.equals("minecraft:dragon_breath")
                             && world.getEntities().stream().anyMatch(entity -> "pool".equals(

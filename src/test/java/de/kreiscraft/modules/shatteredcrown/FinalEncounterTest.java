@@ -157,6 +157,7 @@ class FinalEncounterTest {
     void tearDown() {
         module.disable();
         MockBukkit.unmock();
+        org.mockito.Mockito.framework().clearInlineMocks();
     }
 
     private void opening() throws Exception {
@@ -1204,6 +1205,7 @@ class FinalEncounterTest {
             clearAnchors();
             for (int second = 0; second < 60; second++) {
                 scheduler.advance(Duration.ofSeconds(1));
+                end.clearSpawnedParticles(); // MockBukkit retains every particle; this test checks owned artifacts.
                 if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
                     arriveAtPodium();
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {
@@ -1226,6 +1228,7 @@ class FinalEncounterTest {
             clearAnchors();
             for (int second = 0; second < 180; second++) {
                 scheduler.advance(Duration.ofSeconds(1));
+                end.clearSpawnedParticles();
                 if (dragon.getPhase() == EnderDragon.Phase.FLY_TO_PORTAL) {
                     arriveAtPodium();
                 } else if (dragon.getPhase() == EnderDragon.Phase.LEAVE_PORTAL) {

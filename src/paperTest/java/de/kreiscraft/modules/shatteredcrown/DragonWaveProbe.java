@@ -117,7 +117,7 @@ public final class DragonWaveProbe extends JavaPlugin {
 
     private void hitDragon(boolean explosive) {
         var handle = ((CraftEnderDragon) dragon).getHandle();
-        handle.invulnerableTime = 0;
+        handle.setInvulnerableTime(0);
         var player = fixtures.getFirst();
         var source = explosive ? player.damageSources().explosion(null, player)
                 : player.damageSources().playerAttack(player);
