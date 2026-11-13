@@ -11,6 +11,7 @@ import de.kreiscraft.core.service.ServiceRegistry;
 import de.kreiscraft.testsupport.MockScheduler;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -1896,6 +1897,33 @@ class HuntEncounterTest {
         player.setOp(true);
         debug("trigger smash", player); // Manual probe of recovery after the failed pool, not a locked attack.
         assertWarningKind("sweep");
+    }
+
+    @Test
+    void poolParticlesAreResampledAcrossTheDiskOnRefresh() throws Exception {
+        config.node("lane-cadence-seconds").set(120);
+        config.node("prey-cadence-seconds").set(120);
+        hunt();
+        var spots = new ArrayList<Location>();
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            particles.when(() -> CrownParticles.spawn(org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(org.bukkit.Particle.DRAGON_BREATH),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
+                    org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble()))
+                    .thenAnswer(call -> {
+                        Location spot = call.getArgument(2);
+                        if (Math.abs(spot.getY() - 64.35) < 0.001) {
+                            spots.add(spot.clone());
+                        }
+                        return null;
+                    });
+            trigger("prey");
+            scheduler.advance(Duration.ofMillis(4500));
+        }
+        assertThat(spots).hasSizeGreaterThanOrEqualTo(128);
+        assertThat(spots.subList(0, 64)).doesNotContainAnyElementsOf(spots.subList(64, 128));
     }
 
     @Test
