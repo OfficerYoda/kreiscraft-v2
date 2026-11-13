@@ -16,6 +16,7 @@ public final class DragonEggModule implements Module {
     private DragonEggTracker tracker;
     private DragonEggListener listener;
     private Scheduler.Task task;
+    private Scheduler.Task buffsTask;
 
     @Override
     public String id() {
@@ -37,6 +38,9 @@ public final class DragonEggModule implements Module {
         listener = new DragonEggListener(server, tracker, compass, ctx.scheduler());
         ctx.events().register(listener);
         listener.start();
+        var buffs = new DragonEggBuffs(tracker);
+        buffsTask = ctx.scheduler().runRepeating(Duration.ofMillis(50), Duration.ofMillis(50),
+                () -> server.getOnlinePlayers().forEach(buffs::update));
         ctx.services().publish(DragonEggTracker.class, tracker);
         server.addRecipe(compass.recipe());
         task = ctx.scheduler().runRepeating(Duration.ofSeconds(1), Duration.ofSeconds(1), () -> {
@@ -47,6 +51,9 @@ public final class DragonEggModule implements Module {
 
     @Override
     public void disable() {
+        if (buffsTask != null) {
+            buffsTask.cancel();
+        }
         if (task != null) {
             task.cancel();
         }
