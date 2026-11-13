@@ -198,10 +198,9 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                     completion = ticks;
                     getLogger().info("ROTATION main completed at=" + ticks);
                 }
-                if (!selected.equals(previousSelection)) {
-                    require(selected.equals("BOMBARDMENT") || selected.equals("PREY"), "only opening unlocks");
+                if (!selected.equals(previousSelection) || !attack.equals("none") && previous.equals("none")) {
+                    require(selected.equals("PREY"), "only opening unlock");
                     if (!selections.isEmpty()) {
-                        require(!selected.equals(selections.getLast()), "no immediate shuffled selection repeat");
                         require(ticks - completion == (selectionRejected ? 20 : 100),
                                 "one-second rejected-setup retry or configured 5-second POST-completion gap "
                                         + (ticks - completion));
@@ -222,8 +221,8 @@ public final class RotationProbe extends JavaPlugin implements Listener {
                 if (selections.size() >= 4 && starts.size() >= 4 && attack.equals("none")) {
                     command("wave 3");
                     require(status().contains("mode=manual"), "wave debug leaves paused");
-                    require(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.RAIN)
-                            && encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN),
+                    require(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.BOMBARDMENT)
+                            && encounter.availableAttacks().contains(EncounterController.AttackFamily.BOMBARDMENT),
                             "Rain unlocked and runnable after wave two");
                     clearWave();
                     require(encounter.availableAttacks().contains(EncounterController.AttackFamily.SMASH),

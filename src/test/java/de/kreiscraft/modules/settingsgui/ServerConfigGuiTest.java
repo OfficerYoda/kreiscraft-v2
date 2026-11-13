@@ -351,7 +351,7 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(59).doesNotHaveDuplicates();
+        assertThat(names).hasSize(58).doesNotHaveDuplicates();
         pages.setPage(0);
         click(gui, 52);
         assertThat(pages.getPage()).isEqualTo(1);
@@ -373,12 +373,11 @@ class ServerConfigGuiTest {
                 : "Dauerhafte Bodenschlag-Kratertiefe"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Flying debris lifetime"
                 : "Fliegende Trümmerdauer"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain launch height"
-                : "Feuerregen-Starthöhe"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain native descent"
-                : "Feuerregen-Flugzeit"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain reference damage"
-                : "Feuerregen-Referenzschaden"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment launch height"
+                : "Bombardement-Starthöhe"));
+        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment native descent"
+                : "Bombardement-Flugzeit"));
+        assertThat(names).noneMatch(name -> name.startsWith("Rain ") || name.startsWith("Feuerregen-"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
         String[] labels = locale.equals("en")
                 ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",

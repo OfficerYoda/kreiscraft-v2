@@ -146,7 +146,7 @@ class SecondWaveEncounterTest {
             assertThat(group).hasSizeBetween(2, 3);
         }
         assertThat(hit(dragon).isCancelled()).isTrue();
-        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.BOMBARDMENT);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -200,17 +200,17 @@ class SecondWaveEncounterTest {
             }
         }
         objectives.forEach(crystal -> assertThat(hit(crystal).isCancelled()).isTrue());
-        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.BOMBARDMENT);
         for (var crystal : objectives) {
             var survivors = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(crystal.getUniqueId()))
                     .toList();
             survivors.forEach(this::defeat);
             assertThat(crystal.isGlowing()).isTrue();
-            assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.RAIN);
+            assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.BOMBARDMENT);
             assertThat(hit(crystal).isCancelled()).isTrue(); // Owned objective removes itself, suppressing explosion.
             assertThat(crystal.isValid()).isFalse();
         }
-        assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.BOMBARDMENT);
         assertThat(hit(dragon).isCancelled()).isFalse();
     }
 

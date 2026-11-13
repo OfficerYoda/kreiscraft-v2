@@ -116,6 +116,11 @@ class FinalEncounterTest {
             }
 
             @Override
+            public void prepareBombardmentFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
+                // MockBukkit has no native projectile inertia; the Paper probe checks descent.
+            }
+
+            @Override
             public void prepareRangedDefender(Mob defender) {
                 // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
             }
@@ -952,7 +957,7 @@ class FinalEncounterTest {
         assertThat(crystals()).hasSize(4);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
         var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
         assertThat(plain.serialize(warning.text())).isEmpty();
@@ -1022,6 +1027,7 @@ class FinalEncounterTest {
     @org.junit.jupiter.params.provider.CsvSource({"false,12000", "true,500"})
     void twentyParticipantsCompleteTimedOpeningHuntAndFinalRaceBeforeUntouchedNativeCompletion(
             boolean previouslyKilled, int experience) throws Exception {
+        config.node("sweep-warning-seconds").set(4); // Keep this historical sector choreography explicit.
         dragon.getDragonBattle().setPreviouslyKilled(previouslyKilled);
         for (int i = 1; i < 20; i++) {
             server.addPlayer().teleport(player.getLocation());
@@ -1031,8 +1037,8 @@ class FinalEncounterTest {
         assertThat(defenders()).hasSize(320);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 10000).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        moveParticipants(10.5, 6.5); // Escape the fixed opening warning on actual fixture terrain.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        moveParticipants(10.5, 6.5);
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertParticipantHealth(20);
@@ -1085,7 +1091,7 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(damage(part, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Familiar final-Anchor pressure.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(20); // One warning per combat player.
         moveParticipants(16.5, 0.5);
         scheduler.advance(Duration.ofSeconds(3));
         assertParticipantHealth(17);
@@ -1192,7 +1198,7 @@ class FinalEncounterTest {
         for (int attempt = 0; attempt < 3; attempt++) {
             int previousHits = cancelledHits.get();
             scheduler.advance(Duration.ofSeconds(8));
-            assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+            assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
             scheduler.advance(Duration.ofSeconds(3));
             clearAnchors();
             for (int second = 0; second < 60; second++) {

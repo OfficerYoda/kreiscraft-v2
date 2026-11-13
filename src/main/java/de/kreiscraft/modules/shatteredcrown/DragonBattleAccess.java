@@ -89,7 +89,7 @@ public interface DragonBattleAccess {
         warning.setBillboard(Display.Billboard.CENTER);
     }
 
-    default void prepareRainFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
+    default void prepareBombardmentFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
         de.kreiscraft.platform.NmsCrownFireball.prepare(fireball, speed);
     }
 }

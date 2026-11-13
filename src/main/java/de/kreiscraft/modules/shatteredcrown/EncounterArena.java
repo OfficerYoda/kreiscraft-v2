@@ -145,19 +145,6 @@ final class EncounterArena {
                 && Math.abs(location.getY() - impact.getY()) <= 3;
     }
 
-    boolean bombardmentSafe(Location impact, double radius, List<Player> participants) {
-        if (!contains(impact) || AttackSurface.column(impact, 0, 4) == null) {
-            return false;
-        }
-        double search = radius + config.bombardmentWarningSeconds() * 3 + 32;
-        var danger = nearbyBreath(impact, search, 6);
-        if (danger.size() > 32 || danger.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
-                || cloud.getRadius() > 32 || overlaps(impact, radius, cloud))) {
-            return false;
-        }
-        return true;
-    }
-
     private boolean overlaps(Location location, double radius, AreaEffectCloud cloud) {
         Location pool = cloud.getLocation();
         double distance = radius + cloud.getRadius();

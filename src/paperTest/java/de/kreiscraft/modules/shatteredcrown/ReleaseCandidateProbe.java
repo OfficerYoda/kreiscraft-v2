@@ -472,7 +472,8 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     hitRanged();
                     check(dragon.getHealth() == 650, "native multipart ranged source cannot bypass shield");
                     clearWave();
-                    check(encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN), "Rain unlock");
+                    check(encounter.availableAttacks().contains(EncounterController.AttackFamily.BOMBARDMENT),
+                            "Bombardment unlock");
                     if (attempt == 0) {
                         for (int index = 8; index < 20; index++) {
                             register(end, new GameProfile(UUID.randomUUID(), "Release" + index), GameMode.SPECTATOR);
@@ -682,20 +683,21 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     }
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
                     prepareRain(20);
-                    command("trigger fireball-rain");
+                    command("trigger bombardment");
                     var path = getServer().getPluginManager().getPlugin("Kreiscraft").getDataFolder().toPath()
                             .resolve("config.yml");
                     diskConfig = java.nio.file.Files.readString(path);
                     java.nio.file.Files.writeString(path,
-                            diskConfig.replace("    rain-damage: 4.0", "    rain-damage: .NaN"));
+                            diskConfig.replace("    bombardment-damage: 6.0", "    bombardment-damage: .NaN"));
                     String invalid = reload();
                     check(invalid.toLowerCase(java.util.Locale.ROOT).contains("fail")
                             || invalid.toLowerCase(java.util.Locale.ROOT).contains("invalid"),
                             "invalid disk reload rejected");
-                    check(command("status").contains("attack=RAIN"), "atomic reject retains running action");
+                    check(command("status").contains("attack=BOMBARDMENT"), "atomic reject retains running action");
                     java.nio.file.Files.writeString(path,
                             diskConfig.replace("    max-health: 1000.0", "    max-health: 900.0")
-                                    .replace("    rain-spawn-height: 20.0", "    rain-spawn-height: 22.0"));
+                                    .replace("    bombardment-spawn-height: 20.0",
+                                            "    bombardment-spawn-height: 22.0"));
                     reload();
                     check(dragon.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue() == 1000,
                             "valid corrected reload keeps current Encounter snapshot");
@@ -810,7 +812,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     check(defenders().size() == 8, "interrupted active attempt includes actual minions");
                     parent.setHealth(0);
                     prepareRain(22);
-                    command("trigger fireball-rain");
+                    command("trigger bombardment");
                     enter(23);
                 }
                 case 23 -> {
@@ -957,7 +959,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     farControl.setGravity(false);
                     lateControlId = farControl.getUniqueId();
                     prepareRain(22);
-                    command("trigger fireball-rain");
+                    command("trigger bombardment");
                     enter(23);
                 }
                 case 100 -> {

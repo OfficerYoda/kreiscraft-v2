@@ -40,12 +40,10 @@ final class DragonDebugCommand {
         root.then(wave);
         var trigger = Commands.literal("trigger");
         for (var attack : EncounterController.DebugAttack.values()) {
-            trigger.then(Commands.literal(attack == EncounterController.DebugAttack.RAIN
-                    ? "fireball-rain"
-                    : attack.name().toLowerCase(Locale.ROOT))
+            trigger.then(Commands.literal(attack.name().toLowerCase(Locale.ROOT))
                     .executes(ctx -> {
                         var sender = ctx.getSource().getSender();
-                        if (attack == EncounterController.DebugAttack.RAIN) {
+                        if (attack == EncounterController.DebugAttack.BOMBARDMENT) {
                             return trigger(attack, sender, null, encounter, messages);
                         }
                         if (!(sender instanceof Player player)) {

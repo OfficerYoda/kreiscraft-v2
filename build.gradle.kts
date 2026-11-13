@@ -289,6 +289,9 @@ val verifyInvuiCompatibility = tasks.register("verifyInvuiCompatibility") {
             check(zip.getEntry("xyz/xenondevs/inventoryaccess/InventoryAccess.class") == null) {
                 "The shaded JAR contains legacy InventoryAccess classes that are incompatible with Paper 26.x"
             }
+            check(zip.getEntry("de/kreiscraft/platform/NmsCrownFireball.class") != null) {
+                "The production JAR is missing the native Bombardment fireball helper"
+            }
             val invuiClasses = zip.entries().asSequence()
                 .filter { !it.isDirectory && it.name.startsWith("de/kreiscraft/libs/invui/") }
                 .filter { it.name.endsWith(".class") }

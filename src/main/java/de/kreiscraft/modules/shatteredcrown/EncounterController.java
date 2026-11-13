@@ -58,7 +58,6 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
-    private static final double RAIN_RADIUS = 5;
     private static final double SMASH_SHOCKWAVE_RADIUS = 40;
     private static final int MAX_MOB_POPULATION = 20;
     private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
@@ -97,17 +96,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private final Set<EncounterWork> hazards = new HashSet<>();
     private boolean closed;
     private Scheduler.Task bombardmentCadence;
-    private Scheduler.Task bombardmentWarning;
-    private Scheduler.Task bombardmentImpact;
-    private TextDisplay bombardmentIndicator;
     private int targetCursor;
     private final List<BreathLane> lanes = new ArrayList<>();
     private final List<HuntArea> areas = new ArrayList<>();
     private final Set<HuntArea> pools = new HashSet<>();
     private final java.util.Map<UUID, Long> poolCooldowns = new java.util.HashMap<>();
-    private final java.util.Map<UUID, RainShot> rainShots = new java.util.HashMap<>();
+    private final java.util.Map<UUID, BombardmentShot> bombardmentShots = new java.util.HashMap<>();
 
-    private record RainShot(EncounterWork owner, EnderDragon source) {
+    private record BombardmentShot(EncounterWork owner, EnderDragon source) {
     }
 
     private long encounterTicks;
@@ -123,7 +119,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private EncounterWork waveWork;
 
     public enum AttackFamily {
-        BOMBARDMENT, PREY, DIVE, RAIN, SMASH
+        BOMBARDMENT, PREY, DIVE, SMASH
     }
 
     /** Permanent unlocks, independent of the current wave's temporary shield. */
@@ -131,12 +127,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         if (dragon == null) {
             return Set.of();
         }
-        var unlocked = java.util.EnumSet.of(AttackFamily.BOMBARDMENT, AttackFamily.PREY);
+        var unlocked = java.util.EnumSet.of(AttackFamily.PREY);
         if (clearedWaves >= 1) {
             unlocked.add(AttackFamily.DIVE);
         }
         if (clearedWaves >= 2) {
-            unlocked.add(AttackFamily.RAIN);
+            unlocked.add(AttackFamily.BOMBARDMENT);
         }
         if (clearedWaves >= 3) {
             unlocked.add(AttackFamily.SMASH);
@@ -242,7 +238,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     enum DebugAttack {
-        DIVE, SMASH, PREY, BOMBARDMENT, LANDING, RAIN
+        DIVE, SMASH, PREY, BOMBARDMENT, LANDING
     }
 
     private boolean attacking() {
@@ -392,7 +388,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             messages.send(sender, "shattered-crown.debug-no-encounter");
             return;
         }
-        if (!(attack == DebugAttack.RAIN && target == null) && !isParticipant(target)) {
+        if (!(attack == DebugAttack.BOMBARDMENT && target == null) && !isParticipant(target)) {
             messages.send(sender, "shattered-crown.debug-target-ineligible");
             return;
         }
@@ -407,7 +403,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 case PREY -> markPrey();
                 case BOMBARDMENT -> warnBombardment();
                 case LANDING -> requestLanding();
-                case RAIN -> fireballRain();
             }
         } catch (RuntimeException error) {
             resetAttacks();
@@ -463,7 +458,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
         if (!manualMode && !openingGrace()) {
             Duration cadence = seconds(config.bombardmentCadenceSeconds());
-            bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
+            bombardmentCadence = attackWork.repeating(cadence, cadence, () -> {
+                if (unlockedAttacks().contains(AttackFamily.BOMBARDMENT)) {
+                    warnBombardment();
+                }
+            });
         }
     }
 
@@ -767,7 +766,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             case PREY -> markPrey();
             case DIVE -> warnLane();
             case SMASH -> smash();
-            case RAIN -> fireballRain();
         }
     }
 
@@ -1075,8 +1073,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         startAction(DebugAttack.PREY, this::markPrey);
     }
 
-    private void fireballRain() {
-        startAction(DebugAttack.RAIN, owner -> {
+    private void warnBombardment() {
+        startAction(DebugAttack.BOMBARDMENT, owner -> {
             EnderDragon source = dragon;
             var grounds = attackTargets().stream().map(target -> {
                 Location feet = target.getLocation();
@@ -1092,16 +1090,18 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     }
                 });
                 shot.run(() -> {
-                    warnRain(ground);
-                    shot.later(Duration.ofSeconds(1), () -> {
-                        double speed = config.rainSpawnHeight() / (config.rainDescentSeconds() * 20);
-                        var ball = ground.getWorld().spawn(ground.clone().add(0, config.rainSpawnHeight(), 0),
+                    warnBombardment(ground, shot);
+                    double descent = Math.min(config.bombardmentWarningSeconds(), config.bombardmentDescentSeconds());
+                    shot.later(seconds(config.bombardmentWarningSeconds() - descent), () -> {
+                        double speed = config.bombardmentSpawnHeight() / (descent * 20);
+                        var ball = ground.getWorld().spawn(ground.clone().add(0, config.bombardmentSpawnHeight(), 0),
                                 org.bukkit.entity.LargeFireball.class, projectile -> {
+                                    // ponytail: retain legacy artifact tags for existing restart recovery/probes.
                                     shot.own(projectile, "rain-projectile");
                                     projectile.setShooter(source);
                                     projectile.setIsIncendiary(false);
                                     projectile.setYield(0);
-                                    battles.prepareRainFireball(projectile, speed);
+                                    battles.prepareBombardmentFireball(projectile, speed);
                                     projectile.setVelocity(new org.bukkit.util.Vector(0, -speed, 0));
                                 });
                         if (shot.isClosed() || !ball.isValid()) {
@@ -1110,8 +1110,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                             return;
                         }
                         UUID id = ball.getUniqueId();
-                        rainShots.put(id, new RainShot(shot, source));
-                        shot.onCleanup(() -> rainShots.remove(id));
+                        bombardmentShots.put(id, new BombardmentShot(shot, source));
+                        shot.onCleanup(() -> bombardmentShots.remove(id));
                         shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
                             if (!ball.isValid()) {
                                 shot.close();
@@ -1119,55 +1119,59 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         });
                     });
                     // Lost/unloaded/stopped projectiles cannot hold the main action indefinitely.
-                    shot.later(seconds(1 + config.rainDescentSeconds() + 3), shot::close);
+                    shot.later(seconds(config.bombardmentWarningSeconds() + 3), shot::close);
                 });
             }
         });
     }
 
-    private void warnRain(Location ground) {
-        // Keep the fixed warning for all three seconds, even if cover resolves a projectile early.
-        EncounterWork warningWork = attackWork.child(() -> {
-        });
-        warningWork.run(() -> {
-            TextDisplay warning = ground.getWorld().spawn(ground.clone().add(0, 1.5, 0), TextDisplay.class);
-            warningWork.own(warning, "rain-warning");
-            battles.faceWarningToViewer(warning);
-            warning.text(Component.text("3.0s", NamedTextColor.GOLD));
-            drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
-            attackParticipants()
-                    .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
-            int[] pulses = {0};
-            warningWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
-                warning.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                        Math.max(0, 3 - ++pulses[0] * 0.25)), NamedTextColor.GOLD));
-                drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
-            });
-            warningWork.later(Duration.ofSeconds(3), warningWork::close);
-        });
-        if (warningWork.isClosed()) {
-            throw new IllegalStateException("Rain warning unavailable");
+    private void warnBombardment(Location ground, EncounterWork shot) {
+        TextDisplay warning = ground.getWorld().spawn(ground.clone().add(0, 1.5, 0), TextDisplay.class);
+        shot.own(warning, "rain-warning");
+        battles.faceWarningToViewer(warning);
+        if (shot.isClosed() || !warning.isValid()) {
+            throw new IllegalStateException("Bombardment warning unavailable");
         }
+        warning.text(Component.empty());
+        drawBombardment(ground);
+        drawFallingBombardment(ground, 0);
+        attackParticipants()
+                .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
+        int[] pulses = {0};
+        Scheduler.Task refresh = shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            if (!warning.isValid()) {
+                shot.close();
+                return;
+            }
+            if (++pulses[0] % 5 == 0) {
+                drawBombardment(ground);
+            }
+            drawFallingBombardment(ground, pulses[0] * 0.05 / config.bombardmentWarningSeconds());
+        });
+        shot.later(seconds(config.bombardmentWarningSeconds()), () -> {
+            refresh.cancel();
+            warning.remove();
+        });
     }
 
-    private static boolean rainProjectile(Entity entity) {
+    private static boolean bombardmentProjectile(Entity entity) {
         return entity instanceof org.bukkit.entity.LargeFireball
                 && "rain-projectile".equals(entity.getPersistentDataContainer()
                         .get(EncounterRecovery.ARTIFACT, PersistentDataType.STRING));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onRainCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
-        if (rainProjectile(event.getHitEntity())) {
+    public void onBombardmentCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (bombardmentProjectile(event.getHitEntity())) {
             event.setCancelled(true); // Native Projectile.onHit redirects fireballs before its damage event.
             return;
         }
-        if (!rainProjectile(event.getEntity())) {
+        if (!bombardmentProjectile(event.getEntity())) {
             return;
         }
         boolean cancelled = event.isCancelled();
         event.setCancelled(true); // Native entity hit/explosion must never add a second damage path.
-        RainShot shot = rainShots.remove(event.getEntity().getUniqueId());
+        BombardmentShot shot = bombardmentShots.remove(event.getEntity().getUniqueId());
         if (shot == null || shot.owner().isClosed()) {
             return;
         }
@@ -1177,7 +1181,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 // Native ray hits can sit 0.0005 inside a block's top face; include the footing just above it.
                 Location ground = AttackSurface.column(impact, 1, 4);
                 if (ground != null) {
-                    impactTerrain(ground, RAIN_RADIUS, 1);
+                    impactTerrain(ground, config.bombardmentRadius(), 1);
                 }
                 impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
                 impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
@@ -1185,14 +1189,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     if (shot.owner().isClosed() || dragon != shot.source()) {
                         break;
                     }
-                    if (arena.inBombardment(player.getLocation(), impact, RAIN_RADIUS)) {
-                        damage(player, shot.source(), config.rainDamage(), AttackFamily.RAIN, true);
+                    if (arena.inBombardment(player.getLocation(), impact, config.bombardmentRadius())) {
+                        damage(player, shot.source(), config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
                     }
                 }
                 if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
                     Location crater = AttackSurface.column(impact, 1, 4);
                     if (crater != null) {
-                        depositBreathPool(crater, RAIN_RADIUS, 6);
+                        depositBreathPool(crater, config.bombardmentRadius(), 6);
                     }
                 }
             }
@@ -1201,8 +1205,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onRainExplosion(org.bukkit.event.entity.ExplosionPrimeEvent event) {
-        if (rainProjectile(event.getEntity())) {
+    public void onBombardmentExplosion(org.bukkit.event.entity.ExplosionPrimeEvent event) {
+        if (bombardmentProjectile(event.getEntity())) {
             event.setCancelled(true);
         }
     }
@@ -1323,7 +1327,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         owner.later(seconds(config.preyCountdownSeconds()), owner::close);
     }
 
-    /** Shared Prey/Rain hazard, with effect-specific geometry and lifetime but unchanged raw pool damage.
+    /** Shared Prey/Bombardment hazard, with effect-specific geometry and lifetime but unchanged raw pool damage.
      * Returns false when there is no live owner, footing or a startup failure. Call on the server thread.
      */
     public boolean depositBreathPool(Location ground, double radius, double lifetimeSeconds) {
@@ -1708,7 +1712,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         climb(movement, source, 2);
     }
 
-    /** Shared Smash/Rain terrain work is a sibling hazard, never a main-completion dependency. */
+    /** Shared Smash/Bombardment terrain work is a sibling hazard, never a main-completion dependency. */
     void impactTerrain(Location center, double radius, int depth) {
         if (attackWork == null || attackWork.isClosed()) {
             return;
@@ -1909,88 +1913,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         lane.indicator.text(Component.empty());
     }
 
-    private void warnBombardment() {
-        startAction(DebugAttack.BOMBARDMENT, this::warnBombardment);
-    }
-
-    private void warnBombardment(EncounterWork owner) {
-        if (dragon == null || landingRequested || bombardmentIndicator != null) {
-            return;
-        }
-        var targets = attackTargets().stream().limit(64).toList();
-        if (targets.isEmpty()) {
-            return;
-        }
-        Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
-        Location impact = target.getLocation().clone();
-        impact.setY(impact.getBlockY());
-        if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), targets)) {
-            return;
-        }
-        EnderDragon warnedDragon = dragon;
-        bombardmentIndicator = impact.getWorld().spawn(impact.clone().add(0, 1.5, 0), TextDisplay.class);
-        // Spawning fires public events: do not resume after a synchronous phase exit/disable.
-        if (owner.isClosed() || dragon != warnedDragon
-                || !bombardmentIndicator.isValid()) {
-            cancelPendingBombardment();
-            return;
-        }
-        owner.own(bombardmentIndicator, "warning");
-        owner.onCleanup(this::cancelPendingBombardment);
-        battles.faceWarningToViewer(bombardmentIndicator);
-        if (owner.isClosed()) {
-            return;
-        }
-        // Keep the owned marker for warning validity/cleanup, but never show a numeric countdown.
-        bombardmentIndicator.text(Component.empty());
-        targets.forEach(player -> {
-            player.playSound(impact, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
-        });
-        drawBombardment(impact);
-        drawFallingBombardment(impact, 0);
-        final int[] pulses = {0};
-        bombardmentWarning = owner.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
-            pulses[0]++;
-            if (pulses[0] % 5 == 0) {
-                if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
-                    cancelPendingBombardment();
-                    owner.close();
-                    return;
-                }
-                drawBombardment(impact);
-            }
-            drawFallingBombardment(impact, pulses[0] * 0.05 / config.bombardmentWarningSeconds());
-        });
-        bombardmentImpact = owner.later(seconds(config.bombardmentWarningSeconds()), () -> {
-            boolean valid = bombardmentIndicator != null && bombardmentIndicator.isValid();
-            cancelPendingBombardment();
-            if (!valid || dragon == null || !isParticipant(target)) {
-                return;
-            }
-            var participants = dragon.getWorld().getPlayers().stream().filter(arena::participant).toList();
-            if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), participants)) {
-                return;
-            }
-            participants.stream().limit(64).forEach(player -> {
-                CrownParticles.spawn(player, Particle.EXPLOSION, impact.clone().add(0, 0.5, 0),
-                        4, 1.5, 1.5, 1.5, 0);
-                player.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
-            });
-            EnderDragon source = dragon;
-            for (Player player : participants) {
-                // Damage invokes public combat events, which can synchronously end this attempt.
-                if (owner.isClosed() || dragon != source) {
-                    break;
-                }
-                if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
-                        config.bombardmentRadius())) {
-                    damage(player, source, config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
-                }
-            }
-        });
-        owner.later(seconds(config.bombardmentWarningSeconds()), owner::close);
-    }
-
     private void drawBombardment(Location impact) {
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
             for (int point = 0; point < 32; point++) {
@@ -2004,10 +1926,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private void drawFallingBombardment(Location impact, double progress) {
-        double top = Math.min(impact.getY() + 20, impact.getWorld().getMaxHeight() - 1);
+        double top = Math.min(impact.getY() + config.bombardmentSpawnHeight(), impact.getWorld().getMaxHeight() - 1);
         Location flame = impact.clone();
         flame.setY(top + (impact.getY() + 0.5 - top) * Math.min(1, progress));
-        // ponytail: cosmetic particles, not a projectile with another collision/damage path.
+        // ponytail: retain the old cosmetic warning; only the real fireball resolves damage.
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
                 .forEach(player -> {
                     CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
@@ -2016,28 +1938,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 });
     }
 
-    private void cancelPendingBombardment() {
-        if (bombardmentWarning != null) {
-            bombardmentWarning.cancel();
-            bombardmentWarning = null;
-        }
-        if (bombardmentImpact != null) {
-            bombardmentImpact.cancel();
-            bombardmentImpact = null;
-        }
-        if (bombardmentIndicator != null) {
-            TextDisplay indicator = bombardmentIndicator;
-            bombardmentIndicator = null;
-            indicator.remove();
-        }
-    }
-
     private void stopBombardments() {
         if (bombardmentCadence != null) {
             bombardmentCadence.cancel();
             bombardmentCadence = null;
         }
-        cancelPendingBombardment();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -2068,7 +1973,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     boolean owns(Entity entity) {
-        return entity.equals(dragon) || entity.equals(bombardmentIndicator)
+        return entity.equals(dragon)
                 || anchors.stream().anyMatch(anchor -> entity.equals(anchor.crystal)) || defenders.contains(entity)
                 || work != null && work.owns(entity) || attackWork != null && attackWork.owns(entity);
     }
@@ -2529,8 +2434,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         Entity direct = event instanceof EntityDamageByEntityEvent byEntity ? byEntity.getDamager()
                 : event.getDamageSource().getDirectEntity();
         Entity source = event.getDamageSource().getCausingEntity();
-        if (rainProjectile(target) || rainProjectile(direct)
-                || rainProjectile(event.getDamageSource().getDirectEntity())) {
+        if (bombardmentProjectile(target) || bombardmentProjectile(direct)
+                || bombardmentProjectile(event.getDamageSource().getDirectEntity())) {
             event.setCancelled(true); // Includes native player-hit deflection before velocity/owner mutation.
             return;
         }

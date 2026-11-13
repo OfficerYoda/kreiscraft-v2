@@ -8,7 +8,7 @@ title: Shattered Crown damage calibration
 netherite, without Resistance or absorption. Both automatic Bombardment and
 `/dragondebug trigger bombardment` use `DragonBattleAccess.referenceDamage` once per eligible
 recipient, after the existing fixed warning/footprint and impact-time eligibility checks.
-No terrain destruction was added. The existing validated field (finite 0–100), atomic edits,
+The merged attack also leaves a shallow crater and a six-second breath pool. The validated field (finite 0–100), atomic edits,
 reload rejection and per-Encounter configuration snapshot remain in use.
 
 On supported Paper **26.2 build 132**, attributed `minecraft:dragon_breath` bypasses armor,
@@ -37,7 +37,7 @@ unit now means reference health loss; `6` previously lost only about `2.16` heal
 ## Boundary for subsequent attacks
 
 Use `referenceDamage` for the approved single-hit targets: **Dive 8**, **Ground Smash 12**,
-**Fireball Rain impact 4** reference health points. Physical Dive now uses that path with
+**Bombardment impact 6** reference health points. Physical Dive now uses that path with
 `lane-damage: 8`, once when the low dragon passes the recipient. Its automatic and debug routes
 share the same calibrated call. The legacy `bombardmentDamage` operation remains **raw native dragon-breath
 damage**, including stationary lane/pool/sweep calls. Pool damage keeps its separately configured
