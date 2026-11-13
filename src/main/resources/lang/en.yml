@@ -1,5 +1,8 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
 dragon-egg:
+  offline-drop: "<prefix> <yellow>The dragon egg was returned in a barrel at <dimension> <x>, <y>, <z> because its carrier was offline for 24 hours."
+  offline-return: "<prefix> <red>Your dragon egg was dropped at your logout location because you were offline for 24 hours. The barrel is at <dimension> <x>, <y>, <z> (a nearby safe block if your logout block was occupied)."
+  return-recovering: "<red>Your dragon egg return is being recovered. Please try joining again shortly; contact an administrator if this persists."
   ender-chest-blocked: "<prefix> <red>Dragon eggs cannot be stored in ender chests, even inside containers."
   compass-name: "<gold>Dragon Egg Compass"
   ping: "<prefix> <gray>Last egg ping: <gold><distance></gold> blocks away, <gold><seconds></gold> seconds ago."

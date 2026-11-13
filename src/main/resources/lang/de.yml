@@ -1,5 +1,8 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
 dragon-egg:
+  offline-drop: "<prefix> <yellow>Das Drachenei wurde in einem Fass bei <dimension> <x>, <y>, <z> abgelegt, weil sein Träger 24 Stunden offline war."
+  offline-return: "<prefix> <red>Dein Drachenei wurde an deinem Abmeldeort abgelegt, weil du 24 Stunden offline warst. Das Fass steht bei <dimension> <x>, <y>, <z> (auf einem sicheren Nachbarblock, falls dein Abmeldeblock belegt war)."
+  return-recovering: "<red>Die Rückgabe deines Dracheneis wird wiederhergestellt. Bitte versuche es gleich erneut; kontaktiere einen Administrator, falls das Problem bestehen bleibt."
   ender-chest-blocked: "<prefix> <red>Dracheneier dürfen nicht in Endertruhen gelagert werden, auch nicht in Behältern."
   compass-name: "<gold>Drachenei-Kompass"
   ping: "<prefix> <gray>Letztes Ei-Signal: <gold><distance></gold> Blöcke entfernt, vor <gold><seconds></gold> Sekunden."

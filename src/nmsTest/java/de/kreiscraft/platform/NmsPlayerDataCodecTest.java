@@ -68,6 +68,7 @@ class NmsPlayerDataCodecTest {
         }
         BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(registries)
                 .forEach(pending -> pending.apply());
+        org.bukkit.craftbukkit.CraftRegistry.setMinecraftRegistry(builtIn);
     }
 
     @Test
@@ -305,6 +306,106 @@ class NmsPlayerDataCodecTest {
 
         assertThat(snapshot.inventory()).isEmpty();
         assertThat(snapshot.enderItems()).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void offlineNestedBundleRemovalPreservesContainersSiblingComponentsAndOtherPlayerData(boolean shulker)
+            throws Exception {
+        var egg = new net.minecraft.world.item.ItemStack(Items.DRAGON_EGG);
+        var inner = new net.minecraft.world.item.ItemStack(Items.BUNDLE);
+        inner.set(net.minecraft.core.component.DataComponents.BUNDLE_CONTENTS,
+                net.minecraft.world.item.component.BundleContents.EMPTY.copyWithContents(Stream.of(egg)));
+        var outer = new net.minecraft.world.item.ItemStack(Items.BUNDLE);
+        outer.set(net.minecraft.core.component.DataComponents.BUNDLE_CONTENTS,
+                new net.minecraft.world.item.component.BundleContents(List.of(
+                        net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(inner),
+                        new net.minecraft.world.item.ItemStackTemplate(Items.DIAMOND, 3))));
+        if (shulker) {
+            var box = new net.minecraft.world.item.ItemStack(Items.SHULKER_BOX);
+            box.set(net.minecraft.core.component.DataComponents.CONTAINER,
+                    net.minecraft.world.item.component.ItemContainerContents.fromItems(List.of(outer)));
+            outer = box;
+        }
+        CompoundTag root = new CompoundTag();
+        root.putFloat("Health", 17);
+        root.put("Inventory", ItemStackWithSlot.CODEC.listOf().encodeStart(ops(),
+                List.of(new ItemStackWithSlot(9, outer))).getOrThrow());
+        root.put("EnderItems", ItemStackWithSlot.CODEC.listOf().encodeStart(ops(),
+                List.of(new ItemStackWithSlot(3, new net.minecraft.world.item.ItemStack(Items.EMERALD, 8))))
+                .getOrThrow());
+        UUID id = UUID.randomUUID();
+        var source = playerData.resolve(id + ".dat");
+        Files.write(source, compress(root));
+        var session = new OfflinePlayerDataStore(playerData, codec()).openForEdit(id).orElseThrow();
+        ItemStack containing = session.snapshot().inventoryAt(9).clone();
+        assertThat(de.kreiscraft.shared.inventory.ItemContents.editFirst(containing, child -> {
+            if (child.getType() != Material.DRAGON_EGG) {
+                return false;
+            }
+            child.setAmount(0);
+            return true;
+        })).isTrue();
+        var staged = session.stage(List.of(new SlottedItem(9, containing)), session.snapshot().enderItems());
+        assertThat(session.commit(staged, () -> true)).isEqualTo(OfflineCommitResult.COMMITTED);
+        var edited = decompress(Files.readAllBytes(source));
+        assertThat(edited.get("Health")).isEqualTo(root.get("Health"));
+        assertThat(edited.get("EnderItems")).isEqualTo(root.get("EnderItems"));
+        var decoded = ItemStackWithSlot.CODEC.listOf().parse(ops(), edited.get("Inventory")).getOrThrow();
+        var container = decoded.getFirst().stack();
+        if (shulker) {
+            assertThat(container.getItem()).isEqualTo(Items.SHULKER_BOX);
+            container = container.get(net.minecraft.core.component.DataComponents.CONTAINER).copyOne();
+        }
+        var children = container.get(net.minecraft.core.component.DataComponents.BUNDLE_CONTENTS)
+                .itemCopies().toList();
+        assertThat(children).hasSize(2);
+        assertThat(children.getFirst().getItem()).isEqualTo(Items.BUNDLE);
+        assertThat(children.getFirst().get(net.minecraft.core.component.DataComponents.BUNDLE_CONTENTS).isEmpty())
+                .isTrue();
+        assertThat(children.get(1).getItem()).isEqualTo(Items.DIAMOND);
+        assertThat(children.get(1).getCount()).isEqualTo(3);
+    }
+
+    @Test
+    void returnStorageVerifiesActualRegionNbtAndRejectsMissingOrCorruptBarrel() throws Exception {
+        var world = mock(org.bukkit.craftbukkit.CraftWorld.class);
+        var level = mock(net.minecraft.server.level.ServerLevel.class);
+        when(world.getHandle()).thenReturn(level);
+        when(level.dimension()).thenReturn(net.minecraft.world.level.Level.OVERWORLD);
+        when(level.registryAccess()).thenReturn(RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
+        when(world.getWorldFolder()).thenReturn(playerData.toFile());
+        when(world.getName()).thenReturn("world");
+        when(world.getUID()).thenReturn(UUID.randomUUID());
+        var location = new org.bukkit.Location(world, 12, 70, 4);
+        ItemStack egg = stack(Items.DRAGON_EGG, 1);
+        var folder = playerData.resolve("region");
+        Files.createDirectories(folder);
+        var info = new net.minecraft.world.level.chunk.storage.RegionStorageInfo("world",
+                net.minecraft.world.level.Level.OVERWORLD, "chunk");
+        var barrel = new net.minecraft.world.level.block.entity.BarrelBlockEntity(
+                new net.minecraft.core.BlockPos(12, 70, 4),
+                net.minecraft.world.level.block.Blocks.BARREL.defaultBlockState());
+        barrel.setItem(13, CraftItemStack.asNMSCopy(egg));
+        barrel.persistentDataContainer.set(new org.bukkit.NamespacedKey("kreiscraft", "egg_return"),
+                org.bukkit.persistence.PersistentDataType.STRING, "token");
+        var entities = new ListTag();
+        entities.add(barrel.saveWithFullMetadata(registries));
+        var chunk = new CompoundTag();
+        chunk.put("block_entities", entities);
+        var pos = new net.minecraft.world.level.ChunkPos(0, 0);
+        try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info, folder, true)) {
+            storage.write(pos, chunk);
+        }
+        NmsDragonEggDropStorage.saveAndVerify(location, "token", egg);
+        verify(world).save(true);
+        assertThatThrownBy(() -> NmsDragonEggDropStorage.saveAndVerify(location, "wrong-token", egg))
+                .isInstanceOf(IOException.class).hasMessageContaining("not persisted intact");
+        try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info, folder, true)) {
+            storage.write(pos, new CompoundTag());
+        }
+        assertThatThrownBy(() -> NmsDragonEggDropStorage.saveAndVerify(location, "token", egg))
+                .isInstanceOf(IOException.class).hasMessageContaining("missing");
     }
 
     private static CompoundTag itemTag(String id, int count) {

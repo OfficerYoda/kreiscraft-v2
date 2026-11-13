@@ -82,14 +82,33 @@ the actor; existing forbidden contents can still be removed. Buffs and offline r
 custody transitions and `ping` rather than another tracker. Shared `ItemContents.any`/`editFirst`
 traverse native item containers; edits write copied metadata back through all ancestors. Discovery
 uses loaded-chunk lifecycle and inventory events, not periodic whole-world scans or forced loads.
-Offline reclamation can reuse `OfflinePlayerDataEditor.openForEdit`, the snapshot's slotted
-inventory/ender items, and the session's stage/commit/discard boundary; administrative editing
-already uses it and no offline-return policy is implemented here.
+After 24 elapsed **real hours**, including downtime, the offline carrier's egg (even inside
+nested containers) is removed through `OfflinePlayerDataEditor.openForEdit` and returned in
+barrel slot 13 at the logout block. An occupied block is never replaced: the nearest air block
+inside the world border, within 16 blocks, is used; no available block means retry with ownership
+retained. Returning before removal cancels the deadline. The barrel follows normal two-minute
+compass sampling, not an immediate ping. Successful returns broadcast server-wide; the carrier
+receives a deferred red login message with the actual barrel coordinates.
+`DragonEggOfflineReturn` journals PREPARED → REMOVED → normal container custody. The journal
+holds the exact serialized egg, chosen block, player-file digests and transaction token. Player
+configuration/login reservations exclude live inventory loads from offline commits. Atomic,
+fsynced Activity Data precedes removal; a fsynced player replacement precedes placement; Paper
+chunk flushing, fsync and actual region-NBT read-back precede releasing journal custody. Pending
+barrels cannot be opened, broken, burned, exploded or drained by hoppers. An ambiguous changed
+player file or altered journal barrel fails closed, preserves the journal and blocks carrier login
+until an administrator reconciles the evidence; do not delete the journal or restore a backup
+blindly. Staged player writes and original backups remain available for diagnosis.
+Broadcast recovery is **at-most-once**: a crash after the durable completion claim but before
+chat delivery can omit the broadcast, never repeat it. Login notifications remain pending until
+send succeeds (a crash before their acknowledgement may repeat the message). A hard crash while
+the carrier is online uses the last durably saved online observation/location, rather than inventing
+an exact crash timestamp; explicit logout and graceful shutdown record their real deadline.
 Identity, custody, last known position and sampled position/time live in `data/dragon-egg.yml`
 (Activity Data), auto-saved and flushed at shutdown; never edit these as Server Configuration.
 Do not delete the data file to "repair" a destroyed egg: that would allow another egg to be claimed.
 
 Runnable checks: `./gradlew test --tests '*DragonEgg*Test' --tests '*InvseeGuiTest'`.
+Native inventory and region-file checks: `./gradlew testNms --tests '*NmsPlayerDataCodecTest'`.
 Before live acceptance on Paper, craft and right-click in both hands/dimensions; move the egg before
 and after two minutes; teleport it; let it fall onto a torch to become an item; pick up/drop/die;
 unload/reload its chunk and restart with an offline holder; destroy it and verify another egg is not
@@ -97,6 +116,23 @@ selected. Repeat possession/placement/drop checks with nested shulkers and bundl
 double chests spanning a chunk boundary. Try ender-chest insertion with every input method and both
 online/offline administrative editors, checking the cursor/source and unrelated contents after rejection.
 Bukkit tests cover event and destination-update boundaries, not actual vanilla physics/event ordering.
+
+Offline-return manual verification (disposable Paper world, never live data):
+- Log out holding a marked egg directly, in a bundle, and inside shulker→bundle nesting; preserve
+  containing items, sibling contents, armor/offhand, EnderItems and unrelated player tags.
+- Advance only the saved deadline for a short test; restart with it overdue and no carrier online.
+  Check exactly one egg in slot 13, one broadcast, red next-login message, and no early compass ping.
+- Occupy the logout block; confirm the nearest safe fallback, unchanged occupied blocks and actual
+  fallback coordinates in chat. Fill the search radius; confirm no removal/announcement until safe.
+- Connect during configuration/removal; concurrently save an administrative offline inventory edit.
+  Check either an untouched carrier inventory or a completed return, never both copies.
+- Interrupt after journal preparation, after player replacement, during barrel save and after the
+  completion claim; restart and count egg identity copies. Simulate player/YAML/region write failures
+  and changed digests; verify retries or explicit fail-closed recovery, and protected pending barrels.
+- Verify filesystem atomic rename/directory fsync support and Paper region read-back on the actual
+  server filesystem. Disk/controller failures that violate fsync, external world/player restoration,
+  other plugins overriding cancellations, and edits while this module is disabled are outside the
+  transaction guarantee. Stop the server before manually reconciling a failed journal.
 
 For command syntax and permissions, see [Commands and Permissions](/reference/commands-and-permissions/).
 For config keys and defaults, see [Configuration](/reference/configuration/).

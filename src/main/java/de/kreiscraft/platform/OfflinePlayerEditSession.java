@@ -133,6 +133,9 @@ public final class OfflinePlayerEditSession {
         } catch (AtomicMoveNotSupportedException e) {
             throw new IOException("atomic replacement is not supported for " + source, e);
         }
+        try (var directory = FileChannel.open(source.getParent(), StandardOpenOption.READ)) {
+            directory.force(true);
+        }
         return OfflineCommitResult.COMMITTED;
     }
 

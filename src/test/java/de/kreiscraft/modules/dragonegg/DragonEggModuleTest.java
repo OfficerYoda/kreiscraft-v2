@@ -30,6 +30,10 @@ class DragonEggModuleTest {
         try {
             var services = new ServiceRegistry();
             services.publish(ConfigService.class, mock(ConfigService.class));
+            services.publish(de.kreiscraft.platform.PaperPlatform.class,
+                    mock(de.kreiscraft.platform.PaperPlatform.class));
+            services.publish(de.kreiscraft.platform.OfflinePlayerDataEditor.class,
+                    mock(de.kreiscraft.platform.OfflinePlayerDataEditor.class));
             var scheduler = new MockScheduler();
             var player = server.addPlayer();
             player.getInventory().setItem(0, new ItemStack(Material.DRAGON_EGG));
@@ -80,6 +84,10 @@ class DragonEggModuleTest {
             var services = new ServiceRegistry();
             var config = mock(ConfigService.class);
             services.publish(ConfigService.class, config);
+            services.publish(de.kreiscraft.platform.PaperPlatform.class,
+                    mock(de.kreiscraft.platform.PaperPlatform.class));
+            services.publish(de.kreiscraft.platform.OfflinePlayerDataEditor.class,
+                    mock(de.kreiscraft.platform.OfflinePlayerDataEditor.class));
             var scheduler = new MockScheduler();
             module.enable(new ModuleContext(plugin, BasicConfigurationNode.root(), mock(MessageService.class),
                     services, scheduler, mock(CommandRegistrar.class), events));
