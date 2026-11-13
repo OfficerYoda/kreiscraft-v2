@@ -59,6 +59,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private static final int MAX_MOB_POPULATION = 20;
+    /** Highest footing below this scan height becomes the Bombardment ceiling. */
+    private static final int BOMBARDMENT_CEILING = 20;
     private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
             EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
     private final Server server;
@@ -100,11 +102,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private final List<HuntArea> areas = new ArrayList<>();
     private final Set<HuntArea> pools = new HashSet<>();
     private final java.util.Map<UUID, Long> poolCooldowns = new java.util.HashMap<>();
-    private final java.util.Map<UUID, BombardmentShot> bombardmentShots = new java.util.HashMap<>();
-
-    private record BombardmentShot(EncounterWork owner, EnderDragon source) {
-    }
-
     private long encounterTicks;
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
@@ -1078,7 +1075,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             var grounds = attackTargets().stream().map(target -> {
                 Location feet = target.getLocation();
                 Location ground = AttackSurface.column(feet, 0, feet.getBlockY() - feet.getWorld().getMinHeight());
-                // Void columns still get a locked warning/projectile; no invented floor, bounded cleanup below.
+                // Void columns still get a locked warning; no invented floor, bounded cleanup below.
                 return ground == null ? feet : ground;
             }).toList();
             int[] remaining = {grounds.size()};
@@ -1090,38 +1087,50 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 });
                 shot.run(() -> {
                     warnBombardment(ground, shot);
-                    double descent = Math.min(config.bombardmentWarningSeconds(), config.bombardmentDescentSeconds());
-                    shot.later(seconds(config.bombardmentWarningSeconds() - descent), () -> {
-                        double speed = config.bombardmentSpawnHeight() / (descent * 20);
-                        var ball = ground.getWorld().spawn(ground.clone().add(0, config.bombardmentSpawnHeight(), 0),
-                                org.bukkit.entity.LargeFireball.class, projectile -> {
-                                    // ponytail: retain legacy artifact tags for existing restart recovery/probes.
-                                    shot.own(projectile, "rain-projectile");
-                                    projectile.setShooter(source);
-                                    projectile.setIsIncendiary(false);
-                                    projectile.setYield(0);
-                                    battles.prepareBombardmentFireball(projectile, speed);
-                                    projectile.setVelocity(new org.bukkit.util.Vector(0, -speed, 0));
-                                });
-                        if (shot.isClosed() || !ball.isValid()) {
-                            ball.remove();
-                            shot.close();
-                            return;
-                        }
-                        UUID id = ball.getUniqueId();
-                        bombardmentShots.put(id, new BombardmentShot(shot, source));
-                        shot.onCleanup(() -> bombardmentShots.remove(id));
-                        shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
-                            if (!ball.isValid()) {
-                                shot.close();
-                            }
-                        });
-                    });
-                    // Lost/unloaded/stopped projectiles cannot hold the main action indefinitely.
-                    shot.later(seconds(config.bombardmentWarningSeconds() + 3), shot::close);
+                    shot.later(seconds(config.bombardmentWarningSeconds()),
+                            () -> resolveBombardment(ground, source, shot));
                 });
             }
         });
+    }
+
+    /** Resolves once on the warned tick; the highest footing in the column is the ceiling. */
+    private void resolveBombardment(Location ground, EnderDragon source, EncounterWork shot) {
+        if (shot.isClosed() || dragon != source || !attacking()) {
+            shot.close();
+            return;
+        }
+        Location impact = AttackSurface.column(ground.clone().add(0, BOMBARDMENT_CEILING, 0), 0, BOMBARDMENT_CEILING);
+        if (impact == null) {
+            impact = ground;
+        }
+        Location center = impact;
+        var participants = source.getWorld().getPlayers().stream().filter(arena::participant).toList();
+        participants.stream().limit(64).forEach(player -> {
+            CrownParticles.spawn(player, Particle.EXPLOSION, center.clone().add(0, 0.5, 0), 4, 1.5, 1.5, 1.5, 0);
+            player.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
+        });
+        for (Player player : participants) {
+            // Damage invokes public combat events, which can synchronously end this attempt.
+            if (shot.isClosed() || dragon != source) {
+                break;
+            }
+            if (isParticipant(player)
+                    && arena.inBombardment(player.getLocation(), center, config.bombardmentRadius())) {
+                damage(player, source, config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
+            }
+        }
+        if (!shot.isClosed() && dragon == source) {
+            Location crater = AttackSurface.column(center, 1, 4);
+            if (crater != null) {
+                impactTerrain(crater, config.bombardmentRadius(), 1);
+                Location pool = AttackSurface.column(center, 1, 4);
+                if (pool != null) {
+                    depositBreathPool(pool, config.bombardmentRadius(), 6);
+                }
+            }
+        }
+        shot.close();
     }
 
     private void warnBombardment(Location ground, EncounterWork shot) {
@@ -1151,63 +1160,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             refresh.cancel();
             warning.remove();
         });
-    }
-
-    private static boolean bombardmentProjectile(Entity entity) {
-        return entity instanceof org.bukkit.entity.LargeFireball
-                && "rain-projectile".equals(entity.getPersistentDataContainer()
-                        .get(EncounterRecovery.ARTIFACT, PersistentDataType.STRING));
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onBombardmentCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
-        if (bombardmentProjectile(event.getHitEntity())) {
-            event.setCancelled(true); // Native Projectile.onHit redirects fireballs before its damage event.
-            return;
-        }
-        if (!bombardmentProjectile(event.getEntity())) {
-            return;
-        }
-        boolean cancelled = event.isCancelled();
-        event.setCancelled(true); // Native entity hit/explosion must never add a second damage path.
-        BombardmentShot shot = bombardmentShots.remove(event.getEntity().getUniqueId());
-        if (shot == null || shot.owner().isClosed()) {
-            return;
-        }
-        Location impact = event.getEntity().getLocation().clone(); // Native collision position, never the old target.
-        shot.owner().run(() -> {
-            if (!cancelled && dragon == shot.source()) {
-                // Native ray hits can sit 0.0005 inside a block's top face; include the footing just above it.
-                Location ground = AttackSurface.column(impact, 1, 4);
-                if (ground != null) {
-                    impactTerrain(ground, config.bombardmentRadius(), 1);
-                }
-                impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
-                impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
-                for (Player player : attackParticipants()) {
-                    if (shot.owner().isClosed() || dragon != shot.source()) {
-                        break;
-                    }
-                    if (arena.inBombardment(player.getLocation(), impact, config.bombardmentRadius())) {
-                        damage(player, shot.source(), config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
-                    }
-                }
-                if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
-                    Location crater = AttackSurface.column(impact, 1, 4);
-                    if (crater != null) {
-                        depositBreathPool(crater, config.bombardmentRadius(), 6);
-                    }
-                }
-            }
-        });
-        shot.owner().close();
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onBombardmentExplosion(org.bukkit.event.entity.ExplosionPrimeEvent event) {
-        if (bombardmentProjectile(event.getEntity())) {
-            event.setCancelled(true);
-        }
     }
 
     /** Main completion closes only this child; deposited hazards are sibling Encounter work. */
@@ -1940,10 +1892,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private void drawFallingBombardment(Location impact, double progress) {
-        double top = Math.min(impact.getY() + config.bombardmentSpawnHeight(), impact.getWorld().getMaxHeight() - 1);
+        double top = Math.min(impact.getY() + BOMBARDMENT_CEILING, impact.getWorld().getMaxHeight() - 1);
         Location flame = impact.clone();
         flame.setY(top + (impact.getY() + 0.5 - top) * Math.min(1, progress));
-        // ponytail: retain the old cosmetic warning; only the real fireball resolves damage.
+        // ponytail: cosmetic tube; impact resolution is the single damage path.
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
                 .forEach(player -> {
                     CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
@@ -2448,11 +2400,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         Entity direct = event instanceof EntityDamageByEntityEvent byEntity ? byEntity.getDamager()
                 : event.getDamageSource().getDirectEntity();
         Entity source = event.getDamageSource().getCausingEntity();
-        if (bombardmentProjectile(target) || bombardmentProjectile(direct)
-                || bombardmentProjectile(event.getDamageSource().getDirectEntity())) {
-            event.setCancelled(true); // Includes native player-hit deflection before velocity/owner mutation.
-            return;
-        }
         if (source == null) {
             source = direct;
         }

@@ -194,7 +194,7 @@ modules:
     prey-cadence-seconds: 20.0
     prey-countdown-seconds: 4.0
     pool-radius: 5.0
-    pool-damage: 3.0
+    pool-damage: 6.0
     pool-damage-cadence-seconds: 1.0
     pool-lifetime-seconds: 6.0
     sweep-radius: 8.0
@@ -210,8 +210,6 @@ modules:
     smash-crater-radius: 5.0
     smash-crater-depth: 1
     debris-lifetime-seconds: 4.0
-    bombardment-spawn-height: 20.0
-    bombardment-descent-seconds: 2.0
     final-health-fraction: 0.3
     final-cadence-factor: 0.7
     final-pool-lifetime-factor: 0.5

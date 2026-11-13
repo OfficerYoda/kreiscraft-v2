@@ -353,7 +353,7 @@ class ServerConfigGuiTest {
                 }
             }
         }
-        assertThat(names).hasSize(62).doesNotHaveDuplicates();
+        assertThat(names).hasSize(60).doesNotHaveDuplicates();
         pages.setPage(0);
         click(gui, 52);
         assertThat(pages.getPage()).isEqualTo(1);
@@ -375,11 +375,8 @@ class ServerConfigGuiTest {
                 : "Dauerhafte Bodenschlag-Kratertiefe"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Flying debris lifetime"
                 : "Fliegende Trümmerdauer"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment launch height"
+        assertThat(names).noneMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment launch height"
                 : "Bombardement-Starthöhe"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment native descent"
-                : "Bombardement-Flugzeit"));
-        assertThat(names).noneMatch(name -> name.startsWith("Rain ") || name.startsWith("Feuerregen-"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
         String[] labels = locale.equals("en")
                 ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",

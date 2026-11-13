@@ -499,7 +499,6 @@ class OpeningEncounterTest {
         enable();
         scheduler.advance(Duration.ofSeconds(25));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
-        assertThat(end.getEntitiesByClass(org.bukkit.entity.LargeFireball.class)).isEmpty();
         assertThat(player.getHealth()).isEqualTo(20);
         assertThat(anchors()).hasSize(4);
         assertThat(hit(dragon).isCancelled()).isTrue();
@@ -507,7 +506,7 @@ class OpeningEncounterTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"bombardment-warning-seconds,0", "bombardment-damage,NaN",
-            "bombardment-radius,13", "bombardment-spawn-height,25", "bombardment-descent-seconds,3"})
+            "bombardment-radius,13"})
     void invalidBombardmentReloadsRetainThePlayableOpening(String key, String value) throws Exception {
         enable();
         var invalid = config.copy();

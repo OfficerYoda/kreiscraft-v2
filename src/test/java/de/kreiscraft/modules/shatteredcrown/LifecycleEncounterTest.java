@@ -113,11 +113,6 @@ class LifecycleEncounterTest {
             }
 
             @Override
-            public void prepareBombardmentFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
-                // MockBukkit has no native projectile inertia; the Paper probe checks descent.
-            }
-
-            @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
                 new org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation((PlayerMock) recipient)
                         .simulateDamage(amount,

@@ -168,8 +168,6 @@ server-config:
     shattered-crown-smash-shockwave-knockback: "Bodenschlag-Schockwellenrückstoß"
     shattered-crown-smash-crater-depth: "Dauerhafte Bodenschlag-Kratertiefe (Blöcke)"
     shattered-crown-debris-lifetime-seconds: "Fliegende Trümmerdauer (Sekunden)"
-    shattered-crown-bombardment-spawn-height: "Bombardement-Starthöhe (Blöcke)"
-    shattered-crown-bombardment-descent-seconds: "Bombardement-Flugzeit (Sekunden)"
     shattered-crown-sweep-knockback: "Flügelschlagrückstoß"
     shattered-crown-final-health-fraction: "Alter Lebensanteil (ignoriert)"
     shattered-crown-final-cadence-factor: "Finaler Angriffstakt-Multiplikator"

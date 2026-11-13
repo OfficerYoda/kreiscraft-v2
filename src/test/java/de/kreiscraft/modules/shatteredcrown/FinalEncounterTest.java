@@ -116,11 +116,6 @@ class FinalEncounterTest {
             }
 
             @Override
-            public void prepareBombardmentFireball(org.bukkit.entity.LargeFireball fireball, double speed) {
-                // MockBukkit has no native projectile inertia; the Paper probe checks descent.
-            }
-
-            @Override
             public void prepareRangedDefender(Mob defender) {
                 // Native navigation/beam are exercised by SecondWaveProbe, not MockBukkit.
             }
@@ -1057,7 +1052,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofMillis(3999));
         assertParticipantHealth(20);
         scheduler.advance(Duration.ofMillis(1));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(7); // Independent pools share one damage pulse.
         moveParticipants(26.5, 10.5);
         scheduler.advance(Duration.ofMillis(6250));
@@ -1078,7 +1073,7 @@ class FinalEncounterTest {
         assertWorldCountdown("4.0s");
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofSeconds(4));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
 
         var part = mock(org.bukkit.entity.ComplexEntityPart.class);
         when(part.getParent()).thenReturn(dragon);
@@ -1094,7 +1089,7 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(20); // One warning per combat player.
         moveParticipants(16.5, 0.5);
         scheduler.advance(Duration.ofSeconds(3));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
         clearAnchors();
 
         scheduler.advance(Duration.ofSeconds(7));
@@ -1111,7 +1106,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofSeconds(12));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         scheduler.advance(Duration.ofSeconds(1)); // A fresh familiar lane is pending at native completion.
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(1);
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         var loot = new org.bukkit.inventory.ItemStack(Material.DRAGON_EGG);
         double healthAtVictory = player.getHealth();

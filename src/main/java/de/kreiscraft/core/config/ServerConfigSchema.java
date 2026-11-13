@@ -407,8 +407,6 @@ public final class ServerConfigSchema {
         fields.add(field(path("modules", "shattered-crown", "smash-crater-depth"), ConfigFieldType.INTEGER,
                 ConfigValidators.integerRange(1, 3), ConfigLifecycle.HOT_RELOAD));
         fields.add(crownNumber("debris-lifetime-seconds", 0.5, 10));
-        fields.add(crownNumber("bombardment-spawn-height", 16, 24));
-        fields.add(crownNumber("bombardment-descent-seconds", 1.5, 2.5));
         fields.add(crownNumber("final-health-fraction", 0.1, 0.5));
         fields.add(crownNumber("final-cadence-factor", 0.5, 0.9));
         fields.add(crownNumber("final-pool-lifetime-factor", 0.25, 0.9));

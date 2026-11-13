@@ -168,8 +168,6 @@ server-config:
     shattered-crown-smash-shockwave-knockback: "Smash shockwave knockback"
     shattered-crown-smash-crater-depth: "Permanent Smash crater depth (blocks)"
     shattered-crown-debris-lifetime-seconds: "Flying debris lifetime (seconds)"
-    shattered-crown-bombardment-spawn-height: "Bombardment launch height (blocks)"
-    shattered-crown-bombardment-descent-seconds: "Bombardment native descent (seconds)"
     shattered-crown-sweep-knockback: "Wing sweep knockback"
     shattered-crown-final-health-fraction: "Legacy health fraction (ignored)"
     shattered-crown-final-cadence-factor: "Final attack cadence multiplier"

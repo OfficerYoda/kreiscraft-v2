@@ -30,8 +30,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         Integer openingArmorPercentage,
         Double smashCraterRadius, Integer smashCraterDepth, Double debrisLifetimeSeconds,
         Double smashShockwaveRadius, Double smashShockwaveSeconds, Double smashShockwaveDamagePercentage,
-        Double smashShockwaveKnockback,
-        Double bombardmentSpawnHeight, Double bombardmentDescentSeconds) {
+        Double smashShockwaveKnockback) {
     /** Validate full reloads and Crown edits, without blocking unrelated edits on a broken section. */
     public static Optional<String> validateCandidate(ConfigurationNode candidate) {
         Object[] path = candidate.path().array();
@@ -84,10 +83,6 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
     }
 
     public ShatteredCrownConfig {
-        bombardmentSpawnHeight = bombardmentSpawnHeight == null ? 20.0 : bombardmentSpawnHeight;
-        bombardmentDescentSeconds = bombardmentDescentSeconds == null ? 2.0 : bombardmentDescentSeconds;
-        bounded("bombardment-spawn-height", bombardmentSpawnHeight, 16, 24);
-        bounded("bombardment-descent-seconds", bombardmentDescentSeconds, 1.5, 2.5);
         openingArmorPercentage = openingArmorPercentage == null ? 35 : openingArmorPercentage;
         bounded("opening-armor-percentage", openingArmorPercentage, 0, 50);
         movementAttacks = movementAttacks == null ? true : movementAttacks;
@@ -135,7 +130,7 @@ public record ShatteredCrownConfig(String worldKey, Double maxHealth, Integer de
         preyCadenceSeconds = preyCadenceSeconds == null ? 20.0 : preyCadenceSeconds;
         preyCountdownSeconds = preyCountdownSeconds == null ? 4.0 : preyCountdownSeconds;
         poolRadius = poolRadius == null ? 5.0 : poolRadius;
-        poolDamage = poolDamage == null ? 3.0 : poolDamage;
+        poolDamage = poolDamage == null ? 6.0 : poolDamage;
         poolDamageCadenceSeconds = poolDamageCadenceSeconds == null ? 1.0 : poolDamageCadenceSeconds;
         poolLifetimeSeconds = poolLifetimeSeconds == null ? 6.0 : poolLifetimeSeconds;
         sweepRadius = sweepRadius == null ? 8.0 : sweepRadius;

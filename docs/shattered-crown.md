@@ -526,11 +526,11 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   emitting both types together; their randomized fade-out remains client-controlled.
   updating every server tick. There is no visible countdown; an invisible owned TextDisplay retains
   warning-validity and cleanup checks. A dragon growl accompanies the warning.
-  A real falling fireball launches after one second at default tuning and resolves on native
-  block/player collision, including overhead cover. Moving out avoids damage; positions do not chase players.
-  Native fireball damage, deflection and explosions are suppressed. One dragon-attributed impact
-  defaults to radius four and six reference HP (three hearts with full Protection IV netherite).
-  Actual collision footing receives a permanent radius-four, one-block-deep crater and a matching
+  The blast resolves once on the warned tick at the highest footing within twenty blocks above the
+  warned ground, so overhead cover absorbs it. Moving out avoids damage; positions do not chase
+  players. One dragon-attributed impact defaults to radius four and six reference HP (three hearts
+  with full Protection IV netherite). The impact footing receives a permanent radius-four,
+  one-block-deep crater and a matching
   six-second breath pool. Protected players remain excluded. Pool damage uses the existing raw
   `pool-damage` setting and shared per-player cadence. See [Bombardment](/shattered-crown-rain/).
 - Victory clears custom artifacts without editing XP, drops, portal, egg, gateway or ritual state.
@@ -549,7 +549,7 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.
 - PDC ownership keys are `kreiscraft:crown_artifact` (including `anchor`, `defender`, `warning`, `lane`,
-  `prey`, `pool`, `sweep`, `debris`, `rain-warning`, `rain-projectile` and inherited Wither effects),
+  `prey`, `pool`, `sweep`, `debris`, `rain-warning` and inherited Wither effects),
   `kreiscraft:crown_original_health` (original dragon maximum-health base value), and
   `kreiscraft:crown_original_phase` (restore/recover temporary native landing ownership).
   `kreiscraft:crown_protected_shot` records an indirect attack's protected origin, not entity ownership.
