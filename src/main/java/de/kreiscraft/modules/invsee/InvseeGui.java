@@ -2,6 +2,10 @@ package de.kreiscraft.modules.invsee;
 
 import de.kreiscraft.platform.OfflinePlayerSnapshot;
 import de.kreiscraft.platform.SlottedItem;
+import de.kreiscraft.shared.inventory.ItemContents;
+import java.util.function.Consumer;
+import org.bukkit.entity.Player;
+import xyz.xenondevs.invui.inventory.event.PlayerUpdateReason;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
@@ -156,6 +160,12 @@ public final class InvseeGui {
      * {@link #ENDER_CHEST_GUI_SIZE} slots indexed by Ender Chest slot.
      */
     public static Gui buildOfflineEnderChest(VirtualInventory contents) {
+        return buildOfflineEnderChest(contents, player -> {
+        });
+    }
+
+    public static Gui buildOfflineEnderChest(VirtualInventory contents, Consumer<Player> rejected) {
+        protectEnderChest(contents, rejected);
         Gui gui = Gui.empty(9, 3);
         for (int slot = 0; slot < ENDER_CHEST_GUI_SIZE; slot++) {
             gui.setSlotElement(slot, new SlotElement.InventoryLink(contents, slot));
@@ -177,10 +187,30 @@ public final class InvseeGui {
      * the GUI write back to the live inventory.
      */
     public static Gui buildEnderChestEditable(Inventory enderChest) {
+        return buildEnderChestEditable(enderChest, player -> {
+        });
+    }
+
+    public static Gui buildEnderChestEditable(Inventory enderChest, Consumer<Player> rejected) {
         ReferencingInventory ref = ReferencingInventory.fromStorageContents(enderChest);
+        protectEnderChest(ref, rejected);
         Gui gui = Gui.empty(9, 3);
         gui.fillRectangle(0, 0, 9, ref, false);
         return gui;
+    }
+
+    private static void protectEnderChest(xyz.xenondevs.invui.inventory.Inventory contents, Consumer<Player> rejected) {
+        // InvUI validates the proposed destination before changing the source, including swaps, bundles and drags.
+        contents.addPreUpdateHandler(event -> {
+            if (ItemContents.containsDragonEgg(event.getNewItem())
+                    && (event.getPreviousItem() == null || !event.getPreviousItem().isSimilar(event.getNewItem())
+                            || event.getNewItem().getAmount() > event.getPreviousItem().getAmount())) {
+                event.setCancelled(true);
+                if (event.getUpdateReason() instanceof PlayerUpdateReason reason) {
+                    rejected.accept(reason.player());
+                }
+            }
+        });
     }
 
     // -----------------------------------------------------------------------

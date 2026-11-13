@@ -77,6 +77,10 @@ public final class DragonEggCompass {
         }
     }
 
+    void rejectEnderChest(Player player) {
+        messages.send(player, "dragon-egg.ender-chest-blocked");
+    }
+
     public void updateInventory(Player player) {
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getSize(); slot++) {

@@ -66,23 +66,37 @@ implementation is not live acceptance. See its [current scope and operator guide
 Craft one compass with one dragon head (shapeless). Only marked tracking compasses are changed.
 The first observed single egg item or placed egg becomes the gameplay egg; later eggs never replace it,
 including after destruction. Direct inventory/cursor possession, moving dropped items, placed-block
-teleportation, and falling-block placement/drop transitions retain its identity. Right-click reports
+teleportation, and falling-block placement/drop transitions retain its identity. Placed inventories,
+the actual occupied half of double chests, and recursively nested shulkers/bundles also retain it
+through placement, breaking, hopper transfers, cursor possession and dropped containers. Right-click reports
 distance to the last sample and its age in seconds, or the target dimension when worlds differ.
 Location is sampled every two minutes, not continuously; offline holders and unloaded chunks retain
 their last known location without forcing a chunk load. Unknown custody or confirmed destruction
-reports unavailable. Containers/nested storage, buffs and offline reclamation are separate slices.
+reports unavailable. Ender-chest insertion is rejected for **every** dragon egg, marked or not,
+including nested containers, native clicks/shift-clicks/drags/hotbar/offhand swaps and online/offline
+administrative ender-chest editing. Rejection keeps source and destination unchanged and informs
+the actor; existing forbidden contents can still be removed. Buffs and offline reclamation are separate slices.
 
 `DragonEggTracker` is the published identity/location seam for those slices; reuse its
-`isTrackedEgg`, `holdsTrackedEgg`, custody transitions and `ping` rather than another tracker.
+`isTrackedEgg`, `containsTrackedEgg`, `claimContained`, `holdsTrackedEgg`, `observeInventory`,
+custody transitions and `ping` rather than another tracker. Shared `ItemContents.any`/`editFirst`
+traverse native item containers; edits write copied metadata back through all ancestors. Discovery
+uses loaded-chunk lifecycle and inventory events, not periodic whole-world scans or forced loads.
+Offline reclamation can reuse `OfflinePlayerDataEditor.openForEdit`, the snapshot's slotted
+inventory/ender items, and the session's stage/commit/discard boundary; administrative editing
+already uses it and no offline-return policy is implemented here.
 Identity, custody, last known position and sampled position/time live in `data/dragon-egg.yml`
 (Activity Data), auto-saved and flushed at shutdown; never edit these as Server Configuration.
 Do not delete the data file to "repair" a destroyed egg: that would allow another egg to be claimed.
 
-Runnable checks: `./gradlew test --tests '*DragonEgg*Test'`.
+Runnable checks: `./gradlew test --tests '*DragonEgg*Test' --tests '*InvseeGuiTest'`.
 Before live acceptance on Paper, craft and right-click in both hands/dimensions; move the egg before
 and after two minutes; teleport it; let it fall onto a torch to become an item; pick up/drop/die;
 unload/reload its chunk and restart with an offline holder; destroy it and verify another egg is not
-selected. Bukkit tests cover event transitions, not actual vanilla physics/event ordering.
+selected. Repeat possession/placement/drop checks with nested shulkers and bundles; use hoppers and
+double chests spanning a chunk boundary. Try ender-chest insertion with every input method and both
+online/offline administrative editors, checking the cursor/source and unrelated contents after rejection.
+Bukkit tests cover event and destination-update boundaries, not actual vanilla physics/event ordering.
 
 For command syntax and permissions, see [Commands and Permissions](/reference/commands-and-permissions/).
 For config keys and defaults, see [Configuration](/reference/configuration/).

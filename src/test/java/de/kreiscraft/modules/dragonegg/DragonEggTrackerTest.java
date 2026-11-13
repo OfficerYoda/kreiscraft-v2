@@ -64,6 +64,103 @@ class DragonEggTrackerTest {
     }
 
     @Test
+    void nestedBundleOnCursorIsClaimedAndDroppedContainerKeepsIdentity() {
+        var player = server.addPlayer();
+        player.teleport(new Location(server.getWorld("world"), 12, 70, 4));
+        ItemStack inner = bundle(new ItemStack(Material.DRAGON_EGG));
+        player.setItemOnCursor(bundle(inner));
+        tracker.sample();
+        assertThat(tracker.holdsTrackedEgg(player)).isTrue();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(12);
+        var dropped = player.getWorld().dropItem(new Location(player.getWorld(), 30, 70, 4),
+                player.getItemOnCursor());
+        player.setItemOnCursor(null);
+        tracker.trackItem(dropped);
+        now.addAndGet(120_000);
+        tracker.sample();
+        assertThat(tracker.isTrackedEntity(dropped)).isTrue();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(30);
+    }
+
+    static ItemStack bundle(ItemStack item) {
+        ItemStack bundle = new ItemStack(Material.BUNDLE);
+        bundle.editMeta(org.bukkit.inventory.meta.BundleMeta.class, meta -> meta.setItems(java.util.List.of(item)));
+        return bundle;
+    }
+
+    static ItemStack shulker(ItemStack item) {
+        ItemStack box = new ItemStack(Material.SHULKER_BOX);
+        box.editMeta(org.bukkit.inventory.meta.BlockStateMeta.class, meta -> {
+            var state = (org.bukkit.block.ShulkerBox) meta.getBlockState();
+            state.getInventory().setItem(0, item);
+            meta.setBlockState(state);
+        });
+        return box;
+    }
+
+    @Test
+    void nestedShulkerCopiesAreMarkedAndPlayerMovementStillUsesTwoMinuteSamples() {
+        var player = server.addPlayer();
+        player.teleport(new Location(server.getWorld("world"), 10, 70, 4));
+        player.getInventory().setItem(0, shulker(bundle(shulker(new ItemStack(Material.DRAGON_EGG)))));
+        tracker.sample();
+        assertThat(tracker.containsTrackedEgg(player.getInventory().getItem(0))).isTrue();
+        player.teleport(new Location(player.getWorld(), 80, 70, 4));
+        now.addAndGet(119_999);
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(10);
+        now.incrementAndGet();
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(80);
+    }
+
+    @Test
+    void containerPositionPersistsAndRefreshDoesNotLoadItsChunk() throws Exception {
+        var world = server.getWorld("world");
+        var block = world.getBlockAt(48, 70, 48);
+        block.setType(Material.BARREL);
+        var container = (org.bukkit.block.Container) block.getState();
+        container.getInventory().setItem(0, shulker(bundle(new ItemStack(Material.DRAGON_EGG))));
+        assertThat(tracker.observeInventory(container.getInventory())).isTrue();
+        tracker.sample();
+        var original = tracker.ping();
+        data.flushIfDirty();
+        data = new DragonEggData(folder);
+        data.load();
+        var unloaded = spy(world);
+        doReturn(false).when(unloaded).isChunkLoaded(3, 3);
+        var isolated = mock(Server.class);
+        when(isolated.getWorld(world.getUID())).thenReturn(unloaded);
+        tracker = new DragonEggTracker(isolated, data, now::get);
+        container.getInventory().clear();
+        tracker.refresh();
+        assertThat(tracker.ping()).isEqualTo(original);
+        org.mockito.Mockito.verify(unloaded, org.mockito.Mockito.never()).getBlockAt(48, 70, 48);
+        doReturn(true).when(unloaded).isChunkLoaded(3, 3);
+        tracker.refresh();
+        assertThat(tracker.ping()).isEmpty();
+        assertThat(tracker.claim(new ItemStack(Material.DRAGON_EGG))).isFalse();
+    }
+
+    @Test
+    void doubleChestUsesTheEggHalfNotTheCenter() {
+        var world = server.getWorld("world");
+        var leftBlock = world.getBlockAt(15, 70, 0);
+        var rightBlock = world.getBlockAt(16, 70, 0);
+        leftBlock.setType(Material.CHEST);
+        rightBlock.setType(Material.CHEST);
+        var left = ((org.bukkit.block.Chest) leftBlock.getState()).getBlockInventory();
+        var right = ((org.bukkit.block.Chest) rightBlock.getState()).getBlockInventory();
+        right.setItem(0, bundle(new ItemStack(Material.DRAGON_EGG)));
+        var doubleChest = mock(org.bukkit.inventory.DoubleChestInventory.class);
+        when(doubleChest.getLeftSide()).thenReturn(left);
+        when(doubleChest.getRightSide()).thenReturn(right);
+        assertThat(tracker.observeInventory(doubleChest)).isTrue();
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(16);
+    }
+
+    @Test
     void blockAndPingPersistWithoutLoadingChunksAndDestroyedEggIsNotReplaced() throws Exception {
         var block = server.getWorld("world").getBlockAt(48, 70, 48);
         block.setType(Material.DRAGON_EGG);

@@ -1,5 +1,6 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
 dragon-egg:
+  ender-chest-blocked: "<prefix> <red>Dragon eggs cannot be stored in ender chests, even inside containers."
   compass-name: "<gold>Dragon Egg Compass"
   ping: "<prefix> <gray>Last egg ping: <gold><distance></gold> blocks away, <gold><seconds></gold> seconds ago."
   dimension: "<prefix> <gray>Last egg ping: <gold><dimension></gold>, <gold><seconds></gold> seconds ago."
