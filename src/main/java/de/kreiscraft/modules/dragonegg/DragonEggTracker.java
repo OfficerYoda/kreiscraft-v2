@@ -46,6 +46,9 @@ public final class DragonEggTracker {
     }
 
     public boolean claimContained(ItemStack item) {
+        if (data.get().returnJournal != null) {
+            return false;
+        }
         return containsTrackedEgg(item) || (!claimed() && ItemContents.editFirst(item, this::claim));
     }
 
@@ -86,7 +89,7 @@ public final class DragonEggTracker {
     }
 
     public void trackBlock(Block block) {
-        if (!claimed() || data.get().kind.equals("DESTROYED")) {
+        if (!claimed() || data.get().kind.equals("DESTROYED") || data.get().returnJournal != null) {
             return;
         }
         data.update(s -> {
@@ -97,6 +100,9 @@ public final class DragonEggTracker {
     }
 
     public void destroy() {
+        if (data.get().returnJournal != null) {
+            return;
+        }
         data.update(s -> {
             s.kind = "DESTROYED";
             s.carrier = null;
@@ -133,6 +139,9 @@ public final class DragonEggTracker {
     }
 
     private void trackEntity(Entity entity, String kind) {
+        if (data.get().returnJournal != null) {
+            return;
+        }
         data.update(s -> {
             s.kind = kind;
             s.carrier = entity.getUniqueId().toString();
@@ -160,7 +169,7 @@ public final class DragonEggTracker {
 
     /** Identity remains recoverable, but no location is asserted while custody is unknown. */
     public void unavailable() {
-        if (!data.get().kind.equals("DESTROYED")) {
+        if (!data.get().kind.equals("DESTROYED") && data.get().returnJournal == null) {
             data.update(s -> {
                 s.kind = "UNKNOWN";
                 s.carrier = null;
@@ -179,11 +188,12 @@ public final class DragonEggTracker {
     }
 
     public void trackHolder(Player player) {
-        if (data.get().eggId != null && !data.get().kind.equals("DESTROYED")) {
+        if (data.get().eggId != null && !data.get().kind.equals("DESTROYED") && data.get().returnJournal == null) {
             data.update(s -> {
                 s.kind = "PLAYER";
                 s.carrier = player.getUniqueId().toString();
                 s.position = Position.of(player.getLocation());
+                s.lastOnlineAt = now.getAsLong();
             });
         }
     }
@@ -211,7 +221,7 @@ public final class DragonEggTracker {
     /** Accepted pickup events transfer custody before Bukkit removes the item entity. */
     public void trackInventory(Inventory inventory) {
         Location location = inventoryLocation(inventory);
-        if (!claimed() || data.get().kind.equals("DESTROYED") || location == null) {
+        if (!claimed() || data.get().kind.equals("DESTROYED") || location == null || data.get().returnJournal != null) {
             return;
         }
         var holder = inventory.getHolder();
@@ -229,7 +239,7 @@ public final class DragonEggTracker {
     }
 
     public void refresh() {
-        if (data.get().kind.equals("DESTROYED")) {
+        if (data.get().kind.equals("DESTROYED") || data.get().returnJournal != null) {
             return;
         }
         for (Player player : server.getOnlinePlayers()) {
@@ -282,6 +292,9 @@ public final class DragonEggTracker {
     }
 
     public boolean observePlayer(Player player) {
+        if (data.get().returnJournal != null) {
+            return false;
+        }
         if (!claimed()) {
             for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
                 ItemStack item = player.getInventory().getItem(slot);

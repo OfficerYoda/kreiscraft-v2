@@ -73,7 +73,7 @@ public abstract class DataFile<T> {
         ConfigurationNode node = loader.createNode();
         try {
             save(state, node);
-            loader.save(node);
+            write(node);
         } catch (SerializationException e) {
             throw new IOException("failed to save " + relativePath, e);
         }
@@ -81,6 +81,11 @@ public abstract class DataFile<T> {
     }
 
     protected abstract T load(ConfigurationNode node) throws SerializationException;
+
+    /** Override when Activity Data needs stronger durability than the default loader provides. */
+    protected void write(ConfigurationNode node) throws IOException {
+        loader.save(node);
+    }
 
     protected abstract void save(T state, ConfigurationNode node) throws SerializationException;
 

@@ -25,7 +25,7 @@ public final class ItemContents {
     }
 
     private static boolean visit(ItemStack item, Predicate<ItemStack> predicate, boolean edit) {
-        if (item == null || item.getType().isAir()) {
+        if (item == null || item.getType().isAir() || item.getAmount() == 0) {
             return false;
         }
         if (predicate.test(item)) {
@@ -51,7 +51,8 @@ public final class ItemContents {
             for (ItemStack child : children) {
                 if (visit(child, predicate, edit)) {
                     if (edit) {
-                        bundle.setItems(children);
+                        bundle.setItems(children.stream().filter(childItem -> childItem.getAmount() > 0
+                                && !childItem.getType().isAir()).toList());
                         item.setItemMeta(bundle);
                     }
                     return true;
