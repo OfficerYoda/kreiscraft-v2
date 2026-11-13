@@ -4,6 +4,7 @@ import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.Module;
 import de.kreiscraft.core.module.ModuleContext;
 import de.kreiscraft.core.module.ModuleException;
+import de.kreiscraft.core.module.ModuleEnablement;
 import de.kreiscraft.modules.invsee.commands.EnderChestCommand;
 import de.kreiscraft.modules.invsee.commands.InvseeCommand;
 import de.kreiscraft.platform.OfflinePlayerDataEditor;
@@ -40,6 +41,7 @@ public final class InvseeModule implements Module {
         MessageService messages = ctx.messages();
         OfflinePlayerDataEditor offlineEditor = ctx.services().get(OfflinePlayerDataEditor.class);
         Server server = ctx.plugin().getServer();
+        var enablement = ctx.services().find(ModuleEnablement.class).orElse(id -> false);
 
         ctx.commands()
                 .register(
@@ -47,7 +49,8 @@ public final class InvseeModule implements Module {
                         "View another player's inventory");
         ctx.commands()
                 .register(
-                        EnderChestCommand.build(gui, messages, offlineEditor, ctx.scheduler(), server),
+                        EnderChestCommand.build(gui, messages, offlineEditor, ctx.scheduler(), server,
+                                () -> enablement.isEnabled("dragon-egg")),
                         "View another player's ender chest",
                         "ec",
                         "echest");

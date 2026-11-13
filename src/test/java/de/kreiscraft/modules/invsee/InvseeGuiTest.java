@@ -51,13 +51,28 @@ class InvseeGuiTest {
     void offlineEnderChestRejectsUnmarkedEggWithoutChangingCursorOrOtherSlots() {
         var contents = new VirtualInventory(27);
         contents.setItem(null, 1, new ItemStack(Material.DIAMOND, 3));
-        var gui = InvseeGui.buildOfflineEnderChest(contents);
+        var gui = InvseeGui.buildOfflineEnderChest(contents, actor -> {
+        }, () -> true);
         ItemStack egg = new ItemStack(Material.DRAGON_EGG);
         player.setItemOnCursor(egg);
         gui.handleClick(0, new xyz.xenondevs.invui.Click(player, ClickType.LEFT));
         assertThat(contents.getItem(0)).isNull();
         assertThat(player.getItemOnCursor()).isEqualTo(egg);
         assertThat(contents.getItem(1)).isEqualTo(new ItemStack(Material.DIAMOND, 3));
+    }
+
+    @Test
+    void disabledEggModuleAllowsEggsInLiveAndOfflineAdminEnderChests() {
+        var offline = new VirtualInventory(27);
+        var guis = List.of(InvseeGui.buildOfflineEnderChest(offline),
+                InvseeGui.buildEnderChestEditable(player.getEnderChest()));
+        for (var gui : guis) {
+            ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+            player.setItemOnCursor(egg);
+            gui.handleClick(0, new xyz.xenondevs.invui.Click(player, ClickType.LEFT));
+            assertThat(stackAt(gui, 0)).isEqualTo(egg);
+            assertThat(player.getItemOnCursor().getType().isAir()).isTrue();
+        }
     }
 
     @Test
@@ -76,8 +91,8 @@ class InvseeGuiTest {
         ItemStack diamond = new ItemStack(Material.DIAMOND, 3);
         offline.setItem(null, 0, diamond);
         player.getEnderChest().setItem(0, diamond);
-        var guis = List.of(InvseeGui.buildOfflineEnderChest(offline, rejected::add),
-                InvseeGui.buildEnderChestEditable(player.getEnderChest(), rejected::add));
+        var guis = List.of(InvseeGui.buildOfflineEnderChest(offline, rejected::add, () -> true),
+                InvseeGui.buildEnderChestEditable(player.getEnderChest(), rejected::add, () -> true));
         for (var gui : guis) {
             player.getInventory().setItem(0, box);
             var link = (SlotElement.InventoryLink) gui.getSlotElement(0);
@@ -100,7 +115,7 @@ class InvseeGuiTest {
         var rejected = new java.util.ArrayList<org.bukkit.entity.Player>();
         ItemStack egg = new ItemStack(Material.DRAGON_EGG);
         contents.setItem(null, 0, egg);
-        InvseeGui.buildOfflineEnderChest(contents, rejected::add);
+        InvseeGui.buildOfflineEnderChest(contents, rejected::add, () -> true);
         var shift = new xyz.xenondevs.invui.inventory.event.PlayerUpdateReason.Click(
                 new xyz.xenondevs.invui.Click(player, ClickType.SHIFT_LEFT));
         assertThat(contents.addItem(shift, egg)).isEqualTo(1);

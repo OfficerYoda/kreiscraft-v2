@@ -4,21 +4,23 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.RegionFileStorage;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
-import org.bukkit.inventory.ItemStack;
 
 /** Paper flush plus disk read-back: world save itself can log and swallow a failed chunk write. */
-public final class NmsDragonEggDropStorage {
-    private NmsDragonEggDropStorage() {}
+public final class NmsContainerStorage {
+    private NmsContainerStorage() {}
 
-    public static void saveAndVerify(Location location, String token, ItemStack egg) throws IOException {
+    public static void saveAndVerify(Location location, NamespacedKey blockEntityType, List<SlottedItem> expectedItems,
+            NamespacedKey markerKey, String markerValue) throws IOException {
         var world = (CraftWorld) location.getWorld();
         world.save(true);
         var folder = world.getWorldFolder().toPath().resolve("region");
@@ -42,30 +44,35 @@ public final class NmsDragonEggDropStorage {
             var chunk = storage.read(new ChunkPos(x, z));
             if (chunk != null) {
                 for (var tag : chunk.getListOrEmpty("block_entities")) {
-                    var barrel = tag.asCompound().orElseThrow(() -> new IOException("invalid saved block entity"));
-                    if (barrel.getIntOr("x", Integer.MIN_VALUE) != location.getBlockX()
-                            || barrel.getIntOr("y", Integer.MIN_VALUE) != location.getBlockY()
-                            || barrel.getIntOr("z", Integer.MIN_VALUE) != location.getBlockZ()) {
+                    var container = tag.asCompound().orElseThrow(() -> new IOException("invalid saved block entity"));
+                    if (container.getIntOr("x", Integer.MIN_VALUE) != location.getBlockX()
+                            || container.getIntOr("y", Integer.MIN_VALUE) != location.getBlockY()
+                            || container.getIntOr("z", Integer.MIN_VALUE) != location.getBlockZ()) {
                         continue;
                     }
-                    var items = barrel.getListOrEmpty("Items");
-                    if (!barrel.getStringOr("id", "").equals("minecraft:barrel") || items.size() != 1
-                            || items.getCompoundOrEmpty(0).getByteOr("Slot", (byte) -1) != 13
-                            || !barrel.getCompoundOrEmpty("PublicBukkitValues")
-                                    .getStringOr("kreiscraft:egg_return", "").equals(token)) {
-                        throw new IOException("return barrel was not persisted intact");
+                    var items = container.getListOrEmpty("Items");
+                    if (!container.getStringOr("id", "").equals(blockEntityType.toString())
+                            || items.size() != expectedItems.size()
+                            || !container.getCompoundOrEmpty("PublicBukkitValues")
+                                    .getStringOr(markerKey.toString(), "").equals(markerValue)) {
+                        throw new IOException("container was not persisted intact");
                     }
                     var ops = RegistryOps.create(NbtOps.INSTANCE, world.getHandle().registryAccess());
-                    var saved = net.minecraft.world.item.ItemStack.CODEC.parse(ops, items.get(0)).getOrThrow();
-                    if (CraftItemStack.asBukkitMirror(saved).equals(egg)) {
-                        return;
+                    for (var expected : expectedItems) {
+                        var matches = items.stream().filter(item -> item.asCompound().orElseThrow()
+                                .getByteOr("Slot", (byte) -1) == expected.slot()).toList();
+                        if (matches.size() != 1 || !CraftItemStack.asBukkitMirror(
+                                net.minecraft.world.item.ItemStack.CODEC.parse(ops, matches.getFirst()).getOrThrow())
+                                .equals(expected.stack())) {
+                            throw new IOException("container item failed disk read-back");
+                        }
                     }
-                    throw new IOException("return egg failed disk read-back");
+                    return;
                 }
             }
-            throw new IOException("return barrel missing from saved chunk");
+            throw new IOException("container missing from saved chunk");
         } catch (RuntimeException e) {
-            throw new IOException("failed to verify saved dragon egg barrel", e);
+            throw new IOException("failed to verify saved container", e);
         }
     }
 }

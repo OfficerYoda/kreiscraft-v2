@@ -48,6 +48,73 @@ class DragonEggOfflineReturnTest {
     }
 
     @Test
+    void externallyMissingOfflineEggFailsClosedWithoutRetryingObsoleteDeadline() throws Exception {
+        var old = removedJournal();
+        data.update(state -> state.returnJournal = null);
+        var session = mock(de.kreiscraft.platform.OfflinePlayerEditSession.class);
+        when(session.snapshot()).thenReturn(de.kreiscraft.platform.OfflinePlayerSnapshot.empty());
+        when(editor.openForEdit(old.getUniqueId())).thenReturn(java.util.Optional.of(session));
+        now.addAndGet(Duration.ofHours(24).toMillis());
+        assertThatThrownBy(returns::tick).isInstanceOf(java.io.IOException.class).hasMessageContaining("missing");
+        data.load();
+        assertThat(data.get().offlineDeadline).isZero();
+        assertThat(tracker.ping()).isEmpty();
+        assertThat(tracker.claim(new ItemStack(Material.DRAGON_EGG))).isFalse();
+        returns.tick();
+        verify(editor, times(1)).openForEdit(old.getUniqueId());
+        verifyNoInteractions(storage, messages);
+    }
+
+    @Test
+    void administrativeOfflineRemovalTransfersToOnlineHolderAndCancelsOldDeadline() throws Exception {
+        var old = removedJournal();
+        data.update(state -> state.returnJournal = null);
+        var next = server.addPlayer();
+        next.getInventory().setItem(0, old.getInventory().getItem(0));
+        server.getPluginManager().registerEvents(returns, MockBukkit.createMockPlugin());
+        server.getPluginManager().callEvent(new de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent(
+                old.getUniqueId(), de.kreiscraft.platform.OfflinePlayerSnapshot.empty()));
+        assertThat(data.get().carrier).isEqualTo(next.getUniqueId().toString());
+        assertThat(data.get().offlineDeadline).isZero();
+        now.addAndGet(Duration.ofHours(24).toMillis());
+        returns.tick();
+        verifyNoInteractions(editor, storage);
+        tracker.sample();
+        assertThat(tracker.ping()).isPresent();
+    }
+
+    @Test
+    void administrativeTransferToNewOfflineHolderStartsItsOwnDeadlineAndKeepsPosition() throws Exception {
+        var old = removedJournal();
+        data.update(state -> state.returnJournal = null);
+        now.addAndGet(Duration.ofHours(23).toMillis());
+        var next = server.addPlayer();
+        next.teleport(new Location(server.getWorld("world"), 50, 70, 8));
+        var nextLocation = next.getLocation();
+        next.disconnect();
+        var offline = mock(org.bukkit.OfflinePlayer.class);
+        when(offline.getLocation()).thenReturn(nextLocation);
+        var observedServer = spy(server);
+        doReturn(offline).when(observedServer).getOfflinePlayer(next.getUniqueId());
+        returns = new DragonEggOfflineReturn(observedServer, tracker, data, editor, messages, now::get, storage);
+        server.getPluginManager().registerEvents(returns, MockBukkit.createMockPlugin());
+        server.getPluginManager().callEvent(new de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent(
+                next.getUniqueId(), de.kreiscraft.platform.OfflinePlayerSnapshot.ofInventory(java.util.List.of(
+                        new de.kreiscraft.platform.SlottedItem(0, old.getInventory().getItem(0))))));
+        assertThat(data.get().offlineCarrier).isEqualTo(next.getUniqueId().toString());
+        assertThat(data.get().offlineDeadline).isEqualTo(170_200_000);
+        assertThat(data.get().position.x()).isEqualTo(50);
+        // A late commit from the old empty inventory cannot erase the new carrier's custody.
+        server.getPluginManager().callEvent(new de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent(
+                old.getUniqueId(), de.kreiscraft.platform.OfflinePlayerSnapshot.empty()));
+        data.load();
+        assertThat(data.get().carrier).isEqualTo(next.getUniqueId().toString());
+        assertThat(data.get().offlineDeadline).isEqualTo(170_200_000);
+        returns.tick();
+        verifyNoInteractions(editor, storage);
+    }
+
+    @Test
     void deadlineIncludesDowntimeAndReturningBeforeItClearsDeadline() throws Exception {
         var player = server.addPlayer();
         player.teleport(new Location(server.getWorld("world"), 12, 70, 4));
@@ -124,7 +191,7 @@ class DragonEggOfflineReturnTest {
         returns.quit(player);
         player.disconnect();
         var journal = new DragonEggData.ReturnJournal();
-        journal.phase = "REMOVED";
+        journal.phase = DragonEggData.ReturnPhase.REMOVED;
         journal.carrier = player.getUniqueId().toString();
         journal.token = java.util.UUID.randomUUID().toString();
         journal.egg = java.util.Base64.getEncoder().encodeToString(egg.serializeAsBytes());
@@ -134,6 +201,74 @@ class DragonEggOfflineReturnTest {
         data.update(state -> state.returnJournal = journal);
         data.flushIfDirty();
         return player;
+    }
+
+    @Test
+    void legacyUppercaseJournalRecoversAndUnknownPhaseFailsClosed() throws Exception {
+        var player = removedJournal();
+        var file = folder.resolve("data/dragon-egg.yml");
+        String legacy = java.nio.file.Files.readString(file);
+        assertThat(legacy).contains("phase: REMOVED", "kind: PLAYER");
+        java.nio.file.Files.writeString(file, legacy.replace("phase: REMOVED", "phase: PLACED"));
+        assertThatThrownBy(data::load).isInstanceOf(java.io.IOException.class);
+        java.nio.file.Files.writeString(file, legacy);
+        data.load();
+        returns.tick();
+        assertThat(player.getWorld().getBlockAt(12, 70, 4).getType()).isEqualTo(Material.BARREL);
+    }
+
+    @Test
+    void consoleFailureDoesNotUndoDurableDropOrPreventRegularBroadcast() throws Exception {
+        var player = removedJournal();
+        var logger = mock(java.util.logging.Logger.class);
+        doThrow(new IllegalStateException("console failed")).when(logger).info(anyString());
+        var observedServer = spy(server);
+        doReturn(logger).when(observedServer).getLogger();
+        returns = new DragonEggOfflineReturn(observedServer, tracker, data, editor, messages, now::get, storage);
+        assertThatThrownBy(returns::tick).isInstanceOf(IllegalStateException.class);
+        data.load();
+        assertThat(data.get().returnJournal).isNull();
+        assertThat(data.get().notifications).containsKey(player.getUniqueId().toString());
+        tracker.sample();
+        assertThat(tracker.ping()).isPresent();
+        verify(messages).broadcast(eq("dragon-egg.offline-drop"), any(Object[].class));
+    }
+
+    @Test
+    void successfulDropLogsItsTimeAndLocationAndChatFailureDoesNotUndoCustody() throws Exception {
+        var player = removedJournal();
+        var records = new java.util.ArrayList<java.util.logging.LogRecord>();
+        var handler = new java.util.logging.Handler() {
+            @Override
+            public void publish(java.util.logging.LogRecord record) {
+                records.add(record);
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        };
+        server.getLogger().addHandler(handler);
+        try {
+            doThrow(new IllegalStateException("chat failed")).when(messages)
+                    .broadcast(eq("dragon-egg.offline-drop"), any(Object[].class));
+            assertThatThrownBy(returns::tick).isInstanceOf(IllegalStateException.class);
+            assertThat(records).extracting(java.util.logging.LogRecord::getMessage)
+                    .anySatisfy(message -> assertThat(message).contains("1970-01-01T00:16:40Z",
+                            "minecraft:overworld", "12, 70, 4"));
+            data.load();
+            assertThat(data.get().returnJournal).isNull();
+            assertThat(data.get().offlineDeadline).isZero();
+            assertThat(data.get().notifications).containsKey(player.getUniqueId().toString());
+            tracker.sample();
+            assertThat(tracker.ping()).isPresent();
+            returns.tick();
+            verify(messages, times(1)).broadcast(eq("dragon-egg.offline-drop"), any(Object[].class));
+        } finally {
+            server.getLogger().removeHandler(handler);
+        }
     }
 
     @Test
@@ -181,7 +316,7 @@ class DragonEggOfflineReturnTest {
         var player = removedJournal();
         var session = mock(de.kreiscraft.platform.OfflinePlayerEditSession.class);
         when(editor.openForEdit(player.getUniqueId())).thenReturn(java.util.Optional.of(session));
-        data.update(state -> state.returnJournal.phase = "PREPARED");
+        data.update(state -> state.returnJournal.phase = DragonEggData.ReturnPhase.PREPARED);
         data.flushIfDirty();
         when(session.sourceDigest()).thenReturn(new byte[32]);
         returns.tick();
@@ -191,12 +326,12 @@ class DragonEggOfflineReturnTest {
 
         player = removedJournal();
         when(editor.openForEdit(player.getUniqueId())).thenReturn(java.util.Optional.of(session));
-        data.update(state -> state.returnJournal.phase = "PREPARED");
+        data.update(state -> state.returnJournal.phase = DragonEggData.ReturnPhase.PREPARED);
         data.flushIfDirty();
         when(session.sourceDigest()).thenReturn(java.util.HexFormat.of().parseHex("2".repeat(64)));
         assertThatThrownBy(returns::tick).isInstanceOf(java.io.IOException.class).hasMessageContaining("ambiguous");
         data.load();
-        assertThat(data.get().returnJournal.phase).isEqualTo("PREPARED");
+        assertThat(data.get().returnJournal.phase).isEqualTo(DragonEggData.ReturnPhase.PREPARED);
         verifyNoInteractions(messages, storage);
         when(session.sourceDigest()).thenReturn(java.util.HexFormat.of().parseHex("1".repeat(64)));
         returns.tick();

@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.dragonegg;
 
 import de.kreiscraft.shared.inventory.ItemContents;
+import de.kreiscraft.modules.dragonegg.DragonEggData.Custody;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -54,7 +55,7 @@ public final class DragonEggTracker {
 
     public boolean claim(ItemStack item) {
         if (isTrackedEgg(item)) {
-            return !data.get().kind.equals("DESTROYED");
+            return data.get().kind != Custody.DESTROYED;
         }
         if (item == null || item.getType() != Material.DRAGON_EGG || item.getAmount() != 1
                 || data.get().eggId != null) {
@@ -71,7 +72,7 @@ public final class DragonEggTracker {
     }
 
     public boolean matchesIdentity(String id) {
-        return id != null && id.equals(data.get().eggId) && !data.get().kind.equals("DESTROYED");
+        return id != null && id.equals(data.get().eggId) && data.get().kind != Custody.DESTROYED;
     }
 
     public boolean claimBlock(Block block) {
@@ -84,19 +85,15 @@ public final class DragonEggTracker {
     }
 
     public boolean isTrackedBlock(Block block) {
-        return block.getType() == Material.DRAGON_EGG && data.get().kind.equals("BLOCK")
+        return block.getType() == Material.DRAGON_EGG && data.get().kind == Custody.BLOCK
                 && Position.of(block.getLocation()).equals(data.get().position);
     }
 
     public void trackBlock(Block block) {
-        if (!claimed() || data.get().kind.equals("DESTROYED") || data.get().returnJournal != null) {
+        if (!claimed() || data.get().kind == Custody.DESTROYED || data.get().returnJournal != null) {
             return;
         }
-        data.update(s -> {
-            s.kind = "BLOCK";
-            s.carrier = null;
-            s.position = Position.of(block.getLocation());
-        });
+        data.update(s -> moveTo(s, Custody.BLOCK, null, Position.of(block.getLocation())));
     }
 
     public void destroy() {
@@ -104,17 +101,15 @@ public final class DragonEggTracker {
             return;
         }
         data.update(s -> {
-            s.kind = "DESTROYED";
-            s.carrier = null;
-            s.position = null;
+            moveTo(s, Custody.DESTROYED, null, null);
             s.sampledPosition = null;
         });
     }
 
     public boolean isTrackedEntity(Entity entity) {
         return data.get().carrier != null && data.get().carrier.equals(entity.getUniqueId().toString())
-                && (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING")
-                        || data.get().kind.equals("INVENTORY_ENTITY"));
+                && (data.get().kind == Custody.ITEM || data.get().kind == Custody.FALLING
+                        || data.get().kind == Custody.INVENTORY_ENTITY);
     }
 
     public void trackItem(Item item) {
@@ -122,31 +117,27 @@ public final class DragonEggTracker {
         if (claimContained(stack)) {
             // Bukkit returns a copy on some implementations; persist the marked stack explicitly.
             item.setItemStack(stack);
-            trackEntity(item, "ITEM");
+            trackEntity(item, Custody.ITEM);
         }
     }
 
     public void trackFalling(FallingBlock falling) {
         falling.getPersistentDataContainer().set(EGG_KEY, PersistentDataType.STRING, data.get().eggId);
-        trackEntity(falling, "FALLING");
+        trackEntity(falling, Custody.FALLING);
     }
 
     public void mark(ItemStack egg) {
-        if (egg != null && egg.getType() == Material.DRAGON_EGG && claimed() && !data.get().kind.equals("DESTROYED")) {
+        if (egg != null && egg.getType() == Material.DRAGON_EGG && claimed() && data.get().kind != Custody.DESTROYED) {
             egg.editMeta(meta -> meta.getPersistentDataContainer().set(EGG_KEY, PersistentDataType.STRING,
                     data.get().eggId));
         }
     }
 
-    private void trackEntity(Entity entity, String kind) {
+    private void trackEntity(Entity entity, Custody kind) {
         if (data.get().returnJournal != null) {
             return;
         }
-        data.update(s -> {
-            s.kind = kind;
-            s.carrier = entity.getUniqueId().toString();
-            s.position = Position.of(entity.getLocation());
-        });
+        data.update(s -> moveTo(s, kind, entity.getUniqueId().toString(), Position.of(entity.getLocation())));
     }
 
     public void rememberEntity(Entity entity) {
@@ -157,7 +148,7 @@ public final class DragonEggTracker {
 
     public void entitiesLoaded(Chunk chunk, List<Entity> entities) {
         var s = data.get();
-        if ((s.kind.equals("ITEM") || s.kind.equals("FALLING") || s.kind.equals("INVENTORY_ENTITY"))
+        if ((s.kind == Custody.ITEM || s.kind == Custody.FALLING || s.kind == Custody.INVENTORY_ENTITY)
                 && s.position != null
                 && s.position.world().equals(chunk.getWorld().getUID().toString())
                 && ((int) Math.floor(s.position.x()) >> 4) == chunk.getX()
@@ -169,12 +160,8 @@ public final class DragonEggTracker {
 
     /** Identity remains recoverable, but no location is asserted while custody is unknown. */
     public void unavailable() {
-        if (!data.get().kind.equals("DESTROYED") && data.get().returnJournal == null) {
-            data.update(s -> {
-                s.kind = "UNKNOWN";
-                s.carrier = null;
-                s.position = null;
-            });
+        if (data.get().kind != Custody.DESTROYED && data.get().returnJournal == null) {
+            data.update(s -> moveTo(s, Custody.UNKNOWN, null, null));
         }
     }
 
@@ -188,11 +175,10 @@ public final class DragonEggTracker {
     }
 
     public void trackHolder(Player player) {
-        if (data.get().eggId != null && !data.get().kind.equals("DESTROYED") && data.get().returnJournal == null) {
+        if (data.get().eggId != null && data.get().kind != Custody.DESTROYED && data.get().returnJournal == null) {
             data.update(s -> {
-                s.kind = "PLAYER";
-                s.carrier = player.getUniqueId().toString();
-                s.position = Position.of(player.getLocation());
+                moveTo(s, Custody.PLAYER, player.getUniqueId().toString(), Position.of(player.getLocation()));
+                s.clearDeadline();
                 s.lastOnlineAt = now.getAsLong();
             });
         }
@@ -221,25 +207,32 @@ public final class DragonEggTracker {
     /** Accepted pickup events transfer custody before Bukkit removes the item entity. */
     public void trackInventory(Inventory inventory) {
         Location location = inventoryLocation(inventory);
-        if (!claimed() || data.get().kind.equals("DESTROYED") || location == null || data.get().returnJournal != null) {
+        if (!claimed() || data.get().kind == Custody.DESTROYED || location == null
+                || data.get().returnJournal != null) {
             return;
         }
         var holder = inventory.getHolder();
         if (holder instanceof Player player) {
             trackHolder(player);
         } else if (holder instanceof Entity entity) {
-            trackEntity(entity, "INVENTORY_ENTITY");
+            trackEntity(entity, Custody.INVENTORY_ENTITY);
         } else {
-            data.update(s -> {
-                s.kind = "CONTAINER";
-                s.carrier = null;
-                s.position = Position.of(location);
-            });
+            data.update(s -> moveTo(s, Custody.CONTAINER, null, Position.of(location)));
+        }
+    }
+
+    /** Used inside one Activity Data update, including durable return completion. */
+    void moveTo(DragonEggData.State state, Custody custody, String holder, Position location) {
+        state.kind = custody;
+        state.carrier = holder;
+        state.position = location;
+        if (custody != Custody.PLAYER || !java.util.Objects.equals(holder, state.offlineCarrier)) {
+            state.clearDeadline();
         }
     }
 
     public void refresh() {
-        if (data.get().kind.equals("DESTROYED") || data.get().returnJournal != null) {
+        if (data.get().kind == Custody.DESTROYED || data.get().returnJournal != null) {
             return;
         }
         for (Player player : server.getOnlinePlayers()) {
@@ -247,12 +240,12 @@ public final class DragonEggTracker {
                 return;
             }
         }
-        if (data.get().kind.equals("PLAYER")) {
+        if (data.get().kind == Custody.PLAYER) {
             Player player = server.getPlayer(UUID.fromString(data.get().carrier));
             if (player != null) {
                 unavailable();
             }
-        } else if (data.get().kind.equals("CONTAINER")) {
+        } else if (data.get().kind == Custody.CONTAINER) {
             Location location = data.get().position.location(server);
             if (location != null
                     && location.getWorld().isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
@@ -261,18 +254,18 @@ public final class DragonEggTracker {
                     unavailable();
                 }
             }
-        } else if (data.get().kind.equals("INVENTORY_ENTITY")) {
+        } else if (data.get().kind == Custody.INVENTORY_ENTITY) {
             Entity entity = server.getEntity(UUID.fromString(data.get().carrier));
             if (entity instanceof InventoryHolder holder && !observeInventory(holder.getInventory())) {
                 unavailable();
             }
-        } else if (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING")) {
+        } else if (data.get().kind == Custody.ITEM || data.get().kind == Custody.FALLING) {
             Entity entity = server.getEntity(UUID.fromString(data.get().carrier));
             if (entity != null) {
                 trackEntity(entity, data.get().kind);
             }
             // Absence is not destruction: entity chunks may be unloaded or not loaded yet.
-        } else if (data.get().kind.equals("BLOCK")) {
+        } else if (data.get().kind == Custody.BLOCK) {
             Location location = data.get().position.location(server);
             if (location != null
                     && location.getWorld().isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)
@@ -287,6 +280,12 @@ public final class DragonEggTracker {
     }
 
     private static Location inventoryLocation(Inventory inventory) {
+        if (inventory.getHolder() instanceof Container container
+                && (!container.isPlaced() || !(container.getBlock().getState() instanceof Container live)
+                        || !containerInventory(live).equals(inventory))) {
+            // Closed views can retain a broken shulker's contents after custody moved to its drop.
+            return null;
+        }
         return inventory.getHolder() instanceof org.bukkit.block.BlockState block ? block.getLocation()
                 : inventory.getLocation();
     }
@@ -328,7 +327,7 @@ public final class DragonEggTracker {
 
     public Optional<Ping> ping() {
         var state = data.get();
-        return state.kind.equals("DESTROYED") || state.position == null || state.sampledPosition == null
+        return state.kind == Custody.DESTROYED || state.position == null || state.sampledPosition == null
                 ? Optional.empty()
                 : Optional.of(new Ping(state.sampledPosition, state.sampledAt));
     }

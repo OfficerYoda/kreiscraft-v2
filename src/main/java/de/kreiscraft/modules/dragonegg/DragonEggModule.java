@@ -40,7 +40,11 @@ public final class DragonEggModule implements Module {
         listener = new DragonEggListener(server, tracker, compass, ctx.scheduler());
         offlineReturn = new DragonEggOfflineReturn(server, tracker, data,
                 ctx.services().get(OfflinePlayerDataEditor.class), ctx.messages(), System::currentTimeMillis,
-                ctx.services().get(de.kreiscraft.platform.PaperPlatform.class)::saveAndVerifyDragonEggDrop);
+                (location, token, egg) -> ctx.services().get(de.kreiscraft.platform.PaperPlatform.class)
+                        .saveAndVerifyContainer(location, org.bukkit.NamespacedKey.minecraft("barrel"),
+                                java.util.List.of(
+                                        new de.kreiscraft.platform.SlottedItem(DragonEggOfflineReturn.DROP_SLOT, egg)),
+                                DragonEggOfflineReturn.RETURN_KEY, token));
         ctx.events().register(offlineReturn);
         ctx.events().register(listener);
         listener.start();
@@ -57,9 +61,12 @@ public final class DragonEggModule implements Module {
         ctx.services().publish(DragonEggTracker.class, tracker);
         server.addRecipe(compass.recipe());
         task = ctx.scheduler().runRepeating(Duration.ZERO, Duration.ofSeconds(1), () -> {
-            processOfflineReturn();
-            tracker.sample();
-            server.getOnlinePlayers().forEach(compass::updateInventory);
+            try {
+                processOfflineReturn();
+            } finally {
+                tracker.sample();
+                server.getOnlinePlayers().forEach(compass::updateInventory);
+            }
         });
     }
 

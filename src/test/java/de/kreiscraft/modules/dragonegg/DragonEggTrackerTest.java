@@ -243,6 +243,30 @@ class DragonEggTrackerTest {
     }
 
     @Test
+    void legacyUppercaseCustodyLoadsAndStillSavesAsUppercase() throws Exception {
+        var block = server.getWorld("world").getBlockAt(48, 70, 48);
+        block.setType(Material.DRAGON_EGG);
+        java.nio.file.Files.createDirectories(folder.resolve("data"));
+        java.nio.file.Files.writeString(folder.resolve("data/dragon-egg.yml"),
+                "egg-id: 00000000-0000-0000-0000-000000000001\nkind: BLOCK\nposition:\n  world: "
+                        + block.getWorld().getUID()
+                        + "\n  dimension: minecraft:overworld\n  x: 48\n  y: 70\n  z: 48\n");
+        data.load();
+        assertThat(tracker.isTrackedBlock(block)).isTrue();
+        tracker.trackBlock(block);
+        data.flushIfDirty();
+        assertThat(java.nio.file.Files.readString(folder.resolve("data/dragon-egg.yml"))).contains("kind: BLOCK");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"GHOST", "REMOVED"})
+    void unknownCustodyValuesFailClosed(String custody) throws Exception {
+        java.nio.file.Files.createDirectories(folder.resolve("data"));
+        java.nio.file.Files.writeString(folder.resolve("data/dragon-egg.yml"), "kind: " + custody + "\n");
+        assertThatThrownBy(data::load).isInstanceOf(java.io.IOException.class);
+    }
+
+    @Test
     void malformedActivityDataFailsClosedRatherThanInventingAnOrigin() throws Exception {
         java.nio.file.Files.createDirectories(folder.resolve("data"));
         java.nio.file.Files.writeString(folder.resolve("data/dragon-egg.yml"),
