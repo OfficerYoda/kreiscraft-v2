@@ -59,6 +59,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private static final double RAIN_RADIUS = 5;
+    private static final double SMASH_SHOCKWAVE_RADIUS = 30;
     private static final int MAX_MOB_POPULATION = 20;
     private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
             EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
@@ -1629,12 +1630,78 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         if (owner.isClosed() || movement.isClosed()) {
                             return;
                         }
+                        startSmashShockwave(owner, ground, source);
                         // Keep the owned display valid for the flight watchdog, but hide the completed warning.
                         area.indicator.text(Component.empty());
                         movement.start(t -> impact.clone(), 3, position -> {
                         }, () -> climb(movement, source));
                     });
         });
+    }
+
+    private void startSmashShockwave(EncounterWork owner, Location center, EnderDragon source) {
+        EncounterWork wave = owner.child(() -> {
+        });
+        hazards.add(wave);
+        wave.onCleanup(() -> hazards.remove(wave));
+        Set<UUID> hit = new HashSet<>();
+        int[] tick = {0};
+        wave.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            if (dragon != source || !attacking()) {
+                wave.close();
+                return;
+            }
+            // ponytail: fixed three-second travel; reuse the existing six-block local terrain projection.
+            double previous = tick[0] * 0.5;
+            double radius = ++tick[0] * 0.5;
+            var viewers = source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).toList();
+            if (tick[0] == 1 || tick[0] % 2 == 0) {
+                int points = Math.max(16, (int) Math.ceil(2 * Math.PI * radius));
+                for (int point = 0; point < points; point++) {
+                    double angle = point * 2 * Math.PI / points;
+                    Location ground = shockwaveGround(center,
+                            center.clone().add(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+                    if (ground != null) {
+                        ground.add(0, 0.15, 0);
+                        for (Player viewer : viewers) {
+                            CrownParticles.spawn(viewer, Particle.DUST, ground, 1, 0, 0, 0, 0);
+                        }
+                    }
+                }
+            }
+            for (Player player : source.getWorld().getPlayers()) {
+                if (wave.isClosed() || dragon != source || !attacking()) {
+                    return;
+                }
+                if (!isParticipant(player) || hit.contains(player.getUniqueId())) {
+                    continue;
+                }
+                Location feet = player.getLocation();
+                double distance = Math.hypot(feet.getX() - center.getX(), feet.getZ() - center.getZ());
+                if (distance < previous - 0.3 || distance > radius + 0.3 || distance >= SMASH_SHOCKWAVE_RADIUS) {
+                    continue;
+                }
+                Location ground = shockwaveGround(center, feet);
+                if (ground != null && feet.getY() >= ground.getY() - 0.3 && feet.getY() <= ground.getY() + 0.6
+                        && hit.add(player.getUniqueId())) {
+                    flightHit(player, source, config.sweepDamage() * 0.5 * (1 - distance / SMASH_SHOCKWAVE_RADIUS),
+                            center, AttackFamily.SMASH);
+                }
+            }
+            if (radius >= SMASH_SHOCKWAVE_RADIUS) {
+                wave.close();
+            }
+        });
+    }
+
+    private Location shockwaveGround(Location center, Location spot) {
+        if (!spot.getWorld().isChunkLoaded(spot.getBlockX() >> 4, spot.getBlockZ() >> 4)) {
+            return null;
+        }
+        Location reference = spot.clone();
+        reference.setY(center.getY());
+        Location ground = AttackSurface.column(reference, 6, 6);
+        return ground != null && arena.contains(ground) ? ground : null;
     }
 
     private void climb(DragonFlight movement, EnderDragon source) {

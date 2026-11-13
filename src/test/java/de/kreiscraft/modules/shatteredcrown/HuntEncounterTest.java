@@ -1526,6 +1526,9 @@ class HuntEncounterTest {
         scheduler.advance(Duration.ofSeconds(1));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.FallingBlock.class)).isEmpty();
         debug("status", player);
+        assertThat(messages(player)).anyMatch(text -> text.contains("main=executing") && text.contains("hazards=1"));
+        scheduler.advance(Duration.ofSeconds(2));
+        debug("status", player);
         assertThat(messages(player)).anyMatch(text -> text.contains("main=executing") && text.contains("hazards=0"));
     }
 
@@ -1572,6 +1575,136 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"10,16", "15,17", "-15,17", "29,19.8", "30,20", "30.01,20"})
+    void smashShockwaveArrivesAfterImpactHitsOnceAndFallsToZeroAtThirtyBlocks(double offset, double health)
+            throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
+        probe.getLocation().getChunk().load();
+        scheduler.advance(Duration.ofMillis(4000));
+        assertThat(probe.getHealth()).isEqualTo(20);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(probe.getHealth()).isCloseTo(health, org.assertj.core.data.Offset.offset(0.00001));
+        if (health < 20) {
+            assertThat(probe.getVelocity().getX() * offset).isPositive();
+            assertThat(probe.getVelocity().getZ()).isZero();
+        } else {
+            assertThat(probe.getVelocity().lengthSquared()).isZero();
+        }
+        int hits = referenceHits;
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(referenceHits).isEqualTo(hits);
+    }
+
+    @Test
+    void smashShockwaveFollowsRaisedAndLoweredGroundAndCanBeJumpedOrSkippedOverHoles() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probes = new java.util.ArrayList<PlayerMock>();
+        for (int z : new int[] {-15, -10, 10, 15}) {
+            var probe = server.addPlayer();
+            probe.teleport(new Location(end, 10.5, 64, 0.5 + z));
+            probe.getLocation().getChunk().load();
+            probes.add(probe);
+        }
+        // Change terrain after the warning: the moving ring must use current heights, not its old snapshot.
+        scheduler.advance(Duration.ofMillis(4000));
+        end.getBlockAt(10, 64, -15).setType(Material.END_STONE);
+        end.getBlockAt(10, 65, -15).setType(Material.END_STONE);
+        probes.get(0).teleport(new Location(end, 10.5, 66, -14.5));
+        end.getBlockAt(10, 63, -10).setType(Material.AIR);
+        end.getBlockAt(10, 62, -10).setType(Material.END_STONE);
+        probes.get(1).teleport(new Location(end, 10.5, 63, -9.5));
+        probes.get(2).teleport(new Location(end, 10.5, 65, 10.5));
+        end.getBlockAt(10, 63, 15).setType(Material.AIR);
+        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(probes.get(0).getHealth()).isEqualTo(17);
+        assertThat(probes.get(1).getHealth()).isEqualTo(16);
+        assertThat(probes.get(2).getHealth()).isEqualTo(20);
+        assertThat(probes.get(3).getHealth()).isEqualTo(20);
+        probes.get(2).teleport(new Location(end, 10.5, 64, 10.5));
+        scheduler.advance(Duration.ofSeconds(1));
+        assertThat(probes.get(2).getHealth()).isEqualTo(20);
+    }
+
+    @Test
+    void smashShockwaveDrawsPurpleDustOutToThirtyBlocksAndStopsAtExpiry() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                end.getChunkAt(x, z).load();
+            }
+        }
+        var points = new java.util.ArrayList<Location>();
+        try (var particles = org.mockito.Mockito.mockStatic(CrownParticles.class, call -> {
+            if (call.getArgument(1) == org.bukkit.Particle.DUST) {
+                points.add(((Location) call.getArgument(2)).clone());
+            }
+            return null;
+        })) {
+            debug("trigger smash", player);
+            scheduler.advance(Duration.ofMillis(4000));
+            assertThat(points).isEmpty();
+            scheduler.advance(Duration.ofSeconds(3));
+            assertThat(points).isNotEmpty();
+            assertThat(points.stream().mapToDouble(point -> Math.hypot(point.getX() - 10.5, point.getZ() - 0.5))
+                    .max().orElseThrow()).isCloseTo(30, org.assertj.core.data.Offset.offset(0.00001));
+            assertThat(points).allSatisfy(point -> assertThat(point.getY()).isEqualTo(64.15));
+            int count = points.size();
+            scheduler.advance(Duration.ofSeconds(2));
+            assertThat(points).hasSize(count);
+        }
+    }
+
+    @Test
+    void cancelledShockwaveDamageDoesNotKnockThePlayerBack() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 25.5, 64, 0.5));
+        probe.getLocation().getChunk().load();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void damage(EntityDamageEvent event) {
+                if (event.getEntity().equals(probe)) {
+                    event.setCancelled(true);
+                }
+            }
+        }, plugin);
+        scheduler.advance(Duration.ofSeconds(7));
+        assertThat(referenceHits).isEqualTo(2);
+        assertThat(probe.getHealth()).isEqualTo(20);
+        assertThat(probe.getVelocity().lengthSquared()).isZero();
+    }
+
+    @Test
+    void cancellingSmashAfterImpactStopsTheTravellingShockwave() throws Exception {
+        config.node("movement-attacks").set(true);
+        startEncounter();
+        player.setOp(true);
+        debug("trigger smash", player);
+        var probe = server.addPlayer();
+        probe.teleport(new Location(end, 25.5, 64, 0.5));
+        probe.getLocation().getChunk().load();
+        scheduler.advance(Duration.ofMillis(4500));
+        debug("cancel", player);
+        scheduler.advance(Duration.ofSeconds(5));
+        assertThat(probe.getHealth()).isEqualTo(20);
+        assertThat(probe.getVelocity().lengthSquared()).isZero();
+        assertThat(referenceHits).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"0,8", "2,8", "4,8", "5,9.5", "6,11", "7,12.5", "8,14",
             "8.01,20", "-4,8", "-6,11", "-8,14", "-8.01,20"})
     void smashDamageIsFullInsideHalfRadiusThenFallsLinearlyToHalfAtTheEdge(double offset, double health)
@@ -1582,7 +1715,7 @@ class HuntEncounterTest {
         debug("trigger smash", player);
         var probe = server.addPlayer();
         probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
-        scheduler.advance(Duration.ofSeconds(5));
+        scheduler.advance(Duration.ofMillis(4000));
         assertThat(probe.getHealth()).isEqualTo(health);
         assertThat(referenceHits).isEqualTo(health < 20 ? 2 : 1);
         if (Math.abs(offset) > 5) {
