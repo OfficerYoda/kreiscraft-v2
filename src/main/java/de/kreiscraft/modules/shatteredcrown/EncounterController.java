@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
@@ -1320,7 +1321,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             }
             areas.add(pool);
             pools.add(pool);
-            pool.indicator.text(Component.text(lifetimeSeconds + "s", NamedTextColor.LIGHT_PURPLE));
             drawAreaRing(pool, Particle.DRAGON_BREATH);
             drawPool(pool);
             source.getWorld().playSound(pool.center, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 0.7f);
@@ -1330,9 +1330,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     poolWork.close();
                     return;
                 }
-                pool.age += 0.25;
-                pool.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                        Math.max(0, lifetimeSeconds - pool.age)), NamedTextColor.LIGHT_PURPLE));
                 drawAreaRing(pool, Particle.DRAGON_BREATH);
                 drawPool(pool);
             });
@@ -1767,11 +1764,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private void drawPool(HuntArea pool) {
-        // Deterministic filled disk: particles never imply danger beyond the actual radius.
+        // Resample a uniform filled disk each refresh so particles don't form persistent columns.
         List<Location> points = new ArrayList<>();
+        var random = ThreadLocalRandom.current();
         for (int point = 0; point < 64; point++) {
-            double radius = pool.radius * Math.sqrt((point + 0.5) / 64);
-            Location spot = arena.groundBelow(pool.point(point * 2.399963229728653, radius));
+            double radius = pool.radius * Math.sqrt(random.nextDouble());
+            Location spot = arena.groundBelow(pool.point(random.nextDouble() * Math.PI * 2, radius));
             if (spot != null) {
                 points.add(spot.add(0, 0.35, 0));
             }
@@ -1825,7 +1823,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         participants.forEach(player -> {
             player.playSound(sweep.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
-        sweep.indicator.text(Component.text(config.sweepWarningSeconds() + "s", NamedTextColor.GOLD));
         drawAreaRing(sweep, Particle.FLAME);
         final Scheduler.Task[] refresh = new Scheduler.Task[1];
         refresh[0] = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
@@ -1836,8 +1833,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 return;
             }
             sweep.age += 0.25;
-            sweep.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                    Math.max(0, config.sweepWarningSeconds() - sweep.age)), NamedTextColor.GOLD));
             drawAreaRing(sweep, Particle.FLAME);
         });
         owner.later(seconds(config.sweepWarningSeconds()), () -> {

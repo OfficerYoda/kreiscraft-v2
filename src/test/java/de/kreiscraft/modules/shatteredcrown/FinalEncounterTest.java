@@ -329,7 +329,7 @@ class FinalEncounterTest {
         var pool = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         assertThat(player.getHealth()).isEqualTo(19);
         assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                .serialize(pool.text())).contains("3");
+                .serialize(pool.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(2999));
         assertThat(pool.isValid()).isTrue();
         assertThat(player.getHealth()).isEqualTo(17);
@@ -1070,7 +1070,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofMillis(12750));
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofSeconds(1));
-        assertWorldCountdown("4.0s");
+        assertSweepHasNoCountdown();
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofSeconds(4));
         assertParticipantHealth(14);
@@ -1098,7 +1098,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofSeconds(9));
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofMillis(1500)); // Final 17.5s; lane has expired, fixed sweep warns.
-        assertWorldCountdown("4.0s");
+        assertSweepHasNoCountdown();
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofMillis(4250));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
@@ -1130,10 +1130,13 @@ class FinalEncounterTest {
         }
     }
 
-    private void assertWorldCountdown(String expected) {
-        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(end.getEntitiesByClass(TextDisplay.class))
-                .anyMatch(display -> plain.serialize(display.text()).equals(expected));
+    private void assertSweepHasNoCountdown() {
+        var sweep = end.getEntitiesByClass(TextDisplay.class).stream()
+                .filter(display -> "sweep".equals(display.getPersistentDataContainer().get(
+                        EncounterRecovery.ARTIFACT, org.bukkit.persistence.PersistentDataType.STRING)))
+                .findFirst().orElseThrow();
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(sweep.text())).isEmpty();
     }
 
     private void moveParticipants(double x, double z) {
