@@ -1,6 +1,6 @@
 """Run built production+probe JARs on fresh Paper132 worlds. Never use the shared run/ directory.
 
-Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|final|smash|opening|rain|release|rotation|second|dive|damage|flight|defender]
+Usage: JAVA_HOME=... python3 scripts/run-dragon-wave-probe.py NEW_EVIDENCE_DIR PAPER_CACHE_DIR [PRODUCTION_JAR] [wave|final|smash|opening|release|rotation|second|dive|damage|flight|defender]
 The cache directory supplies libraries/, cache/, versions/, eula.txt and paper-26.3-249.jar.
 """
 from pathlib import Path
@@ -39,7 +39,7 @@ plugins = server / "plugins"
 plugins.mkdir()
 production = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else repo / "build/libs/Kreiscraft-0.1.0-SNAPSHOT.jar"
 guard = {"final": "final-wave", "second": "second-wave", "flight": "dragon"}.get(mode, mode)
-stems = {"wave": "dragon-wave", "final": "final-wave", "smash": "smash-encounter", "opening": "opening-roster", "rain": "rain",
+stems = {"wave": "dragon-wave", "final": "final-wave", "smash": "smash-encounter", "opening": "opening-roster",
          "release": "release-candidate", "rotation": "rotation", "second": "second-wave", "dive": "dive-encounter",
          "damage": "dragon-damage", "flight": "dragon-flight", "defender": "defender-roaming"}
 if mode not in stems:
@@ -62,15 +62,6 @@ for index, line in enumerate(lines):
                      "lane-cadence-seconds": 120, "prey-cadence-seconds": 120,
                       "landing-cadence-seconds": 120, "bombardment-cadence-seconds": 120,
                       "sweep-cadence-seconds": 10, "attack-gap-min-seconds": 5, "attack-gap-max-seconds": 5}
-        if key in overrides:
-            lines[index] = f"    {key}: {overrides[key]}"
-    if mode == "rain" and module == "shattered-crown":
-        key = line.strip().split(":", 1)[0]
-        overrides = {"opening-grace-seconds": 120, "pool-damage": 3,
-                     "arrival-x": 48, "arrival-z": 40.5, "arrival-y": 64,
-                     "arrival-radius": 3, "arrival-height": 64,
-                     "attack-gap-min-seconds": 5, "attack-gap-max-seconds": 5,
-                     "landing-cadence-seconds": 120}
         if key in overrides:
             lines[index] = f"    {key}: {overrides[key]}"
     if mode in ("release", "rotation") and module == "shattered-crown":
@@ -109,7 +100,6 @@ if snapshot is not None:
 (root / "artifacts.json").write_text(json.dumps({
     "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
     "port": port,
-    "rain_start": int(os.environ.get("RAIN_START", "0")),
     "production_sha256": hashlib.sha256(production.read_bytes()).hexdigest(),
     "probe_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
     "paper_sha256": hashlib.sha256((server / "paper-26.3-249.jar").read_bytes()).hexdigest(),
@@ -119,7 +109,6 @@ with (root / "console.log").open("w") as log:
     process = subprocess.Popen([
         str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
         "-Dterminal.jline=false", "-Dterminal.ansi=false", f"-Dkreiscraft.{guard}-probe=true",
-        f"-Dkreiscraft.rain-start={os.environ.get('RAIN_START', '0')}",
         f"-Dkreiscraft.release-restart={'true' if snapshot is not None else 'false'}",
         "-jar", "paper-26.3-249.jar", "--nogui",
     ], cwd=server, stdin=subprocess.PIPE, stdout=subprocess.PIPE if mode == "release" else log,
@@ -146,7 +135,7 @@ with (root / "console.log").open("w") as log:
             finally:
                 deadline.cancel()
         # Rain's native tick bound is unchanged; allow one host/provider pause inside its wall-clock guard.
-        code = process.wait(timeout=1200 if mode == "release" else 900 if mode == "rain" else 300)
+        code = process.wait(timeout=1200 if mode == "release" else 300)
     except subprocess.TimeoutExpired:
         timed_out = True
         process.stdin.write("stop\n")
@@ -160,7 +149,7 @@ with (root / "console.log").open("w") as log:
     (root / "timeout.txt").write_text(str(timed_out))
 text = (root / "console.log").read_text()
 print(text[-14000:])
-marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "final": "FINAL_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE", "rain": "RAIN_PROBE",
+marker = {"smash": "SMASH_ENCOUNTER_PROBE", "wave": "DRAGON_WAVE_PROBE", "final": "FINAL_WAVE_PROBE", "opening": "OPENING_ROSTER_PROBE",
           "release": "RELEASE_CANDIDATE_PROBE", "rotation": "ROTATION_PROBE", "second": "SECOND_WAVE_PROBE", "dive": "DIVE_ENCOUNTER_PROBE",
           "damage": "DRAGON_DAMAGE_PROBE", "flight": "DRAGON_FLIGHT_PROBE", "defender": "DEFENDER_ROAMING_PROBE"}[mode]
 passed = code == 0 and marker + " PASS" in text and marker + " FAIL" not in text and not re.search(r"\bERROR\]", text)
@@ -168,7 +157,7 @@ if mode == "release":
     passed = code == -9 and "RELEASE_INTERRUPT_READY" in text and "PROBE FAIL" not in text and not re.search(r"\bERROR\]", text)
     if snapshot is not None:
         passed = code == 0 and "RELEASE_RESTART_PROBE PASS" in text and "PROBE FAIL" not in text and not re.search(r"\bERROR\]", text)
-if passed and mode in ("smash", "rain", "release") and snapshot is None:
+if passed and mode in ("smash", "release") and snapshot is None:
     with (root / "console-restart.log").open("w") as log:
         process = subprocess.Popen([
             str(Path(os.environ["JAVA_HOME"]) / "bin/java"), "-Xms512M", "-Xmx2G",
@@ -184,7 +173,7 @@ if passed and mode in ("smash", "rain", "release") and snapshot is None:
         (root / "exit-restart.txt").write_text(str(code))
     text = (root / "console-restart.log").read_text()
     print(text[-14000:])
-    restart_marker = {"smash": "SMASH_RESTART_PROBE", "rain": "RAIN_RESTART_PROBE", "release": "RELEASE_RESTART_PROBE"}[mode]
+    restart_marker = {"smash": "SMASH_RESTART_PROBE", "release": "RELEASE_RESTART_PROBE"}[mode]
     passed = code == 0 and restart_marker + " PASS" in text and " FAIL" not in text and not re.search(r"\bERROR\]", text)
 if passed and mode == "release":
     # Independent disabled-startup fork of the SAME interrupted active world, not already-cleaned residue.

@@ -84,46 +84,65 @@ final class EncounterArena {
         return site;
     }
 
-    /** Defenders prefer nearby surviving footing; objectives themselves need no foundation. */
-    Location defenderSite(Location home) {
-        Location preferred = home.clone().add(2, 0, 0);
-        World world = home.getWorld();
+    /** One shared layout for all species; only native passenger groups share a slot. */
+    Location defenderSite(Location home, int index, int total, List<Location> occupied) {
+        if (total < 1) {
+            throw new IllegalArgumentException("A defender layout needs at least one spawn slot");
+        }
+        index %= total;
+        int ring = 1;
+        int remaining = total;
+        while (true) {
+            int slots = Math.min(6 * ring, remaining);
+            if (remaining == slots + 1) {
+                slots--; // Leave two opposing positions rather than one lopsided outer-ring mob.
+            }
+            if (index < slots) {
+                // Alternate opposite sides so consecutively spawned species are not clustered in one arc.
+                int position = index % 2 == 0 ? index / 2 : (slots + 1) / 2 + index / 2;
+                double angle = (position + (ring % 2 == 0 ? 0.5 : 0)) * Math.PI * 2 / slots;
+                return resolveDefenderSite(home.clone().add(3 * ring * Math.cos(angle), 0,
+                        3 * ring * Math.sin(angle)), occupied);
+            }
+            index -= slots;
+            remaining -= slots;
+            ring++;
+        }
+    }
+
+    private Location resolveDefenderSite(Location preferred, List<Location> occupied) {
+        World world = preferred.getWorld();
         for (int radius = 0; radius <= config.groundSearchRadius(); radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
                         continue;
                     }
-                    int x = preferred.getBlockX() + dx;
-                    int z = preferred.getBlockZ() + dz;
-                    Location feet = new Location(world, x + 0.5, world.getHighestBlockYAt(x, z) + 1, z + 0.5);
+                    Location feet = preferred.clone().add(dx, 0, dz);
+                    feet.setY(world.getHighestBlockYAt(feet.getBlockX(), feet.getBlockZ()) + 1);
                     if (feet.getY() > world.getMinHeight() && feet.getY() < world.getMaxHeight() - 1
-                            && walkable(feet)) {
+                            && walkable(feet) && separated(feet, occupied)) {
                         return feet;
                     }
                 }
             }
         }
+        if (!separated(preferred, occupied)) {
+            throw new IllegalStateException("No separated defender position near the crystal");
+        }
         return preferred;
+    }
+
+    private boolean separated(Location site, List<Location> occupied) {
+        // ponytail: spawn-time linear scan; use a spatial index only if large rosters make setup slow.
+        return occupied.stream().noneMatch(other -> site.getWorld().equals(other.getWorld())
+                && horizontalSquared(other, site.getX(), site.getZ()) < 9 - 0.000001);
     }
 
     boolean inBombardment(Location location, Location impact, double radius) {
         return location.getWorld().equals(impact.getWorld())
                 && horizontalSquared(location, impact.getX(), impact.getZ()) <= radius * radius
                 && Math.abs(location.getY() - impact.getY()) <= 3;
-    }
-
-    boolean bombardmentSafe(Location impact, double radius, List<Player> participants) {
-        if (!contains(impact) || AttackSurface.column(impact, 0, 4) == null) {
-            return false;
-        }
-        double search = radius + config.bombardmentWarningSeconds() * 3 + 32;
-        var danger = nearbyBreath(impact, search, 6);
-        if (danger.size() > 32 || danger.stream().anyMatch(cloud -> !Float.isFinite(cloud.getRadius())
-                || cloud.getRadius() > 32 || overlaps(impact, radius, cloud))) {
-            return false;
-        }
-        return true;
     }
 
     private boolean overlaps(Location location, double radius, AreaEffectCloud cloud) {

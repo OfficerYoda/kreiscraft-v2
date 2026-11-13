@@ -162,11 +162,12 @@ server-config:
     shattered-crown-sweep-cadence-seconds: "Wing sweep cadence (seconds)"
     shattered-crown-sweep-damage: "Ground Smash reference damage (HP)"
     shattered-crown-smash-crater-radius: "Permanent Smash crater radius"
+    shattered-crown-smash-shockwave-radius: "Smash shockwave radius (blocks)"
+    shattered-crown-smash-shockwave-seconds: "Smash shockwave travel time (seconds)"
+    shattered-crown-smash-shockwave-damage-percentage: "Smash shockwave damage (% of Smash)"
+    shattered-crown-smash-shockwave-knockback: "Smash shockwave knockback"
     shattered-crown-smash-crater-depth: "Permanent Smash crater depth (blocks)"
     shattered-crown-debris-lifetime-seconds: "Flying debris lifetime (seconds)"
-    shattered-crown-rain-spawn-height: "Rain launch height (blocks)"
-    shattered-crown-rain-descent-seconds: "Rain native descent (seconds)"
-    shattered-crown-rain-damage: "Rain reference damage (HP)"
     shattered-crown-sweep-knockback: "Wing sweep knockback"
     shattered-crown-final-health-fraction: "Legacy health fraction (ignored)"
     shattered-crown-final-cadence-factor: "Final attack cadence multiplier"
@@ -399,6 +400,13 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  death:
+    bombardment: "<player> was reduced to ashes by the Ender Dragon's bombardment."
+    prey: "<player> became the Ender Dragon's next meal."
+    dive: "<player> stood in the Ender Dragon's flight path."
+    smash: "<player> was crushed by the Ender Dragon."
+    dragon: "<player> challenged the Ender Dragon and lost."
+    minion: "<player> fell to a servant of the Ender Dragon."
   debug-status: "<prefix> <gray>Status: <status></gray>"
   debug-no-encounter: "<prefix> <yellow>No active encounter; enter the configured End arena in survival/adventure.</yellow>"
   debug-target-ineligible: "<prefix> <red>Target must be alive in survival/adventure inside the combat arena, outside protected arrival.</red>"

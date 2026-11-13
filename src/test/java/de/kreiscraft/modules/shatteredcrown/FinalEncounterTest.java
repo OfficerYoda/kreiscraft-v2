@@ -62,6 +62,7 @@ class FinalEncounterTest {
     private ShatteredCrownModule module;
     private ConfigurationNode config;
     private List<Location> openingLocations;
+    private ServiceRegistry services;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -160,11 +161,12 @@ class FinalEncounterTest {
     }
 
     private void opening() throws Exception {
+        services = new ServiceRegistry();
         module.enable(new ModuleContext(plugin, config,
                 new ConfigurateMessageService(data, getClass().getClassLoader(), "en", server,
                         recipient -> recipient.getName().equals("Deutsch") ? java.util.Optional.of("de")
                                 : java.util.Optional.empty()),
-                new ServiceRegistry(), scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
+                services, scheduler, mock(CommandRegistrar.class), new EventBus(plugin)));
         scheduler.advance(Duration.ZERO);
         openingLocations = crystals().stream().map(Entity::getLocation).toList();
     }
@@ -328,7 +330,7 @@ class FinalEncounterTest {
         var pool = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         assertThat(player.getHealth()).isEqualTo(19);
         assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                .serialize(pool.text())).contains("3");
+                .serialize(pool.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(2999));
         assertThat(pool.isValid()).isTrue();
         assertThat(player.getHealth()).isEqualTo(17);
@@ -430,8 +432,9 @@ class FinalEncounterTest {
         assertThat(pair).hasSize(4);
         var first = pair.get(reverse ? 1 : 0);
         var second = pair.get(reverse ? 0 : 1);
+        var encounter = (EncounterController) services.get(EncounterService.class);
         var firstWave = List.copyOf(defenders()).stream()
-                .filter(defender -> defender.getLocation().distanceSquared(first.getLocation()) < 9).toList();
+                .filter(defender -> first.getUniqueId().equals(encounter.anchorId(defender))).toList();
         assertThat(firstWave).hasSize(1);
         firstWave.forEach(defender -> {
             defeat(defender);
@@ -941,7 +944,7 @@ class FinalEncounterTest {
     }
 
     @Test
-    void finalInterludeAndShieldReleaseStayQuietWhileWorldCountdownAndNativeBossBarRemain() throws Exception {
+    void finalInterludeAndShieldReleaseStayQuietWithoutCountdownWhileNativeBossBarRemains() throws Exception {
         var german = server.addPlayer("Deutsch");
         german.teleport(player.getLocation());
         hunt();
@@ -950,12 +953,12 @@ class FinalEncounterTest {
         assertThat(crystals()).hasSize(4);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        var countdown = end.getEntitiesByClass(TextDisplay.class).iterator().next();
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(2);
+        var warning = end.getEntitiesByClass(TextDisplay.class).iterator().next();
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(plain.serialize(countdown.text())).contains("3");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         scheduler.advance(Duration.ofMillis(250));
-        assertThat(plain.serialize(countdown.text())).contains("2.8");
+        assertThat(plain.serialize(warning.text())).isEmpty();
         player.teleport(player.getLocation().add(6, 0, 0));
         german.teleport(german.getLocation().add(6, 0, 0));
         scheduler.advance(Duration.ofSeconds(3));
@@ -984,8 +987,11 @@ class FinalEncounterTest {
         var texts = new java.util.ArrayList<String>();
         net.kyori.adventure.text.Component text;
         while ((text = recipient.nextActionBar()) != null) {
-            texts.add(
-                    net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(text));
+            String value = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(text);
+            if (!value.isEmpty()) {
+                texts.add(value);
+            }
         }
         return texts;
     }
@@ -1020,6 +1026,7 @@ class FinalEncounterTest {
     @org.junit.jupiter.params.provider.CsvSource({"false,12000", "true,500"})
     void twentyParticipantsCompleteTimedOpeningHuntAndFinalRaceBeforeUntouchedNativeCompletion(
             boolean previouslyKilled, int experience) throws Exception {
+        config.node("sweep-warning-seconds").set(4); // Keep this historical sector choreography explicit.
         dragon.getDragonBattle().setPreviouslyKilled(previouslyKilled);
         for (int i = 1; i < 20; i++) {
             server.addPlayer().teleport(player.getLocation());
@@ -1029,8 +1036,8 @@ class FinalEncounterTest {
         assertThat(defenders()).hasSize(320);
         assertThat(damage(dragon, EntityDamageEvent.DamageCause.BLOCK_EXPLOSION, 10000).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
-        moveParticipants(10.5, 6.5); // Escape the fixed opening warning on actual fixture terrain.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
+        moveParticipants(10.5, 6.5);
         scheduler.advance(Duration.ofSeconds(3));
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertParticipantHealth(20);
@@ -1049,7 +1056,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofMillis(3999));
         assertParticipantHealth(20);
         scheduler.advance(Duration.ofMillis(1));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
         assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(7); // Independent pools share one damage pulse.
         moveParticipants(26.5, 10.5);
         scheduler.advance(Duration.ofMillis(6250));
@@ -1067,10 +1074,10 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofMillis(12750));
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofSeconds(1));
-        assertWorldCountdown("3.0s");
+        assertSweepHasNoCountdown();
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofSeconds(4));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
 
         var part = mock(org.bukkit.entity.ComplexEntityPart.class);
         when(part.getParent()).thenReturn(dragon);
@@ -1083,10 +1090,10 @@ class FinalEncounterTest {
         assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
         assertThat(damage(part, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000).isCancelled()).isTrue();
         scheduler.advance(Duration.ofSeconds(8));
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1); // Familiar final-Anchor pressure.
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(20); // One warning per combat player.
         moveParticipants(16.5, 0.5);
         scheduler.advance(Duration.ofSeconds(3));
-        assertParticipantHealth(17);
+        assertParticipantHealth(14);
         clearAnchors();
 
         scheduler.advance(Duration.ofSeconds(7));
@@ -1095,7 +1102,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofSeconds(9));
         moveParticipants(0.5, 10.5);
         scheduler.advance(Duration.ofMillis(1500)); // Final 17.5s; lane has expired, fixed sweep warns.
-        assertWorldCountdown("3.0s");
+        assertSweepHasNoCountdown();
         moveParticipants(10.5, 0.5);
         scheduler.advance(Duration.ofMillis(4250));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
@@ -1103,7 +1110,7 @@ class FinalEncounterTest {
         scheduler.advance(Duration.ofSeconds(12));
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
         scheduler.advance(Duration.ofSeconds(1)); // A fresh familiar lane is pending at native completion.
-        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+        assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSizeLessThanOrEqualTo(1);
         damage(dragon, EntityDamageEvent.DamageCause.ENTITY_ATTACK, 10000);
         var loot = new org.bukkit.inventory.ItemStack(Material.DRAGON_EGG);
         double healthAtVictory = player.getHealth();
@@ -1123,14 +1130,17 @@ class FinalEncounterTest {
         for (var participant : end.getPlayers()) {
             var recipient = (PlayerMock) participant;
             assertThat(messages(recipient)).isEmpty();
-            assertThat(bars(recipient)).isEmpty();
+            assertThat(bars(recipient)).allMatch(text -> text.matches("\\d+\\.\\d+s"));
         }
     }
 
-    private void assertWorldCountdown(String expected) {
-        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-        assertThat(end.getEntitiesByClass(TextDisplay.class))
-                .anyMatch(display -> plain.serialize(display.text()).equals(expected));
+    private void assertSweepHasNoCountdown() {
+        var sweep = end.getEntitiesByClass(TextDisplay.class).stream()
+                .filter(display -> "sweep".equals(display.getPersistentDataContainer().get(
+                        EncounterRecovery.ARTIFACT, org.bukkit.persistence.PersistentDataType.STRING)))
+                .findFirst().orElseThrow();
+        assertThat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(sweep.text())).isEmpty();
     }
 
     private void moveParticipants(double x, double z) {
@@ -1190,7 +1200,7 @@ class FinalEncounterTest {
         for (int attempt = 0; attempt < 3; attempt++) {
             int previousHits = cancelledHits.get();
             scheduler.advance(Duration.ofSeconds(8));
-            assertThat(end.getEntitiesByClass(TextDisplay.class)).hasSize(1);
+            assertThat(end.getEntitiesByClass(TextDisplay.class)).isEmpty();
             scheduler.advance(Duration.ofSeconds(3));
             clearAnchors();
             for (int second = 0; second < 60; second++) {

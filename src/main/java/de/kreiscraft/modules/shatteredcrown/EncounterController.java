@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
@@ -36,6 +37,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
@@ -52,19 +54,27 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 /**
  * Owns one managed battle's attempt, objectives and cancellable work on the server thread.
  * Communication policy: automatic cues stay in-world (displays, sounds, visuals, native boss bars),
- * never chat, action bars or replacement titles. Only explicitly requested debug replies use chat.
+ * never chat, action bars or replacement titles. Only debug replies and native death messages use chat.
  */
 public final class EncounterController implements Listener, AutoCloseable, EncounterService {
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
-    private static final double RAIN_RADIUS = 5;
     private static final int MAX_MOB_POPULATION = 20;
+    /** Highest footing below this scan height becomes the Bombardment ceiling. */
+    private static final int BOMBARDMENT_CEILING = 20;
+    private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
+            EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
     private final Server server;
     private final DragonBattleAccess battles;
     private ShatteredCrownConfig nextConfig;
     private ShatteredCrownConfig config;
     private final Scheduler scheduler;
     private final MessageService messages;
+    private AttackDamage attackDamage;
+
+    private record AttackDamage(Player player, EnderDragon source, AttackFamily attack) {
+    }
+
     private final List<Mob> defenders = new ArrayList<>();
     private final java.util.Map<UUID, Anchor> combatOwners = new java.util.HashMap<>();
     private final Set<UUID> groundedArrows = new HashSet<>();
@@ -88,19 +98,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private final Set<EncounterWork> hazards = new HashSet<>();
     private boolean closed;
     private Scheduler.Task bombardmentCadence;
-    private Scheduler.Task bombardmentWarning;
-    private Scheduler.Task bombardmentImpact;
-    private TextDisplay bombardmentIndicator;
     private int targetCursor;
     private final List<BreathLane> lanes = new ArrayList<>();
     private final List<HuntArea> areas = new ArrayList<>();
     private final Set<HuntArea> pools = new HashSet<>();
     private final java.util.Map<UUID, Long> poolCooldowns = new java.util.HashMap<>();
-    private final java.util.Map<UUID, RainShot> rainShots = new java.util.HashMap<>();
-
-    private record RainShot(EncounterWork owner, EnderDragon source) {
-    }
-
     private long encounterTicks;
     private final java.util.Map<UUID, TextDisplay> marks = new java.util.HashMap<>();
     private boolean hunting;
@@ -114,7 +116,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private EncounterWork waveWork;
 
     public enum AttackFamily {
-        BOMBARDMENT, PREY, DIVE, RAIN, SMASH
+        BOMBARDMENT, PREY, DIVE, SMASH
     }
 
     /** Permanent unlocks, independent of the current wave's temporary shield. */
@@ -122,12 +124,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         if (dragon == null) {
             return Set.of();
         }
-        var unlocked = java.util.EnumSet.of(AttackFamily.BOMBARDMENT, AttackFamily.PREY);
+        var unlocked = java.util.EnumSet.of(AttackFamily.PREY);
         if (clearedWaves >= 1) {
             unlocked.add(AttackFamily.DIVE);
         }
         if (clearedWaves >= 2) {
-            unlocked.add(AttackFamily.RAIN);
+            unlocked.add(AttackFamily.BOMBARDMENT);
         }
         if (clearedWaves >= 3) {
             unlocked.add(AttackFamily.SMASH);
@@ -233,7 +235,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     enum DebugAttack {
-        DIVE, SMASH, PREY, BOMBARDMENT, LANDING, RAIN
+        DIVE, SMASH, PREY, BOMBARDMENT, LANDING
     }
 
     private boolean attacking() {
@@ -383,7 +385,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             messages.send(sender, "shattered-crown.debug-no-encounter");
             return;
         }
-        if (!(attack == DebugAttack.RAIN && target == null) && !isParticipant(target)) {
+        if (!(attack == DebugAttack.BOMBARDMENT && target == null) && !isParticipant(target)) {
             messages.send(sender, "shattered-crown.debug-target-ineligible");
             return;
         }
@@ -398,7 +400,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 case PREY -> markPrey();
                 case BOMBARDMENT -> warnBombardment();
                 case LANDING -> requestLanding();
-                case RAIN -> fireballRain();
             }
         } catch (RuntimeException error) {
             resetAttacks();
@@ -454,7 +455,11 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
         if (!manualMode && !openingGrace()) {
             Duration cadence = seconds(config.bombardmentCadenceSeconds());
-            bombardmentCadence = attackWork.repeating(cadence, cadence, this::warnBombardment);
+            bombardmentCadence = attackWork.repeating(cadence, cadence, () -> {
+                if (unlockedAttacks().contains(AttackFamily.BOMBARDMENT)) {
+                    warnBombardment();
+                }
+            });
         }
     }
 
@@ -465,6 +470,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         private final List<Mob> wave = new ArrayList<>();
         private boolean waveInstalled;
         private int recoveryPasses;
+        private int spawnCount;
+        private int spawnIndex;
 
         private Anchor(EnderCrystal crystal, Location home) {
             this.crystal = crystal;
@@ -756,7 +763,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             case PREY -> markPrey();
             case DIVE -> warnLane();
             case SMASH -> smash();
-            case RAIN -> fireballRain();
         }
     }
 
@@ -1052,7 +1058,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         break;
                     }
                     if (isParticipant(player) && lane.contains(player.getLocation(), 0)) {
-                        battles.bombardmentDamage(player, source, config.laneDamage());
+                        damage(player, source, config.laneDamage(), AttackFamily.DIVE, false);
                     }
                 }
             });
@@ -1064,13 +1070,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         startAction(DebugAttack.PREY, this::markPrey);
     }
 
-    private void fireballRain() {
-        startAction(DebugAttack.RAIN, owner -> {
+    private void warnBombardment() {
+        startAction(DebugAttack.BOMBARDMENT, owner -> {
             EnderDragon source = dragon;
             var grounds = attackTargets().stream().map(target -> {
                 Location feet = target.getLocation();
                 Location ground = AttackSurface.column(feet, 0, feet.getBlockY() - feet.getWorld().getMinHeight());
-                // Void columns still get a locked warning/projectile; no invented floor, bounded cleanup below.
+                // Void columns still get a locked warning; no invented floor, bounded cleanup below.
                 return ground == null ? feet : ground;
             }).toList();
             int[] remaining = {grounds.size()};
@@ -1081,119 +1087,80 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     }
                 });
                 shot.run(() -> {
-                    warnRain(ground);
-                    shot.later(Duration.ofSeconds(1), () -> {
-                        double speed = config.rainSpawnHeight() / (config.rainDescentSeconds() * 20);
-                        var ball = ground.getWorld().spawn(ground.clone().add(0, config.rainSpawnHeight(), 0),
-                                org.bukkit.entity.LargeFireball.class, projectile -> {
-                                    shot.own(projectile, "rain-projectile");
-                                    projectile.setShooter(source);
-                                    projectile.setIsIncendiary(false);
-                                    projectile.setYield(0);
-                                    battles.prepareRainFireball(projectile, speed);
-                                    projectile.setVelocity(new org.bukkit.util.Vector(0, -speed, 0));
-                                });
-                        if (shot.isClosed() || !ball.isValid()) {
-                            ball.remove();
-                            shot.close();
-                            return;
-                        }
-                        UUID id = ball.getUniqueId();
-                        rainShots.put(id, new RainShot(shot, source));
-                        shot.onCleanup(() -> rainShots.remove(id));
-                        shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
-                            if (!ball.isValid()) {
-                                shot.close();
-                            }
-                        });
-                    });
-                    // Lost/unloaded/stopped projectiles cannot hold the main action indefinitely.
-                    shot.later(seconds(1 + config.rainDescentSeconds() + 3), shot::close);
+                    warnBombardment(ground, shot);
+                    shot.later(seconds(config.bombardmentWarningSeconds()),
+                            () -> resolveBombardment(ground, source, shot));
                 });
             }
         });
     }
 
-    private void warnRain(Location ground) {
-        // Keep the fixed warning for all three seconds, even if cover resolves a projectile early.
-        EncounterWork warningWork = attackWork.child(() -> {
+    /** Resolves once on the warned tick; the highest footing in the column is the ceiling. */
+    private void resolveBombardment(Location ground, EnderDragon source, EncounterWork shot) {
+        if (shot.isClosed() || dragon != source || !attacking()) {
+            shot.close();
+            return;
+        }
+        Location impact = AttackSurface.column(ground.clone().add(0, BOMBARDMENT_CEILING, 0), 0, BOMBARDMENT_CEILING);
+        if (impact == null) {
+            impact = ground;
+        }
+        Location center = impact;
+        var participants = source.getWorld().getPlayers().stream().filter(arena::participant).toList();
+        participants.stream().limit(64).forEach(player -> {
+            CrownParticles.spawn(player, Particle.EXPLOSION, center.clone().add(0, 0.5, 0), 4, 1.5, 1.5, 1.5, 0);
+            player.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
         });
-        warningWork.run(() -> {
-            TextDisplay warning = ground.getWorld().spawn(ground.clone().add(0, 1.5, 0), TextDisplay.class);
-            warningWork.own(warning, "rain-warning");
-            battles.faceWarningToViewer(warning);
-            warning.text(Component.text("3.0s", NamedTextColor.GOLD));
-            drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
-            attackParticipants()
-                    .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
-            int[] pulses = {0};
-            warningWork.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
-                warning.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                        Math.max(0, 3 - ++pulses[0] * 0.25)), NamedTextColor.GOLD));
-                drawAreaRing(new HuntArea(ground, RAIN_RADIUS), Particle.FLAME);
-            });
-            warningWork.later(Duration.ofSeconds(3), warningWork::close);
-        });
-        if (warningWork.isClosed()) {
-            throw new IllegalStateException("Rain warning unavailable");
+        for (Player player : participants) {
+            // Damage invokes public combat events, which can synchronously end this attempt.
+            if (shot.isClosed() || dragon != source) {
+                break;
+            }
+            if (isParticipant(player)
+                    && arena.inBombardment(player.getLocation(), center, config.bombardmentRadius())) {
+                damage(player, source, config.bombardmentDamage(), AttackFamily.BOMBARDMENT, true);
+            }
         }
-    }
-
-    private static boolean rainProjectile(Entity entity) {
-        return entity instanceof org.bukkit.entity.LargeFireball
-                && "rain-projectile".equals(entity.getPersistentDataContainer()
-                        .get(EncounterRecovery.ARTIFACT, PersistentDataType.STRING));
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onRainCollision(org.bukkit.event.entity.ProjectileHitEvent event) {
-        if (rainProjectile(event.getHitEntity())) {
-            event.setCancelled(true); // Native Projectile.onHit redirects fireballs before its damage event.
-            return;
-        }
-        if (!rainProjectile(event.getEntity())) {
-            return;
-        }
-        boolean cancelled = event.isCancelled();
-        event.setCancelled(true); // Native entity hit/explosion must never add a second damage path.
-        RainShot shot = rainShots.remove(event.getEntity().getUniqueId());
-        if (shot == null || shot.owner().isClosed()) {
-            return;
-        }
-        Location impact = event.getEntity().getLocation().clone(); // Native collision position, never the old target.
-        shot.owner().run(() -> {
-            if (!cancelled && dragon == shot.source()) {
-                // Native ray hits can sit 0.0005 inside a block's top face; include the footing just above it.
-                Location ground = AttackSurface.column(impact, 1, 4);
-                if (ground != null) {
-                    impactTerrain(ground, RAIN_RADIUS, 1);
-                }
-                impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 1);
-                impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
-                for (Player player : attackParticipants()) {
-                    if (shot.owner().isClosed() || dragon != shot.source()) {
-                        break;
-                    }
-                    if (arena.inBombardment(player.getLocation(), impact, RAIN_RADIUS)) {
-                        battles.referenceDamage(player, shot.source(), config.rainDamage());
-                    }
-                }
-                if (ground != null && !shot.owner().isClosed() && dragon == shot.source()) {
-                    Location crater = AttackSurface.column(impact, 1, 4);
-                    if (crater != null) {
-                        depositBreathPool(crater, RAIN_RADIUS, 6);
-                    }
+        if (!shot.isClosed() && dragon == source) {
+            Location crater = AttackSurface.column(center, 1, 4);
+            if (crater != null) {
+                impactTerrain(crater, config.bombardmentRadius(), 1);
+                Location pool = AttackSurface.column(center, 1, 4);
+                if (pool != null) {
+                    depositBreathPool(pool, config.bombardmentRadius(), 6);
                 }
             }
-        });
-        shot.owner().close();
+        }
+        shot.close();
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onRainExplosion(org.bukkit.event.entity.ExplosionPrimeEvent event) {
-        if (rainProjectile(event.getEntity())) {
-            event.setCancelled(true);
+    private void warnBombardment(Location ground, EncounterWork shot) {
+        TextDisplay warning = ground.getWorld().spawn(ground.clone().add(0, 1.5, 0), TextDisplay.class);
+        shot.own(warning, "rain-warning");
+        battles.faceWarningToViewer(warning);
+        if (shot.isClosed() || !warning.isValid()) {
+            throw new IllegalStateException("Bombardment warning unavailable");
         }
+        warning.text(Component.empty());
+        drawBombardment(ground);
+        drawFallingBombardment(ground, 0);
+        attackParticipants()
+                .forEach(player -> player.playSound(ground, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f));
+        int[] pulses = {0};
+        Scheduler.Task refresh = shot.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            if (!warning.isValid()) {
+                shot.close();
+                return;
+            }
+            if (++pulses[0] % 5 == 0) {
+                drawBombardment(ground);
+            }
+            drawFallingBombardment(ground, pulses[0] * 0.05 / config.bombardmentWarningSeconds());
+        });
+        shot.later(seconds(config.bombardmentWarningSeconds()), () -> {
+            refresh.cancel();
+            warning.remove();
+        });
     }
 
     /** Main completion closes only this child; deposited hazards are sibling Encounter work. */
@@ -1254,43 +1221,66 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 break;
             }
             owner.own(mark, "prey");
-            owner.onCleanup(() -> marks.remove(target.getUniqueId(), mark));
+            owner.onCleanup(() -> {
+                marks.remove(target.getUniqueId(), mark);
+                if (target.isOnline()) {
+                    target.sendActionBar(Component.empty());
+                }
+            });
             battles.faceWarningToViewer(mark);
             if (owner.isClosed()) {
                 return;
             }
             marks.put(target.getUniqueId(), mark);
             final double[] age = {0};
-            mark.text(Component.text(target.getName() + " · " + config.preyCountdownSeconds() + "s",
-                    NamedTextColor.GOLD));
+            Component timer = preyTimer(config.preyCountdownSeconds());
+            mark.text(timer);
+            target.sendActionBar(timer);
             target.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
             final Scheduler.Task[] refresh = new Scheduler.Task[1];
-            refresh[0] = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
+            final int[] pulses = {0};
+            final boolean[] circleLocked = {false};
+            final Location[] lockedGround = {null};
+            refresh[0] = owner.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
                 if (!isParticipant(target) || !mark.isValid()) {
                     cancelMark(target);
                     refresh[0].cancel();
                     return;
                 }
-                age[0] += 0.25;
+                age[0] += 0.05;
                 double remaining = Math.max(0, config.preyCountdownSeconds() - age[0]);
-                mark.teleport(target.getLocation().add(0, 2.5, 0));
-                mark.text(Component.text(
-                        target.getName() + " · " + String.format(java.util.Locale.ROOT, "%.1fs", remaining),
-                        NamedTextColor.GOLD));
-                Location ground = arena.groundBelow(target.getLocation());
-                if (ground != null) {
-                    drawAreaRing(new HuntArea(ground, config.poolRadius()), Particle.FLAME);
+                if (!circleLocked[0] && remaining <= 1.0000001) {
+                    circleLocked[0] = true;
+                    Location ground = arena.groundBelow(target.getLocation());
+                    lockedGround[0] = ground == null ? null : ground.clone();
+                }
+                if (!circleLocked[0]) {
+                    mark.teleport(target.getLocation().add(0, 2.5, 0));
+                } else if (lockedGround[0] != null) {
+                    mark.teleport(lockedGround[0].clone().add(0, 2.5, 0));
+                }
+                if (++pulses[0] % 2 == 0) {
+                    Component nextTimer = preyTimer(remaining);
+                    mark.text(nextTimer);
+                    target.sendActionBar(nextTimer);
+                    Location ground = circleLocked[0] ? lockedGround[0] : arena.groundBelow(target.getLocation());
+                    if (ground != null) {
+                        drawAreaRing(new HuntArea(ground, config.poolRadius()), Particle.FLAME);
+                    }
                 }
             });
             owner.later(seconds(config.preyCountdownSeconds()), () -> {
                 boolean valid = isParticipant(target) && mark.isValid() && marks.containsValue(mark);
                 mark.remove();
                 marks.remove(target.getUniqueId(), mark);
+                if (target.isOnline()) {
+                    target.sendActionBar(Component.empty());
+                }
                 refresh[0].cancel();
                 if (!valid || landingRequested) {
                     return;
                 }
-                Location ground = arena.groundBelow(target.getLocation());
+                Location ground = circleLocked[0] ? lockedGround[0] : arena.groundBelow(target.getLocation());
                 if (ground == null) {
                     server.getLogger().fine("[Shattered Crown] Prey pool skipped: no nearby footing");
                     return;
@@ -1312,7 +1302,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         owner.later(seconds(config.preyCountdownSeconds()), owner::close);
     }
 
-    /** Shared Prey/Rain hazard, with effect-specific geometry and lifetime but unchanged raw pool damage.
+    /** Shared Prey/Bombardment hazard, with effect-specific geometry and lifetime but unchanged raw pool damage.
      * Returns false when there is no live owner, footing or a startup failure. Call on the server thread.
      */
     public boolean depositBreathPool(Location ground, double radius, double lifetimeSeconds) {
@@ -1354,7 +1344,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             }
             areas.add(pool);
             pools.add(pool);
-            pool.indicator.text(Component.text(lifetimeSeconds + "s", NamedTextColor.LIGHT_PURPLE));
             drawAreaRing(pool, Particle.DRAGON_BREATH);
             drawPool(pool);
             source.getWorld().playSound(pool.center, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 0.7f);
@@ -1364,9 +1353,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     poolWork.close();
                     return;
                 }
-                pool.age += 0.25;
-                pool.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                        Math.max(0, lifetimeSeconds - pool.age)), NamedTextColor.LIGHT_PURPLE));
                 drawAreaRing(pool, Particle.DRAGON_BREATH);
                 drawPool(pool);
             });
@@ -1385,7 +1371,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                         // One rolling cooldown across sibling hazards, not one independent clock per pool.
                         poolCooldowns.put(id, encounterTicks
                                 + (long) Math.ceil(Math.max(1, config.poolDamageCadenceSeconds()) * 20));
-                        battles.bombardmentDamage(recipient, source, config.poolDamage());
+                        damage(recipient, source, config.poolDamage(), AttackFamily.PREY, false);
                     }
                 }
             });
@@ -1503,7 +1489,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                             && Math.abs((lane.eastWest ? player.getX() - position.getX()
                                     : player.getZ() - position.getZ())) <= 2
                             && hit.add(player.getUniqueId())) {
-                        flightHit(player, source, config.laneDamage(), position, true);
+                        flightHit(player, source, config.laneDamage(), position, AttackFamily.DIVE);
                     }
                 }
             }, () -> climb(movement, source, config.diveClimbSeconds()));
@@ -1613,12 +1599,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                             if (isParticipant(player) && area.contains(player.getLocation(), 0)) {
                                 flightHit(player, source,
                                         config.sweepDamage() * area.smashDamageScale(player.getLocation()),
-                                        ground, true);
+                                        ground, AttackFamily.SMASH);
                             }
                         }
                         if (owner.isClosed() || movement.isClosed()) {
                             return;
                         }
+                        startSmashShockwave(ground, source);
                         // Keep the owned display valid for the flight watchdog, but hide the completed warning.
                         area.indicator.text(Component.empty());
                         movement.start(t -> impact.clone(), 3, position -> {
@@ -1627,11 +1614,87 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         });
     }
 
+    private void startSmashShockwave(Location center, EnderDragon source) {
+        // Tuned waves may outlive recovery/climb; main completion must not truncate their travel.
+        EncounterWork wave = attackWork.child(() -> {
+        });
+        hazards.add(wave);
+        wave.onCleanup(() -> hazards.remove(wave));
+        Set<UUID> hit = new HashSet<>();
+        double maxRadius = config.smashShockwaveRadius();
+        int durationTicks = (int) Math.ceil(config.smashShockwaveSeconds() * 20);
+        int[] tick = {0};
+        wave.repeating(Duration.ofMillis(50), Duration.ofMillis(50), () -> {
+            if (dragon != source || !attacking()) {
+                wave.close();
+                return;
+            }
+            // ponytail: reuse the existing six-block local terrain projection.
+            double previous = tick[0] * maxRadius / durationTicks;
+            double radius = ++tick[0] * maxRadius / durationTicks;
+            var viewers = source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).toList();
+            if (tick[0] == 1 || tick[0] % 2 == 0) {
+                int points = Math.max(16, (int) Math.ceil(2 * Math.PI * radius));
+                for (int point = 0; point < points; point++) {
+                    double angle = point * 2 * Math.PI / points;
+                    Location ground = shockwaveGround(center,
+                            center.clone().add(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+                    if (ground != null) {
+                        ground.add(0, 0.15, 0);
+                        for (Player viewer : viewers) {
+                            CrownParticles.spawn(viewer, Particle.DUST, ground, 1, 0, 0, 0, 0);
+                        }
+                    }
+                }
+            }
+            for (Player player : source.getWorld().getPlayers()) {
+                if (wave.isClosed() || dragon != source || !attacking()) {
+                    return;
+                }
+                if (!isParticipant(player) || hit.contains(player.getUniqueId())) {
+                    continue;
+                }
+                Location feet = player.getLocation();
+                double distance = Math.hypot(feet.getX() - center.getX(), feet.getZ() - center.getZ());
+                if (distance < previous - 0.3 || distance > radius + 0.3 || distance >= maxRadius) {
+                    continue;
+                }
+                Location ground = shockwaveGround(center, feet);
+                if (ground != null && feet.getY() >= ground.getY() - 0.3 && feet.getY() <= ground.getY() + 0.6
+                        && hit.add(player.getUniqueId())) {
+                    double amount = config.sweepDamage() * config.smashShockwaveDamagePercentage() / 100
+                            * (1 - distance / maxRadius);
+                    if (amount > 0) {
+                        double health = player.getHealth();
+                        damage(player, source, amount, AttackFamily.SMASH, true);
+                        if (!wave.isClosed() && dragon == source && attacking() && isParticipant(player)
+                                && player.getHealth() < health && config.smashShockwaveKnockback() > 0) {
+                            knockback(player, center, config.smashShockwaveKnockback());
+                        }
+                    }
+                }
+            }
+            if (tick[0] >= durationTicks) {
+                wave.close();
+            }
+        });
+    }
+
+    private Location shockwaveGround(Location center, Location spot) {
+        if (!spot.getWorld().isChunkLoaded(spot.getBlockX() >> 4, spot.getBlockZ() >> 4)) {
+            return null;
+        }
+        Location reference = spot.clone();
+        reference.setY(center.getY());
+        Location ground = AttackSurface.column(reference, 6, 6);
+        return ground != null && arena.contains(ground) ? ground : null;
+    }
+
     private void climb(DragonFlight movement, EnderDragon source) {
         climb(movement, source, 2);
     }
 
-    /** Shared Smash/Rain terrain work is a sibling hazard, never a main-completion dependency. */
+    /** Shared Smash/Bombardment terrain work is a sibling hazard, never a main-completion dependency. */
     void impactTerrain(Location center, double radius, int depth) {
         if (attackWork == null || attackWork.isClosed()) {
             return;
@@ -1657,13 +1720,31 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }, movement::close);
     }
 
-    private void flightHit(Player player, EnderDragon source, double amount, Location center) {
-        flightHit(player, source, amount, center, false);
-    }
-
-    private void flightHit(Player player, EnderDragon source, double amount, Location center, boolean reference) {
+    private void flightHit(Player player, EnderDragon source, double amount, Location center, AttackFamily attack) {
         double health = player.getHealth();
         flightDamage = true;
+        try {
+            damage(player, source, amount, attack, true);
+        } finally {
+            flightDamage = false;
+        }
+        if (dragon == source && flight != null && attacking() && isParticipant(player) && player.getHealth() < health) {
+            knockback(player, center, config.sweepKnockback());
+        }
+    }
+
+    private void knockback(Player player, Location center, double strength) {
+        var direction = player.getLocation().toVector().subtract(center.toVector()).setY(0);
+        if (direction.lengthSquared() < 0.001) {
+            direction.setX(1);
+        }
+        player.setVelocity(direction.normalize().multiply(strength).setY(0.4));
+    }
+
+    private void damage(Player player, EnderDragon source, double amount, AttackFamily attack, boolean reference) {
+        // ponytail: Paper fires death synchronously inside damage; no lasting last-hit attribution to expire.
+        AttackDamage previous = attackDamage;
+        attackDamage = new AttackDamage(player, source, attack);
         try {
             if (reference) {
                 battles.referenceDamage(player, source, amount);
@@ -1671,14 +1752,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 battles.bombardmentDamage(player, source, amount);
             }
         } finally {
-            flightDamage = false;
-        }
-        if (dragon == source && flight != null && attacking() && isParticipant(player) && player.getHealth() < health) {
-            var direction = player.getLocation().toVector().subtract(center.toVector()).setY(0);
-            if (direction.lengthSquared() < 0.001) {
-                direction.setX(1);
-            }
-            player.setVelocity(direction.normalize().multiply(config.sweepKnockback()).setY(0.4));
+            attackDamage = previous;
         }
     }
 
@@ -1713,11 +1787,12 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private void drawPool(HuntArea pool) {
-        // Deterministic filled disk: particles never imply danger beyond the actual radius.
+        // Resample a uniform filled disk each refresh so particles don't form persistent columns.
         List<Location> points = new ArrayList<>();
+        var random = ThreadLocalRandom.current();
         for (int point = 0; point < 64; point++) {
-            double radius = pool.radius * Math.sqrt((point + 0.5) / 64);
-            Location spot = arena.groundBelow(pool.point(point * 2.399963229728653, radius));
+            double radius = pool.radius * Math.sqrt(random.nextDouble());
+            Location spot = arena.groundBelow(pool.point(random.nextDouble() * Math.PI * 2, radius));
             if (spot != null) {
                 points.add(spot.add(0, 0.35, 0));
             }
@@ -1771,7 +1846,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         participants.forEach(player -> {
             player.playSound(sweep.center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
         });
-        sweep.indicator.text(Component.text(config.sweepWarningSeconds() + "s", NamedTextColor.GOLD));
         drawAreaRing(sweep, Particle.FLAME);
         final Scheduler.Task[] refresh = new Scheduler.Task[1];
         refresh[0] = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
@@ -1782,8 +1856,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 return;
             }
             sweep.age += 0.25;
-            sweep.indicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1fs",
-                    Math.max(0, config.sweepWarningSeconds() - sweep.age)), NamedTextColor.GOLD));
             drawAreaRing(sweep, Particle.FLAME);
         });
         owner.later(seconds(config.sweepWarningSeconds()), () -> {
@@ -1803,7 +1875,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 }
                 if (isParticipant(recipient) && sweep.contains(recipient.getLocation(), 0)) {
                     double before = recipient.getHealth();
-                    battles.bombardmentDamage(recipient, source, config.sweepDamage());
+                    damage(recipient, source, config.sweepDamage(), AttackFamily.SMASH, false);
                     // Native cancellation/armor/invulnerability is authoritative; no successful damage, no shove.
                     if (dragon == source && hunting && isParticipant(recipient) && recipient.getHealth() < before) {
                         var velocity = recipient.getLocation().toVector().subtract(sweep.center.toVector()).setY(0);
@@ -1825,109 +1897,29 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         lane.indicator.text(Component.empty());
     }
 
-    private void warnBombardment() {
-        startAction(DebugAttack.BOMBARDMENT, this::warnBombardment);
-    }
-
-    private void warnBombardment(EncounterWork owner) {
-        if (dragon == null || landingRequested || bombardmentIndicator != null) {
-            return;
-        }
-        var targets = attackTargets().stream().limit(64).toList();
-        if (targets.isEmpty()) {
-            return;
-        }
-        Player target = targets.get(Math.floorMod(targetCursor++, targets.size()));
-        Location impact = target.getLocation().clone();
-        impact.setY(impact.getBlockY());
-        if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), targets)) {
-            return;
-        }
-        EnderDragon warnedDragon = dragon;
-        bombardmentIndicator = impact.getWorld().spawn(impact.clone().add(0, 1.5, 0), TextDisplay.class);
-        // Spawning fires public events: do not resume after a synchronous phase exit/disable.
-        if (owner.isClosed() || dragon != warnedDragon
-                || !bombardmentIndicator.isValid()) {
-            cancelPendingBombardment();
-            return;
-        }
-        owner.own(bombardmentIndicator, "warning");
-        owner.onCleanup(this::cancelPendingBombardment);
-        battles.faceWarningToViewer(bombardmentIndicator);
-        if (owner.isClosed()) {
-            return;
-        }
-        bombardmentIndicator.setShadowed(true);
-        bombardmentIndicator.text(Component.text(config.bombardmentWarningSeconds(), NamedTextColor.GOLD));
-        targets.forEach(player -> {
-            player.playSound(impact, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 1.4f);
-        });
-        drawBombardment(impact);
-        final int[] pulses = {0};
-        bombardmentWarning = owner.repeating(Duration.ofMillis(250), Duration.ofMillis(250), () -> {
-            if (!isParticipant(target) || bombardmentIndicator == null || !bombardmentIndicator.isValid()) {
-                cancelPendingBombardment();
-                owner.close();
-                return;
-            }
-            double remaining = Math.max(0, config.bombardmentWarningSeconds() - ++pulses[0] * 0.25);
-            bombardmentIndicator.text(Component.text(String.format(java.util.Locale.ROOT, "%.1f", remaining),
-                    NamedTextColor.GOLD));
-            drawBombardment(impact);
-        });
-        bombardmentImpact = owner.later(seconds(config.bombardmentWarningSeconds()), () -> {
-            boolean visible = bombardmentIndicator != null && bombardmentIndicator.isValid();
-            cancelPendingBombardment();
-            if (!visible || dragon == null || !isParticipant(target)) {
-                return;
-            }
-            var participants = dragon.getWorld().getPlayers().stream().filter(arena::participant).toList();
-            if (!arena.bombardmentSafe(impact, config.bombardmentRadius(), participants)) {
-                return;
-            }
-            participants.stream().limit(64).forEach(player -> {
-                player.spawnParticle(Particle.EXPLOSION, impact.clone().add(0, 0.5, 0), 1);
-                player.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.4f);
-            });
-            EnderDragon source = dragon;
-            for (Player player : participants) {
-                // Damage invokes public combat events, which can synchronously end this attempt.
-                if (owner.isClosed() || dragon != source) {
-                    break;
-                }
-                if (isParticipant(player) && arena.inBombardment(player.getLocation(), impact,
-                        config.bombardmentRadius())) {
-                    battles.referenceDamage(player, source, config.bombardmentDamage());
-                }
-            }
-        });
-        owner.later(seconds(config.bombardmentWarningSeconds()), owner::close);
-    }
-
     private void drawBombardment(Location impact) {
         dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64).forEach(player -> {
             for (int point = 0; point < 32; point++) {
                 double angle = point * Math.PI * 2 / 32;
-                player.spawnParticle(Particle.FLAME, impact.clone().add(Math.cos(angle) * config.bombardmentRadius(),
-                        0.15, Math.sin(angle) * config.bombardmentRadius()), 1, 0, 0, 0, 0);
+                CrownParticles.spawn(player, Particle.FLAME,
+                        impact.clone().add(Math.cos(angle) * config.bombardmentRadius(),
+                                0.15, Math.sin(angle) * config.bombardmentRadius()),
+                        1, 0, 0, 0, 0);
             }
         });
     }
 
-    private void cancelPendingBombardment() {
-        if (bombardmentWarning != null) {
-            bombardmentWarning.cancel();
-            bombardmentWarning = null;
-        }
-        if (bombardmentImpact != null) {
-            bombardmentImpact.cancel();
-            bombardmentImpact = null;
-        }
-        if (bombardmentIndicator != null) {
-            TextDisplay indicator = bombardmentIndicator;
-            bombardmentIndicator = null;
-            indicator.remove();
-        }
+    private void drawFallingBombardment(Location impact, double progress) {
+        double top = Math.min(impact.getY() + BOMBARDMENT_CEILING, impact.getWorld().getMaxHeight() - 1);
+        Location flame = impact.clone();
+        flame.setY(top + (impact.getY() + 0.5 - top) * Math.min(1, progress));
+        // ponytail: cosmetic tube; impact resolution is the single damage path.
+        dragon.getWorld().getPlayers().stream().filter(arena::participant).limit(64)
+                .forEach(player -> {
+                    CrownParticles.spawn(player, Particle.FLAME, flame, 8, 0.15, 0.15, 0.15, 0);
+                    // Dust appears immediately; portal particles grow slowly into view.
+                    CrownParticles.spawn(player, Particle.DUST, flame, 2, 0.15, 0.15, 0.15, 0);
+                });
     }
 
     private void stopBombardments() {
@@ -1935,7 +1927,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             bombardmentCadence.cancel();
             bombardmentCadence = null;
         }
-        cancelPendingBombardment();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -1966,7 +1957,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     boolean owns(Entity entity) {
-        return entity.equals(dragon) || entity.equals(bombardmentIndicator)
+        return entity.equals(dragon)
                 || anchors.stream().anyMatch(anchor -> entity.equals(anchor.crystal)) || defenders.contains(entity)
                 || work != null && work.owns(entity) || attackWork != null && attackWork.owns(entity);
     }
@@ -2093,7 +2084,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     }
 
     private Mob spawnDefender(Anchor anchor) {
-        return spawnCombatant(arena.defenderSite(anchor.home), EntityType.valueOf(config.defenderType()), anchor,
+        return spawnCombatant(defenderSite(anchor), EntityType.valueOf(config.defenderType()), anchor,
                 defender -> {
                     battles.preventDespawn(defender);
                     defender.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.defenderHealth());
@@ -2101,6 +2092,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     defender.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.defenderDamage());
                     defender.getAttribute(Attribute.SPAWN_REINFORCEMENTS).setBaseValue(0);
                 });
+    }
+
+    private Location defenderSite(Anchor anchor) {
+        var occupied = java.util.stream.Stream.concat(anchors.stream().map(objective -> objective.home),
+                defenders.stream().filter(mob -> mob.isValid() && !mob.isDead()).map(Mob::getLocation)).toList();
+        return arena.defenderSite(anchor.home, anchor.spawnIndex++, anchor.spawnCount,
+                occupied);
     }
 
     private EnderCrystal spawnAnchor(Location ground) {
@@ -2170,6 +2168,10 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private void installAnchor(Location ground, List<OpeningGroup> openingGroups) {
         var objective = new Anchor(spawnAnchor(ground), ground);
         anchors.add(objective);
+        int total = waveNumber == 2 ? SECOND_ROSTER_TYPES.stream().mapToInt(this::secondRosterCount).sum()
+                : rosterUnits + Math.min(rosterUnits, Math.max(2, (rosterUnits + 1) / 2));
+        objective.spawnCount = waveNumber == 1 ? openingGroups.size()
+                : (total + openingGround.size() - 1 - anchors.indexOf(objective)) / openingGround.size();
         if (waveNumber == 1) {
             for (var group : openingGroups) {
                 spawnOpeningGroup(objective, group);
@@ -2191,14 +2193,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
             int anchorIndex = anchors.indexOf(objective);
             int anchorCount = openingGround.size();
             if (unit % anchorCount == anchorIndex) {
-                spawnCombatant(arena.defenderSite(objective.home), EntityType.WARDEN, objective,
+                spawnCombatant(defenderSite(objective), EntityType.WARDEN, objective,
                         battles::preventDespawn);
             }
             int withers = Math.max(2, (rosterUnits + 1) / 2);
             // Continue around the ring after the Wardens to balance both species and total counts.
             if (unit < withers && (unit + rosterUnits) % anchorCount == anchorIndex) {
                 // WitherListener's NORMAL spawn handler intentionally supplies its configured enhancements.
-                spawnCombatant(arena.defenderSite(objective.home), EntityType.WITHER, objective,
+                spawnCombatant(defenderSite(objective), EntityType.WITHER, objective,
                         mob -> ((org.bukkit.entity.Wither) mob).setInvulnerableTicks(220));
             }
             return;
@@ -2210,19 +2212,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
 
     private void spawnSecondRoster(Anchor objective) {
         int offset = 0;
-        for (EntityType species : List.of(EntityType.RAVAGER, EntityType.GUARDIAN, EntityType.PIGLIN_BRUTE,
-                EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX)) {
-            int count = switch (species) {
-                case RAVAGER, BREEZE -> (7 * rosterUnits + 9) / 10;
-                case VEX -> (3 * rosterUnits + 1) / 2;
-                case PIGLIN_BRUTE -> 2 * rosterUnits;
-                default -> rosterUnits;
-            };
+        for (EntityType species : SECOND_ROSTER_TYPES) {
+            int count = secondRosterCount(species);
             for (int member = 0; member < count; member++) {
                 if ((offset + member) % openingGround.size() != anchors.indexOf(objective)) {
                     continue;
                 }
-                spawnCombatant(arena.defenderSite(objective.home), species, objective, defender -> {
+                spawnCombatant(defenderSite(objective), species, objective, defender -> {
                     battles.preventDespawn(defender);
                     var damage = defender.getAttribute(Attribute.ATTACK_DAMAGE);
                     if (damage != null) {
@@ -2241,13 +2237,22 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
     }
 
+    private int secondRosterCount(EntityType species) {
+        return switch (species) {
+            case RAVAGER, BREEZE -> (7 * rosterUnits + 9) / 10;
+            case VEX -> (3 * rosterUnits + 1) / 2;
+            case PIGLIN_BRUTE -> 2 * rosterUnits;
+            default -> rosterUnits;
+        };
+    }
+
     private void spawnOpeningGroup(Anchor objective, OpeningGroup group) {
-        Location site = objective.home;
+        Location site = defenderSite(objective);
         switch (group.kind()) {
-            case 0 -> spawnOpeningPair(objective, site.clone().add(-2, 0, 0), EntityType.ZOMBIE_HORSE,
+            case 0 -> spawnOpeningPair(objective, site, EntityType.ZOMBIE_HORSE,
                     EntityType.ZOMBIE);
-            case 1 -> spawnOpeningPair(objective, site.clone().add(2, 0, 0), EntityType.SPIDER, EntityType.SKELETON);
-            case 2 -> spawnOpeningPair(objective, site.clone().add(0, 0, -2), EntityType.CAVE_SPIDER,
+            case 1 -> spawnOpeningPair(objective, site, EntityType.SPIDER, EntityType.SKELETON);
+            case 2 -> spawnOpeningPair(objective, site, EntityType.CAVE_SPIDER,
                     EntityType.BOGGED);
             case 3 -> {
                 int variation = group.unit();
@@ -2259,7 +2264,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     // Native passengers control the stack; a melee crown cannot reach players several mobs below.
                     EntityType type = member == 2 ? crowns.get(variation % crowns.size())
                             : types.get((variation + member) % types.size());
-                    Mob next = spawnCombatant(arena.defenderSite(site.clone().add(0, 0, 2)), type, objective,
+                    Mob next = spawnCombatant(site, type, objective,
                             openingInitializer(type));
                     if (previous != null && !previous.addPassenger(next)) {
                         throw new IllegalStateException("Opening tower attachment was refused");
@@ -2271,14 +2276,13 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 var types = List.of(EntityType.HUSK, EntityType.ZOMBIE, EntityType.DROWNED, EntityType.SKELETON,
                         EntityType.STRAY, EntityType.BOGGED, EntityType.WITHER_SKELETON);
                 EntityType type = types.get(group.unit() % types.size());
-                spawnCombatant(arena.defenderSite(site), type, objective, openingInitializer(type));
+                spawnCombatant(site, type, objective, openingInitializer(type));
             }
             default -> throw new IllegalArgumentException("Unknown opening group " + group.kind());
         }
     }
 
     private void spawnOpeningPair(Anchor objective, Location site, EntityType mountType, EntityType riderType) {
-        site = arena.defenderSite(site);
         Mob mount = spawnCombatant(site, mountType, objective, openingInitializer(mountType));
         var initialize = openingInitializer(riderType);
         Mob rider = spawnCombatant(site, riderType, mount, mob -> {
@@ -2354,14 +2358,14 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                     waveWork.forget(defender);
                     anchor.wave.remove(i--);
                     defender.remove();
-                    spawnCombatant(arena.defenderSite(home), defender.getType(), anchor,
+                    spawnCombatant(defenderSite(anchor), defender.getType(), anchor,
                             initialize == null ? battles::preventDespawn : initialize);
                     continue;
                 }
                 Location location = defender.getLocation();
                 if (!location.getWorld().equals(home.getWorld()) || !arena.contains(location)
                         || arena.protectedArrival(location)) {
-                    defender.teleport(arena.defenderSite(home));
+                    defender.teleport(defenderSite(anchor));
                 }
                 Location targetOrigin = defender.getLocation();
                 battles.targetDefender(defender, home.getWorld().getPlayers().stream().filter(arena::participant)
@@ -2414,11 +2418,6 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         Entity direct = event instanceof EntityDamageByEntityEvent byEntity ? byEntity.getDamager()
                 : event.getDamageSource().getDirectEntity();
         Entity source = event.getDamageSource().getCausingEntity();
-        if (rainProjectile(target) || rainProjectile(direct)
-                || rainProjectile(event.getDamageSource().getDirectEntity())) {
-            event.setCancelled(true); // Includes native player-hit deflection before velocity/owner mutation.
-            return;
-        }
         if (source == null) {
             source = direct;
         }
@@ -2674,6 +2673,50 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        if (dragon == null || event.deathMessage() == null) {
+            return;
+        }
+        Entity source = deathSource(event.getDamageSource().getCausingEntity());
+        Entity direct = deathSource(event.getDamageSource().getDirectEntity());
+        String cause;
+        if (dragon.equals(source) || dragon.equals(direct)) {
+            cause = "dragon";
+            if (attackDamage != null && attackDamage.player().equals(event.getPlayer())
+                    && attackDamage.source().equals(dragon)
+                    && dragon.equals(event.getDamageSource().getDirectEntity())
+                    && event.getDamageSource().getDamageType() == org.bukkit.damage.DamageType.DRAGON_BREATH) {
+                cause = attackDamage.attack().name().toLowerCase(java.util.Locale.ROOT);
+            }
+        } else if (ownsCombatant(source) || ownsCombatant(direct)
+                || ownsCombatant(event.getDamageSource().getDirectEntity())) {
+            cause = "minion";
+        } else {
+            return;
+        }
+        // Keep Paper's broadcast, cancellation and showDeathMessages gamerule; use the server language.
+        String key = "shattered-crown.death." + cause;
+        Object[] placeholders = {"player", Component.text(event.getPlayer().getName())};
+        event.deathMessage(messages.render(key, placeholders));
+    }
+
+    private static Entity deathSource(Entity entity) {
+        if (entity instanceof ComplexEntityPart part) {
+            return part.getParent();
+        }
+        if (entity instanceof Projectile projectile && projectile.getShooter() instanceof Entity shooter) {
+            return shooter;
+        }
+        if (entity instanceof TNTPrimed tnt && tnt.getSource() != null) {
+            return tnt.getSource();
+        }
+        if (entity instanceof org.bukkit.entity.AreaEffectCloud cloud && cloud.getSource() instanceof Entity owner) {
+            return owner;
+        }
+        return entity;
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Player player) {
@@ -2760,10 +2803,18 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
         var mark = marks.remove(player.getUniqueId());
         if (mark != null) {
             mark.remove();
+            if (player.isOnline()) {
+                player.sendActionBar(Component.empty());
+            }
             if (marks.isEmpty() && mainAttack == DebugAttack.PREY && mainWork != null) {
                 mainWork.close();
             }
         }
+    }
+
+    private static Component preyTimer(double remaining) {
+        return Component.text(String.format(java.util.Locale.ROOT, "%.1fs", Math.max(0, remaining)),
+                NamedTextColor.GOLD);
     }
 
     private void clearDefenderTargets(Player player) {

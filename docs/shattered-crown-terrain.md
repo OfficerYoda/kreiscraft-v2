@@ -21,6 +21,18 @@ Outside the impact radius receives no damage. Distance is horizontal; the crater
 Other defenses and arrival PLAYER protection remain effective. Damage cancellation alone does not
 undo the crater. Cancelling the action before impact prevents impact and all later queued work.
 
+Impact also starts a purple shockwave ring that defaults to **40 blocks in three seconds**.
+It follows current supported terrain within six vertical blocks of the impact height, including the
+new crater; holes, unloaded chunks and ground outside the arena are skipped. Players can jump over
+its low collision band (feet more than 0.6 blocks above local ground). Each player can receive one
+additional, dragon-attributed hit as the ring passes, with outward `smash-shockwave-knockback` and reference
+damage `(smash-shockwave-damage-percentage / 100) * sweep-damage * (1 - horizontalDistance / smash-shockwave-radius)`:
+default damage is 4.5 HP at ten blocks,
+3.75 HP at fifteen, and zero at forty. Existing defenses, arrival protection and damage cancellation
+still apply. A longer tuned wave can outlive Smash recovery/climb; cancellation or encounter termination
+stops it. The ring does not alter terrain. Zero damage percentage disables its hit; zero knockback
+disables its push. If the knockback key is absent, it inherits `sweep-knockback`.
+
 ## Ground and debris
 
 The impact removes the supported top layer within roughly five blocks and launches those actual
@@ -45,7 +57,7 @@ Closed callbacks cannot restart work. There is no terrain restoration journal.
 ## Server Configuration
 
 Values are validated on atomic reload/editor publication and snapshotted for the next attempt.
-English/German controls include crater tuning. Crown uses installed InvUI pagination so all controls
+English/German controls include crater and shockwave tuning. Crown uses installed InvUI pagination so all controls
 remain reachable without overwriting the module toggle or back button.
 Existing configuration keeps explicit overrides; set `sweep-warning-seconds: 3.0` to adopt the shorter
 warning on the next attempt. Plunge, grounded recovery and climb durations remain unchanged.
@@ -55,6 +67,10 @@ warning on the next attempt. Plunge, grounded recovery and climb durations remai
 | `sweep-radius` | 8 | 4–16; physical Smash caps at 8, legacy sectors use the full value |
 | `sweep-warning-seconds` | 3 | 3–15 seconds; cadence must exceed warning by 0.5 seconds |
 | `sweep-damage` | 12 | 0–100 reference HP for physical Smash; raw units for legacy sectors |
+| `smash-shockwave-radius` | 40 | 1–64 blocks |
+| `smash-shockwave-seconds` | 3 | 0.5–10 seconds; rounded up to a server tick |
+| `smash-shockwave-damage-percentage` | 50 | 0–100% of Smash reference damage at the center |
+| `smash-shockwave-knockback` | 1.2 | 0–2 horizontal velocity; 0 disables the push |
 | `smash-crater-radius` | 5 | 1–8 blocks |
 | `smash-crater-depth` | 1 | Integer 1–3 removed layers |
 | `debris-lifetime-seconds` | 4 | 0.5–10 seconds; cancellation may remove debris sooner |

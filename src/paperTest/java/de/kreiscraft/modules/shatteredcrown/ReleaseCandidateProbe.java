@@ -101,8 +101,6 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
     private int poolHits;
     private int landingPoolHits;
     private int poolHealthDrops;
-    private final Map<String, Double> rainGround = new HashMap<>();
-    private int expectedRainHeight;
     private boolean worldVerified;
     private boolean worldUnloaded;
     private boolean worldLoaded;
@@ -197,12 +195,9 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
         throw new IllegalStateException("no surviving native footing near " + x + "," + z);
     }
 
-    private void prepareRain(int height) {
-        expectedRainHeight = height;
-        rainGround.clear();
+    private void prepareRain() {
         for (int index = 0; index < 4; index++) {
             var position = ground(40 + index % 2 * 6, 40 + index / 2 * 6);
-            rainGround.put(position.getBlockX() + ":" + position.getBlockZ(), position.getY());
             var player = fixtures.get(index).getBukkitEntity();
             // A two-block airborne native recipient resolves first, while other real shots remain airborne.
             // This produces genuine production debris/pools, not manually tagged fake interruption residue.
@@ -213,10 +208,8 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
     }
 
     private boolean mixedRain() {
-        return end.getEntities().stream().anyMatch(
-                entity -> "debris".equals(entity.getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING)))
-                && end.getEntities().stream().anyMatch(entity -> "rain-projectile"
-                        .equals(entity.getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING)));
+        return end.getEntities().stream().anyMatch(entity -> Set.of("debris", "pool").contains(
+                entity.getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING)));
     }
 
     private ServerPlayer register(World world, GameProfile profile, GameMode mode) {
@@ -472,7 +465,8 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     hitRanged();
                     check(dragon.getHealth() == 650, "native multipart ranged source cannot bypass shield");
                     clearWave();
-                    check(encounter.availableAttacks().contains(EncounterController.AttackFamily.RAIN), "Rain unlock");
+                    check(encounter.availableAttacks().contains(EncounterController.AttackFamily.BOMBARDMENT),
+                            "Bombardment unlock");
                     if (attempt == 0) {
                         for (int index = 8; index < 20; index++) {
                             register(end, new GameProfile(UUID.randomUUID(), "Release" + index), GameMode.SPECTATOR);
@@ -681,21 +675,21 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                         return;
                     }
                     fixtures.forEach(player -> player.getBukkitEntity().teleport(ground(40, 40)));
-                    prepareRain(20);
-                    command("trigger fireball-rain");
+                    prepareRain();
+                    command("trigger bombardment");
                     var path = getServer().getPluginManager().getPlugin("Kreiscraft").getDataFolder().toPath()
                             .resolve("config.yml");
                     diskConfig = java.nio.file.Files.readString(path);
                     java.nio.file.Files.writeString(path,
-                            diskConfig.replace("    rain-damage: 4.0", "    rain-damage: .NaN"));
+                            diskConfig.replace("    bombardment-damage: 6.0", "    bombardment-damage: .NaN"));
                     String invalid = reload();
                     check(invalid.toLowerCase(java.util.Locale.ROOT).contains("fail")
                             || invalid.toLowerCase(java.util.Locale.ROOT).contains("invalid"),
                             "invalid disk reload rejected");
-                    check(command("status").contains("attack=RAIN"), "atomic reject retains running action");
+                    check(command("status").contains("attack=BOMBARDMENT"), "atomic reject retains running action");
                     java.nio.file.Files.writeString(path,
                             diskConfig.replace("    max-health: 1000.0", "    max-health: 900.0")
-                                    .replace("    rain-spawn-height: 20.0", "    rain-spawn-height: 22.0"));
+                                    .replace("    bombardment-radius: 4.0", "    bombardment-radius: 5.0"));
                     reload();
                     check(dragon.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue() == 1000,
                             "valid corrected reload keeps current Encounter snapshot");
@@ -706,15 +700,15 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     if (!mixedRain()) {
                         return;
                     }
-                    check(end.getEntities().stream().anyMatch(entity -> "rain-projectile".equals(entity
+                    check(end.getEntities().stream().anyMatch(entity -> "pool".equals(entity
                             .getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING))),
-                            "live Rain projectile");
+                            "live Bombardment pool");
                     check(encounter.depositBreathPool(ground(40, 40), 5, 8), "concurrent shared pool");
                     command("pause");
                     fixtures.forEach(player -> player.getBukkitEntity().setGravity(true));
                     check(command("status").contains("hazards=0") && end.getEntities().stream().noneMatch(entity -> {
                         String kind = entity.getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING);
-                        return Set.of("rain-projectile", "rain-warning", "pool", "debris")
+                        return Set.of("rain-warning", "pool", "debris")
                                 .contains(kind == null ? "" : kind);
                     }), "pause closes actual live projectile/pool/debris work");
                     var wither = defenders().stream().filter(Wither.class::isInstance).findFirst().orElseThrow();
@@ -809,8 +803,8 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     parent.damage(40, fixtures.getFirst().getBukkitEntity());
                     check(defenders().size() == 8, "interrupted active attempt includes actual minions");
                     parent.setHealth(0);
-                    prepareRain(22);
-                    command("trigger fireball-rain");
+                    prepareRain();
+                    command("trigger bombardment");
                     enter(23);
                 }
                 case 23 -> {
@@ -832,8 +826,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                                     .get(ARTIFACT, PersistentDataType.STRING))
                             .collect(java.util.stream.Collectors.toSet());
                     check(kinds.containsAll(
-                            Set.of("anchor", "defender", "defender-effect", "rain-projectile", "rain-warning", "pool",
-                                    "debris")),
+                            Set.of("anchor", "defender", "defender-effect", "rain-warning", "pool", "debris")),
                             "all artifact kinds genuinely present before owned interruption " + kinds);
                     if (controlId == null) {
                         var control = end.spawn(ground(-40, 40), org.bukkit.entity.Enderman.class);
@@ -956,8 +949,8 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
                     farControl.setAI(false);
                     farControl.setGravity(false);
                     lateControlId = farControl.getUniqueId();
-                    prepareRain(22);
-                    command("trigger fireball-rain");
+                    prepareRain();
+                    command("trigger bombardment");
                     enter(23);
                 }
                 case 100 -> {
@@ -1199,13 +1192,6 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
         if (event.getEntity() instanceof ExperienceOrb orb && event.getLocation().getWorld() == end) {
             spawnedExperience += orb.getExperience();
         }
-        if ((stage == 15 || stage == 23) && event.getEntity() instanceof org.bukkit.entity.LargeFireball
-                && "rain-projectile".equals(
-                        event.getEntity().getPersistentDataContainer().get(ARTIFACT, PersistentDataType.STRING))) {
-            check(event.getLocation().getY() == rainGround
-                    .get(event.getLocation().getBlockX() + ":" + event.getLocation().getBlockZ()) + expectedRainHeight,
-                    "actual Rain launch uses current/next configuration snapshot height" + expectedRainHeight);
-        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -1213,7 +1199,7 @@ public final class ReleaseCandidateProbe extends JavaPlugin implements Listener 
         if (event.getEntity() instanceof org.bukkit.entity.Player player
                 && event.getDamageSource().getCausingEntity() == dragon
                 && event.getCause() == org.bukkit.event.entity.EntityDamageEvent.DamageCause.DRAGON_BREATH
-                && event.getDamage() == 3 && event.getFinalDamage() > 0) {
+                && event.getDamage() == 6 && event.getFinalDamage() > 0) {
             int tick = getServer().getCurrentTick();
             var previous = poolPulseTicks.put(player.getUniqueId(), tick);
             check(previous == null || tick - previous >= 20, "actual global shared pool pulse rate never doubles");

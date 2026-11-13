@@ -12,21 +12,21 @@ behavior and tuning. The stationary lane/sweep contract below remains available 
 ## Unlocked rotation (#157, native movement profile)
 
 With the default `movement-attacks: true`, one coordinator runs throughout shielded and vulnerable
-phases. Bombardment and Prey are initially available. Destroying all four crystals in waves one,
-two and three permanently unlocks Dive, Rain and Smash respectively; later shields do not relock
-them. Fireball Rain is runnable after wave two; see the [native Rain contract](/shattered-crown-rain/).
+phases. Prey is initially available. Destroying all four crystals in waves one,
+two and three permanently unlocks Dive, Bombardment and Smash respectively; later shields do not relock
+them. Bombardment now includes the former Fireball Rain mechanics; see the [merged contract](/shattered-crown-rain/).
 The compatibility stationary profile below retains its old diagnostic cadence/shape contract.
 
 Each round shuffles every available family once. Newly available families join the unfinished
 round once, without replaying its already consumed families. Round boundaries do not immediately
-repeat a selection. Failed/rejected placements consume their turn too, so an impossible family
+repeat a selection when more than one family is available. Failed/rejected placements consume their turn too, so an impossible family
 cannot starve the others. A new attempt/manual resume starts a fresh round; ordinary wave changes
 retain the unfinished round. The first warning starts **at Opening Grace expiry** (normally 30s),
 not an additional cadence later. Manual triggers bypass grace; pause/resume never refill it.
 
 After main completion, a uniformly selected **inclusive 40–80 server-tick (2–4s) delay** precedes
 the next warning. Dive/Smash include recovery, Prey includes all deposition, Bombardment includes
-impact; Rain includes resolution or cleanup of its last native projectile. Sibling pools do not hold
+its single warned-tick resolution. Sibling pools do not hold
 the main-action slot. Cancellation, native-flight/render failures and lost targets release
 that slot and receive the same bounded delay. Rejected or failed initial setups consume their turn
 but retry the next family after one second, avoiding a full idle combat gap. Pausing cancels all automatic work and hazards.
@@ -105,7 +105,7 @@ valid reloads affect only the next attempt. Invalid bounds/combinations reject t
 | `prey-cadence-seconds` | 20 | 5–120 seconds between opportunities; first after this interval |
 | `prey-countdown-seconds` | 4 | 2–15 seconds before depositing pools |
 | `pool-radius` | 5 | 1–6 blocks, inclusive horizontal radius, at most three blocks vertically |
-| `pool-damage` | 3 | 0–100 health points per native dragon-breath damage pulse |
+| `pool-damage` | 6 | 0–100 raw health points per native dragon-breath pulse |
 | `pool-damage-cadence-seconds` | 1 | 0.5–5 seconds; globally at most one owned-pool pulse/player/second, exclusive expiry |
 | `pool-lifetime-seconds` | 6 | 1–15 seconds, `[activation, expiry)` |
 | `sweep-radius` | 8 | 4–16 blocks; physical Smash caps at eight |
@@ -201,7 +201,7 @@ player command uses its sender as the single debug target. Use automatic schedul
    a shared rolling game-tick cooldown permits at most one configured pulse per player per second,
    even with staggered starts or movement between pools. A slower configured cadence stays slower;
    a cadence below one second does not bypass the global ceiling. Damage remains **raw native HP**
-   (`pool-damage: 3`), not the reference-gear conversion used by single-impact attacks. Native
+   (`pool-damage: 6`), not the reference-gear conversion used by single-impact attacks. Native
    cancellation, armor and invulnerability frames remain authoritative. Lifetime is exclusive at expiry.
 - Sweeps require endangered participants and usable ground within 24 vertical blocks below the dragon.
   Warning fixes ground center, yaw, radius and inclusive sector edges. A flame arc **and both radial
@@ -240,7 +240,7 @@ player command uses its sender as the single debug target. Use automatic schedul
 ### Production pool boundary and verification
 
 `EncounterController.depositBreathPool(ground, radius, lifetimeSeconds)` is the shared production
-boundary for Fireball Rain: effect-specific radius `(0,32]` and duration `(0,120]` seconds, called on
+boundary for Bombardment: effect-specific radius `(0,32]` and duration `(0,120]` seconds, called on
 the server thread. It snapshots the local surface and owns the display/render/damage/exclusive expiry
 as a sibling hazard. It returns false for missing owners/footing or isolated startup failure. Rain
 supplies its own duration; Prey uses its configured lifetime and existing final-phase factor.

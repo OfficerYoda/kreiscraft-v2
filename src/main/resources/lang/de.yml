@@ -162,11 +162,12 @@ server-config:
     shattered-crown-sweep-cadence-seconds: "Flügelschlagtakt (Sekunden)"
     shattered-crown-sweep-damage: "Bodenschlag-Referenzschaden (LP)"
     shattered-crown-smash-crater-radius: "Dauerhafter Bodenschlag-Kraterradius"
+    shattered-crown-smash-shockwave-radius: "Bodenschlag-Schockwellenradius (Blöcke)"
+    shattered-crown-smash-shockwave-seconds: "Bodenschlag-Schockwellenlaufzeit (Sekunden)"
+    shattered-crown-smash-shockwave-damage-percentage: "Schockwellenschaden (% des Bodenschlags)"
+    shattered-crown-smash-shockwave-knockback: "Bodenschlag-Schockwellenrückstoß"
     shattered-crown-smash-crater-depth: "Dauerhafte Bodenschlag-Kratertiefe (Blöcke)"
     shattered-crown-debris-lifetime-seconds: "Fliegende Trümmerdauer (Sekunden)"
-    shattered-crown-rain-spawn-height: "Feuerregen-Starthöhe (Blöcke)"
-    shattered-crown-rain-descent-seconds: "Feuerregen-Flugzeit (Sekunden)"
-    shattered-crown-rain-damage: "Feuerregen-Referenzschaden (HP)"
     shattered-crown-sweep-knockback: "Flügelschlagrückstoß"
     shattered-crown-final-health-fraction: "Alter Lebensanteil (ignoriert)"
     shattered-crown-final-cadence-factor: "Finaler Angriffstakt-Multiplikator"
@@ -399,6 +400,13 @@ update-mode:
     <gray>□ <gold>Kreiscraft <gray>□
     <gray>===================================
 shattered-crown:
+  death:
+    bombardment: "<player> wurde vom Bombardement des Enderdrachen zu Asche verbrannt."
+    prey: "<player> wurde zur nächsten Mahlzeit des Enderdrachen."
+    dive: "<player> stand dem Enderdrachen im Weg."
+    smash: "<player> wurde vom Enderdrachen zerschmettert."
+    dragon: "<player> forderte den Enderdrachen heraus und verlor."
+    minion: "<player> fiel einem Diener des Enderdrachen zum Opfer."
   debug-status: "<prefix> <gray>Status: <status></gray>"
   debug-no-encounter: "<prefix> <yellow>Kein aktiver Kampf; betritt die konfigurierte End-Arena im Überlebens- oder Abenteuermodus.</yellow>"
   debug-target-ineligible: "<prefix> <red>Das Ziel muss lebendig im Überlebens- oder Abenteuermodus innerhalb der Kampfarena und außerhalb der geschützten Ankunft sein.</red>"

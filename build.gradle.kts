@@ -163,14 +163,6 @@ tasks.register<Jar>("smashEncounterProbeJar") {
     from("src/paperTest/smash-plugin.yml") { rename { "plugin.yml" } }
 }
 
-tasks.register<Jar>("rainProbeJar") {
-    dependsOn(tasks.named(paperTest.classesTaskName))
-    archiveBaseName.set("rain-probe")
-    destinationDirectory.set(layout.buildDirectory.dir("paper-probe"))
-    from(paperTest.output) { include("de/kreiscraft/modules/shatteredcrown/RainProbe*.class") }
-    from("src/paperTest/rain-plugin.yml") { rename { "plugin.yml" } }
-}
-
 tasks.register<Jar>("releaseCandidateProbeJar") {
     dependsOn(tasks.named(paperTest.classesTaskName))
     archiveBaseName.set("release-candidate-probe")

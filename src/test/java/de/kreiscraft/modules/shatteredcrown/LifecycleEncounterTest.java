@@ -157,6 +157,59 @@ class LifecycleEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1,1,false", "1,4,false", "1,20,false", "2,4,false",
+            "2,10,false", "2,20,false", "3,4,false", "3,20,false", "2,20,true"})
+    void everyWaveSpreadsAllMobTypesAroundTheirOwnCrystal(int wave, int population, boolean holes) throws Exception {
+        if (holes) {
+            for (int[] offset : List.of(new int[] {24, 0}, new int[] {0, 24}, new int[] {-24, 0}, new int[] {0, -24})) {
+                for (int y = end.getMinHeight(); y <= 63; y++) {
+                    end.getBlockAt(offset[0] + 3, y, offset[1]).setType(Material.AIR);
+                }
+            }
+        }
+        var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
+                scheduler, context.messages());
+        context.events().register(encounter);
+        encounter.start();
+        scheduler.advance(Duration.ZERO);
+        try {
+            encounter.debugWave(wave, population, player);
+            var roots = defenders().stream().filter(mob -> mob.getVehicle() == null).toList();
+            assertThat(roots).isNotEmpty();
+            for (var crystal : crystals()) {
+                var assigned = roots.stream().filter(mob -> crystal.getUniqueId().equals(encounter.anchorId(mob)))
+                        .toList();
+                assertThat(assigned).isNotEmpty();
+                for (int i = 0; i < assigned.size(); i++) {
+                    Location site = assigned.get(i).getLocation();
+                    assertThat(Math.hypot(site.getX() - crystal.getX(), site.getZ() - crystal.getZ()))
+                            .isGreaterThanOrEqualTo(3 - 0.000001);
+                    assertThat(site.getBlock().getRelative(0, -1, 0).getType().isSolid()).isTrue();
+                    for (int j = i + 1; j < assigned.size(); j++) {
+                        Location other = assigned.get(j).getLocation();
+                        assertThat(Math.hypot(site.getX() - other.getX(), site.getZ() - other.getZ()))
+                                .isGreaterThanOrEqualTo(3 - 0.000001);
+                    }
+                }
+                if (assigned.size() > 1 && !holes) {
+                    assertThat(assigned.stream().mapToDouble(mob -> mob.getX()).average().orElseThrow())
+                            .isCloseTo(crystal.getX(), org.assertj.core.data.Offset.offset(0.000001));
+                    assertThat(assigned.stream().mapToDouble(mob -> mob.getZ()).average().orElseThrow())
+                            .isCloseTo(crystal.getZ(), org.assertj.core.data.Offset.offset(0.000001));
+                }
+            }
+            for (Mob mob : defenders()) {
+                for (Entity passenger : mob.getPassengers()) {
+                    assertThat(encounter.anchorId(passenger)).isEqualTo(encounter.anchorId(mob));
+                    assertThat(passenger.getLocation()).isEqualTo(mob.getLocation());
+                }
+            }
+        } finally {
+            encounter.close();
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void registryRejectsCrownWhenWitherIsMissingOrDisabled(boolean registered) throws Exception {
         var root = BasicConfigurationNode.root();
@@ -531,7 +584,7 @@ class LifecycleEncounterTest {
     }
 
     @Test
-    void openingRoundsAlternateBothFamiliesAndGapBeginsAtMainCompletion() throws Exception {
+    void openingRoundsUseOnlyPreyAndGapBeginsAtMainCompletion() throws Exception {
         config.node("pool-damage").set(0);
         config.node("bombardment-damage").set(0);
         var encounter = new EncounterController(server, battles, config.get(ShatteredCrownConfig.class),
@@ -562,12 +615,7 @@ class LifecycleEncounterTest {
             scheduler.advance(Duration.ofMillis(50));
         }
         assertThat(starts.size()).isGreaterThanOrEqualTo(6);
-        for (int index = 0; index + 1 < starts.size(); index += 2) {
-            assertThat(starts.subList(index, index + 2)).containsExactlyInAnyOrder("PREY", "BOMBARDMENT");
-        }
-        for (int index = 1; index < starts.size(); index++) {
-            assertThat(starts.get(index)).isNotEqualTo(starts.get(index - 1));
-        }
+        assertThat(starts).containsOnly("PREY");
         encounter.close();
     }
 
@@ -589,8 +637,8 @@ class LifecycleEncounterTest {
         config.node("bombardment-damage").set(0);
         config.node("pool-damage").set(0);
         var encounter = rotationEncounter(new java.util.Random(7));
-        assertThat(status(encounter)).contains("attack=BOMBARDMENT");
-        scheduler.advance(Duration.ofSeconds(3));
+        assertThat(status(encounter)).contains("attack=PREY");
+        scheduler.advance(Duration.ofSeconds(4));
         assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=" + seconds + ".0");
         scheduler.advance(Duration.ofMillis(seconds * 1000 - 50));
         assertThat(status(encounter)).contains("main=idle");
@@ -608,22 +656,22 @@ class LifecycleEncounterTest {
         config.node("pool-damage").set(0);
         config.node("lane-damage").set(0);
         var encounter = rotationEncounter(new java.util.Random(7));
-        scheduler.advance(Duration.ofSeconds(3));
+        scheduler.advance(Duration.ofSeconds(4));
         clearWave();
         assertThat(encounter.availableAttacks()).containsExactlyInAnyOrder(EncounterController.AttackFamily.PREY,
-                EncounterController.AttackFamily.BOMBARDMENT, EncounterController.AttackFamily.DIVE);
+                EncounterController.AttackFamily.DIVE);
         assertThat(status(encounter)).contains("next-warning-seconds=5.0");
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(status(encounter)).contains("attack=PREY");
-        scheduler.advance(Duration.ofSeconds(4));
+        assertThat(status(encounter)).contains("attack=DIVE");
+        scheduler.advance(Duration.ofSeconds(6));
         acceptedDragonHit(100000);
         assertThat(encounter.waveNumber()).isEqualTo(2);
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(status(encounter)).contains("attack=DIVE", "shield=true");
+        assertThat(status(encounter)).contains("main=executing", "shield=true");
         encounter.debugPause();
         clearWave();
-        assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.RAIN);
-        assertThat(encounter.availableAttacks()).contains(EncounterController.AttackFamily.RAIN);
+        assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.BOMBARDMENT);
+        assertThat(encounter.availableAttacks()).contains(EncounterController.AttackFamily.BOMBARDMENT);
         acceptedDragonHit(100000);
         assertThat(encounter.availableAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
         clearWave();
@@ -639,6 +687,7 @@ class LifecycleEncounterTest {
         config.node("landing-cadence-seconds").set(10);
         config.node("pool-lifetime-seconds").set(15);
         config.node("pool-damage").set(1);
+        config.node("lane-damage").set(0);
         config.node("bombardment-damage").set(0);
         var encounter = rotationEncounter(new java.util.Random(0) {
             @Override
@@ -649,7 +698,9 @@ class LifecycleEncounterTest {
         clearWave();
         scheduler.advance(Duration.ofSeconds(4));
         assertThat(status(encounter)).contains("main=idle", "hazards=1");
-        scheduler.advance(Duration.ofMillis(8050));
+        for (int tick = 0; tick < 240 && dragon.getPhase() != EnderDragon.Phase.FLY_TO_PORTAL; tick++) {
+            scheduler.advance(Duration.ofMillis(50));
+        }
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.FLY_TO_PORTAL);
         assertThat(status(encounter)).contains("attack=LANDING", "hazards=1");
         scheduler.advance(Duration.ofMillis(950)); // Approach time cannot consume the melee window.
@@ -660,9 +711,11 @@ class LifecycleEncounterTest {
         dragon.setPhase(arrival.getNewPhase());
         assertThat(status(encounter)).contains("landing-window=true");
         double health = player.getHealth();
-        scheduler.advance(Duration.ofMillis(5950));
+        scheduler.advance(Duration.ofSeconds(2));
         assertThat(status(encounter)).contains("attack=LANDING", "hazards=1");
         assertThat(player.getHealth()).isLessThan(health); // Old pool keeps delivering actual damage.
+        scheduler.advance(Duration.ofMillis(3950));
+        assertThat(status(encounter)).contains("attack=LANDING", "hazards=0");
         scheduler.advance(Duration.ofMillis(50));
         assertThat(status(encounter)).contains("main=idle", "hazards=0");
         assertThat(dragon.getPhase()).isEqualTo(EnderDragon.Phase.LEAVE_PORTAL);
@@ -676,23 +729,19 @@ class LifecycleEncounterTest {
         config.node("attack-gap-max-seconds").set(5);
         config.node("bombardment-damage").set(0);
         config.node("pool-damage").set(0);
-        player.teleport(new Location(end, 70, 64, 0)); // No walkable warning footprint or pool deposition.
+        player.teleport(new Location(end, 70, 64, 0)); // Prey warns even when there is no footing for deposition.
         var encounter = rotationEncounter(new java.util.Random(7));
-        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=1.0");
-        scheduler.advance(Duration.ofMillis(950));
-        assertThat(status(encounter)).contains("main=idle");
-        scheduler.advance(Duration.ofMillis(50));
         assertThat(status(encounter)).contains("attack=PREY");
         scheduler.advance(Duration.ofSeconds(4)); // Prey validates current terrain at deposition, not marking.
         assertThat(status(encounter)).contains("main=idle");
         player.teleport(new Location(end, 10, 64, 0));
         scheduler.advance(Duration.ofSeconds(5));
-        assertThat(status(encounter)).contains("attack=BOMBARDMENT");
+        assertThat(status(encounter)).contains("attack=PREY");
         player.setGameMode(org.bukkit.GameMode.CREATIVE);
         scheduler.advance(Duration.ofMillis(250));
         assertThat(status(encounter)).contains("main=idle", "hazards=0");
         player.setGameMode(org.bukkit.GameMode.SURVIVAL);
-        scheduler.advance(Duration.ofMillis(4950));
+        scheduler.advance(Duration.ofMillis(4700));
         assertThat(status(encounter)).contains("main=idle");
         scheduler.advance(Duration.ofMillis(50));
         assertThat(status(encounter)).contains("attack=PREY");
@@ -720,7 +769,7 @@ class LifecycleEncounterTest {
         org.mockito.Mockito.doThrow(new IllegalStateException("native warning metadata failure"))
                 .doCallRealMethod().when(battles).faceWarningToViewer(any());
         var encounter = rotationEncounter(new java.util.Random(7));
-        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=1.0", "last-selection=BOMBARDMENT");
+        assertThat(status(encounter)).contains("main=idle", "next-warning-seconds=1.0", "last-selection=PREY");
         scheduler.advance(Duration.ofMillis(950));
         assertThat(end.getEntitiesByClass(org.bukkit.entity.TextDisplay.class)).isEmpty();
         scheduler.advance(Duration.ofMillis(50));
@@ -738,14 +787,17 @@ class LifecycleEncounterTest {
         config.node("landing-cadence-seconds").set(10);
         config.node("bombardment-damage").set(0);
         config.node("pool-damage").set(0);
+        config.node("lane-damage").set(0);
         var encounter = rotationEncounter(new java.util.Random(7));
         clearWave();
-        scheduler.advance(Duration.ofMillis(gap == 5 ? 12050 : 10000));
+        for (int tick = 0; tick < 600 && !status(encounter).contains("attack=LANDING"); tick++) {
+            scheduler.advance(Duration.ofMillis(50));
+        }
         assertThat(status(encounter)).contains("attack=LANDING", "landing-window=false");
         scheduler.advance(Duration.ofSeconds(20)); // Mock native dragon does not arrive; genuine approach timeout.
         assertThat(status(encounter)).contains("main=idle");
         scheduler.advance(Duration.ofSeconds(gap));
-        assertThat(status(encounter)).contains(gap == 5 ? "attack=DIVE" : "attack=PREY");
+        assertThat(status(encounter)).contains("main=executing").doesNotContain("attack=LANDING");
         encounter.close();
     }
 
@@ -757,7 +809,7 @@ class LifecycleEncounterTest {
         scheduler.advance(Duration.ofMillis(29950));
         assertThat(status(encounter)).contains("main=idle");
         scheduler.advance(Duration.ofMillis(50));
-        assertThat(status(encounter)).contains("attack=BOMBARDMENT", "grace-seconds=0.0");
+        assertThat(status(encounter)).contains("attack=PREY", "grace-seconds=0.0");
         encounter.close();
     }
 
@@ -868,8 +920,9 @@ class LifecycleEncounterTest {
             var members = defenders().stream().filter(mob -> encounter.anchorId(mob).equals(anchor.getUniqueId()))
                     .toList();
             counts.add(members.size());
+            // With the roster cap, spaced roots fit within five 3-block rings on this flat arena.
             assertThat(members).allSatisfy(mob -> assertThat(mob.getLocation().distanceSquared(anchor.getLocation()))
-                    .isLessThan(25));
+                    .isBetween(9 - 0.000001, 225 + 0.000001));
         }
         assertThat(java.util.Collections.max(counts) - java.util.Collections.min(counts))
                 .isZero();
@@ -1025,10 +1078,10 @@ class LifecycleEncounterTest {
             assertThat(status(encounter)).contains("wave=" + wave, "wave-population=5",
                     "roster-units=" + (wave == 3 ? 3 : 5),
                     "mode=manual", "shield=true", "objectives=0/4");
-            assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.BOMBARDMENT,
-                    EncounterController.AttackFamily.PREY);
+            assertThat(encounter.unlockedAttacks()).contains(EncounterController.AttackFamily.PREY);
             assertThat(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.DIVE)).isEqualTo(wave > 1);
-            assertThat(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.RAIN)).isEqualTo(wave > 2);
+            assertThat(encounter.unlockedAttacks().contains(EncounterController.AttackFamily.BOMBARDMENT))
+                    .isEqualTo(wave > 2);
             assertThat(encounter.unlockedAttacks()).doesNotContain(EncounterController.AttackFamily.SMASH);
             scheduler.advance(Duration.ofSeconds(35));
             assertThat(pending.get()).isZero();

@@ -79,7 +79,7 @@ class BreathPoolsTest {
 
             @Override
             public void bombardmentDamage(org.bukkit.entity.Player recipient, EnderDragon source, double amount) {
-                assertThat(amount).isEqualTo(3); // Raw pool HP, not reference-gear damage conversion.
+                assertThat(amount).isEqualTo(6); // Raw pool HP, not reference-gear damage conversion.
                 if (failDamage) {
                     failDamage = false;
                     throw new IllegalStateException("damage fault");

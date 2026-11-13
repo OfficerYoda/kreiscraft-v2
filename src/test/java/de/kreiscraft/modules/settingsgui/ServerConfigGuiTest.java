@@ -338,6 +338,7 @@ class ServerConfigGuiTest {
         assertThat(stackAt(gui, 53).getType()).isEqualTo(Material.ARROW);
         var names = new ArrayList<String>();
         int thresholdSlot = -1;
+        int thresholdPage = -1;
         String threshold = locale.equals("en") ? "Legacy health fraction (ignored)" : "Alter Lebensanteil (ignoriert)";
         var pages = (xyz.xenondevs.invui.gui.PagedGui<?>) gui;
         assertThat(pages.getPageCount()).isEqualTo(2);
@@ -349,11 +350,12 @@ class ServerConfigGuiTest {
                     names.add(name);
                     if (name.startsWith(threshold)) {
                         thresholdSlot = slot;
+                        thresholdPage = page;
                     }
                 }
             }
         }
-        assertThat(names).hasSize(59).doesNotHaveDuplicates();
+        assertThat(names).hasSize(60).doesNotHaveDuplicates();
         pages.setPage(0);
         click(gui, 52);
         assertThat(pages.getPage()).isEqualTo(1);
@@ -375,21 +377,22 @@ class ServerConfigGuiTest {
                 : "Dauerhafte Bodenschlag-Kratertiefe"));
         assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Flying debris lifetime"
                 : "Fliegende Trümmerdauer"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain launch height"
-                : "Feuerregen-Starthöhe"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain native descent"
-                : "Feuerregen-Flugzeit"));
-        assertThat(names).anyMatch(name -> name.startsWith(locale.equals("en") ? "Rain reference damage"
-                : "Feuerregen-Referenzschaden"));
+        assertThat(names).noneMatch(name -> name.startsWith(locale.equals("en") ? "Bombardment launch height"
+                : "Bombardement-Starthöhe"));
         assertThat(thresholdSlot).isGreaterThanOrEqualTo(0);
         String[] labels = locale.equals("en")
                 ? new String[] {"Final attack cadence multiplier", "Final pool lifetime multiplier",
-                        "Dragon explosion budget window (seconds)", "Dragon aggregate explosion damage budget"}
+                        "Dragon explosion budget window (seconds)", "Dragon aggregate explosion damage budget",
+                        "Smash shockwave radius (blocks)", "Smash shockwave travel time (seconds)",
+                        "Smash shockwave damage (% of Smash)", "Smash shockwave knockback"}
                 : new String[] {"Finaler Angriffstakt-Multiplikator", "Finaler Atemflächen-Dauer-Multiplikator",
-                        "Drachen-Explosionsbudgetfenster (Sekunden)", "Gemeinsames Drachen-Explosionsschadensbudget"};
+                        "Drachen-Explosionsbudgetfenster (Sekunden)", "Gemeinsames Drachen-Explosionsschadensbudget",
+                        "Bodenschlag-Schockwellenradius (Blöcke)", "Bodenschlag-Schockwellenlaufzeit (Sekunden)",
+                        "Schockwellenschaden (% des Bodenschlags)", "Bodenschlag-Schockwellenrückstoß"};
         for (String label : labels) {
             assertThat(names).anyMatch(name -> name.startsWith(label));
         }
+        pages.setPage(thresholdPage);
         click(gui, thresholdSlot);
         assertThat(editor.current(field("shattered-crown", "final-health-fraction"))).isEqualTo(0.4);
     }

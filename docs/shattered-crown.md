@@ -17,12 +17,13 @@ produce no automatic chat, action bars or replacement title feed. This applies t
 attacks too, including debug-triggered attacks and both moving and legacy profiles; no opt-in
 chat/actionbar setting is provided.
 
-Keep floating labels/countdowns, sounds and applicable Attack Warning visuals, except Dive's two countdowns.
-Dive retains its warning/pass timing and sound but shows no numeric timer. Particle redesign
+Keep floating labels/countdowns, sounds and applicable Attack Warning visuals, except the Dive and
+Bombardment countdowns. Both retain their timing and sound but show no numeric timer. Particle redesign
 belongs to individual attacks, not this policy. The vanilla dragon boss bar is untouched; the
 enhanced-Wither boss/countdown presentation remains available and is not suppressed by Crown UI.
-Only **explicitly requested** `/dragondebug` results, errors and status use chat, through the
-recipient-localized message service. Status fields/attack enum names and low-level placement or
+Native player death messages use the server language (`core.language`: `en`/`de`) through Paper's normal
+broadcast. Other chat output is limited to **explicitly requested** `/dragondebug` results, errors and
+status, through the recipient-localized message service. Status fields/attack enum names and low-level placement or
 exception diagnostics remain technical identifiers; the surrounding reply and eligibility guidance
 are translated in English/German. Replies go only to the requesting operator, not attack targets.
 
@@ -48,9 +49,9 @@ Wave one freezes #150's first-End-entry server-wide population;
 waves two and three freeze everyone connected in the managed End at their starts, including creative,
 spectator and outside-arena players. Later joins/leaves never resize existing defenders.
 
-Bombardment and Prey are unlocked initially; Dive after wave one, Fireball Rain after wave two,
+Prey is unlocked initially; Dive after wave one, Bombardment after wave two,
 Ground Smash after wave three. Unlocks survive later shields. The shuffled rotation includes
-[native Fireball Rain](/shattered-crown-rain/). Wave one is the mounted-undead roster below.
+[native Bombardment](/shattered-crown-rain/), which replaces the separate Fireball Rain attack. Wave one is the mounted-undead roster below.
 Wave two has **two Piglin Brutes and one each of Guardian, Vindicator and Blaze per scaling player**,
 plus **`ceil(0.7 * p)` Ravagers**, **`ceil(0.7 * p)` Breezes** and **`ceil(1.5 * p)` Vexes**.
 Round each species upward across the whole wave, never separately per Anchor:
@@ -92,6 +93,12 @@ movement/combat without custom attack goals or a second damage engine.
 One online player produces16 members with one tower; four produce64 with two towers; twelve produce192 with six towers.
 Three-member towers are allocated around the ring first, then intact mounted pairs go to the least-populated Anchor.
 Individual undead fill the remaining roster and balance all four Anchors to exactly `4 * p` members each.
+All three waves place independent mobs and intact passenger groups in one shared layout around each
+crystal, regardless of species. Spawn positions are equally spaced on 3-block-step concentric rings,
+with at least 3 blocks between independent roots and from crystals. Placement alternates opposite
+sides rather than collecting each species in an arc. Nearby footing searches avoid occupied positions;
+replacement/return placement uses the same layout. Native riders and towers remain attached, and
+roster counts, equipment and Anchor membership do not change.
 Tower species rotate deterministically by tower ordinal. About35% of armor-capable undead
 receive one or two unenchanted leather/chainmail pieces with occasional iron (5/13 for one player).
 No full sets, diamond/netherite or armor enchantments; natural equipment is cleared and item pickup
@@ -136,7 +143,7 @@ Their native beam/fireball attacks remain intact; ordinary Guardians/Blazes are 
 Owned Brute/Breeze Brain attack/walk/look memories are cleared on target ineligibility so native
 retaliation cannot retain a protected arrival; ordinary Brain-driven mobs are unchanged.
 Replacements retain species, initialization and original Anchor membership. A surviving member of
-any species holds its crystal; Fireball Rain is unlocked only after all four exposed crystals die.
+any species holds its crystal; Bombardment is unlocked only after all four exposed crystals die.
 
 `secondWaveProbeJar` runs beside the production shadow JAR on disposable Paper build 132 with
 `-Dkreiscraft.second-wave-probe=true`. It registers native player fixtures, exercises every species'
@@ -337,12 +344,12 @@ Operators (or holders of `kreiscraft.shatteredcrown.debug`) can test production 
 /dragondebug status
 /dragondebug pause
 /dragondebug wave <1|2|3> [players]
-/dragondebug trigger <dive|smash|prey|bombardment|landing|fireball-rain> [player]
+/dragondebug trigger <dive|smash|prey|bombardment|landing> [player]
 /dragondebug cancel
 /dragondebug resume
 ```
 
-Fireball Rain without a name targets **every eligible combat player**, including from console;
+Bombardment without a name targets **every eligible combat player**, including from console;
 an explicit name selects only that player. Other attacks default to the executing player;
 console must name an online player for those attacks.
 The target must be alive in survival/adventure inside the main-End combat arena. An eligible player
@@ -367,7 +374,7 @@ Fault-injection tests cover both initial rendering and later refresh failures.
 ## Historical earlier encounter contract (superseded by #151)
 
 Implementation of tickets #134–#139, following spec #132. **Break the Crown** creates four
-independently defended ground-level Anchors and warned, finite bombardments. Destroying all four
+independently defended ground-level Anchors and Prey warnings. Destroying all four
 immediately releases the shield and cancels opening attacks for **Weather the Hunt**. Hunt now adds
 warned temporary breath lanes, Marked Prey pools, fixed wing-sweep sectors and supported-Paper melee landing windows. See the
 [hunt geometry, tuning and verification contract](/shattered-crown-hunt/).
@@ -466,7 +473,7 @@ Arrival protection is excluded even where it overlaps the combat cylinder.
   remain intact. Previously unlocked shuffled families pressure each shielded wave. Clearing the
   final wave permanently adds Ground Smash and releases the final vulnerable stage.
 - The native rotation keeps its default 2–4-second post-main gap throughout. Prey pools use the configured
-  six seconds, shortened by `final-pool-lifetime-factor` in the finale; Rain pools always last six
+  six seconds, shortened by `final-pool-lifetime-factor` in the finale; Bombardment pools always last six
   seconds. Landings last six seconds after actual arrival, default approach timeout20 seconds.
   Historical cadence factors apply to the diagnostic stationary profile and landing opportunities,
   not a forced fight-duration timer.
@@ -512,22 +519,20 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   and projectiles/primed TNT originating in protection retain a persistent origin marker even after
   moving into the arena. Owned defenders also cannot damage protected arrivals. All custom
   attacks share `EncounterController.isParticipant` and `isProtectedArrival`.
-- Bombardments choose eligible players in deterministic UUID-sorted round-robin order. One fixed
-  ground circle is warned at a time: a 32-point native flame ring refreshes four times per second,
-  a native TextDisplay shows a numeric countdown, and a dragon growl accompanies the warning.
-  Impact uses a distinct explosion visual/sound, not a real explosion.
-  Moving out avoids damage; the warned area does not chase the target. Revalidation cancels the
-  attack if its selected player dies, disconnects, changes worlds/mode, leaves combat or enters
-  arrival protection, or if its warning disappears. Footprint rims may overlap arrival geometry;
-  protected PLAYERS remain excluded. Native damage is applied once and honors combat cancellation.
-- Placement/resolution require supported target footing, arena/build-height bounds and valid geometry,
-  not straight walking corridors off cratered ground.
-  Nearby native dragon-breath clouds are considered existing danger: overlapping bombardments
-  are omitted. More than 32 nearby clouds also refuses the pattern.
-  Terrain that changes during the warning is checked again at impact. Unsafe placements are
-  omitted rather than stacking danger or constructing terrain; another cadence may try again.
-  Custom bombardments leave no persistent damaging pool and never change blocks; permanent destruction
-  belongs to Smash and Rain, without duplicate native explosions.
+- Bombardments lock a ground position for **every eligible combat player** after wave two.
+  Each position gets a 32-point native flame ring refreshed four times per second,
+  and a flame trail with immediately visible purple dust accents (two per eight flames) descends
+  from 20 blocks above the marked ground over the warning duration,
+  emitting both types together; their randomized fade-out remains client-controlled.
+  updating every server tick. There is no visible countdown; an invisible owned TextDisplay retains
+  warning-validity and cleanup checks. A dragon growl accompanies the warning.
+  The blast resolves once on the warned tick at the highest footing within twenty blocks above the
+  warned ground, so overhead cover absorbs it. Moving out avoids damage; positions do not chase
+  players. One dragon-attributed impact defaults to radius four and six reference HP (three hearts
+  with full Protection IV netherite). The impact footing receives a permanent radius-four,
+  one-block-deep crater and a matching
+  six-second breath pool. Protected players remain excluded. Pool damage uses the existing raw
+  `pool-damage` setting and shared per-player cadence. See [Bombardment](/shattered-crown-rain/).
 - Victory clears custom artifacts without editing XP, drops, portal, egg, gateway or ritual state.
   It never removes or simulates a kill of the dragon. Reset restores the existing dragon's original
   native maximum and full health; the next participant begins a fresh configured-health attempt.
@@ -538,13 +543,13 @@ terrain preservation is required. Spawn refusal aborts safely; discovery retries
   Anchor, victory, reset, disable or unload. A synchronous combat event ending the attempt stops the
   remaining impact audience too. No world-wide per-tick scans.
 - Mob and boss population scaling caps at20: opening membership is64 at population4,80 at5,128 at8,192 at12,
-  320 at20 or above. Prey/Rain target selection and real-player participation do not use this roster cap.
+  320 at20 or above. Prey/Bombardment target selection and real-player participation do not use this roster cap.
   Actual task/entity/resource observations belong to pinned native evidence,
   not obsolete16-Husk bounds. Completed attacks do not accumulate active work. Particle audiences are capped at64,
   with 32 ring points per refresh (2,560 ring particles/second for 20 recipients while warned).
   The nearby cloud query runs only at planning/resolution, not every tick.
 - PDC ownership keys are `kreiscraft:crown_artifact` (including `anchor`, `defender`, `warning`, `lane`,
-  `prey`, `pool`, `sweep`, `debris`, `rain-warning`, `rain-projectile` and inherited Wither effects),
+  `prey`, `pool`, `sweep`, `debris`, `rain-warning` and inherited Wither effects),
   `kreiscraft:crown_original_health` (original dragon maximum-health base value), and
   `kreiscraft:crown_original_phase` (restore/recover temporary native landing ownership).
   `kreiscraft:crown_protected_shot` records an indirect attack's protected origin, not entity ownership.
