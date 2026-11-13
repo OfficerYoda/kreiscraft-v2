@@ -75,7 +75,8 @@ their last known location without forcing a chunk load. Unknown custody or confi
 reports unavailable. Ender-chest insertion is rejected for **every** dragon egg, marked or not,
 including nested containers, native clicks/shift-clicks/drags/hotbar/offhand swaps and online/offline
 administrative ender-chest editing. Rejection keeps source and destination unchanged and informs
-the actor; existing forbidden contents can still be removed. Buffs and offline reclamation are separate slices.
+the actor; existing forbidden contents can still be removed. Disabling `dragon-egg` removes this
+policy from native and administrative ender chests alike. Buffs and offline reclamation are separate slices.
 
 `DragonEggTracker` is the published identity/location seam for those slices; reuse its
 `isTrackedEgg`, `containsTrackedEgg`, `claimContained`, `holdsTrackedEgg`, `observeInventory`,
@@ -86,9 +87,15 @@ After 24 elapsed **real hours**, including downtime, the offline carrier's egg (
 nested containers) is removed through `OfflinePlayerDataEditor.openForEdit` and returned in
 barrel slot 13 at the logout block. An occupied block is never replaced: the nearest air block
 inside the world border, within 16 blocks, is used; no available block means retry with ownership
-retained. Returning before removal cancels the deadline. The barrel follows normal two-minute
+retained. Returning before removal cancels the deadline. Successful administrative offline edits
+publish a shared inventory-commit event: transfers cancel the old deadline and a new offline holder
+gets 24 hours from the transfer, at their saved location. A confirmed missing egg invalidates stale
+custody/deadlines without claiming another egg; unreadable or ambiguous data still fails closed.
+Offline-return failures do not prevent independent sampling and compass updates.
+The barrel follows normal two-minute
 compass sampling, not an immediate ping. Successful returns broadcast server-wide; the carrier
-receives a deferred red login message with the actual barrel coordinates.
+receives a deferred red login message with the actual barrel coordinates. The server console logs
+the successful drop's UTC time, dimension, world UUID and actual block coordinates.
 `DragonEggOfflineReturn` journals PREPARED → REMOVED → normal container custody. The journal
 holds the exact serialized egg, chosen block, player-file digests and transaction token. Player
 configuration/login reservations exclude live inventory loads from offline commits. Atomic,
@@ -117,15 +124,24 @@ double chests spanning a chunk boundary. Try ender-chest insertion with every in
 online/offline administrative editors, checking the cursor/source and unrelated contents after rejection.
 Bukkit tests cover event and destination-update boundaries, not actual vanilla physics/event ordering.
 
-Offline-return manual verification (disposable Paper world, never live data):
+Offline-return manual verification (disposable Paper world, never live data).
+**Status:** automated event/GUI, YAML and native region-file checks run; live Paper fault injection
+and the manual scenarios below have **not** been performed for this review fix.
 - Log out holding a marked egg directly, in a bundle, and inside shulker→bundle nesting; preserve
   containing items, sibling contents, armor/offhand, EnderItems and unrelated player tags.
 - Advance only the saved deadline for a short test; restart with it overdue and no carrier online.
-  Check exactly one egg in slot 13, one broadcast, red next-login message, and no early compass ping.
+  Check exactly one egg in slot 13, one regular broadcast, a console UTC time/location record,
+  red next-login message, and no early compass ping. The documented crash-time at-most-once chat
+  ceiling is accepted; do not expect delivery after a crash between completion and broadcast.
 - Occupy the logout block; confirm the nearest safe fallback, unchanged occupied blocks and actual
   fallback coordinates in chat. Fill the search radius; confirm no removal/announcement until safe.
 - Connect during configuration/removal; concurrently save an administrative offline inventory edit.
   Check either an untouched carrier inventory or a completed return, never both copies.
+- Open a placed egg-bearing shulker, break it while the view is open, then close/update the view;
+  the dropped shulker must remain the tracked carrier and compass target.
+- Use `/invsee` to transfer from an offline holder to an online holder and to a different offline
+  holder. Check cancellation/reset of the old deadline and preserved unrelated player data.
+  Repeat native and online/offline `/enderchest` insertion with `dragon-egg` disabled: no egg policy.
 - Interrupt after journal preparation, after player replacement, during barrel save and after the
   completion claim; restart and count egg identity copies. Simulate player/YAML/region write failures
   and changed digests; verify retries or explicit fail-closed recovery, and protected pending barrels.

@@ -22,6 +22,56 @@ import org.spongepowered.configurate.BasicConfigurationNode;
 
 class DragonEggModuleTest {
     @Test
+    void offlineReturnFailureCannotStarveSamplingOrCompassUpdates() throws Exception {
+        var server = MockBukkit.mock();
+        var module = new DragonEggModule();
+        var plugin = MockBukkit.createMockPlugin();
+        var events = new EventBus(plugin);
+        try {
+            var services = new ServiceRegistry();
+            var config = mock(ConfigService.class);
+            services.publish(ConfigService.class, config);
+            services.publish(de.kreiscraft.platform.PaperPlatform.class,
+                    mock(de.kreiscraft.platform.PaperPlatform.class));
+            var editor = mock(de.kreiscraft.platform.OfflinePlayerDataEditor.class);
+            services.publish(de.kreiscraft.platform.OfflinePlayerDataEditor.class, editor);
+            var scheduler = new MockScheduler();
+            var messages = mock(MessageService.class);
+            module.enable(new ModuleContext(plugin, BasicConfigurationNode.root(), messages,
+                    services, scheduler, mock(CommandRegistrar.class), events));
+            var captured = org.mockito.ArgumentCaptor.forClass(DragonEggData.class);
+            verify(config).register(captured.capture());
+            var data = captured.getValue();
+            var tracker = services.get(DragonEggTracker.class);
+            var old = server.addPlayer();
+            ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+            tracker.claim(egg);
+            old.getInventory().setItem(0, egg);
+            tracker.trackHolder(old);
+            old.disconnect();
+            data.update(state -> {
+                state.offlineCarrier = old.getUniqueId().toString();
+                state.logoutPosition = state.position;
+                state.offlineDeadline = 1;
+            });
+            org.mockito.Mockito.when(editor.openForEdit(old.getUniqueId()))
+                    .thenThrow(new java.io.IOException("unreadable"));
+            var viewer = server.addPlayer();
+            viewer.getInventory().setItem(0, server.getRecipe(DragonEggCompass.KEY).getResult());
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> scheduler.advance(Duration.ofSeconds(1)))
+                    .isInstanceOf(de.kreiscraft.core.module.ModuleException.class);
+            assertThat(tracker.ping()).isPresent();
+            var meta = (org.bukkit.inventory.meta.CompassMeta) viewer.getInventory().getItem(0).getItemMeta();
+            assertThat(meta.getLodestone()).isEqualTo(old.getLocation());
+            assertThat(data.get().offlineDeadline).isEqualTo(1);
+        } finally {
+            module.disable();
+            events.unregisterAll();
+            MockBukkit.unmock();
+        }
+    }
+
+    @Test
     void inventoryPollingHandlesLoginLogoutDeathAndDisableWithoutPermanentEffects() {
         var server = MockBukkit.mock();
         var module = new DragonEggModule();
@@ -102,6 +152,13 @@ class DragonEggModuleTest {
             assertThat(tracker.holdsTrackedEgg(player)).isTrue();
             module.disable();
             assertThat(server.getRecipe(DragonEggCompass.KEY)).isNull();
+            var view = player.openInventory(player.getEnderChest());
+            player.setItemOnCursor(new ItemStack(Material.DRAGON_EGG));
+            var click = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                    org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                    org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PLACE_ALL);
+            server.getPluginManager().callEvent(click);
+            assertThat(click.isCancelled()).isFalse();
             verify(config).register(org.mockito.ArgumentMatchers.any(DragonEggData.class));
         } finally {
             module.disable();

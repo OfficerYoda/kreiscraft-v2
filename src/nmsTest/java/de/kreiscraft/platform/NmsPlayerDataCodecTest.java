@@ -71,6 +71,56 @@ class NmsPlayerDataCodecTest {
         org.bukkit.craftbukkit.CraftRegistry.setMinecraftRegistry(builtIn);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"barrel", "chest"})
+    void durableContainerReadbackChecksCallerSelectedBlockItemsAndMarker(String type) throws Exception {
+        var world = mock(org.bukkit.craftbukkit.CraftWorld.class);
+        var level = mock(net.minecraft.server.level.ServerLevel.class);
+        when(world.getHandle()).thenReturn(level);
+        when(world.getWorldFolder()).thenReturn(playerData.toFile());
+        when(world.getName()).thenReturn("world");
+        when(level.dimension()).thenReturn(net.minecraft.world.level.Level.OVERWORLD);
+        when(level.registryAccess()).thenReturn(RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
+        var region = playerData.resolve("region");
+        Files.createDirectories(region);
+        var block = new CompoundTag();
+        block.putInt("x", 12);
+        block.putInt("y", 70);
+        block.putInt("z", 4);
+        block.putString("id", "minecraft:" + type);
+        var marker = new CompoundTag();
+        marker.putString("test:marker", "test-token");
+        block.put("PublicBukkitValues", marker);
+        var items = new ListTag();
+        items.add(itemTag("minecraft:diamond", 3));
+        items.getCompoundOrEmpty(0).putByte("Slot", (byte) 2);
+        block.put("Items", items);
+        var blocks = new ListTag();
+        blocks.add(block);
+        var chunk = new CompoundTag();
+        chunk.put("block_entities", blocks);
+        var info = new net.minecraft.world.level.chunk.storage.RegionStorageInfo("world",
+                net.minecraft.world.level.Level.OVERWORLD, "chunk");
+        try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info, region, false)) {
+            storage.write(new net.minecraft.world.level.ChunkPos(0, 0), chunk);
+        }
+        var location = new org.bukkit.Location(world, 12, 70, 4);
+        var expected = List.of(new SlottedItem(2,
+                CraftItemStack.asBukkitMirror(new net.minecraft.world.item.ItemStack(Items.DIAMOND, 3))));
+        var blockType = org.bukkit.NamespacedKey.minecraft(type);
+        var key = new org.bukkit.NamespacedKey("test", "marker");
+        NmsContainerStorage.saveAndVerify(location, blockType, expected, key, "test-token");
+        assertThatThrownBy(() -> NmsContainerStorage.saveAndVerify(location, blockType, expected, key, "wrong-token"))
+                .isInstanceOf(IOException.class);
+        assertThatThrownBy(
+                () -> NmsContainerStorage.saveAndVerify(location, org.bukkit.NamespacedKey.minecraft("hopper"),
+                        expected, key, "test-token")).isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> NmsContainerStorage.saveAndVerify(location, blockType,
+                List.of(new SlottedItem(3, expected.getFirst().stack())), key, "test-token"))
+                        .isInstanceOf(IOException.class);
+        verify(world, org.mockito.Mockito.times(4)).save(true);
+    }
+
     @Test
     void openForEdit_serverResolvedDirectory_findsInventoryAndEnderChest() throws Exception {
         DedicatedServer server = mock(DedicatedServer.class);
@@ -397,14 +447,17 @@ class NmsPlayerDataCodecTest {
         try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info, folder, true)) {
             storage.write(pos, chunk);
         }
-        NmsDragonEggDropStorage.saveAndVerify(location, "token", egg);
+        var expected = List.of(new SlottedItem(13, egg));
+        var type = org.bukkit.NamespacedKey.minecraft("barrel");
+        var marker = new org.bukkit.NamespacedKey("kreiscraft", "egg_return");
+        NmsContainerStorage.saveAndVerify(location, type, expected, marker, "token");
         verify(world).save(true);
-        assertThatThrownBy(() -> NmsDragonEggDropStorage.saveAndVerify(location, "wrong-token", egg))
+        assertThatThrownBy(() -> NmsContainerStorage.saveAndVerify(location, type, expected, marker, "wrong-token"))
                 .isInstanceOf(IOException.class).hasMessageContaining("not persisted intact");
         try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info, folder, true)) {
             storage.write(pos, new CompoundTag());
         }
-        assertThatThrownBy(() -> NmsDragonEggDropStorage.saveAndVerify(location, "token", egg))
+        assertThatThrownBy(() -> NmsContainerStorage.saveAndVerify(location, type, expected, marker, "token"))
                 .isInstanceOf(IOException.class).hasMessageContaining("missing");
     }
 

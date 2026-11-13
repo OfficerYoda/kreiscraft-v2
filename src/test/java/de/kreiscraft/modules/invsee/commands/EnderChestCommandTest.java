@@ -81,6 +81,26 @@ class EnderChestCommandTest {
         MockBukkit.unmock();
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void commandEnderChestPolicyFollowsEggModuleForOnlineAndOfflineTargets(boolean enabled) throws Exception {
+        var viewer = server.addPlayer("viewer");
+        var target = server.addPlayer("target");
+        EnderChestCommand.openEnderChest(viewer, target, gui, messages, () -> enabled);
+        var live = ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
+        verify(gui).open(eq(viewer), live.capture(), any(Component.class));
+        var offline = offlineWithEnderItems(UUID.randomUUID(), new ItemStack(Material.DIAMOND));
+        EnderChestCommand.openOfflineEnderChest(viewer, offline, "ghost", gui, messages, editor, scheduler,
+                server, () -> enabled);
+        var detached = ArgumentCaptor.forClass(xyz.xenondevs.invui.gui.Gui.class);
+        verify(gui).open(eq(viewer), detached.capture(), any(Component.class), any());
+        for (var contents : List.of(live.getValue(), detached.getValue())) {
+            var link = (SlotElement.InventoryLink) contents.getSlotElement(0);
+            assertThat(link.inventory().setItem(null, link.slot(), new ItemStack(Material.DRAGON_EGG)))
+                    .isEqualTo(!enabled);
+        }
+    }
+
     @Test
     void build_commandNameIsEnderchest() {
         LiteralCommandNode<CommandSourceStack> node =
@@ -335,6 +355,7 @@ class EnderChestCommandTest {
         when(session.commit(any(), any())).thenReturn(OfflineCommitResult.COMMITTED);
 
         Server onlineServer = mock(Server.class);
+        when(onlineServer.getPluginManager()).thenReturn(server.getPluginManager());
         Player onlineTarget = mock(Player.class);
         when(onlineServer.getPlayer(uuid)).thenReturn(onlineTarget);
 

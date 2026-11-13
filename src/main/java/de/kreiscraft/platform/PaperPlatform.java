@@ -10,9 +10,10 @@ import org.bukkit.plugin.java.JavaPlugin;
  * mock and production code never touches static Bukkit state.
  */
 public record PaperPlatform(JavaPlugin plugin, Server server) {
-    /** Flushes and verifies the return barrel before its durable journal may release custody. */
-    public void saveAndVerifyDragonEggDrop(org.bukkit.Location location, String token,
-            org.bukkit.inventory.ItemStack egg) throws java.io.IOException {
-        NmsDragonEggDropStorage.saveAndVerify(location, token, egg);
+    /** Flushes and verifies a container against the caller's expected block, items and marker. */
+    public void saveAndVerifyContainer(org.bukkit.Location location, org.bukkit.NamespacedKey blockEntityType,
+            java.util.List<SlottedItem> expectedItems, org.bukkit.NamespacedKey markerKey,
+            String markerValue) throws java.io.IOException {
+        NmsContainerStorage.saveAndVerify(location, blockEntityType, expectedItems, markerKey, markerValue);
     }
 }

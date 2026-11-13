@@ -303,6 +303,39 @@ class InvseeCommandTest {
         verify(messages).send(viewer, "invsee.saved", "player", "ghost");
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(OfflineCommitResult.class)
+    void onlyCommittedOfflineEditsPublishTheFinalSnapshot(OfflineCommitResult result) throws Exception {
+        var viewer = server.addPlayer("viewer");
+        UUID id = UUID.randomUUID();
+        ItemStack item = new ItemStack(Material.DIAMOND, 3);
+        var offline = offlineWithInventory(id, item);
+        when(session.stage(any(), any()))
+                .thenReturn(new StagedOfflineWrite(Path.of("a"), Path.of("b"), new byte[] {1}));
+        when(session.commit(any(), any())).thenReturn(result);
+        var observer = new CommitObserver();
+        server.getPluginManager().registerEvents(observer, plugin);
+        openAndCaptureClose(viewer, offline).accept(InventoryCloseEvent.Reason.PLAYER);
+        if (result == OfflineCommitResult.COMMITTED) {
+            assertThat(observer.events).singleElement().satisfies(event -> {
+                assertThat(event.playerId()).isEqualTo(id);
+                assertThat(event.snapshot().inventory()).containsExactly(new SlottedItem(9, item));
+                assertThat(event.snapshot().enderItems()).isEmpty();
+            });
+        } else {
+            assertThat(observer.events).isEmpty();
+        }
+    }
+
+    public static final class CommitObserver implements org.bukkit.event.Listener {
+        final List<de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent> events = new java.util.ArrayList<>();
+
+        @org.bukkit.event.EventHandler
+        public void committed(de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent event) {
+            events.add(event);
+        }
+    }
+
     @Test
     void close_targetOnline_sendsCollisionWithReopenOption() throws IOException {
         PlayerMock viewer = server.addPlayer("viewer");
@@ -379,6 +412,7 @@ class InvseeCommandTest {
 
         // A different Server reports the target as online.
         Server onlineServer = mock(Server.class);
+        when(onlineServer.getPluginManager()).thenReturn(server.getPluginManager());
         Player onlineTarget = mock(Player.class);
         when(onlineServer.getPlayer(uuid)).thenReturn(onlineTarget);
 

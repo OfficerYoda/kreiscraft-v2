@@ -14,6 +14,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -44,6 +45,12 @@ public final class EnderChestCommand {
             OfflinePlayerDataEditor offlineEditor,
             Scheduler scheduler,
             Server server) {
+        return build(gui, messages, offlineEditor, scheduler, server, () -> false);
+    }
+
+    public static LiteralCommandNode<CommandSourceStack> build(Gui gui, MessageService messages,
+            OfflinePlayerDataEditor offlineEditor, Scheduler scheduler, Server server,
+            BooleanSupplier eggModuleEnabled) {
         return Commands.literal("enderchest")
                 .requires(src -> src.getSender().hasPermission("kreiscraft.invsee.use"))
                 .then(
@@ -63,7 +70,7 @@ public final class EnderChestCommand {
                                                     StringArgumentType.getString(ctx, "target");
                                             Player target = Bukkit.getPlayer(name);
                                             if (target != null) {
-                                                openEnderChest(viewer, target, gui, messages);
+                                                openEnderChest(viewer, target, gui, messages, eggModuleEnabled);
                                             } else {
                                                 lookupAndOpenOfflineEnderChest(
                                                         viewer,
@@ -72,7 +79,7 @@ public final class EnderChestCommand {
                                                         messages,
                                                         offlineEditor,
                                                         scheduler,
-                                                        server);
+                                                        server, eggModuleEnabled);
                                             }
                                             return Command.SINGLE_SUCCESS;
                                         }))
@@ -82,9 +89,14 @@ public final class EnderChestCommand {
     /** Package-private so tests can assert the localized, styled title without Brigadier dispatch. */
     static void openEnderChest(
             Player viewer, Player target, Gui gui, MessageService messages) {
+        openEnderChest(viewer, target, gui, messages, () -> false);
+    }
+
+    static void openEnderChest(Player viewer, Player target, Gui gui, MessageService messages,
+            BooleanSupplier eggModuleEnabled) {
         xyz.xenondevs.invui.gui.Gui invuiGui =
                 InvseeGui.buildEnderChestEditable(target.getEnderChest(),
-                        actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"));
+                        actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"), eggModuleEnabled);
         Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", target.getName());
         gui.open(viewer, invuiGui, title);
     }
@@ -97,10 +109,10 @@ public final class EnderChestCommand {
             MessageService messages,
             OfflinePlayerDataEditor offlineEditor,
             Scheduler scheduler,
-            Server server) {
+            Server server, BooleanSupplier eggModuleEnabled) {
         OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
         openOfflineEnderChest(
-                viewer, offline, name, gui, messages, offlineEditor, scheduler, server);
+                viewer, offline, name, gui, messages, offlineEditor, scheduler, server, eggModuleEnabled);
     }
 
     /**
@@ -118,6 +130,13 @@ public final class EnderChestCommand {
             OfflinePlayerDataEditor offlineEditor,
             Scheduler scheduler,
             Server server) {
+        openOfflineEnderChest(viewer, offline, displayName, gui, messages, offlineEditor, scheduler, server,
+                () -> false);
+    }
+
+    static void openOfflineEnderChest(Player viewer, OfflinePlayer offline, String displayName, Gui gui,
+            MessageService messages, OfflinePlayerDataEditor offlineEditor, Scheduler scheduler, Server server,
+            BooleanSupplier eggModuleEnabled) {
         if (!offline.hasPlayedBefore()) {
             messages.send(viewer, "invsee.target-not-found", "player", displayName);
             return;
@@ -135,7 +154,7 @@ public final class EnderChestCommand {
         }
         VirtualInventory contents = InvseeGui.offlineEnderChestContents(session.snapshot());
         xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineEnderChest(contents,
-                actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"));
+                actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"), eggModuleEnabled);
         Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", displayName);
         gui.open(
                 viewer,

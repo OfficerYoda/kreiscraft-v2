@@ -2,10 +2,13 @@ package de.kreiscraft.modules.dragonegg;
 
 import de.kreiscraft.core.message.MessageService;
 import de.kreiscraft.core.module.ModuleException;
+import de.kreiscraft.modules.dragonegg.DragonEggData.Custody;
+import de.kreiscraft.modules.dragonegg.DragonEggData.ReturnPhase;
 import de.kreiscraft.platform.OfflineCommitResult;
 import de.kreiscraft.platform.OfflinePlayerDataEditor;
 import de.kreiscraft.platform.SlottedItem;
 import de.kreiscraft.shared.inventory.ItemContents;
+import de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent;
 import io.papermc.paper.connection.PlayerConfigurationConnection;
 import io.papermc.paper.connection.PlayerConnection;
 import io.papermc.paper.connection.PlayerLoginConnection;
@@ -40,7 +43,8 @@ import org.bukkit.persistence.PersistentDataType;
 
 /** Offline-return lifecycle; inventory commits and world changes run on the server thread. */
 public final class DragonEggOfflineReturn implements Listener {
-    private static final NamespacedKey RETURN_KEY = new NamespacedKey("kreiscraft", "egg_return");
+    static final NamespacedKey RETURN_KEY = new NamespacedKey("kreiscraft", "egg_return");
+    static final int DROP_SLOT = 13;
     private final Server server;
     private final DragonEggTracker tracker;
     private final DragonEggData data;
@@ -101,10 +105,11 @@ public final class DragonEggOfflineReturn implements Listener {
     public void tick() throws IOException {
         // A failed flush leaves in-memory changes dirty: persist them before any external effect.
         data.flushIfDirty();
+        tracker.refresh();
         logins.keySet().removeIf(connection -> !connection.isConnected());
         var s = data.get();
         if (s.returnJournal == null) {
-            if (s.offlineDeadline == 0 && s.kind.equals("PLAYER") && offline(UUID.fromString(s.carrier))) {
+            if (s.offlineDeadline == 0 && s.kind == Custody.PLAYER && offline(UUID.fromString(s.carrier))) {
                 data.update(state -> {
                     state.offlineCarrier = state.carrier;
                     state.logoutPosition = state.position;
@@ -132,6 +137,8 @@ public final class DragonEggOfflineReturn implements Listener {
             List<SlottedItem> inventory = remove(session.snapshot().inventory(), removed);
             List<SlottedItem> enderItems = remove(session.snapshot().enderItems(), removed);
             if (removed[0] == null) {
+                tracker.unavailable();
+                data.flushIfDirty();
                 throw new IOException("tracked egg missing from offline carrier: " + carrier);
             }
             if (removed[0].getAmount() != 1) {
@@ -139,7 +146,7 @@ public final class DragonEggOfflineReturn implements Listener {
             }
             var write = session.stage(inventory, enderItems);
             var journal = new DragonEggData.ReturnJournal();
-            journal.phase = "PREPARED";
+            journal.phase = ReturnPhase.PREPARED;
             journal.carrier = carrier.toString();
             journal.token = UUID.randomUUID().toString();
             journal.egg = Base64.getEncoder().encodeToString(removed[0].serializeAsBytes());
@@ -154,9 +161,9 @@ public final class DragonEggOfflineReturn implements Listener {
                 data.flushIfDirty();
                 return;
             }
-            data.update(state -> state.returnJournal.phase = "REMOVED");
+            data.update(state -> state.returnJournal.phase = ReturnPhase.REMOVED);
             data.flushIfDirty();
-        } else if (s.returnJournal.phase.equals("PREPARED")) {
+        } else if (s.returnJournal.phase == ReturnPhase.PREPARED) {
             UUID carrier = UUID.fromString(s.returnJournal.carrier);
             if (!offline(carrier)) {
                 return;
@@ -174,7 +181,7 @@ public final class DragonEggOfflineReturn implements Listener {
                 throw new IOException(
                         "ambiguous offline egg commit; retain journal and reconcile player file for " + carrier);
             }
-            data.update(state -> state.returnJournal.phase = "REMOVED");
+            data.update(state -> state.returnJournal.phase = ReturnPhase.REMOVED);
             data.flushIfDirty();
         }
         placeRemovedEgg();
@@ -215,7 +222,7 @@ public final class DragonEggOfflineReturn implements Listener {
         boolean ours = barrel != null && journal.token.equals(
                 barrel.getPersistentDataContainer().get(RETURN_KEY, PersistentDataType.STRING));
         if (ours) {
-            if (!tracker.isTrackedEgg(barrel.getInventory().getItem(13))) {
+            if (!tracker.isTrackedEgg(barrel.getInventory().getItem(DROP_SLOT))) {
                 throw new IOException("return barrel lost its journal egg; manual reconciliation required");
             }
         } else {
@@ -235,7 +242,7 @@ public final class DragonEggOfflineReturn implements Listener {
             }
             block.setType(Material.BARREL, false);
             barrel = (Barrel) block.getState();
-            barrel.getSnapshotInventory().setItem(13, egg);
+            barrel.getSnapshotInventory().setItem(DROP_SLOT, egg);
             barrel.getPersistentDataContainer().set(RETURN_KEY, PersistentDataType.STRING, journal.token);
             if (!barrel.update(false, false)) {
                 throw new IOException("could not persist return barrel block state");
@@ -245,18 +252,20 @@ public final class DragonEggOfflineReturn implements Listener {
                 ItemStack.deserializeBytes(Base64.getDecoder().decode(journal.egg)));
         var actual = journal.destination;
         data.update(state -> {
-            state.kind = "CONTAINER";
-            state.carrier = null;
-            state.position = actual;
+            tracker.moveTo(state, Custody.CONTAINER, null, actual);
             state.notifications.put(journal.carrier, actual);
-            state.offlineCarrier = null;
-            state.logoutPosition = null;
-            state.offlineDeadline = 0;
             state.returnJournal = null;
         });
         // ponytail: durable at-most-once broadcast claim; crash here may omit chat, never replay it.
         data.flushIfDirty();
-        messages.broadcast("dragon-egg.offline-drop", coordinates(actual));
+        try {
+            server.getLogger().info("Dragon egg dropped at " + java.time.Instant.ofEpochMilli(now.getAsLong())
+                    + " in " + actual.dimension() + " (" + (int) Math.floor(actual.x()) + ", "
+                    + (int) Math.floor(actual.y()) + ", " + (int) Math.floor(actual.z()) + "), world "
+                    + actual.world());
+        } finally {
+            messages.broadcast("dragon-egg.offline-drop", coordinates(actual));
+        }
     }
 
     private boolean offline(UUID player) {
@@ -264,12 +273,42 @@ public final class DragonEggOfflineReturn implements Listener {
     }
 
     private void clearDeadline() throws IOException {
-        data.update(s -> {
-            s.offlineCarrier = null;
-            s.logoutPosition = null;
-            s.offlineDeadline = 0;
-        });
+        data.update(DragonEggData.State::clearDeadline);
         data.flushIfDirty();
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void offlineInventoryCommitted(OfflineInventoryCommittedEvent event) {
+        if (data.get().returnJournal != null || !tracker.claimed() || data.get().kind == Custody.DESTROYED) {
+            return;
+        }
+        boolean contains = java.util.stream.Stream.concat(event.snapshot().inventory().stream(),
+                event.snapshot().enderItems().stream()).anyMatch(slot -> tracker.containsTrackedEgg(slot.stack()));
+        if (contains) {
+            Location location = server.getOfflinePlayer(event.playerId()).getLocation();
+            if (location == null || location.getWorld() == null) {
+                tracker.unavailable();
+            } else {
+                data.update(state -> {
+                    tracker.moveTo(state, Custody.PLAYER, event.playerId().toString(),
+                            DragonEggTracker.Position.of(location));
+                    if (state.offlineDeadline == 0) {
+                        state.offlineCarrier = state.carrier;
+                        state.logoutPosition = state.position;
+                        state.lastOnlineAt = now.getAsLong();
+                        state.offlineDeadline = now.getAsLong() + Duration.ofHours(24).toMillis();
+                    }
+                });
+            }
+        } else if (event.playerId().toString().equals(data.get().carrier)) {
+            tracker.unavailable();
+        }
+        tracker.refresh();
+        try {
+            data.flushIfDirty();
+        } catch (IOException e) {
+            throw new ModuleException("failed to persist administrative dragon egg transfer", e);
+        }
     }
 
     private static Object[] coordinates(DragonEggTracker.Position position) {

@@ -32,6 +32,7 @@ class DragonEggListenerTest {
     private ServerMock server;
     private DragonEggTracker tracker;
     private DragonEggListener listener;
+    private final java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(1_000_000);
 
     @BeforeEach
     void setUp() throws Exception {
@@ -39,9 +40,9 @@ class DragonEggListenerTest {
         server.addSimpleWorld("world");
         var data = new DragonEggData(folder);
         data.load();
-        tracker = new DragonEggTracker(server, data, () -> 1_000_000);
+        tracker = new DragonEggTracker(server, data, now::get);
         listener = new DragonEggListener(server, tracker,
-                new DragonEggCompass(server, tracker, mock(MessageService.class), () -> 1_000_000),
+                new DragonEggCompass(server, tracker, mock(MessageService.class), now::get),
                 new BukkitScheduler(MockBukkit.createMockPlugin()));
     }
 
@@ -256,12 +257,21 @@ class DragonEggListenerTest {
         server.getScheduler().performOneTick();
         tracker.sample();
         assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(42);
+        var view = player.openInventory(container.getInventory());
+        listener.onInventoryOpen(new org.bukkit.event.inventory.InventoryOpenEvent(view));
         listener.onBreak(new org.bukkit.event.block.BlockBreakEvent(block, player));
         block.setType(Material.AIR);
         var drop = world.dropItem(new Location(world, 43, 70, 4), box);
         listener.onSpawn(new ItemSpawnEvent(drop));
+        listener.onInventoryClose(new org.bukkit.event.inventory.InventoryCloseEvent(view));
         server.getScheduler().performOneTick();
         assertThat(tracker.isTrackedEntity(drop)).isTrue();
         assertThat(tracker.containsTrackedEgg(drop.getItemStack())).isTrue();
+        now.addAndGet(120_000);
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(43);
+        var compass = new DragonEggCompass(server, tracker, mock(MessageService.class), now::get);
+        var meta = (org.bukkit.inventory.meta.CompassMeta) compass.recipe().getResult().getItemMeta();
+        assertThat(meta.getLodestone()).isEqualTo(drop.getLocation());
     }
 }

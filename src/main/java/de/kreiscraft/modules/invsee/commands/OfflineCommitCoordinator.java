@@ -6,6 +6,8 @@ import de.kreiscraft.platform.OfflineCommitResult;
 import de.kreiscraft.platform.OfflinePlayerEditSession;
 import de.kreiscraft.platform.SlottedItem;
 import de.kreiscraft.platform.StagedOfflineWrite;
+import de.kreiscraft.platform.OfflinePlayerSnapshot;
+import de.kreiscraft.shared.inventory.OfflineInventoryCommittedEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -51,7 +53,11 @@ final class OfflineCommitCoordinator {
                         return;
                     }
                     switch (result) {
-                        case COMMITTED -> messages.send(viewer, "invsee.saved", "player", displayName);
+                        case COMMITTED -> {
+                            server.getPluginManager().callEvent(new OfflineInventoryCommittedEvent(targetId,
+                                    new OfflinePlayerSnapshot(inventory, enderItems)));
+                            messages.send(viewer, "invsee.saved", "player", displayName);
+                        }
                         case ABORTED_TARGET_ONLINE -> messages.send(
                                 viewer,
                                 "invsee.commit-player-online",

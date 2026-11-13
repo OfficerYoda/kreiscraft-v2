@@ -56,20 +56,20 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
             state.returnJournal = null;
         }
         try {
-            if (!Set.of("NONE", "BLOCK", "PLAYER", "ITEM", "FALLING", "CONTAINER", "INVENTORY_ENTITY", "UNKNOWN",
-                    "DESTROYED").contains(state.kind)) {
+            if (state.kind == null) {
                 throw new IllegalArgumentException("unknown custody");
             }
-            if (!state.kind.equals("NONE") && state.eggId == null) {
+            if (state.kind != Custody.NONE && state.eggId == null) {
                 throw new IllegalArgumentException("missing egg identity");
             }
             if (state.eggId != null) {
                 UUID.fromString(state.eggId);
             }
-            if (Set.of("PLAYER", "ITEM", "FALLING", "INVENTORY_ENTITY").contains(state.kind)) {
+            if (Set.of(Custody.PLAYER, Custody.ITEM, Custody.FALLING, Custody.INVENTORY_ENTITY).contains(state.kind)) {
                 UUID.fromString(state.carrier);
             }
-            if (Set.of("BLOCK", "PLAYER", "ITEM", "FALLING", "CONTAINER", "INVENTORY_ENTITY").contains(state.kind)
+            if (Set.of(Custody.BLOCK, Custody.PLAYER, Custody.ITEM, Custody.FALLING, Custody.CONTAINER,
+                    Custody.INVENTORY_ENTITY).contains(state.kind)
                     && state.position == null) {
                 throw new IllegalArgumentException("missing known position");
             }
@@ -92,7 +92,7 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
                 var journal = state.returnJournal;
                 UUID.fromString(journal.carrier);
                 UUID.fromString(journal.token);
-                if (!Set.of("PREPARED", "REMOVED").contains(journal.phase) || state.eggId == null
+                if (journal.phase == null || state.eggId == null
                         || journal.destination == null || journal.egg == null
                         || state.offlineDeadline == 0 || !journal.carrier.equals(state.offlineCarrier)
                         || !journal.originalDigest.matches("[0-9a-f]{64}")
@@ -129,6 +129,11 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
     @Override
     protected void save(State state, ConfigurationNode node) throws SerializationException {
         node.set(State.class, state);
+        // Keep the existing scalar YAML format, not SnakeYAML's Java enum tags.
+        node.node("kind").set(state.kind.name());
+        if (state.returnJournal != null) {
+            node.node("return-journal", "phase").set(state.returnJournal.phase.name());
+        }
         if (state.position == null) {
             node.node("position").set(null);
         }
@@ -148,10 +153,18 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
         return new State();
     }
 
+    public enum Custody {
+        NONE, BLOCK, PLAYER, ITEM, FALLING, CONTAINER, INVENTORY_ENTITY, UNKNOWN, DESTROYED
+    }
+
+    public enum ReturnPhase {
+        PREPARED, REMOVED
+    }
+
     @ConfigSerializable
     public static final class State {
         String eggId;
-        String kind = "NONE";
+        Custody kind = Custody.NONE;
         String carrier;
         DragonEggTracker.Position position;
         DragonEggTracker.Position sampledPosition;
@@ -162,11 +175,17 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
         long lastOnlineAt;
         ReturnJournal returnJournal;
         Map<String, DragonEggTracker.Position> notifications = new java.util.HashMap<>();
+
+        void clearDeadline() {
+            offlineCarrier = null;
+            logoutPosition = null;
+            offlineDeadline = 0;
+        }
     }
 
     @ConfigSerializable
     public static final class ReturnJournal {
-        String phase;
+        ReturnPhase phase;
         String carrier;
         String token;
         String egg;
