@@ -143,6 +143,37 @@ class DragonEggTrackerTest {
     }
 
     @Test
+    void inventoryEntityOverAirStillTracksItsMovingInventory() {
+        var cart = mock(org.bukkit.entity.minecart.StorageMinecart.class);
+        var inventory = mock(org.bukkit.inventory.Inventory.class);
+        var id = java.util.UUID.randomUUID();
+        var world = server.getWorld("world");
+        var location = new Location(world, 20, 70, 4);
+        ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+        tracker.claim(egg);
+        when(cart.getUniqueId()).thenReturn(id);
+        when(cart.getInventory()).thenReturn(inventory);
+        when(cart.getLocation()).thenReturn(location);
+        when(inventory.getHolder()).thenReturn(cart);
+        when(inventory.getLocation()).thenReturn(location);
+        when(inventory.getSize()).thenReturn(1);
+        when(inventory.getItem(0)).thenReturn(egg);
+        var observedServer = spy(server);
+        doReturn(cart).when(observedServer).getEntity(id);
+        tracker = new DragonEggTracker(observedServer, data, now::get);
+        assertThat(tracker.observeInventory(inventory)).isTrue();
+        assertThat(tracker.isTrackedEntity(cart)).isTrue();
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(20);
+        var moved = new Location(world, 40, 70, 4);
+        when(cart.getLocation()).thenReturn(moved);
+        when(inventory.getLocation()).thenReturn(moved);
+        now.addAndGet(120_000);
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(40);
+    }
+
+    @Test
     void doubleChestUsesTheEggHalfNotTheCenter() {
         var world = server.getWorld("world");
         var leftBlock = world.getBlockAt(15, 70, 0);

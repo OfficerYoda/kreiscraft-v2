@@ -240,8 +240,9 @@ class DragonEggListenerTest {
         assertThat(tracker.ping()).isPresent();
     }
 
-    @Test
-    void containedEggFollowsShulkerPlacementAndBreakDrop() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void containedEggFollowsShulkerPlacementAndBreakDrop(boolean ownerClearedAfterBreak) {
         var world = server.getWorld("world");
         var player = server.addPlayer();
         ItemStack egg = new ItemStack(Material.DRAGON_EGG);
@@ -263,6 +264,18 @@ class DragonEggListenerTest {
         block.setType(Material.AIR);
         var drop = world.dropItem(new Location(world, 43, 70, 4), box);
         listener.onSpawn(new ItemSpawnEvent(drop));
+        if (ownerClearedAfterBreak) {
+            // Paper resolves the owner from the current block (now air), but retains the old location/contents.
+            var detached = org.mockito.Mockito.spy(container.getInventory());
+            org.mockito.Mockito.doReturn(null).when(detached).getHolder();
+            org.mockito.Mockito.doReturn(block.getLocation()).when(detached).getLocation();
+            assertThat(tracker.containsTrackedEgg(detached.getItem(0))).isTrue();
+            var closed = mock(org.bukkit.inventory.InventoryView.class);
+            when(closed.getTopInventory()).thenReturn(detached);
+            when(closed.getBottomInventory()).thenReturn(player.getInventory());
+            when(closed.getPlayer()).thenReturn(player);
+            view = closed;
+        }
         listener.onInventoryClose(new org.bukkit.event.inventory.InventoryCloseEvent(view));
         server.getScheduler().performOneTick();
         assertThat(tracker.isTrackedEntity(drop)).isTrue();
