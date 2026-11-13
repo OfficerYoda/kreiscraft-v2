@@ -83,7 +83,8 @@ public final class EnderChestCommand {
     static void openEnderChest(
             Player viewer, Player target, Gui gui, MessageService messages) {
         xyz.xenondevs.invui.gui.Gui invuiGui =
-                InvseeGui.buildEnderChestEditable(target.getEnderChest());
+                InvseeGui.buildEnderChestEditable(target.getEnderChest(),
+                        actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"));
         Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", target.getName());
         gui.open(viewer, invuiGui, title);
     }
@@ -133,7 +134,8 @@ public final class EnderChestCommand {
             return;
         }
         VirtualInventory contents = InvseeGui.offlineEnderChestContents(session.snapshot());
-        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineEnderChest(contents);
+        xyz.xenondevs.invui.gui.Gui invuiGui = InvseeGui.buildOfflineEnderChest(contents,
+                actor -> messages.send(actor, "dragon-egg.ender-chest-blocked"));
         Component title = messages.renderFor(viewer, "invsee.gui-title-ec", "player", displayName);
         gui.open(
                 viewer,

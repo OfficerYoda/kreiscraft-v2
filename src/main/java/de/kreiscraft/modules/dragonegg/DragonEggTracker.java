@@ -1,5 +1,6 @@
 package de.kreiscraft.modules.dragonegg;
 
+import de.kreiscraft.shared.inventory.ItemContents;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -10,11 +11,15 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
 import org.bukkit.block.Block;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.persistence.PersistentDataType;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
@@ -34,6 +39,14 @@ public final class DragonEggTracker {
     public boolean isTrackedEgg(ItemStack item) {
         return item != null && item.getType() == Material.DRAGON_EGG
                 && matchesIdentity(item.getPersistentDataContainer().get(EGG_KEY, PersistentDataType.STRING));
+    }
+
+    public boolean containsTrackedEgg(ItemStack item) {
+        return ItemContents.any(item, this::isTrackedEgg);
+    }
+
+    public boolean claimContained(ItemStack item) {
+        return containsTrackedEgg(item) || (!claimed() && ItemContents.editFirst(item, this::claim));
     }
 
     public boolean claim(ItemStack item) {
@@ -94,14 +107,14 @@ public final class DragonEggTracker {
 
     public boolean isTrackedEntity(Entity entity) {
         return data.get().carrier != null && data.get().carrier.equals(entity.getUniqueId().toString())
-                && (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING"));
+                && (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING")
+                        || data.get().kind.equals("INVENTORY_ENTITY"));
     }
 
     public void trackItem(Item item) {
-        if (claim(item.getItemStack())) {
+        ItemStack stack = item.getItemStack();
+        if (claimContained(stack)) {
             // Bukkit returns a copy on some implementations; persist the marked stack explicitly.
-            ItemStack stack = item.getItemStack();
-            mark(stack);
             item.setItemStack(stack);
             trackEntity(item, "ITEM");
         }
@@ -135,7 +148,8 @@ public final class DragonEggTracker {
 
     public void entitiesLoaded(Chunk chunk, List<Entity> entities) {
         var s = data.get();
-        if ((s.kind.equals("ITEM") || s.kind.equals("FALLING")) && s.position != null
+        if ((s.kind.equals("ITEM") || s.kind.equals("FALLING") || s.kind.equals("INVENTORY_ENTITY"))
+                && s.position != null
                 && s.position.world().equals(chunk.getWorld().getUID().toString())
                 && ((int) Math.floor(s.position.x()) >> 4) == chunk.getX()
                 && ((int) Math.floor(s.position.z()) >> 4) == chunk.getZ()
@@ -157,11 +171,11 @@ public final class DragonEggTracker {
 
     public boolean holdsTrackedEgg(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
-            if (isTrackedEgg(item)) {
+            if (containsTrackedEgg(item)) {
                 return true;
             }
         }
-        return isTrackedEgg(player.getItemOnCursor());
+        return containsTrackedEgg(player.getItemOnCursor());
     }
 
     public void trackHolder(Player player) {
@@ -170,6 +184,46 @@ public final class DragonEggTracker {
                 s.kind = "PLAYER";
                 s.carrier = player.getUniqueId().toString();
                 s.position = Position.of(player.getLocation());
+            });
+        }
+    }
+
+    /** Observe live inventories, using the actual chest half rather than the double-chest midpoint. */
+    public boolean observeInventory(Inventory inventory) {
+        if (inventory instanceof DoubleChestInventory chest) {
+            return observeInventory(chest.getLeftSide()) || observeInventory(chest.getRightSide());
+        }
+        Location location = inventoryLocation(inventory);
+        if (location == null || inventory.getType() == org.bukkit.event.inventory.InventoryType.ENDER_CHEST) {
+            return false;
+        }
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (claimContained(stack)) {
+                inventory.setItem(slot, stack);
+                trackInventory(inventory);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Accepted pickup events transfer custody before Bukkit removes the item entity. */
+    public void trackInventory(Inventory inventory) {
+        Location location = inventoryLocation(inventory);
+        if (!claimed() || data.get().kind.equals("DESTROYED") || location == null) {
+            return;
+        }
+        var holder = inventory.getHolder();
+        if (holder instanceof Player player) {
+            trackHolder(player);
+        } else if (holder instanceof Entity entity) {
+            trackEntity(entity, "INVENTORY_ENTITY");
+        } else {
+            data.update(s -> {
+                s.kind = "CONTAINER";
+                s.carrier = null;
+                s.position = Position.of(location);
             });
         }
     }
@@ -188,6 +242,20 @@ public final class DragonEggTracker {
             if (player != null) {
                 unavailable();
             }
+        } else if (data.get().kind.equals("CONTAINER")) {
+            Location location = data.get().position.location(server);
+            if (location != null
+                    && location.getWorld().isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
+                var state = location.getBlock().getState();
+                if (!(state instanceof Container container) || !observeInventory(containerInventory(container))) {
+                    unavailable();
+                }
+            }
+        } else if (data.get().kind.equals("INVENTORY_ENTITY")) {
+            Entity entity = server.getEntity(UUID.fromString(data.get().carrier));
+            if (entity instanceof InventoryHolder holder && !observeInventory(holder.getInventory())) {
+                unavailable();
+            }
         } else if (data.get().kind.equals("ITEM") || data.get().kind.equals("FALLING")) {
             Entity entity = server.getEntity(UUID.fromString(data.get().carrier));
             if (entity != null) {
@@ -204,17 +272,26 @@ public final class DragonEggTracker {
         }
     }
 
+    public static Inventory containerInventory(Container container) {
+        return container instanceof org.bukkit.block.Chest chest ? chest.getBlockInventory() : container.getInventory();
+    }
+
+    private static Location inventoryLocation(Inventory inventory) {
+        return inventory.getHolder() instanceof org.bukkit.block.BlockState block ? block.getLocation()
+                : inventory.getLocation();
+    }
+
     public boolean observePlayer(Player player) {
         if (!claimed()) {
             for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
                 ItemStack item = player.getInventory().getItem(slot);
-                if (claim(item)) {
+                if (claimContained(item)) {
                     player.getInventory().setItem(slot, item);
                     break;
                 }
             }
             ItemStack cursor = player.getItemOnCursor();
-            if (claim(cursor)) {
+            if (claimContained(cursor)) {
                 player.setItemOnCursor(cursor);
             }
         }

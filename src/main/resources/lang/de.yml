@@ -1,5 +1,6 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
 dragon-egg:
+  ender-chest-blocked: "<prefix> <red>Dracheneier dürfen nicht in Endertruhen gelagert werden, auch nicht in Behältern."
   compass-name: "<gold>Drachenei-Kompass"
   ping: "<prefix> <gray>Letztes Ei-Signal: <gold><distance></gold> Blöcke entfernt, vor <gold><seconds></gold> Sekunden."
   dimension: "<prefix> <gray>Letztes Ei-Signal: <gold><dimension></gold>, vor <gold><seconds></gold> Sekunden."

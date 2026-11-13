@@ -114,4 +114,154 @@ class DragonEggListenerTest {
         listener.onSpawn(new ItemSpawnEvent(tracked));
         assertThat(tracker.isTrackedEgg(tracked.getItemStack())).isTrue();
     }
+
+    @Test
+    void chunkDiscoveryFindsNestedEggInPlacedChestAndPickupMovesItToCursor() {
+        var block = server.getWorld("world").getBlockAt(48, 70, 48);
+        block.setType(Material.CHEST);
+        var chest = (org.bukkit.block.Chest) block.getState();
+        chest.getBlockInventory().setItem(0, DragonEggTrackerTest.bundle(new ItemStack(Material.DRAGON_EGG)));
+        var chunk = org.mockito.Mockito.spy(block.getChunk());
+        org.mockito.Mockito.doReturn(new org.bukkit.block.BlockState[] {chest}).when(chunk).getTileEntities();
+        listener.onChunkLoad(new org.bukkit.event.world.ChunkLoadEvent(chunk, false));
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(48);
+        var player = server.addPlayer();
+        player.setItemOnCursor(chest.getBlockInventory().getItem(0));
+        chest.getBlockInventory().clear();
+        tracker.refresh();
+        assertThat(tracker.holdsTrackedEgg(player)).isTrue();
+    }
+
+    @Test
+    void nativeEnderChestRejectsCursorAndShiftTransfersOfEveryEggWithoutMutation() {
+        server.getPluginManager().registerEvents(listener, MockBukkit.createMockPlugin());
+        var player = server.addPlayer();
+        var view = player.openInventory(player.getEnderChest());
+        ItemStack egg = DragonEggTrackerTest.bundle(new ItemStack(Material.DRAGON_EGG));
+        player.setItemOnCursor(egg);
+        var click = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PLACE_ALL);
+        server.getPluginManager().callEvent(click);
+        assertThat(click.isCancelled()).isTrue();
+        assertThat(player.getItemOnCursor()).isEqualTo(egg);
+        assertThat(player.getEnderChest().getItem(0)).isNull();
+        player.setItemOnCursor(null);
+        view.setItem(27, egg);
+        var shift = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 27,
+                org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
+                org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY);
+        server.getPluginManager().callEvent(shift);
+        assertThat(shift.isCancelled()).isTrue();
+        assertThat(view.getItem(27)).isEqualTo(egg);
+    }
+
+    @Test
+    void nativeEnderChestRejectsHotbarOffhandAndMixedDragButAllowsOrdinaryItemsAndEggRemoval() {
+        server.getPluginManager().registerEvents(listener, MockBukkit.createMockPlugin());
+        var player = server.addPlayer();
+        var view = player.openInventory(player.getEnderChest());
+        ItemStack box = DragonEggTrackerTest.shulker(DragonEggTrackerTest.bundle(new ItemStack(Material.DRAGON_EGG)));
+        player.getInventory().setItem(0, box);
+        var hotbar = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.NUMBER_KEY,
+                org.bukkit.event.inventory.InventoryAction.HOTBAR_SWAP, 0);
+        server.getPluginManager().callEvent(hotbar);
+        assertThat(hotbar.isCancelled()).isTrue();
+        assertThat(player.getInventory().getItem(0)).isEqualTo(box);
+        player.getInventory().setItemInOffHand(box);
+        var offhand = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.SWAP_OFFHAND,
+                org.bukkit.event.inventory.InventoryAction.HOTBAR_SWAP);
+        server.getPluginManager().callEvent(offhand);
+        assertThat(offhand.isCancelled()).isTrue();
+        assertThat(player.getInventory().getItemInOffHand()).isEqualTo(box);
+        player.setItemOnCursor(box);
+        var drag = new org.bukkit.event.inventory.InventoryDragEvent(view, null, box, false,
+                java.util.Map.of(0, box, 28, new ItemStack(Material.STONE)));
+        server.getPluginManager().callEvent(drag);
+        assertThat(drag.isCancelled()).isTrue();
+        assertThat(player.getItemOnCursor()).isEqualTo(box);
+        assertThat(player.getEnderChest().isEmpty()).isTrue();
+        player.setItemOnCursor(new ItemStack(Material.STONE));
+        var ordinary = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PLACE_ALL);
+        server.getPluginManager().callEvent(ordinary);
+        assertThat(ordinary.isCancelled()).isFalse();
+        player.setItemOnCursor(null);
+        player.getEnderChest().setItem(0, box);
+        var remove = new org.bukkit.event.inventory.InventoryClickEvent(view,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
+                org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY);
+        server.getPluginManager().callEvent(remove);
+        assertThat(remove.isCancelled()).isFalse();
+    }
+
+    @Test
+    void hopperPickupThenTransferSurvivesSourceEntityRemoval() {
+        var world = server.getWorld("world");
+        var sourceBlock = world.getBlockAt(10, 70, 4);
+        sourceBlock.setType(Material.HOPPER);
+        var source = ((org.bukkit.block.Container) sourceBlock.getState()).getInventory();
+        var targetBlock = world.getBlockAt(20, 70, 4);
+        targetBlock.setType(Material.BARREL);
+        var target = ((org.bukkit.block.Container) targetBlock.getState()).getInventory();
+        ItemStack box = DragonEggTrackerTest.shulker(new ItemStack(Material.DRAGON_EGG));
+        var drop = world.dropItem(new Location(world, 5, 70, 4), box);
+        listener.onSpawn(new ItemSpawnEvent(drop));
+        box = drop.getItemStack();
+        listener.onInventoryPickup(new org.bukkit.event.inventory.InventoryPickupItemEvent(source, drop));
+        source.setItem(0, box);
+        listener.onRemove(new EntityRemoveEvent(drop, EntityRemoveEvent.Cause.PICKUP));
+        drop.remove();
+        server.getScheduler().performOneTick();
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(10);
+        listener.onInventoryMove(new org.bukkit.event.inventory.InventoryMoveItemEvent(source, box, target, true));
+        source.clear();
+        target.setItem(0, box);
+        server.getScheduler().performOneTick();
+        tracker.refresh();
+        assertThat(tracker.containsTrackedEgg(target.getItem(0))).isTrue();
+        tracker.unavailable();
+        var chunk = org.mockito.Mockito.spy(targetBlock.getChunk());
+        org.mockito.Mockito.doReturn(new org.bukkit.block.BlockState[] {targetBlock.getState()}).when(chunk)
+                .getTileEntities();
+        listener.onChunkLoad(new org.bukkit.event.world.ChunkLoadEvent(chunk, false));
+        assertThat(tracker.claimed()).isTrue();
+        tracker.sample();
+        assertThat(tracker.ping()).isPresent();
+    }
+
+    @Test
+    void containedEggFollowsShulkerPlacementAndBreakDrop() {
+        var world = server.getWorld("world");
+        var player = server.addPlayer();
+        ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+        tracker.claim(egg);
+        ItemStack box = DragonEggTrackerTest.shulker(DragonEggTrackerTest.bundle(egg));
+        var block = world.getBlockAt(42, 70, 4);
+        var replaced = block.getState();
+        block.setType(Material.SHULKER_BOX);
+        var container = (org.bukkit.block.ShulkerBox) block.getState();
+        container.getInventory().setItem(0, DragonEggTrackerTest.bundle(egg));
+        listener.onPlace(new org.bukkit.event.block.BlockPlaceEvent(block, replaced, block,
+                box, player, true, org.bukkit.inventory.EquipmentSlot.HAND));
+        server.getScheduler().performOneTick();
+        tracker.sample();
+        assertThat(tracker.ping().orElseThrow().position().x()).isEqualTo(42);
+        listener.onBreak(new org.bukkit.event.block.BlockBreakEvent(block, player));
+        block.setType(Material.AIR);
+        var drop = world.dropItem(new Location(world, 43, 70, 4), box);
+        listener.onSpawn(new ItemSpawnEvent(drop));
+        server.getScheduler().performOneTick();
+        assertThat(tracker.isTrackedEntity(drop)).isTrue();
+        assertThat(tracker.containsTrackedEgg(drop.getItemStack())).isTrue();
+    }
 }

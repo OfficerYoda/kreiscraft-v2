@@ -24,7 +24,8 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
             state.sampledPosition = null;
         }
         try {
-            if (!Set.of("NONE", "BLOCK", "PLAYER", "ITEM", "FALLING", "UNKNOWN", "DESTROYED").contains(state.kind)) {
+            if (!Set.of("NONE", "BLOCK", "PLAYER", "ITEM", "FALLING", "CONTAINER", "INVENTORY_ENTITY", "UNKNOWN",
+                    "DESTROYED").contains(state.kind)) {
                 throw new IllegalArgumentException("unknown custody");
             }
             if (!state.kind.equals("NONE") && state.eggId == null) {
@@ -33,10 +34,11 @@ public final class DragonEggData extends DataFile<DragonEggData.State> {
             if (state.eggId != null) {
                 UUID.fromString(state.eggId);
             }
-            if (Set.of("PLAYER", "ITEM", "FALLING").contains(state.kind)) {
+            if (Set.of("PLAYER", "ITEM", "FALLING", "INVENTORY_ENTITY").contains(state.kind)) {
                 UUID.fromString(state.carrier);
             }
-            if (Set.of("BLOCK", "PLAYER", "ITEM", "FALLING").contains(state.kind) && state.position == null) {
+            if (Set.of("BLOCK", "PLAYER", "ITEM", "FALLING", "CONTAINER", "INVENTORY_ENTITY").contains(state.kind)
+                    && state.position == null) {
                 throw new IllegalArgumentException("missing known position");
             }
             validate(state.position);

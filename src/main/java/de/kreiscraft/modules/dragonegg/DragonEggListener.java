@@ -1,6 +1,7 @@
 package de.kreiscraft.modules.dragonegg;
 
 import de.kreiscraft.core.scheduler.Scheduler;
+import de.kreiscraft.shared.inventory.ItemContents;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.List;
@@ -34,6 +35,18 @@ import org.bukkit.event.entity.EntityRemoveEvent;
 import org.bukkit.event.entity.ItemMergeEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryPickupItemEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.world.ChunkUnloadEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -88,10 +101,18 @@ public final class DragonEggListener implements Listener {
             if (tracker.matchesIdentity(id)) {
                 tracker.trackFalling(falling);
             }
+        } else if (entity instanceof InventoryHolder holder) {
+            tracker.observeInventory(holder.getInventory());
         }
     }
 
     private void discoverChunk(Chunk chunk) {
+        // ponytail: discover loaded tile inventories on lifecycle/transfer events, never load chunks or scan worlds each tick.
+        for (var state : chunk.getTileEntities()) {
+            if (state instanceof org.bukkit.block.Container container) {
+                tracker.observeInventory(DragonEggTracker.containerInventory(container));
+            }
+        }
         if (tracker.claimed() || !chunk.contains(Material.DRAGON_EGG.createBlockData())) {
             return;
         }
@@ -112,6 +133,11 @@ public final class DragonEggListener implements Listener {
         if (tracker.claim(event.getItemInHand())) {
             tracker.trackBlock(event.getBlockPlaced());
         }
+        later(() -> {
+            if (event.getBlockPlaced().getState() instanceof org.bukkit.block.Container container) {
+                tracker.observeInventory(DragonEggTracker.containerInventory(container));
+            }
+        });
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -136,7 +162,7 @@ public final class DragonEggListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDrop(EntityDropItemEvent event) {
-        if (tracker.isTrackedEntity(event.getEntity())) {
+        if (event.getEntity() instanceof FallingBlock && tracker.isTrackedEntity(event.getEntity())) {
             ItemStack stack = event.getItemDrop().getItemStack();
             if (stack.getType() == Material.DRAGON_EGG) {
                 tracker.mark(stack);
@@ -155,6 +181,7 @@ public final class DragonEggListener implements Listener {
                 awaitDrop(event.getBlock());
             }
         }
+        later(tracker::refresh);
     }
 
     private void awaitDrop(Block block) {
@@ -190,7 +217,7 @@ public final class DragonEggListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
-        if (tracker.isTrackedEgg(event.getItem().getItemStack())) {
+        if (tracker.containsTrackedEgg(event.getItem().getItemStack())) {
             if (event.getEntity() instanceof Player player && event.getRemaining() == 0) {
                 tracker.trackHolder(player);
             } else {
@@ -262,7 +289,7 @@ public final class DragonEggListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Player player && tracker.holdsTrackedEgg(player)
-                && !event.getDrops().stream().anyMatch(tracker::isTrackedEgg)) {
+                && !event.getDrops().stream().anyMatch(tracker::containsTrackedEgg)) {
             // Keep-inventory deaths retain the egg; otherwise no drop means it was destroyed.
             scheduler.runLater(Duration.ofMillis(50), () -> {
                 if (active && !tracker.holdsTrackedEgg(player)) {
@@ -294,6 +321,117 @@ public final class DragonEggListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
         discoverChunk(event.getChunk());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        discoverChunk(event.getChunk());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void protectEnderChestClick(InventoryClickEvent event) {
+        if (event.getView().getTopInventory().getType() != InventoryType.ENDER_CHEST) {
+            return;
+        }
+        boolean top = event.getRawSlot() >= 0 && event.getRawSlot() < event.getView().getTopInventory().getSize();
+        boolean incoming = top && ItemContents.containsDragonEgg(event.getCursor());
+        if (top && event.getClick() == ClickType.NUMBER_KEY && event.getHotbarButton() >= 0) {
+            incoming |= ItemContents
+                    .containsDragonEgg(event.getWhoClicked().getInventory().getItem(event.getHotbarButton()));
+        }
+        if (top && event.getClick() == ClickType.SWAP_OFFHAND) {
+            incoming |= ItemContents.containsDragonEgg(event.getWhoClicked().getInventory().getItemInOffHand());
+        }
+        incoming |= !top && event.getClickedInventory() != null
+                && event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                && ItemContents.containsDragonEgg(event.getCurrentItem());
+        if (incoming) {
+            event.setCancelled(true);
+            if (event.getWhoClicked() instanceof Player player) {
+                compass.rejectEnderChest(player);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void protectEnderChestDrag(InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getType() == InventoryType.ENDER_CHEST
+                && event.getNewItems().entrySet().stream().anyMatch(entry -> entry.getKey() >= 0
+                        && entry.getKey() < event.getView().getTopInventory().getSize()
+                        && ItemContents.containsDragonEgg(entry.getValue()))) {
+            event.setCancelled(true);
+            if (event.getWhoClicked() instanceof Player player) {
+                compass.rejectEnderChest(player);
+            }
+        }
+    }
+
+    private void later(Runnable action) {
+        scheduler.runLater(Duration.ofMillis(50), () -> {
+            if (active) {
+                action.run();
+            }
+        });
+    }
+
+    private void inventoriesChanged(Inventory source, Inventory destination) {
+        later(() -> {
+            tracker.observeInventory(source);
+            tracker.observeInventory(destination);
+            tracker.refresh();
+        });
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        inventoriesChanged(event.getView().getBottomInventory(), event.getView().getTopInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        inventoriesChanged(event.getView().getBottomInventory(), event.getView().getTopInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        tracker.observeInventory(event.getInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryClose(InventoryCloseEvent event) {
+        inventoriesChanged(event.getView().getBottomInventory(), event.getInventory());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void protectEnderChestMove(InventoryMoveItemEvent event) {
+        if (event.getDestination().getType() == InventoryType.ENDER_CHEST
+                && ItemContents.containsDragonEgg(event.getItem())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryMove(InventoryMoveItemEvent event) {
+        inventoriesChanged(event.getSource(), event.getDestination());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryPickup(InventoryPickupItemEvent event) {
+        if (tracker.containsTrackedEgg(event.getItem().getItemStack())) {
+            tracker.trackInventory(event.getInventory());
+        }
+        later(() -> {
+            tracker.observeInventory(event.getInventory());
+            tracker.refresh();
+        });
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void protectEnderChestPickup(InventoryPickupItemEvent event) {
+        if (event.getInventory().getType() == InventoryType.ENDER_CHEST
+                && ItemContents.containsDragonEgg(event.getItem().getItemStack())) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

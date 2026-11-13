@@ -48,6 +48,73 @@ class InvseeGuiTest {
     }
 
     @Test
+    void offlineEnderChestRejectsUnmarkedEggWithoutChangingCursorOrOtherSlots() {
+        var contents = new VirtualInventory(27);
+        contents.setItem(null, 1, new ItemStack(Material.DIAMOND, 3));
+        var gui = InvseeGui.buildOfflineEnderChest(contents);
+        ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+        player.setItemOnCursor(egg);
+        gui.handleClick(0, new xyz.xenondevs.invui.Click(player, ClickType.LEFT));
+        assertThat(contents.getItem(0)).isNull();
+        assertThat(player.getItemOnCursor()).isEqualTo(egg);
+        assertThat(contents.getItem(1)).isEqualTo(new ItemStack(Material.DIAMOND, 3));
+    }
+
+    @Test
+    void liveAndOfflineEnderChestRejectNestedHotbarProposalsWithFeedbackAndNoLoss() {
+        ItemStack box = new ItemStack(Material.SHULKER_BOX);
+        box.editMeta(org.bukkit.inventory.meta.BlockStateMeta.class, meta -> {
+            var shulker = (org.bukkit.block.ShulkerBox) meta.getBlockState();
+            ItemStack bundle = new ItemStack(Material.BUNDLE);
+            bundle.editMeta(org.bukkit.inventory.meta.BundleMeta.class,
+                    inner -> inner.setItems(List.of(new ItemStack(Material.DRAGON_EGG))));
+            shulker.getInventory().setItem(0, bundle);
+            meta.setBlockState(shulker);
+        });
+        var rejected = new java.util.ArrayList<org.bukkit.entity.Player>();
+        var offline = new VirtualInventory(27);
+        ItemStack diamond = new ItemStack(Material.DIAMOND, 3);
+        offline.setItem(null, 0, diamond);
+        player.getEnderChest().setItem(0, diamond);
+        var guis = List.of(InvseeGui.buildOfflineEnderChest(offline, rejected::add),
+                InvseeGui.buildEnderChestEditable(player.getEnderChest(), rejected::add));
+        for (var gui : guis) {
+            player.getInventory().setItem(0, box);
+            var link = (SlotElement.InventoryLink) gui.getSlotElement(0);
+            var hotbar = new xyz.xenondevs.invui.inventory.event.PlayerUpdateReason.Click(
+                    new xyz.xenondevs.invui.Click(player, ClickType.NUMBER_KEY, 0));
+            assertThat(link.inventory().forceSetItem(hotbar, link.slot(), box)).isFalse();
+            assertThat(stackAt(gui, 0)).isEqualTo(diamond);
+            assertThat(player.getInventory().getItem(0)).isEqualTo(box);
+            player.setItemOnCursor(box);
+            gui.handleClick(0, new xyz.xenondevs.invui.Click(player, ClickType.RIGHT));
+            assertThat(stackAt(gui, 0)).isEqualTo(diamond);
+            assertThat(player.getItemOnCursor()).isEqualTo(box);
+        }
+        assertThat(rejected).containsOnly(player).hasSize(4);
+    }
+
+    @Test
+    void offlineEnderChestDestinationRejectsShiftAndDragAndAllowsLegacyEggExtraction() {
+        var contents = new VirtualInventory(27);
+        var rejected = new java.util.ArrayList<org.bukkit.entity.Player>();
+        ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+        contents.setItem(null, 0, egg);
+        InvseeGui.buildOfflineEnderChest(contents, rejected::add);
+        var shift = new xyz.xenondevs.invui.inventory.event.PlayerUpdateReason.Click(
+                new xyz.xenondevs.invui.Click(player, ClickType.SHIFT_LEFT));
+        assertThat(contents.addItem(shift, egg)).isEqualTo(1);
+        assertThat(contents.getItem(0)).isEqualTo(egg);
+        var drag = new xyz.xenondevs.invui.inventory.event.PlayerUpdateReason.Drag(player,
+                ClickType.LEFT, new java.util.ArrayList<>());
+        assertThat(contents.setItem(drag, 1, egg)).isFalse();
+        assertThat(contents.getItem(1)).isNull();
+        assertThat(contents.setItem(shift, 0, null)).isTrue();
+        assertThat(contents.getItem(0)).isNull();
+        assertThat(rejected).contains(player);
+    }
+
+    @Test
     void buildOfflineInventory_placesArmorAndOffhandInTopRow() {
         OfflinePlayerSnapshot snapshot =
                 OfflinePlayerSnapshot.ofInventory(
