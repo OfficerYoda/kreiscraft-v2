@@ -151,6 +151,7 @@ public final class KreiscraftBootstrap {
         modules.register(new de.kreiscraft.modules.chatformat.ChatFormatModule());
         modules.register(new de.kreiscraft.modules.clickthrough.ClickthroughModule());
         modules.register(new de.kreiscraft.modules.combat.CombatModule());
+        modules.register(new de.kreiscraft.modules.dragonegg.DragonEggModule());
         modules.register(new de.kreiscraft.modules.effects.EffectsModule());
         modules.register(new de.kreiscraft.modules.firework.FireworkModule());
         modules.register(new de.kreiscraft.modules.invsee.InvseeModule());

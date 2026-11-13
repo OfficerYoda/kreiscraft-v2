@@ -1,4 +1,9 @@
 prefix: "<gray>[<gold>Kreiscraft</gold>]</gray>"
+dragon-egg:
+  compass-name: "<gold>Drachenei-Kompass"
+  ping: "<prefix> <gray>Letztes Ei-Signal: <gold><distance></gold> Blöcke entfernt, vor <gold><seconds></gold> Sekunden."
+  dimension: "<prefix> <gray>Letztes Ei-Signal: <gold><dimension></gold>, vor <gold><seconds></gold> Sekunden."
+  unavailable: "<prefix> <yellow>Der Standort des Dracheneis ist nicht verfügbar."
 core:
   reload:
     success: "<prefix> <green>Konfiguration neu geladen."
@@ -30,6 +35,7 @@ server-config:
     chat-format: "Chat-Format"
     clickthrough: "Click-throgh"
     combat: "Combat"
+    dragon-egg: "Drachenei"
     effects: "Effekte"
     firework: "Feuerwerk"
     invsee: "Inventaransicht"

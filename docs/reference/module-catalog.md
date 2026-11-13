@@ -2,7 +2,7 @@
 title: Module Catalog
 ---
 
-Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and events.
+Catalog of all 26 Kreiscraft modules: purpose, dependencies, services, and events.
 
 ---
 
@@ -19,6 +19,7 @@ Catalog of all 25 Kreiscraft modules: purpose, dependencies, services, and event
 | `clickthrough` | `de.kreiscraft.modules.clickthrough` | stable | none | — | Lets players open containers and Ender Chests through wall signs and filled item frames; toggled through always-available player preferences. |
 | `combat` | `de.kreiscraft.modules.combat` | stable | none | combat | Tags players as in combat on damage; optionally removes elytra while tagged; combat display follows a player preference with a module default. |
 | `effects` | `de.kreiscraft.modules.effects` | stable | none | effects | Lets players report, toggle, and choose a personal particle trail emitted on a configurable schedule (default 5 ticks) independent of movement; state and particle persist as player preferences. |
+| `dragon-egg` | `de.kreiscraft.modules.dragonegg` | tracking slice | none | — | Compass + dragon head tracks one egg through possession, drops, placement, teleportation and falling; two-minute location pings. |
 | `firework` | `de.kreiscraft.modules.firework` | stable | none | — | Registers a custom-model-data firework rocket crafting recipe. |
 | `invsee` | `de.kreiscraft.modules.invsee` | stable | none | invsee, enderchest | Allows admins to view (and optionally edit) another player's inventory or ender chest. |
 | `jail` | `de.kreiscraft.modules.jail` | stable | none | jail, kerker | Jails players at a configured jail location and restricts a configurable set of commands while jailed; `/jail` and `/kerker` also release already-jailed players. |
@@ -53,6 +54,35 @@ implementation is not live acceptance. See its [current scope and operator guide
 ---
 
 ## Per-Module Entries
+
+## `dragon-egg`
+
+**Package:** `de.kreiscraft.modules.dragonegg`
+
+**Depends on:** none
+
+**Default enabled:** true
+
+Craft one compass with one dragon head (shapeless). Only marked tracking compasses are changed.
+The first observed single egg item or placed egg becomes the gameplay egg; later eggs never replace it,
+including after destruction. Direct inventory/cursor possession, moving dropped items, placed-block
+teleportation, and falling-block placement/drop transitions retain its identity. Right-click reports
+distance to the last sample and its age in seconds, or the target dimension when worlds differ.
+Location is sampled every two minutes, not continuously; offline holders and unloaded chunks retain
+their last known location without forcing a chunk load. Unknown custody or confirmed destruction
+reports unavailable. Containers/nested storage, buffs and offline reclamation are separate slices.
+
+`DragonEggTracker` is the published identity/location seam for those slices; reuse its
+`isTrackedEgg`, `holdsTrackedEgg`, custody transitions and `ping` rather than another tracker.
+Identity, custody, last known position and sampled position/time live in `data/dragon-egg.yml`
+(Activity Data), auto-saved and flushed at shutdown; never edit these as Server Configuration.
+Do not delete the data file to "repair" a destroyed egg: that would allow another egg to be claimed.
+
+Runnable checks: `./gradlew test --tests '*DragonEgg*Test'`.
+Before live acceptance on Paper, craft and right-click in both hands/dimensions; move the egg before
+and after two minutes; teleport it; let it fall onto a torch to become an item; pick up/drop/die;
+unload/reload its chunk and restart with an offline holder; destroy it and verify another egg is not
+selected. Bukkit tests cover event transitions, not actual vanilla physics/event ordering.
 
 For command syntax and permissions, see [Commands and Permissions](/reference/commands-and-permissions/).
 For config keys and defaults, see [Configuration](/reference/configuration/).

@@ -89,6 +89,8 @@ modules:
     offset-y: 0.9
     offset-z: 0.9
     force: true
+  dragon-egg:
+    enabled: true
   firework:
     enabled: false
     custom-model-data: 696969
