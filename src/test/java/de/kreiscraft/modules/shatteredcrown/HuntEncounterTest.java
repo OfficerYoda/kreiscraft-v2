@@ -1575,8 +1575,9 @@ class HuntEncounterTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.CsvSource({"10,16", "15,17", "-15,17", "29,19.8", "30,20", "30.01,20"})
-    void smashShockwaveArrivesAfterImpactHitsOnceAndFallsToZeroAtThirtyBlocks(double offset, double health)
+    @org.junit.jupiter.params.provider.CsvSource({"10,15.5", "15,16.25", "-15,16.25", "29,18.35", "30,18.5",
+            "39,19.85", "40,20", "40.01,20"})
+    void smashShockwaveArrivesAfterImpactHitsOnceAndFallsToZeroAtFortyBlocks(double offset, double health)
             throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
@@ -1585,6 +1586,7 @@ class HuntEncounterTest {
         var probe = server.addPlayer();
         probe.teleport(new Location(end, 10.5 + offset, 64, 0.5));
         probe.getLocation().getChunk().load();
+        probe.getLocation().getBlock().getRelative(0, -1, 0).setType(Material.END_STONE);
         scheduler.advance(Duration.ofMillis(4000));
         assertThat(probe.getHealth()).isEqualTo(20);
         scheduler.advance(Duration.ofSeconds(3));
@@ -1624,8 +1626,8 @@ class HuntEncounterTest {
         probes.get(2).teleport(new Location(end, 10.5, 65, 10.5));
         end.getBlockAt(10, 63, 15).setType(Material.AIR);
         scheduler.advance(Duration.ofSeconds(3));
-        assertThat(probes.get(0).getHealth()).isEqualTo(17);
-        assertThat(probes.get(1).getHealth()).isEqualTo(16);
+        assertThat(probes.get(0).getHealth()).isEqualTo(16.25);
+        assertThat(probes.get(1).getHealth()).isEqualTo(15.5);
         assertThat(probes.get(2).getHealth()).isEqualTo(20);
         assertThat(probes.get(3).getHealth()).isEqualTo(20);
         probes.get(2).teleport(new Location(end, 10.5, 64, 10.5));
@@ -1634,7 +1636,7 @@ class HuntEncounterTest {
     }
 
     @Test
-    void smashShockwaveDrawsPurpleDustOutToThirtyBlocksAndStopsAtExpiry() throws Exception {
+    void smashShockwaveDrawsPurpleDustOutToFortyBlocksAndStopsAtExpiry() throws Exception {
         config.node("movement-attacks").set(true);
         startEncounter();
         player.setOp(true);
@@ -1656,7 +1658,7 @@ class HuntEncounterTest {
             scheduler.advance(Duration.ofSeconds(3));
             assertThat(points).isNotEmpty();
             assertThat(points.stream().mapToDouble(point -> Math.hypot(point.getX() - 10.5, point.getZ() - 0.5))
-                    .max().orElseThrow()).isCloseTo(30, org.assertj.core.data.Offset.offset(0.00001));
+                    .max().orElseThrow()).isCloseTo(40, org.assertj.core.data.Offset.offset(0.00001));
             assertThat(points).allSatisfy(point -> assertThat(point.getY()).isEqualTo(64.15));
             int count = points.size();
             scheduler.advance(Duration.ofSeconds(2));

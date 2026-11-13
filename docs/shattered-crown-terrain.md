@@ -21,13 +21,13 @@ Outside the impact radius receives no damage. Distance is horizontal; the crater
 Other defenses and arrival PLAYER protection remain effective. Damage cancellation alone does not
 undo the crater. Cancelling the action before impact prevents impact and all later queued work.
 
-Impact also starts a purple shockwave ring that travels outward to **30 blocks in three seconds**.
+Impact also starts a purple shockwave ring that travels outward to **40 blocks in three seconds**.
 It follows current supported terrain within six vertical blocks of the impact height, including the
 new crater; holes, unloaded chunks and ground outside the arena are skipped. Players can jump over
 its low collision band (feet more than 0.6 blocks above local ground). Each player can receive one
 additional, dragon-attributed hit as the ring passes, with outward `sweep-knockback` and reference
-damage `0.5 * sweep-damage * (1 - horizontalDistance / 30)`: default damage is 4 HP at ten blocks,
-3 HP at fifteen, and zero at thirty. Existing defenses, arrival protection and damage cancellation
+damage `0.5 * sweep-damage * (1 - horizontalDistance / 40)`: default damage is 4.5 HP at ten blocks,
+3.75 HP at fifteen, and zero at forty. Existing defenses, arrival protection and damage cancellation
 still apply. Cancelling or ending the attack stops the travelling ring; it does not alter terrain.
 
 ## Ground and debris

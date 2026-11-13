@@ -59,7 +59,7 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
     private static final NamespacedKey PROTECTED_SHOT = new NamespacedKey("kreiscraft", "crown_protected_shot");
     private static final NamespacedKey ORIGINAL_HEALTH = new NamespacedKey("kreiscraft", "crown_original_health");
     private static final double RAIN_RADIUS = 5;
-    private static final double SMASH_SHOCKWAVE_RADIUS = 30;
+    private static final double SMASH_SHOCKWAVE_RADIUS = 40;
     private static final int MAX_MOB_POPULATION = 20;
     private static final List<EntityType> SECOND_ROSTER_TYPES = List.of(EntityType.RAVAGER, EntityType.GUARDIAN,
             EntityType.PIGLIN_BRUTE, EntityType.VINDICATOR, EntityType.BLAZE, EntityType.BREEZE, EntityType.VEX);
@@ -1652,8 +1652,8 @@ public final class EncounterController implements Listener, AutoCloseable, Encou
                 return;
             }
             // ponytail: fixed three-second travel; reuse the existing six-block local terrain projection.
-            double previous = tick[0] * 0.5;
-            double radius = ++tick[0] * 0.5;
+            double previous = tick[0] * SMASH_SHOCKWAVE_RADIUS / 60;
+            double radius = ++tick[0] * SMASH_SHOCKWAVE_RADIUS / 60;
             var viewers = source.getWorld().getPlayers().stream().filter(arena::participant).limit(64).toList();
             if (tick[0] == 1 || tick[0] % 2 == 0) {
                 int points = Math.max(16, (int) Math.ceil(2 * Math.PI * radius));
