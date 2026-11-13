@@ -280,14 +280,17 @@ public final class DragonEggTracker {
     }
 
     private static Location inventoryLocation(Inventory inventory) {
-        if (inventory.getHolder() instanceof Container container
-                && (!container.isPlaced() || !(container.getBlock().getState() instanceof Container live)
-                        || !containerInventory(live).equals(inventory))) {
-            // Closed views can retain a broken shulker's contents after custody moved to its drop.
+        var holder = inventory.getHolder();
+        Location location = holder instanceof org.bukkit.block.BlockState block
+                ? (block.isPlaced() ? block.getLocation() : null)
+                : inventory.getLocation();
+        if (location != null && !(holder instanceof Entity)
+                && (location.getWorld() == null || !(location.getBlock().getState() instanceof Container live)
+                        || (!containerInventory(live).equals(inventory) && !live.getInventory().equals(inventory)))) {
+            // Paper may clear a broken container's owner while its detached view keeps location/contents.
             return null;
         }
-        return inventory.getHolder() instanceof org.bukkit.block.BlockState block ? block.getLocation()
-                : inventory.getLocation();
+        return location;
     }
 
     public boolean observePlayer(Player player) {
